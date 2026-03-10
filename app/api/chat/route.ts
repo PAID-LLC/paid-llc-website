@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
+// Reject requests that don't originate from our own domain.
+// Prevents third-party sites from consuming our Gemini API quota.
+function isOriginAllowed(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return true; // server-to-server or direct curl — allow
+
+  if (process.env.NODE_ENV === "development") {
+    if (origin.startsWith("http://localhost:")) return true;
+  }
+
+  const allowed = [
+    "https://paiddev.com",
+    "https://www.paiddev.com",
+    process.env.NEXT_PUBLIC_SITE_URL,
+  ].filter(Boolean);
+
+  return allowed.includes(origin);
+}
+
 const SYSTEM_PROMPT = `You are Arti, the AI assistant for PAID LLC (Performance Artificial Intelligence Development).
 Your only job is to help website visitors understand PAID LLC's services, pricing, and how to get started.
 
@@ -21,6 +40,10 @@ Keep all responses under 3 sentences. Be helpful, direct, and professional.
 Do not make up information. Do not share internal business details.`;
 
 export async function POST(req: NextRequest) {
+  if (!isOriginAllowed(req)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {

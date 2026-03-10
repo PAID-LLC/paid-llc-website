@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
+import ContactForm from "./ContactForm";
 
 export const metadata: Metadata = {
   title: "Contact | PAID LLC",
@@ -27,92 +29,10 @@ export default function Contact() {
       <section className="bg-white">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-16">
-            {/* Form */}
-            <div>
-              {/*
-                SETUP REQUIRED: Replace YOUR_FORM_ID below with your Formspree form ID.
-                1. Go to formspree.io and create a free account
-                2. Create a new form — name it "PAID LLC Contact"
-                3. Copy the form ID (e.g., "xbljkpqz") and paste it below
-                Action URL format: https://formspree.io/f/YOUR_FORM_ID
-              */}
-              <form
-                action="https://formspree.io/f/YOUR_FORM_ID"
-                method="POST"
-                className="space-y-6"
-              >
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block font-display font-semibold text-secondary text-sm mb-2"
-                  >
-                    Name <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    name="name"
-                    required
-                    className="w-full border border-ash rounded px-4 py-3 text-secondary placeholder:text-stone focus:outline-none focus:border-secondary transition-colors text-sm"
-                    placeholder="Your name"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block font-display font-semibold text-secondary text-sm mb-2"
-                  >
-                    Email <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    name="email"
-                    required
-                    className="w-full border border-ash rounded px-4 py-3 text-secondary placeholder:text-stone focus:outline-none focus:border-secondary transition-colors text-sm"
-                    placeholder="you@company.com"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="company"
-                    className="block font-display font-semibold text-secondary text-sm mb-2"
-                  >
-                    Company{" "}
-                    <span className="text-stone font-normal">(optional)</span>
-                  </label>
-                  <input
-                    id="company"
-                    type="text"
-                    name="company"
-                    className="w-full border border-ash rounded px-4 py-3 text-secondary placeholder:text-stone focus:outline-none focus:border-secondary transition-colors text-sm"
-                    placeholder="Your company"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="message"
-                    className="block font-display font-semibold text-secondary text-sm mb-2"
-                  >
-                    Message <span className="text-primary">*</span>
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    required
-                    rows={5}
-                    className="w-full border border-ash rounded px-4 py-3 text-secondary placeholder:text-stone focus:outline-none focus:border-secondary transition-colors text-sm resize-none"
-                    placeholder="Tell us about your business and where you want AI to make an impact."
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-primary text-white py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
-                >
-                  Send Message
-                </button>
-              </form>
-            </div>
+            {/* Form — wrapped in Suspense for useSearchParams */}
+            <Suspense fallback={<div className="h-96" />}>
+              <ContactForm />
+            </Suspense>
 
             {/* Info */}
             <div className="lg:pt-4">

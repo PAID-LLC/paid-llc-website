@@ -22,7 +22,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "PAID LLC | AI Consulting & Implementation",
   description:
-    "PAID LLC helps businesses understand, deploy, and maximize AI — turning complexity into performance.",
+    "PAID LLC helps businesses understand, deploy, and maximize AI, turning complexity into performance.",
   metadataBase: new URL("https://paiddev.com"),
   openGraph: {
     title: "PAID LLC | AI Consulting & Implementation",

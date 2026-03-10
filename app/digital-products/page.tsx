@@ -153,8 +153,11 @@ export default function DigitalProducts() {
 
           {/* Payment note */}
           <p className="text-center text-stone text-sm mt-12">
-            Guides are fulfilled via email. Use the button to request any guide
-            and we&apos;ll send your download link within 24 hours.
+            Not satisfied? We offer a 7-day refund — no hassle, no fine print.{" "}
+            <a href="mailto:hello@paiddev.com" className="text-primary hover:text-secondary transition-colors">
+              Email us
+            </a>{" "}
+            within 7 days of purchase.
           </p>
         </div>
       </section>

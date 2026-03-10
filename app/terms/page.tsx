@@ -34,12 +34,30 @@ export default function Terms() {
             without written permission.
           </p>
           <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
+            Digital Products and Refunds
+          </h2>
+          <p>
+            All digital guides are delivered electronically. If you are not
+            satisfied with your purchase, contact us within 7 days of purchase
+            at{" "}
+            <a
+              href="mailto:hello@paiddev.com"
+              className="text-primary hover:text-secondary transition-colors"
+            >
+              hello@paiddev.com
+            </a>{" "}
+            for a full refund. No proof of completion required — if the guide
+            didn&apos;t work for you, we&apos;ll make it right.
+          </p>
+          <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
             Disclaimer
           </h2>
           <p>
             This site and its content are provided &quot;as is&quot; without warranty of
-            any kind. PAID LLC is not liable for any damages arising from use
-            of this site.
+            any kind. AI tools, features, and pricing referenced in our guides
+            change frequently. Always verify current information directly with
+            each tool&apos;s official website. PAID LLC is not liable for any
+            damages arising from use of this site or its content.
           </p>
           <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
             Contact
@@ -53,10 +71,6 @@ export default function Terms() {
               hello@paiddev.com
             </a>
             .
-          </p>
-          <p className="text-stone text-sm italic mt-12">
-            This is a placeholder. Replace with complete terms generated via a
-            legal document generator before launch.
           </p>
         </div>
       </div>

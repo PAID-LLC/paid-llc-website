@@ -13,7 +13,7 @@ export default function Home() {
                 From AI Confusion to AI Confidence.
               </h1>
               <p className="text-stone text-xl leading-relaxed mb-10 max-w-lg">
-                PAID LLC helps businesses understand, deploy, and maximize AI —
+                PAID LLC helps businesses understand, deploy, and maximize AI,
                 turning complexity into performance.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -54,7 +54,7 @@ export default function Home() {
               How It Works
             </h2>
             <p className="text-stone text-lg leading-relaxed">
-              A clear, repeatable process — from first conversation to working
+              A clear, repeatable process, from first conversation to working
               solution.
             </p>
           </div>
@@ -68,7 +68,7 @@ export default function Home() {
               {
                 step: "02",
                 title: "Strategize",
-                body: "We build a prioritized AI roadmap tailored to your business — no fluff, no buzzwords.",
+                body: "We build a prioritized AI roadmap tailored to your business. No fluff, no buzzwords.",
               },
               {
                 step: "03",
@@ -98,7 +98,7 @@ export default function Home() {
               What We Do
             </h2>
             <p className="text-stone text-lg leading-relaxed">
-              From strategy to shipping — we cover the full AI lifecycle.
+              From strategy to shipping, we cover the full AI lifecycle.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
@@ -155,7 +155,7 @@ export default function Home() {
               Straight talk on AI in business.
             </h2>
             <p className="text-stone text-lg leading-relaxed">
-              Observations from the field — no hype, no vendor pitches.
+              Observations from the field. No hype, no vendor pitches.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">

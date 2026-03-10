@@ -18,6 +18,9 @@ export default function Footer() {
             <p className="text-stone text-sm leading-relaxed">
               AI that works. Results you can see.
             </p>
+            <p className="text-stone text-xs leading-relaxed mt-2">
+              Performance Artificial Intelligence Development LLC
+            </p>
           </div>
 
           {/* Quick Links */}
