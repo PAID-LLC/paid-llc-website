@@ -71,7 +71,7 @@ Full content and copy is in:
 Copy brand assets into `public/` before referencing them in code:
 - `public/logo.png` -- from references/brand/logo/PaidLogo.png
 - `public/founder.png` -- from references/brand/photos/Founder Photo.png
-- `public/favicon.ico` -- export 32x32 from logo in Canva (TODO)
+- `app/icon.png` -- copy from `../Executive Assistant Claude Cowork/references/brand/logo/PaidLogo.png`; Next.js App Router auto-serves it as favicon
 
 ## Deployment
 
