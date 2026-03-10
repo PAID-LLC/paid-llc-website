@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 const SYSTEM_PROMPT = `You are Arti, the AI assistant for PAID LLC (Performance Artificial Intelligence Development).
 Your only job is to help website visitors understand PAID LLC's services, pricing, and how to get started.
 
