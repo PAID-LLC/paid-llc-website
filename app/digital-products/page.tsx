@@ -4,7 +4,88 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Digital Products | PAID LLC",
   description:
-    "AI guides for teams and individuals — self-serve resources to put AI to work immediately.",
+    "Practical AI guides for Microsoft 365, Google Workspace, and small business operations. Get real results without a consultant.",
+};
+
+const products = [
+  {
+    category: "Business",
+    title: "AI Readiness Assessment",
+    description:
+      "Benchmark where your business stands on AI adoption, identify your highest-value gaps, and walk away with a prioritized action plan.",
+    price: "$14.99",
+    slug: "ai-readiness-assessment",
+  },
+  {
+    category: "Microsoft",
+    title: "Microsoft 365 Copilot Playbook",
+    description:
+      "Practical Copilot workflows for Word, Excel, Outlook, and Teams. Real examples your team can implement on day one.",
+    price: "$19.99",
+    slug: "microsoft-365-copilot-playbook",
+  },
+  {
+    category: "Microsoft",
+    title: "Excel + AI: Analyze Data Without a Data Analyst",
+    description:
+      "Use ChatGPT and Copilot to clean, analyze, and summarize spreadsheet data — no advanced formulas or data background required.",
+    price: "$14.99",
+    slug: "excel-ai-data-analysis",
+  },
+  {
+    category: "Microsoft",
+    title: "AI-Powered Outlook: Smart Email System",
+    description:
+      "Build a zero-inbox system using AI-generated templates, smart filters, and automated follow-up workflows inside Outlook.",
+    price: "$9.99",
+    slug: "ai-powered-outlook",
+  },
+  {
+    category: "Google",
+    title: "Google Workspace AI Guide",
+    description:
+      "Put Gemini to work across Gmail, Docs, Sheets, and Meet. Includes copy-paste workflows, prompts, and time-saving shortcuts.",
+    price: "$19.99",
+    slug: "google-workspace-ai-guide",
+  },
+  {
+    category: "Google",
+    title: "Gmail + AI: Inbox Zero for Business",
+    description:
+      "A practical system for managing high-volume email using AI drafts, label automation, and reusable template libraries.",
+    price: "$9.99",
+    slug: "gmail-ai-inbox-zero",
+  },
+  {
+    category: "Business",
+    title: "The Solopreneur Content Engine",
+    description:
+      "Automate your blog and social media content using Claude or ChatGPT plus Zapier. Includes prompt templates and workflow blueprints.",
+    price: "$19.99",
+    slug: "solopreneur-content-engine",
+  },
+  {
+    category: "Business",
+    title: "Small Business AI Operations Playbook",
+    description:
+      "Audit your business for AI opportunities, then automate three core workflows: customer communication, scheduling, and reporting.",
+    price: "$24.99",
+    slug: "small-business-ai-operations",
+  },
+  {
+    category: "Business",
+    title: "ChatGPT Business Prompt Library",
+    description:
+      "100+ copy-paste prompts for sales, marketing, operations, HR, and customer service — organized by function and ready to use.",
+    price: "$12.99",
+    slug: "chatgpt-business-prompt-library",
+  },
+];
+
+const categoryColors: Record<string, string> = {
+  Microsoft: "text-primary",
+  Google: "text-primary",
+  Business: "text-primary",
 };
 
 export default function DigitalProducts() {
@@ -20,63 +101,80 @@ export default function DigitalProducts() {
             AI guides that get you moving.
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
-            Self-serve guides for teams and individuals ready to put AI to work
-            — without waiting for a consultant.
+            Practical, step-by-step guides for Microsoft 365, Google Workspace,
+            and business operations — no consultant required.
           </p>
         </div>
       </section>
 
-      {/* Coming Soon */}
+      {/* Product Grid */}
       <section className="bg-white">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="grid md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
+            {products.map((product) => (
               <div
-                key={i}
-                className="border border-ash rounded-xl overflow-hidden flex flex-col"
+                key={product.slug}
+                className="border border-ash rounded-xl overflow-hidden flex flex-col hover:border-stone/40 transition-colors"
               >
-                {/* Cover placeholder */}
-                <div className="bg-ash aspect-[3/2] flex items-center justify-center">
-                  <span className="font-display font-bold text-stone text-sm tracking-widest uppercase">
-                    Coming Soon
-                  </span>
+                {/* Cover */}
+                <div className="bg-secondary aspect-[3/2] flex items-center justify-center px-8">
+                  <p className="font-display font-bold text-white text-center text-lg leading-snug">
+                    {product.title}
+                  </p>
                 </div>
                 {/* Content */}
                 <div className="p-6 flex flex-col flex-1">
-                  <h3 className="font-display font-bold text-secondary text-lg mb-2">
-                    AI Guide — Title Coming Soon
+                  <span
+                    className={`text-xs font-semibold tracking-widest uppercase mb-3 ${categoryColors[product.category]}`}
+                  >
+                    {product.category}
+                  </span>
+                  <h3 className="font-display font-bold text-secondary text-base mb-3 leading-snug">
+                    {product.title}
                   </h3>
                   <p className="text-stone text-sm leading-relaxed mb-6 flex-1">
-                    A practical guide to help your team get real results from
-                    AI tools — without the fluff.
+                    {product.description}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="font-display font-bold text-secondary">
-                      —
+                    <span className="font-display font-bold text-secondary text-lg">
+                      {product.price}
                     </span>
-                    <span className="text-stone text-sm">Launching soon</span>
+                    <Link
+                      href={`/contact?guide=${product.slug}`}
+                      className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
+                    >
+                      Get This Guide
+                    </Link>
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Notify CTA */}
-          <div className="mt-20 bg-ash rounded-2xl p-12 text-center">
-            <h2 className="font-display font-bold text-3xl text-secondary mb-4">
-              Want to know when guides drop?
-            </h2>
-            <p className="text-stone leading-relaxed mb-8 max-w-md mx-auto">
-              The first guide is in production. Reach out and we&apos;ll let you
-              know when it&apos;s available.
-            </p>
-            <Link
-              href="/contact"
-              className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
-            >
-              Get Notified
-            </Link>
-          </div>
+          {/* Payment note */}
+          <p className="text-center text-stone text-sm mt-12">
+            Guides are fulfilled via email. Use the button to request any guide
+            and we&apos;ll send your download link within 24 hours.
+          </p>
+        </div>
+      </section>
+
+      {/* Bundle CTA */}
+      <section className="bg-ash">
+        <div className="max-w-6xl mx-auto px-6 py-24 text-center">
+          <h2 className="font-display font-bold text-3xl text-secondary mb-4">
+            Need the whole stack?
+          </h2>
+          <p className="text-stone leading-relaxed mb-8 max-w-lg mx-auto">
+            Get all 9 guides for one flat price. The complete AI toolkit for
+            small businesses running Microsoft 365 or Google Workspace.
+          </p>
+          <Link
+            href="/contact?guide=all-guides-bundle"
+            className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
+          >
+            Get the Full Bundle — $69.99
+          </Link>
         </div>
       </section>
 

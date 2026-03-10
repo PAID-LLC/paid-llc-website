@@ -144,46 +144,42 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Founder Perspective */}
       <section className="bg-secondary">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="max-w-2xl mb-16">
+            <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
+              Founder Perspective
+            </p>
             <h2 className="font-display font-bold text-4xl text-white mb-4">
-              Results Matter
+              Straight talk on AI in business.
             </h2>
             <p className="text-stone text-lg leading-relaxed">
-              Every engagement is measured by business outcomes, not
-              deliverables.
+              Observations from the field — no hype, no vendor pitches.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 quote:
-                  "Client testimonial coming soon. Reach out to be one of our first case studies.",
-                name: "Case Study",
-                role: "Coming Soon",
+                  "Most businesses don't have an AI problem — they have a clarity problem. Once you know where AI fits, implementation becomes the easy part.",
               },
               {
                 quote:
-                  "Client testimonial coming soon. Reach out to be one of our first case studies.",
-                name: "Case Study",
-                role: "Coming Soon",
+                  "The companies winning with AI aren't the biggest ones. They're the ones willing to experiment fast and iterate. That's an advantage small businesses actually have.",
               },
               {
                 quote:
-                  "Client testimonial coming soon. Reach out to be one of our first case studies.",
-                name: "Case Study",
-                role: "Coming Soon",
+                  "AI won't replace your team. But someone using AI effectively will outcompete someone who isn't. That gap is widening every month.",
               },
             ].map((item, i) => (
-              <div key={i} className="bg-charcoal rounded-xl p-8">
-                <p className="text-ash leading-relaxed mb-6 italic">
+              <div key={i} className="bg-charcoal rounded-xl p-8 flex flex-col justify-between">
+                <p className="text-ash leading-relaxed italic">
                   &ldquo;{item.quote}&rdquo;
                 </p>
-                <div>
-                  <p className="text-white font-semibold text-sm">{item.name}</p>
-                  <p className="text-stone text-sm">{item.role}</p>
+                <div className="mt-8 pt-6 border-t border-stone/20">
+                  <p className="text-white font-semibold text-sm">Travis Raveling</p>
+                  <p className="text-stone text-sm">Founder, PAID LLC</p>
                 </div>
               </div>
             ))}
