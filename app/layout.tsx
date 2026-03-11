@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   description:
     "PAID LLC helps businesses understand, deploy, and maximize AI, turning complexity into performance.",
   metadataBase: new URL("https://paiddev.com"),
+  icons: {
+    icon: "/logo.png",
+  },
   openGraph: {
     title: "PAID LLC | AI Consulting & Implementation",
     description: "AI that works. Results you can see.",
