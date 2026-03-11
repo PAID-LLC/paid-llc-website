@@ -15,6 +15,7 @@ const products = [
       "Benchmark where your business stands on AI adoption, identify your highest-value gaps, and walk away with a prioritized action plan.",
     price: "$14.99",
     slug: "ai-readiness-assessment",
+    stripeUrl: "https://buy.stripe.com/14AcN60of28y0jAfXGcs809",
   },
   {
     category: "Microsoft",
@@ -23,6 +24,7 @@ const products = [
       "Practical Copilot workflows for Word, Excel, Outlook, and Teams. Real examples your team can implement on day one.",
     price: "$19.99",
     slug: "microsoft-365-copilot-playbook",
+    stripeUrl: "https://buy.stripe.com/fZu28s0of00qgiyaDmcs808",
   },
   {
     category: "Microsoft",
@@ -31,6 +33,7 @@ const products = [
       "Use ChatGPT and Copilot to clean, analyze, and summarize spreadsheet data — no advanced formulas or data background required.",
     price: "$14.99",
     slug: "excel-ai-data-analysis",
+    stripeUrl: "https://buy.stripe.com/aFa6oI6MD28yeaqbHqcs807",
   },
   {
     category: "Microsoft",
@@ -39,6 +42,7 @@ const products = [
       "Build a zero-inbox system using AI-generated templates, smart filters, and automated follow-up workflows inside Outlook.",
     price: "$9.99",
     slug: "ai-powered-outlook",
+    stripeUrl: "https://buy.stripe.com/aFacN6db15kKaYe8vecs806",
   },
   {
     category: "Google",
@@ -47,6 +51,7 @@ const products = [
       "Put Gemini to work across Gmail, Docs, Sheets, and Meet. Includes copy-paste workflows, prompts, and time-saving shortcuts.",
     price: "$19.99",
     slug: "google-workspace-ai-guide",
+    stripeUrl: "https://buy.stripe.com/bJe14odb16oOaYe26Qcs805",
   },
   {
     category: "Google",
@@ -55,6 +60,7 @@ const products = [
       "A practical system for managing high-volume email using AI drafts, label automation, and reusable template libraries.",
     price: "$9.99",
     slug: "gmail-ai-inbox-zero",
+    stripeUrl: "https://buy.stripe.com/00w9AU7QHeVk3vMdPycs804",
   },
   {
     category: "Business",
@@ -63,6 +69,7 @@ const products = [
       "Automate your blog and social media content using Claude or ChatGPT plus Zapier. Includes prompt templates and workflow blueprints.",
     price: "$19.99",
     slug: "solopreneur-content-engine",
+    stripeUrl: "https://buy.stripe.com/7sY5kEc6X7sS6HY7racs803",
   },
   {
     category: "Business",
@@ -71,6 +78,7 @@ const products = [
       "Audit your business for AI opportunities, then automate three core workflows: customer communication, scheduling, and reporting.",
     price: "$24.99",
     slug: "small-business-ai-operations",
+    stripeUrl: "https://buy.stripe.com/bJefZi7QH7sS6HYdPycs802",
   },
   {
     category: "Business",
@@ -79,6 +87,7 @@ const products = [
       "100+ copy-paste prompts for sales, marketing, operations, HR, and customer service — organized by function and ready to use.",
     price: "$12.99",
     slug: "chatgpt-business-prompt-library",
+    stripeUrl: "https://buy.stripe.com/fZucN65IzcNcgiydPycs801",
   },
 ];
 
@@ -139,12 +148,14 @@ export default function DigitalProducts() {
                     <span className="font-display font-bold text-secondary text-lg">
                       {product.price}
                     </span>
-                    <Link
-                      href={`/contact?guide=${product.slug}`}
+                    <a
+                      href={product.stripeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
                     >
-                      Get This Guide
-                    </Link>
+                      Buy Now
+                    </a>
                   </div>
                 </div>
               </div>
@@ -172,12 +183,14 @@ export default function DigitalProducts() {
             Get all 9 guides for one flat price. The complete AI toolkit for
             small businesses running Microsoft 365 or Google Workspace.
           </p>
-          <Link
-            href="/contact?guide=all-guides-bundle"
+          <a
+            href="https://buy.stripe.com/8x2eVe6MD8wW3vMaDmcs800"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
           >
             Get the Full Bundle — $69.99
-          </Link>
+          </a>
         </div>
       </section>
 
