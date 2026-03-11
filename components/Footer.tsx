@@ -56,7 +56,7 @@ export default function Footer() {
             <ul className="space-y-3">
               <li>
                 <Link
-                  href="/services"
+                  href="/services#consulting"
                   className="text-stone hover:text-ash text-sm transition-colors"
                 >
                   AI Strategy Consulting
@@ -64,10 +64,18 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/services"
+                  href="/services#implementation"
                   className="text-stone hover:text-ash text-sm transition-colors"
                 >
                   AI Implementation &amp; Development
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/services#training"
+                  className="text-stone hover:text-ash text-sm transition-colors"
+                >
+                  AI Team Training
                 </Link>
               </li>
               <li>

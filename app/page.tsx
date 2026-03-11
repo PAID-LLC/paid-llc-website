@@ -101,19 +101,25 @@ export default function Home() {
               From strategy to shipping, we cover the full AI lifecycle.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
                 title: "AI Strategy Consulting",
                 body: "Cut through the noise. We identify your highest-ROI AI opportunities and build you a clear implementation roadmap.",
                 cta: "Learn More",
-                href: "/services",
+                href: "/services#consulting",
               },
               {
                 title: "AI Implementation & Development",
                 body: "We don't just advise — we build. Custom AI workflows, automation, and AI-powered applications that actually work.",
                 cta: "Learn More",
-                href: "/services",
+                href: "/services#implementation",
+              },
+              {
+                title: "AI Team Training",
+                body: "Hands-on workshops that turn your team from AI-curious to AI-capable. Half-day, full-day, and custom formats available.",
+                cta: "Book a Session",
+                href: "/services#training",
               },
               {
                 title: "Digital Guides",
@@ -140,6 +146,37 @@ export default function Home() {
                 </Link>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Free Scorecard */}
+      <section className="bg-ash">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+            <div className="max-w-xl">
+              <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-3">
+                Free Download
+              </p>
+              <h2 className="font-display font-bold text-3xl text-secondary mb-4">
+                Is your business ready for AI?
+              </h2>
+              <p className="text-stone text-lg leading-relaxed">
+                Take the 5-minute AI Readiness Scorecard. Answer 10 questions,
+                get your score, and walk away with a clear next step — no email
+                required.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <a
+                href="/ai-readiness-scorecard.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block bg-secondary text-white px-8 py-4 rounded font-semibold text-base hover:bg-primary transition-colors text-center"
+              >
+                Download Free Scorecard
+              </a>
+            </div>
           </div>
         </div>
       </section>
