@@ -13,8 +13,9 @@ export default function Home() {
                 From AI Confusion to AI Confidence.
               </h1>
               <p className="text-stone text-xl leading-relaxed mb-10 max-w-lg">
-                PAID LLC helps businesses understand, deploy, and maximize AI,
-                turning complexity into performance.
+                Performance Artificial Intelligence Development (PAID LLC) helps
+                businesses understand, deploy, and maximize AI, turning
+                complexity into performance.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
@@ -110,8 +111,8 @@ export default function Home() {
                 href: "/services#consulting",
               },
               {
-                title: "AI Implementation & Development",
-                body: "We don't just advise — we build. Custom AI workflows, automation, and AI-powered applications that actually work.",
+                title: "AI Implementation Advisory",
+                body: "We guide your team through implementation. We work alongside your IT department to configure AI tools, build workflows, and get solutions deployed correctly.",
                 cta: "Learn More",
                 href: "/services#implementation",
               },

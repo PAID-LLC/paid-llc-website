@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Services | PAID LLC",
   description:
-    "AI Strategy Consulting, AI Implementation & Development, and AI Team Training services from PAID LLC.",
+    "AI Strategy Consulting, AI Implementation Advisory, and AI Team Training services from PAID LLC.",
 };
 
 export default function Services() {
@@ -110,20 +110,22 @@ export default function Services() {
                 Service 02
               </span>
               <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
-                AI Implementation &amp; Development
+                AI Implementation Advisory
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
-                We don&apos;t just advise — we build. From custom AI workflows and
-                automation to AI-powered websites and software, we implement
-                solutions that work.
+                Strategy is only valuable when it gets executed. We work
+                alongside your IT department and internal teams to guide AI
+                implementation — configuring tools, building workflows, and
+                making sure solutions get deployed the right way.
               </p>
               <div className="mb-8">
                 <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
                   Who it&apos;s for
                 </p>
                 <p className="text-stone leading-relaxed">
-                  Businesses ready to move from strategy to execution, or teams
-                  needing technical AI development.
+                  Businesses with an IT team in place that need an AI expert in
+                  the room to guide decisions, coordinate implementation, and
+                  keep the project on track.
                 </p>
               </div>
               <div className="mb-10">
@@ -132,10 +134,11 @@ export default function Services() {
                 </p>
                 <ul className="space-y-2">
                   {[
-                    "Custom AI integrations",
-                    "Automated workflows",
-                    "AI-powered web and software applications",
-                    "Team training and handoff",
+                    "Implementation planning and sequencing",
+                    "AI tool configuration guidance (Microsoft 365, Google Workspace, and more)",
+                    "Workflow design and process documentation",
+                    "Coordination with your IT team through go-live",
+                    "Post-launch review and optimization recommendations",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3 text-stone">
                       <span className="text-primary mt-1 flex-shrink-0">→</span>
