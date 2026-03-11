@@ -26,6 +26,45 @@ function isOriginAllowed(req: NextRequest): boolean {
   return allowed.includes(origin);
 }
 
+// ── Resend email notification ─────────────────────────────────────────────────
+
+async function sendNotification(lead: {
+  name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  message: string;
+  guide_interest: string | null;
+}) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+
+  const lines = [
+    `Name: ${lead.name}`,
+    `Email: ${lead.email}`,
+    lead.phone         ? `Phone: ${lead.phone}`                    : null,
+    lead.company       ? `Company: ${lead.company}`                : null,
+    lead.guide_interest ? `Guide interest: ${lead.guide_interest}` : null,
+    ``,
+    `Message:`,
+    lead.message,
+  ].filter((l) => l !== null).join("\n");
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "PAID LLC <notifications@paiddev.com>",
+      to: ["hello@paiddev.com"],
+      subject: `New contact form submission from ${lead.name}`,
+      text: lines,
+    }),
+  }).catch((err) => console.error("[contact] Resend notification failed:", err));
+}
+
 // ── Supabase insert ───────────────────────────────────────────────────────────
 
 async function insertLead(record: {
@@ -161,6 +200,9 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+
+  // ── Notify hello@paiddev.com ──────────────────────────────────────────────
+  await sendNotification({ name, email, phone, company, message, guide_interest: guideInterest });
 
   return NextResponse.json({ ok: true });
 }
