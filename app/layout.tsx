@@ -30,6 +30,13 @@ export const metadata: Metadata = {
     url: "https://paiddev.com",
     siteName: "PAID LLC",
     type: "website",
+    images: [{ url: "/logo.png", width: 512, height: 512, alt: "PAID LLC" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "PAID LLC | AI Consulting & Implementation",
+    description: "AI that works. Results you can see.",
+    images: ["/logo.png"],
   },
 };
 

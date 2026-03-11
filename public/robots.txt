@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+Disallow: /download/
+Disallow: /api/
+
+Sitemap: https://paiddev.com/sitemap.xml
