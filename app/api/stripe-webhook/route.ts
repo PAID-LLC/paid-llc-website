@@ -35,6 +35,39 @@ async function verifyStripeSignature(
   return computed === v1;
 }
 
+// ── MailerLite subscriber ─────────────────────────────────────────────────────
+
+async function subscribeToMailerLite(session: {
+  customer_details?: { name?: string | null; email?: string | null };
+  metadata?: Record<string, string>;
+}) {
+  const key = process.env.MAILERLITE_API_KEY;
+  if (!key) return;
+
+  const email = session.customer_details?.email;
+  if (!email) return;
+
+  const name = session.customer_details?.name ?? undefined;
+  const product = session.metadata?.product ?? undefined;
+
+  await fetch("https://connect.mailerlite.com/api/subscribers", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      fields: {
+        ...(name ? { name } : {}),
+        ...(product ? { last_purchased_product: product } : {}),
+      },
+      groups: ["181734452887553984"],
+    }),
+  }).catch((err) => console.error("[webhook] MailerLite subscribe failed:", err));
+}
+
 // ── Purchase notification email ───────────────────────────────────────────────
 
 async function sendPurchaseNotification(session: {
@@ -71,7 +104,7 @@ async function sendPurchaseNotification(session: {
     },
     body: JSON.stringify({
       from: "PAID LLC <notifications@paiddev.com>",
-      to: ["hello@paiddev.com"],
+      to: ["travis@paiddev.com"],
       subject: `New sale: ${product} - ${amount}`,
       text,
     }),
@@ -102,7 +135,10 @@ export async function POST(req: NextRequest) {
   const event = JSON.parse(payload) as { type: string; data: { object: Parameters<typeof sendPurchaseNotification>[0] } };
 
   if (event.type === "checkout.session.completed") {
-    await sendPurchaseNotification(event.data.object);
+    await Promise.all([
+      sendPurchaseNotification(event.data.object),
+      subscribeToMailerLite(event.data.object),
+    ]);
   }
 
   return NextResponse.json({ received: true });
