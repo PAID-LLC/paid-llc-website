@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import NewsSection from "@/components/NewsSection";
 
 export default function Home() {
   return (
@@ -209,6 +210,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* AI News Feed */}
+      <NewsSection />
 
       {/* Final CTA */}
       <section className="bg-primary">
