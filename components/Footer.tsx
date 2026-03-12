@@ -107,7 +107,9 @@ export default function Footer() {
             </p>
             <div className="flex gap-4">
               <a
-                href="#"
+                href="https://www.linkedin.com/in/travis-raveling-760b293b6/"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="LinkedIn"
                 className="text-stone hover:text-ash transition-colors text-sm"
               >
@@ -115,7 +117,9 @@ export default function Footer() {
               </a>
               <span className="text-charcoal">·</span>
               <a
-                href="#"
+                href="https://x.com/paiddevllc"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="X / Twitter"
                 className="text-stone hover:text-ash transition-colors text-sm"
               >
