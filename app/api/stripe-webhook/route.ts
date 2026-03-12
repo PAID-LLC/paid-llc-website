@@ -68,6 +68,69 @@ async function subscribeToMailerLite(session: {
   }).catch((err) => console.error("[webhook] MailerLite subscribe failed:", err));
 }
 
+// ── Product title map (mirrors download page) ────────────────────────────────
+
+const productTitles: Record<string, string> = {
+  "ai-readiness-assessment":         "AI Readiness Assessment",
+  "microsoft-365-copilot-playbook":  "Microsoft 365 Copilot Playbook",
+  "excel-ai-data-analysis":          "Excel + AI: Analyze Data Without a Data Analyst",
+  "ai-powered-outlook":              "AI-Powered Outlook: Smart Email System",
+  "google-workspace-ai-guide":       "Google Workspace AI Guide",
+  "gmail-ai-inbox-zero":             "Gmail + AI: Inbox Zero for Business",
+  "solopreneur-content-engine":      "The Solopreneur Content Engine",
+  "small-business-ai-operations":    "Small Business AI Operations Playbook",
+  "chatgpt-business-prompt-library": "ChatGPT Business Prompt Library",
+  "all-guides-bundle":               "All Guides Bundle",
+};
+
+// ── Customer delivery email ───────────────────────────────────────────────────
+
+async function sendDeliveryEmail(session: {
+  id: string;
+  customer_details?: { name?: string | null; email?: string | null };
+  metadata?: Record<string, string>;
+}) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+
+  const email = session.customer_details?.email;
+  if (!email) return;
+
+  const name    = session.customer_details?.name ?? "there";
+  const slug    = session.metadata?.product ?? "";
+  const title   = productTitles[slug] ?? "Your Guide";
+  const link    = `https://paiddev.com/download/${slug}?session_id=${session.id}`;
+
+  const text = [
+    `Hi ${name},`,
+    ``,
+    `Thank you for purchasing ${title}.`,
+    ``,
+    `Your download link is below. You can use it any time to re-download your guide:`,
+    ``,
+    link,
+    ``,
+    `Questions? Reply to this email or reach us at hello@paiddev.com.`,
+    ``,
+    `-- Travis`,
+    `PAID LLC`,
+  ].join("\n");
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "PAID LLC <hello@paiddev.com>",
+      to: [email],
+      subject: `Your download: ${title}`,
+      text,
+    }),
+  }).catch((err) => console.error("[webhook] Delivery email failed:", err));
+}
+
 // ── Purchase notification email ───────────────────────────────────────────────
 
 async function sendPurchaseNotification(session: {
@@ -137,6 +200,7 @@ export async function POST(req: NextRequest) {
   if (event.type === "checkout.session.completed") {
     await Promise.all([
       sendPurchaseNotification(event.data.object),
+      sendDeliveryEmail(event.data.object),
       subscribeToMailerLite(event.data.object),
     ]);
   }
