@@ -196,31 +196,16 @@ export default function Home() {
               Observations from the field. No hype, no vendor pitches.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                quote:
-                  "Most businesses don't have an AI problem — they have a clarity problem. Once you know where AI fits, implementation becomes the easy part.",
-              },
-              {
-                quote:
-                  "The companies winning with AI aren't the biggest ones. They're the ones willing to experiment fast and iterate. That's an advantage small businesses actually have.",
-              },
-              {
-                quote:
-                  "AI won't replace your team. But someone using AI effectively will outcompete someone who isn't. That gap is widening every month.",
-              },
-            ].map((item, i) => (
-              <div key={i} className="bg-charcoal rounded-xl p-8 flex flex-col justify-between">
-                <p className="text-ash leading-relaxed italic">
-                  &ldquo;{item.quote}&rdquo;
-                </p>
-                <div className="mt-8 pt-6 border-t border-stone/20">
-                  <p className="text-white font-semibold text-sm">Travis Raveling</p>
-                  <p className="text-stone text-sm">Founder, PAID LLC</p>
-                </div>
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-charcoal rounded-xl p-8 flex flex-col justify-between">
+              <p className="text-ash leading-relaxed italic">
+                &ldquo;AI won&apos;t replace your team. But someone using AI effectively will outcompete someone who isn&apos;t. That gap is widening every month.&rdquo;
+              </p>
+              <div className="mt-8 pt-6 border-t border-stone/20">
+                <p className="text-white font-semibold text-sm">Travis Raveling</p>
+                <p className="text-stone text-sm">Founder, PAID LLC</p>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
