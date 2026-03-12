@@ -3,21 +3,6 @@ import type { Metadata } from "next";
 
 export const runtime = "edge";
 
-export function generateStaticParams() {
-  return [
-    { slug: "ai-readiness-assessment" },
-    { slug: "microsoft-365-copilot-playbook" },
-    { slug: "excel-ai-data-analysis" },
-    { slug: "ai-powered-outlook" },
-    { slug: "google-workspace-ai-guide" },
-    { slug: "gmail-ai-inbox-zero" },
-    { slug: "solopreneur-content-engine" },
-    { slug: "small-business-ai-operations" },
-    { slug: "chatgpt-business-prompt-library" },
-    { slug: "all-guides-bundle" },
-  ];
-}
-
 export const metadata: Metadata = {
   title: "Purchase Confirmed | PAID LLC",
   description: "Thank you for your purchase.",
