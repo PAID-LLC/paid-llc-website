@@ -34,10 +34,10 @@ export default function NewsSection() {
             AI News
           </p>
           <h2 className="font-display font-bold text-4xl text-secondary mb-4">
-            What&apos;s happening in AI
+            Latest in AI &amp; Tech
           </h2>
           <p className="text-stone text-lg leading-relaxed">
-            Curated news from across the AI industry. Updated daily.
+            Curated news from across the AI and technology landscape. Updated daily.
           </p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

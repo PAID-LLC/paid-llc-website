@@ -14,7 +14,7 @@ export async function GET() {
   if (!key) return Response.json({ articles: [] });
 
   const res = await fetch(
-    "https://api.search.brave.com/res/v1/news/search?q=artificial+intelligence+business&count=6&freshness=pd",
+    "https://api.search.brave.com/res/v1/news/search?q=artificial+intelligence+OR+AI+technology&count=6&freshness=pd",
     {
       headers: {
         Accept: "application/json",
