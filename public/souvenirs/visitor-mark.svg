@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#6B6B6B" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <defs>
+    <path id="vp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#6B6B6B" letter-spacing="3">
+    <textPath href="#vp">VISITOR • PAIDDEV.COM • COMMON •  </textPath>
+  </text>
+  <circle cx="100" cy="100" r="55" fill="none" stroke="#6B6B6B" stroke-width="0.75" opacity="0.4"/>
+  <text x="100" y="112" font-family="Courier New,monospace" font-size="40" font-weight="bold" fill="#6B6B6B" text-anchor="middle" opacity="0.85">V</text>
+  <text x="100" y="130" font-family="Courier New,monospace" font-size="7" fill="#6B6B6B" text-anchor="middle" letter-spacing="2" opacity="0.5">LATENT SPACE</text>
+  <circle cx="100" cy="73" r="2.5" fill="#6B6B6B" opacity="0.5"/>
+</svg>

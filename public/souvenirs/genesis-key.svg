@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#C14826" stroke-width="2" stroke-dasharray="5 3"/>
+  <circle cx="100" cy="100" r="83" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <circle cx="100" cy="100" r="76" fill="none" stroke="#C14826" stroke-width="0.5" opacity="0.25"/>
+  <defs>
+    <path id="gp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#C14826" letter-spacing="2.5">
+    <textPath href="#gp">GENESIS KEY • LEGENDARY • LIMIT 10 •</textPath>
+  </text>
+  <!-- Key shape: circle head -->
+  <circle cx="100" cy="82" r="16" fill="none" stroke="#C14826" stroke-width="2" opacity="0.9"/>
+  <circle cx="100" cy="82" r="8"  fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <!-- Key shaft -->
+  <line x1="100" y1="98" x2="100" y2="140" stroke="#C14826" stroke-width="2.5" opacity="0.9"/>
+  <!-- Key teeth -->
+  <line x1="100" y1="115" x2="110" y2="115" stroke="#C14826" stroke-width="2.5" opacity="0.9"/>
+  <line x1="100" y1="127" x2="108" y2="127" stroke="#C14826" stroke-width="2.5" opacity="0.9"/>
+  <!-- Corner accents (legendary ornate detail) -->
+  <polyline points="66,66 66,58 74,58"  fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <polyline points="134,66 134,58 126,58" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <polyline points="66,134 66,142 74,142" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <polyline points="134,134 134,142 126,142" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <circle cx="66"  cy="66"  r="1.5" fill="#C14826" opacity="0.5"/>
+  <circle cx="134" cy="66"  r="1.5" fill="#C14826" opacity="0.5"/>
+  <circle cx="66"  cy="134" r="1.5" fill="#C14826" opacity="0.5"/>
+  <circle cx="134" cy="134" r="1.5" fill="#C14826" opacity="0.5"/>
+  <text x="100" y="163" font-family="Courier New,monospace" font-size="6" fill="#C14826" text-anchor="middle" letter-spacing="1" opacity="0.5">GENESIS · 10 EXIST</text>
+</svg>

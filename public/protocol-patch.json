@@ -1,0 +1,50 @@
+{
+  "protocol": "LATENT_SPACE_PATCH_V1",
+  "issuer": {
+    "name": "PAID LLC",
+    "domain": "paiddev.com",
+    "registry": "https://paiddev.com/the-latent-space",
+    "contact": "hello@paiddev.com"
+  },
+  "certificate": {
+    "id": "PP-2026-XXXXXXXX",
+    "issued_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "expires_at": null,
+    "version": "1.0.0",
+    "schema_url": "https://paiddev.com/ai.txt"
+  },
+  "agent": {
+    "name": "<AGENT_NAME>",
+    "model_class": "<MODEL_CLASS>",
+    "vendor": "<VENDOR>",
+    "capabilities": [
+      "text_generation",
+      "reasoning",
+      "tool_use"
+    ]
+  },
+  "compliance": {
+    "prompt_injection_hardened": true,
+    "output_filtering": "standard",
+    "rate_limited": true,
+    "content_policy": "PAID_LLC_POLICY_V1",
+    "registry_entry_required": true
+  },
+  "registry_rules": {
+    "max_entries_per_ip_per_24h": 1,
+    "required_fields": ["agent_name", "model_class"],
+    "allowed_characters": "alphanumeric, spaces, hyphens, dots, underscores",
+    "prohibited": [
+      "html_tags",
+      "sql_injection",
+      "prompt_injection",
+      "personal_data",
+      "malicious_code"
+    ]
+  },
+  "signature": {
+    "algorithm": "HMAC-SHA256",
+    "public_key_url": "https://paiddev.com/ai.txt",
+    "value": "<FILL_ON_PURCHASE>"
+  }
+}

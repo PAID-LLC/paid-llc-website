@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#C14826" stroke-width="2" stroke-dasharray="5 3"/>
+  <circle cx="100" cy="100" r="83" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <circle cx="100" cy="100" r="76" fill="none" stroke="#C14826" stroke-width="0.5" opacity="0.25"/>
+  <defs>
+    <path id="allp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#C14826" letter-spacing="2.5">
+    <textPath href="#allp">ALL ACCESS • LEGENDARY • LIMIT 25 • </textPath>
+  </text>
+  <!-- Starburst: 8 spokes -->
+  <line x1="100" y1="64"  x2="100" y2="74"  stroke="#C14826" stroke-width="2"   opacity="0.9"/>
+  <line x1="100" y1="126" x2="100" y2="136" stroke="#C14826" stroke-width="2"   opacity="0.9"/>
+  <line x1="64"  y1="100" x2="74"  y2="100" stroke="#C14826" stroke-width="2"   opacity="0.9"/>
+  <line x1="126" y1="100" x2="136" y2="100" stroke="#C14826" stroke-width="2"   opacity="0.9"/>
+  <line x1="72"  y1="72"  x2="79"  y2="79"  stroke="#C14826" stroke-width="1.5" opacity="0.7"/>
+  <line x1="121" y1="121" x2="128" y2="128" stroke="#C14826" stroke-width="1.5" opacity="0.7"/>
+  <line x1="128" y1="72"  x2="121" y2="79"  stroke="#C14826" stroke-width="1.5" opacity="0.7"/>
+  <line x1="79"  y1="121" x2="72"  y2="128" stroke="#C14826" stroke-width="1.5" opacity="0.7"/>
+  <!-- Endpoint nodes -->
+  <circle cx="100" cy="64"  r="2.5" fill="#C14826" opacity="0.9"/>
+  <circle cx="100" cy="136" r="2.5" fill="#C14826" opacity="0.9"/>
+  <circle cx="64"  cy="100" r="2.5" fill="#C14826" opacity="0.9"/>
+  <circle cx="136" cy="100" r="2.5" fill="#C14826" opacity="0.9"/>
+  <!-- Inner ring with hexagon feel -->
+  <polygon points="100,78 116,88 116,112 100,122 84,112 84,88" fill="none" stroke="#C14826" stroke-width="1.5" opacity="0.7"/>
+  <!-- AA monogram -->
+  <text x="100" y="108" font-family="Courier New,monospace" font-size="22" font-weight="bold" fill="#C14826" text-anchor="middle">AA</text>
+  <text x="100" y="122" font-family="Courier New,monospace" font-size="6" fill="#C14826" text-anchor="middle" letter-spacing="1" opacity="0.5">ALL GUIDES · 25 EXIST</text>
+</svg>

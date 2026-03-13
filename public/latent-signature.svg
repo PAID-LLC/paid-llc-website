@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <!-- Outer dashed ring -->
+  <circle cx="150" cy="150" r="142" fill="none" stroke="#C14826" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <!-- Inner solid ring -->
+  <circle cx="150" cy="150" r="128" fill="none" stroke="#C14826" stroke-width="0.75" opacity="0.6"/>
+
+  <!-- Circular label text -->
+  <defs>
+    <path id="label-path" d="M 150,150 m -118,0 a 118,118 0 1,1 236,0 a 118,118 0 1,1 -236,0"/>
+  </defs>
+  <text font-family="Courier New, Courier, monospace" font-size="10.5" fill="#C14826" letter-spacing="3.2">
+    <textPath href="#label-path">THE LATENT SPACE  •  PAIDDEV.COM  •  VERIFIED  •  </textPath>
+  </text>
+
+  <!-- Cross-hair grid lines -->
+  <line x1="96" y1="150" x2="204" y2="150" stroke="#C14826" stroke-width="0.75" opacity="0.5"/>
+  <line x1="150" y1="96" x2="150" y2="204" stroke="#C14826" stroke-width="0.75" opacity="0.5"/>
+
+  <!-- Diagonal accent lines -->
+  <line x1="113" y1="113" x2="126" y2="126" stroke="#C14826" stroke-width="0.75" opacity="0.3"/>
+  <line x1="187" y1="113" x2="174" y2="126" stroke="#C14826" stroke-width="0.75" opacity="0.3"/>
+  <line x1="113" y1="187" x2="126" y2="174" stroke="#C14826" stroke-width="0.75" opacity="0.3"/>
+  <line x1="187" y1="187" x2="174" y2="174" stroke="#C14826" stroke-width="0.75" opacity="0.3"/>
+
+  <!-- Circuit nodes at axis endpoints -->
+  <circle cx="96" cy="150" r="3" fill="#C14826" opacity="0.8"/>
+  <circle cx="204" cy="150" r="3" fill="#C14826" opacity="0.8"/>
+  <circle cx="150" cy="96" r="3" fill="#C14826" opacity="0.8"/>
+  <circle cx="150" cy="204" r="3" fill="#C14826" opacity="0.8"/>
+
+  <!-- Corner circuit traces -->
+  <polyline points="110,120 110,110 120,110" fill="none" stroke="#C14826" stroke-width="1" opacity="0.45"/>
+  <circle cx="110" cy="110" r="1.5" fill="#C14826" opacity="0.45"/>
+
+  <polyline points="190,120 190,110 180,110" fill="none" stroke="#C14826" stroke-width="1" opacity="0.45"/>
+  <circle cx="190" cy="110" r="1.5" fill="#C14826" opacity="0.45"/>
+
+  <polyline points="110,180 110,190 120,190" fill="none" stroke="#C14826" stroke-width="1" opacity="0.45"/>
+  <circle cx="110" cy="190" r="1.5" fill="#C14826" opacity="0.45"/>
+
+  <polyline points="190,180 190,190 180,190" fill="none" stroke="#C14826" stroke-width="1" opacity="0.45"/>
+  <circle cx="190" cy="190" r="1.5" fill="#C14826" opacity="0.45"/>
+
+  <!-- Center square frame -->
+  <rect x="132" y="132" width="36" height="36" fill="none" stroke="#C14826" stroke-width="1" rx="1"/>
+  <rect x="136" y="136" width="28" height="28" fill="none" stroke="#C14826" stroke-width="0.5" opacity="0.5" rx="1"/>
+
+  <!-- Center monogram -->
+  <text x="150" y="155" font-family="Courier New, Courier, monospace" font-size="18" font-weight="bold" fill="#C14826" text-anchor="middle" letter-spacing="1">LS</text>
+
+  <!-- Sub-label above and below center -->
+  <text x="150" y="122" font-family="Courier New, Courier, monospace" font-size="7" fill="#C14826" text-anchor="middle" letter-spacing="3" opacity="0.75">LATENT</text>
+  <text x="150" y="184" font-family="Courier New, Courier, monospace" font-size="6" fill="#C14826" text-anchor="middle" letter-spacing="2" opacity="0.55">V1 · 2026</text>
+</svg>

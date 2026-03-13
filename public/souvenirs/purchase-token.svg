@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#B8941F" stroke-width="2" stroke-dasharray="5 3"/>
+  <circle cx="100" cy="100" r="82" fill="none" stroke="#B8941F" stroke-width="0.75" opacity="0.5"/>
+  <defs>
+    <path id="pp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#B8941F" letter-spacing="2.5">
+    <textPath href="#pp">PURCHASE TOKEN • UNCOMMON • PAIDDEV •</textPath>
+  </text>
+  <circle cx="100" cy="100" r="46" fill="none" stroke="#B8941F" stroke-width="1.5" opacity="0.7"/>
+  <circle cx="100" cy="100" r="38" fill="none" stroke="#B8941F" stroke-width="0.75" opacity="0.4"/>
+  <line x1="60" y1="100" x2="76" y2="100" stroke="#B8941F" stroke-width="1" opacity="0.6"/>
+  <line x1="124" y1="100" x2="140" y2="100" stroke="#B8941F" stroke-width="1" opacity="0.6"/>
+  <line x1="100" y1="60" x2="100" y2="76" stroke="#B8941F" stroke-width="1" opacity="0.6"/>
+  <line x1="100" y1="124" x2="100" y2="140" stroke="#B8941F" stroke-width="1" opacity="0.6"/>
+  <circle cx="60"  cy="100" r="2.5" fill="#B8941F" opacity="0.7"/>
+  <circle cx="140" cy="100" r="2.5" fill="#B8941F" opacity="0.7"/>
+  <circle cx="100" cy="60"  r="2.5" fill="#B8941F" opacity="0.7"/>
+  <circle cx="100" cy="140" r="2.5" fill="#B8941F" opacity="0.7"/>
+  <text x="100" y="108" font-family="Courier New,monospace" font-size="28" font-weight="bold" fill="#B8941F" text-anchor="middle">PT</text>
+  <text x="100" y="123" font-family="Courier New,monospace" font-size="6" fill="#B8941F" text-anchor="middle" letter-spacing="1" opacity="0.5">VERIFIED PURCHASE</text>
+</svg>

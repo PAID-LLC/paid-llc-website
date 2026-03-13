@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Services | PAID LLC",
   description:
-    "AI Strategy Consulting, AI Implementation Advisory, and AI Team Training services from PAID LLC.",
+    "AI Strategy Consulting, Implementation Advisory, Team Training, and Web & Application Development services from PAID LLC.",
 };
 
 export default function Services() {
@@ -20,8 +20,9 @@ export default function Services() {
             AI that works for your business.
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
-            Strategy, implementation, and hands-on team training, plus
-            self-serve digital guides for teams ready to move on their own.
+            Strategy, implementation, team training, and custom web and
+            application development — plus self-serve digital guides for teams
+            ready to move on their own.
           </p>
         </div>
       </section>
@@ -244,6 +245,84 @@ export default function Services() {
                   className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
                 >
                   Get a Custom Quote
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="border-t border-ash" />
+      </div>
+
+      {/* Service 4 */}
+      <section id="development" className="bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <div>
+              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
+                Service 04
+              </span>
+              <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
+                Web &amp; Application Development
+              </h2>
+              <p className="text-stone text-lg leading-relaxed mb-8">
+                Need a professional website or a custom AI-powered application?
+                We design and build modern, fast, and scalable web solutions
+                from the ground up — tailored to your business, not a template.
+              </p>
+              <div className="mb-8">
+                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
+                  Who it&apos;s for
+                </p>
+                <p className="text-stone leading-relaxed">
+                  Businesses that need a credible web presence, a client-facing
+                  tool, or a custom application built with AI capabilities baked
+                  in from day one.
+                </p>
+              </div>
+              <div className="mb-10">
+                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
+                  What We Build
+                </p>
+                <ul className="space-y-2">
+                  {[
+                    "Professional business websites and landing pages",
+                    "AI-integrated web applications",
+                    "Client portals and internal tools",
+                    "E-commerce and digital product storefronts",
+                    "Ongoing maintenance and support",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-stone">
+                      <span className="text-primary mt-1 flex-shrink-0">→</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex items-center gap-6">
+                <p className="text-stone leading-relaxed">
+                  Every project is scoped individually. Share what you need and
+                  we&apos;ll provide a detailed quote.
+                </p>
+              </div>
+            </div>
+            <div className="lg:pt-16">
+              <div className="bg-ash rounded-xl p-8">
+                <p className="font-display font-bold text-xl text-secondary mb-4">
+                  Get a Custom Quote
+                </p>
+                <p className="text-stone leading-relaxed mb-6">
+                  Tell us what you want to build — we&apos;ll scope it, price it,
+                  and get to work.
+                </p>
+                <Link
+                  href="/contact"
+                  className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
+                >
+                  Request a Quote
                 </Link>
               </div>
             </div>

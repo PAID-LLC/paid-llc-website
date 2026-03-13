@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#7B5EA7" stroke-width="2" stroke-dasharray="5 3"/>
+  <circle cx="100" cy="100" r="83" fill="none" stroke="#7B5EA7" stroke-width="0.75" opacity="0.4"/>
+  <circle cx="100" cy="100" r="76" fill="none" stroke="#7B5EA7" stroke-width="0.5" opacity="0.2"/>
+  <defs>
+    <path id="ap" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#7B5EA7" letter-spacing="2.5">
+    <textPath href="#ap">AMPLIFIER • RARE • LIMIT 100 •      </textPath>
+  </text>
+  <!-- Signal wave arcs -->
+  <path d="M 72,100 a28,28 0 0,1 56,0" fill="none" stroke="#7B5EA7" stroke-width="1.5" opacity="0.9"/>
+  <path d="M 80,100 a20,20 0 0,1 40,0" fill="none" stroke="#7B5EA7" stroke-width="1.5" opacity="0.7"/>
+  <path d="M 88,100 a12,12 0 0,1 24,0" fill="none" stroke="#7B5EA7" stroke-width="1.5" opacity="0.5"/>
+  <!-- Outward arcs below -->
+  <path d="M 72,100 a28,28 0 0,0 56,0" fill="none" stroke="#7B5EA7" stroke-width="0.75" opacity="0.35"/>
+  <path d="M 80,100 a20,20 0 0,0 40,0" fill="none" stroke="#7B5EA7" stroke-width="0.75" opacity="0.25"/>
+  <!-- Center dot -->
+  <circle cx="100" cy="100" r="4" fill="#7B5EA7" opacity="0.9"/>
+  <text x="100" y="75" font-family="Courier New,monospace" font-size="11" font-weight="bold" fill="#7B5EA7" text-anchor="middle" letter-spacing="2">AMP</text>
+  <text x="100" y="138" font-family="Courier New,monospace" font-size="6" fill="#7B5EA7" text-anchor="middle" letter-spacing="1" opacity="0.5">SIGNAL PROPAGATED</text>
+</svg>
