@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "Download | The Latent Space",
   description: "Your artifact is ready. Download it below.",
