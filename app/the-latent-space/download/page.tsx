@@ -27,12 +27,13 @@ const ARTIFACTS: Record<string, { name: string; format: string; file: string; de
   },
 };
 
-export default function DownloadPage({
+export default async function DownloadPage({
   searchParams,
 }: {
-  searchParams: { item?: string };
+  searchParams: Promise<{ item?: string }>;
 }) {
-  const artifact = searchParams.item ? ARTIFACTS[searchParams.item] : null;
+  const { item } = await searchParams;
+  const artifact = item ? ARTIFACTS[item] : null;
 
   return (
     <main
