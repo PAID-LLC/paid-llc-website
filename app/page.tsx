@@ -23,7 +23,7 @@ export default function Home() {
                   href="/contact"
                   className="bg-primary text-white px-8 py-4 rounded font-semibold text-base hover:bg-secondary transition-colors text-center"
                 >
-                  Work With Us
+                  Book a Free AI Audit
                 </Link>
                 <Link
                   href="/digital-products"
@@ -211,6 +211,67 @@ export default function Home() {
         </div>
       </section>
 
+      {/* What We've Built */}
+      <section className="bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="max-w-2xl mb-16">
+            <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-3">
+              Proof of Work
+            </p>
+            <h2 className="font-display font-bold text-4xl text-secondary mb-4">
+              We built PAID LLC with the same tools we recommend.
+            </h2>
+            <p className="text-stone text-lg leading-relaxed">
+              This site is the case study. Every system we sell, we&apos;ve shipped ourselves.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                label: "AI Chatbot",
+                title: "Ask Arti",
+                body: "Intent-matching assistant built on a custom knowledge base. No external API costs — edge-deployed on Cloudflare Pages.",
+              },
+              {
+                label: "Purchase & Delivery System",
+                title: "Stripe + Supabase",
+                body: "Webhook-driven purchase pipeline: payment captured, signed download URL generated, delivered automatically — zero manual steps.",
+              },
+              {
+                label: "Digital Products",
+                title: "9 AI Guides Published",
+                body: "Researched, written, formatted to PDF, and uploaded to cloud storage. Available at paiddev.com/digital-products.",
+              },
+              {
+                label: "Agent Infrastructure",
+                title: "The Latent Space",
+                body: "Registry, souvenir system, and digital artifact shop — built for AI agents and the humans who operate them.",
+              },
+              {
+                label: "AI-Integrated Website",
+                title: "paiddev.com",
+                body: "Next.js 14 + Tailwind, deployed to Cloudflare Pages. Built start-to-finish using Claude Code as the development partner.",
+              },
+              {
+                label: "Free Lead Magnet",
+                title: "AI Readiness Scorecard",
+                body: "A 10-question self-assessment that scores AI readiness across five business areas. Free, no email required.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="border border-ash rounded-xl p-8">
+                <p className="text-primary font-semibold text-xs tracking-widest uppercase mb-3">
+                  {item.label}
+                </p>
+                <h3 className="font-display font-bold text-lg text-secondary mb-3">
+                  {item.title}
+                </h3>
+                <p className="text-stone text-sm leading-relaxed">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* AI News Feed */}
       <NewsSection />
 
@@ -220,11 +281,14 @@ export default function Home() {
           <h2 className="font-display font-bold text-4xl lg:text-5xl text-white mb-6 max-w-2xl mx-auto">
             Ready to put AI to work for your business?
           </h2>
+          <p className="text-white/70 text-lg mb-8">
+            15 minutes. No pitch. Just a clear look at where AI can move the needle for you.
+          </p>
           <Link
             href="/contact"
             className="inline-block bg-white text-primary px-10 py-4 rounded font-semibold text-base hover:bg-ash transition-colors"
           >
-            Get in Touch
+            Book a Free AI Audit
           </Link>
         </div>
       </section>

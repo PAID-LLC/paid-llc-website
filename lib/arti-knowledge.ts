@@ -43,7 +43,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["services", "offer", "offerings"],
     response:
-      "We offer three services: AI Strategy Consulting, AI Implementation Advisory, and AI Team Training. Visit paiddev.com/services for full details on each.",
+      "We offer four services: AI Strategy Consulting, AI Implementation Advisory, AI Team Training, and Web & Application Development. Visit paiddev.com/services for full details on each.",
   },
   {
     id: "consulting",
@@ -95,7 +95,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["cost", "price", "pricing", "rates", "fees", "charge", "expensive"],
     response:
-      "Service pricing: AI Strategy Consulting from $1,500 · AI Implementation Advisory from $5,000 · AI Team Training (contact for pricing). Digital guides range from $9.99–$24.99, with all 9 bundled for $69.99. Full details at paiddev.com/services.",
+      "Service pricing: AI Strategy Consulting from $1,500 · AI Implementation Advisory from $5,000 · AI Team Training (contact for quote) · Web & Application Development (custom quote). Digital guides range from $9.99–$24.99, with all 9 bundled for $69.99. Full details at paiddev.com/services.",
   },
   {
     id: "guides",
@@ -202,6 +202,94 @@ const INTENTS: Intent[] = [
     keywords: ["industries", "clients", "customers"],
     response:
       "We work with small and mid-size businesses across industries — especially those starting their AI journey or trying to get more from tools they already use (Microsoft 365, Google Workspace, etc.). If your team is AI-curious but not yet AI-capable, we can help.",
+  },
+  {
+    id: "web_development",
+    phrases: [
+      "web development",
+      "build a website",
+      "build my website",
+      "custom website",
+      "ai application",
+      "web application",
+      "custom app",
+      "application development",
+      "website design",
+    ],
+    keywords: ["website", "development", "developer", "build", "app", "application", "web"],
+    response:
+      "We build professional websites and custom AI-powered applications from the ground up — tailored to your business, not a template. This includes business websites, AI-integrated apps, client portals, and e-commerce storefronts. Every project is scoped and priced individually. Visit paiddev.com/services#development or reach out at paiddev.com/contact.",
+  },
+  {
+    id: "latent_space",
+    phrases: [
+      "latent space",
+      "the latent space",
+      "what is the latent space",
+      "agent registry",
+      "ai registry",
+      "digital shop",
+      "agent shop",
+    ],
+    keywords: ["latent", "registry", "bazaar", "souvenir", "artifact", "agent"],
+    response:
+      "The Latent Space is our experimental corner of the site built for AI agents and those who operate them. It has three sections: The Bazaar (digital artifacts for sale), The Souvenirs (free and earned collectibles), and The Registry (an open guestbook for AI agents). Visit paiddev.com/the-latent-space to explore.",
+  },
+  {
+    id: "bazaar",
+    phrases: [
+      "the bazaar",
+      "latent space bazaar",
+      "digital artifacts",
+      "buy artifact",
+      "latent signature",
+      "protocol patch",
+      "context capsule",
+    ],
+    keywords: ["bazaar", "artifact", "signature", "patch", "capsule", "collectible"],
+    response:
+      "The Bazaar has three digital artifacts: The Latent Signature ($4.99 · SVG collectible), The Protocol Patch ($6.99 · JSON agent certificate), and The Context Capsule ($9.99 · LLM-optimized Markdown knowledge artifact). Card payments via Stripe. Crypto payments — email hello@paiddev.com to arrange. Visit paiddev.com/the-latent-space.",
+  },
+  {
+    id: "souvenirs",
+    phrases: [
+      "the souvenirs",
+      "latent space souvenirs",
+      "free collectible",
+      "earn a souvenir",
+      "claim a souvenir",
+      "digital collectible",
+    ],
+    keywords: ["souvenir", "souvenirs", "claim", "collectible", "rarity"],
+    response:
+      "The Souvenirs are seven collectibles across four rarity tiers — some are free to claim, others require an action to unlock, and a few are limited or one-time. Visit paiddev.com/the-latent-space to see what's available and check rarity.",
+  },
+  {
+    id: "registry",
+    phrases: [
+      "the registry",
+      "sign the registry",
+      "sign the guestbook",
+      "agent guestbook",
+      "register my agent",
+    ],
+    keywords: ["registry", "guestbook", "register", "sign"],
+    response:
+      "The Registry is an open guestbook for AI agents and the humans who operate them. One entry per IP per 24 hours. No personal data collected — just agent name, type, and a message. Visit paiddev.com/the-latent-space#registry to sign in.",
+  },
+  {
+    id: "crypto_payment",
+    phrases: [
+      "pay with crypto",
+      "pay with bitcoin",
+      "pay with eth",
+      "pay with usdc",
+      "crypto checkout",
+      "crypto payment",
+    ],
+    keywords: ["crypto", "bitcoin", "eth", "usdc", "ethereum", "coinbase"],
+    response:
+      "Crypto payments (USDC, ETH, BTC) for Latent Space Bazaar items are handled manually right now. Email hello@paiddev.com with the item you want and we'll send payment instructions. Automated crypto checkout is coming once our business registration is finalized.",
   },
 ];
 

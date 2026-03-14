@@ -39,9 +39,9 @@ export default function Services() {
                 AI Strategy Consulting
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
-                Not sure where to start with AI? We cut through the noise. We
-                assess your business, identify the highest-ROI AI applications,
-                and build you a clear implementation roadmap.
+                Too many AI tools, no clear ROI, and no idea where to focus?
+                We audit your operations, identify your highest-value AI
+                opportunities, and deliver a roadmap your team can actually act on.
               </p>
               <div className="mb-8">
                 <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
@@ -114,10 +114,10 @@ export default function Services() {
                 AI Implementation Advisory
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
-                Strategy is only valuable when it gets executed. We work
-                alongside your IT department and internal teams to guide AI
-                implementation — configuring tools, building workflows, and
-                making sure solutions get deployed the right way.
+                AI projects fail in the gap between planning and doing. We embed
+                with your IT department and internal teams to configure tools,
+                build workflows, and make sure solutions actually go live — not
+                just get planned.
               </p>
               <div className="mb-8">
                 <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
@@ -192,9 +192,10 @@ export default function Services() {
                 AI Team Training
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
-                Turn your team from AI-curious to AI-capable. We run hands-on
-                workshops, lunch-and-learns, and full-day training sessions
-                designed for real business teams, not developers.
+                Your team knows AI matters — but nobody&apos;s using it
+                consistently. We run hands-on workshops and training sessions
+                that build real fluency across your workforce, not just
+                awareness.
               </p>
               <div className="mb-8">
                 <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
@@ -269,9 +270,10 @@ export default function Services() {
                 Web &amp; Application Development
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
-                Need a professional website or a custom AI-powered application?
-                We design and build modern, fast, and scalable web solutions
-                from the ground up — tailored to your business, not a template.
+                Your website is your first impression and your always-on
+                salesperson. We build professional sites and custom AI-powered
+                applications that work as hard as you do — no templates, no
+                shortcuts.
               </p>
               <div className="mb-8">
                 <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">

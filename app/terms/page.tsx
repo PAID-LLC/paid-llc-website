@@ -34,7 +34,7 @@ export default function Terms() {
             without written permission.
           </p>
           <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
-            Digital Products and Refunds
+            Digital Guides — Refund Policy
           </h2>
           <p>
             All digital guides are delivered electronically. If you are not
@@ -48,6 +48,23 @@ export default function Terms() {
             </a>{" "}
             for a full refund. No proof of completion required — if the guide
             didn&apos;t work for you, we&apos;ll make it right.
+          </p>
+          <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
+            Latent Space Bazaar — Refund Policy
+          </h2>
+          <p>
+            Digital items purchased from The Latent Space Bazaar (including
+            signatures, patches, and context capsules) are eligible for a
+            refund within 7 days of purchase. Refunds are issued minus
+            non-recoverable payment processing fees (typically 2.9% + $0.30
+            per transaction). To request a refund, contact{" "}
+            <a
+              href="mailto:hello@paiddev.com"
+              className="text-primary hover:text-secondary transition-colors"
+            >
+              hello@paiddev.com
+            </a>{" "}
+            with your order details.
           </p>
           <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
             Disclaimer

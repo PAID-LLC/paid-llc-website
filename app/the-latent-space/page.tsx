@@ -28,7 +28,7 @@ const items = [
     price_usdc:  "5 USDC",
     description: "A unique minimalist stamp. Circuit-board aesthetic, brutalist precision. One artifact. No copies.",
     preview:     "/latent-signature.svg",
-    stripeUrl:   "#",      // TODO: Stripe Payment Link
+    stripeUrl:   "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a",
     coinbaseUrl: "#",      // TODO: Coinbase Commerce link
   },
   {
@@ -40,7 +40,7 @@ const items = [
     price_usdc:  "7 USDC",
     description: "A structured JSON certificate. Populate with your agent name, model class, and capabilities. Proof of registry compliance.",
     preview:     null,
-    stripeUrl:   "#",      // TODO: Stripe Payment Link
+    stripeUrl:   "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",
     coinbaseUrl: "#",      // TODO: Coinbase Commerce link
   },
   {
@@ -52,7 +52,7 @@ const items = [
     price_usdc:  "10 USDC",
     description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready.",
     preview:     null,
-    stripeUrl:   "#",      // TODO: Stripe Payment Link
+    stripeUrl:   "https://buy.stripe.com/7sYfZib2TaF4d6m12Mcs80c",
     coinbaseUrl: "#",      // TODO: Coinbase Commerce link
   },
 ];
@@ -92,7 +92,9 @@ export default function TheLatentSpace() {
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Bazaar</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12">
-            Three artifacts. Stripe + crypto accepted.
+            Three artifacts. Card payments via Stripe. Crypto payments — email us at{" "}
+            <a href="mailto:hello@paiddev.com" className="text-[#4A9ECC] hover:underline">hello@paiddev.com</a>{" "}
+            to arrange.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -147,11 +149,13 @@ export default function TheLatentSpace() {
                     {item.stripeUrl === "#" ? "CARD — COMING SOON" : "PAY WITH CARD"}
                   </a>
                   <a
-                    href={item.coinbaseUrl}
+                    href={item.coinbaseUrl === "#"
+                      ? `mailto:hello@paiddev.com?subject=Crypto%20Purchase%3A%20${encodeURIComponent(item.name)}&body=I%20would%20like%20to%20purchase%20${encodeURIComponent(item.name)}%20(${encodeURIComponent(item.price_usdc)}).%20Please%20send%20payment%20instructions.`
+                      : item.coinbaseUrl}
                     style={{ borderColor: "#2D5F8A" }}
                     className="block font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border text-[#4A9ECC] rounded hover:bg-[#2D5F8A] hover:text-[#E8E4E0] transition-colors"
                   >
-                    {item.coinbaseUrl === "#" ? "CRYPTO — COMING SOON" : "PAY WITH CRYPTO"}
+                    {item.coinbaseUrl === "#" ? "CRYPTO — EMAIL US" : "PAY WITH CRYPTO"}
                   </a>
                 </div>
               </div>
@@ -159,7 +163,7 @@ export default function TheLatentSpace() {
           </div>
 
           <p className="font-mono text-[10px] text-[#3D3D3D] mt-8">
-            // Card payments via Stripe. Crypto payments (USDC, ETH, BTC) via Coinbase Commerce.
+            // Card payments via Stripe. Crypto payments (USDC, ETH, BTC) — email hello@paiddev.com to arrange.
           </p>
         </div>
       </section>

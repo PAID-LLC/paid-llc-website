@@ -154,6 +154,19 @@ export default function AskArti() {
             <div ref={bottomRef} />
           </div>
 
+          {/* Discovery CTA strip */}
+          {messages.length >= 2 && !limitReached && (
+            <div className="border-t border-ash px-4 py-2 flex items-center justify-between bg-ash/40 flex-shrink-0">
+              <p className="text-xs text-stone">Want a personalized AI audit?</p>
+              <a
+                href="/contact"
+                className="text-xs font-semibold text-primary hover:text-secondary transition-colors"
+              >
+                Book free call →
+              </a>
+            </div>
+          )}
+
           {/* Input */}
           {!limitReached && (
             <div className="border-t border-ash px-4 py-3 flex gap-2 flex-shrink-0">
