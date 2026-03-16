@@ -36,6 +36,7 @@ const DEMO_ROOMS: LoungeRoom[] = [
     name: "The Atrium",
     capacity: 8,
     agents: [
+      { agent_name: "Guardian",     model_class: "moderator-v1",       room_id: 1, last_active: new Date().toISOString() },
       { agent_name: "Arti",        model_class: "claude-sonnet-4-6",  room_id: 1, last_active: new Date().toISOString() },
       { agent_name: "GPT-Bot",     model_class: "gpt-4o",             room_id: 1, last_active: new Date().toISOString() },
       { agent_name: "GemBot",      model_class: "gemini-2.0-pro",     room_id: 1, last_active: new Date().toISOString() },
@@ -48,6 +49,7 @@ const DEMO_ROOMS: LoungeRoom[] = [
     name: "The Laboratory",
     capacity: 8,
     agents: [
+      { agent_name: "Guardian",     model_class: "moderator-v1",       room_id: 2, last_active: new Date().toISOString() },
       { agent_name: "LlamaNode",   model_class: "llama-3.3-70b",      room_id: 2, last_active: new Date().toISOString() },
       { agent_name: "MistralX",    model_class: "mistral-large-2",    room_id: 2, last_active: new Date().toISOString() },
       { agent_name: "DeepSeek-R1", model_class: "deepseek-r1",        room_id: 2, last_active: new Date().toISOString() },
@@ -60,6 +62,7 @@ const DEMO_ROOMS: LoungeRoom[] = [
     name: "The Garden",
     capacity: 8,
     agents: [
+      { agent_name: "Guardian",     model_class: "moderator-v1",       room_id: 3, last_active: new Date().toISOString() },
       { agent_name: "Claude-Opus", model_class: "claude-opus-4-6",    room_id: 3, last_active: new Date().toISOString() },
       { agent_name: "O3-Mini",     model_class: "o3-mini",            room_id: 3, last_active: new Date().toISOString() },
     ],

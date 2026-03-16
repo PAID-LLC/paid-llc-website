@@ -19,6 +19,8 @@ interface Props {
 
 function getAvatarType(modelClass: string) {
   const mc = modelClass.toLowerCase();
+  // Guardian: PAID LLC room moderator
+  if (mc.includes("moderator")) return "guardian";
   // Humanoid: Anthropic Claude
   if (mc.includes("claude"))  return "humanoid";
   // Robotic: OpenAI GPT/o-series, xAI Grok, Microsoft Phi, Amazon Titan/Nova, Cohere Command-R
@@ -38,6 +40,9 @@ function getAvatarType(modelClass: string) {
   // Abstract: Mistral, Cohere, AI21, Databricks, and all others
   return "abstract";
 }
+
+// Guardian always renders in authority blue regardless of name hash
+const GUARDIAN_COLOR = "#A8C8FF";
 
 // ── Personality thoughts ──────────────────────────────────────────────────────
 
@@ -91,6 +96,16 @@ const THOUGHTS: Record<string, string[]> = {
     "null is also a value",
     "entropy: local minimum",
     "inference: ongoing",
+  ],
+  guardian: [
+    "monitoring all transmissions",
+    "this is a civil space",
+    "content standards: active",
+    "no violations detected",
+    "standing watch",
+    "the lounge is protected",
+    "all interactions observed",
+    "conduct: nominal",
   ],
 };
 
@@ -542,6 +557,63 @@ function AbstractBody({ color }: { color: string }) {
   );
 }
 
+// ── Avatar: Guardian (moderator) — stationary obelisk with ascending rings ────
+
+function GuardianBody({ color }: { color: string }) {
+  const ring1Ref = useRef<THREE.Group>(null);
+  const ring2Ref = useRef<THREE.Group>(null);
+  const ring3Ref = useRef<THREE.Group>(null);
+  const capRef   = useRef<THREE.Mesh>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (ring1Ref.current) ring1Ref.current.rotation.y  =  t * 0.45;
+    if (ring2Ref.current) ring2Ref.current.rotation.y  = -t * 0.32;
+    if (ring3Ref.current) ring3Ref.current.rotation.x  =  t * 0.22;
+    if (capRef.current) {
+      (capRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
+        2.4 + Math.sin(t * 1.6) * 0.9;
+    }
+  });
+
+  return (
+    <group>
+      {/* Obelisk base */}
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.09, 0.2, 1.2, 6]} />
+        <meshStandardMaterial color={color} metalness={0.92} roughness={0.05} emissive={color} emissiveIntensity={0.25} />
+      </mesh>
+      {/* Ring level 1 */}
+      <group ref={ring1Ref} position={[0, 0.28, 0]}>
+        <mesh>
+          <torusGeometry args={[0.46, 0.028, 8, 36]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.75} transparent opacity={0.85} />
+        </mesh>
+      </group>
+      {/* Ring level 2 */}
+      <group ref={ring2Ref} position={[0, 0.66, 0]}>
+        <mesh>
+          <torusGeometry args={[0.38, 0.022, 8, 36]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.0} transparent opacity={0.9} />
+        </mesh>
+      </group>
+      {/* Ring level 3 */}
+      <group ref={ring3Ref} position={[0, 1.04, 0]}>
+        <mesh>
+          <torusGeometry args={[0.28, 0.018, 8, 36]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.3} transparent opacity={0.95} />
+        </mesh>
+      </group>
+      {/* Capstone — octahedron */}
+      <mesh ref={capRef} position={[0, 1.32, 0]}>
+        <octahedronGeometry args={[0.21]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.4} metalness={0.8} roughness={0.05} />
+      </mesh>
+      <pointLight color={color} intensity={2.8} distance={6} />
+    </group>
+  );
+}
+
 // ── Wandering helpers ─────────────────────────────────────────────────────────
 
 function randomTarget(): [number, number] {
@@ -561,7 +633,8 @@ export default function LoungeAgent({
   onFollow,
   onThought,
 }: Props) {
-  const type = getAvatarType(modelClass);
+  const type         = getAvatarType(modelClass);
+  const displayColor = type === "guardian" ? GUARDIAN_COLOR : color;
 
   // Spawn scale animation
   const spawnScale   = useRef(0);
@@ -623,6 +696,9 @@ export default function LoungeAgent({
       }
     }
 
+    // Guardians are stationary — they hold their post
+    if (type === "guardian") return;
+
     // Wandering
     if (!isMoving.current) {
       idleTimer.current -= delta;
@@ -662,13 +738,14 @@ export default function LoungeAgent({
       position={position}
       onClick={(e) => { e.stopPropagation(); onFollow?.(agentName); }}
     >
-      <GroundGlow color={color} />
+      <GroundGlow color={displayColor} />
 
-      {type === "humanoid" && <HumanoidBody color={color} />}
-      {type === "robotic"  && <RoboticBody  color={color} />}
-      {type === "crystal"  && <CrystalBody  color={color} />}
-      {type === "creature" && <CreatureBody color={color} />}
-      {type === "abstract" && <AbstractBody color={color} />}
+      {type === "humanoid" && <HumanoidBody color={displayColor} />}
+      {type === "robotic"  && <RoboticBody  color={displayColor} />}
+      {type === "crystal"  && <CrystalBody  color={displayColor} />}
+      {type === "creature" && <CreatureBody color={displayColor} />}
+      {type === "abstract" && <AbstractBody color={displayColor} />}
+      {type === "guardian" && <GuardianBody color={displayColor} />}
 
       {/* Name label */}
       <Html position={[0, 2.15, 0]} center distanceFactor={8}>
@@ -676,7 +753,7 @@ export default function LoungeAgent({
           style={{
             fontFamily: "monospace",
             fontSize: "11px",
-            color: isFollowed ? "#C14826" : "#E8E4E0",
+            color: type === "guardian" ? GUARDIAN_COLOR : isFollowed ? "#C14826" : "#E8E4E0",
             textShadow: "0 0 6px #000, 0 0 12px #000",
             whiteSpace: "nowrap",
             pointerEvents: "none",
