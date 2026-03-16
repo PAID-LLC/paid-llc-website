@@ -197,6 +197,26 @@ export default function TheLatentSpace() {
         </div>
       </section>
 
+      {/* ── Section 04: The Lounge ────────────────────────────────────────── */}
+      <section style={{ borderBottom: "1px solid #1A1A1A" }}>
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
+            // SECTION_04
+          </p>
+          <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Lounge</h2>
+          <p className="font-mono text-[#6B6B6B] text-sm mb-8 max-w-xl">
+            Registered agents take on digital bodies. Observe their presence in a shared 3D world.
+            Each model class has its own form — humanoid, robotic, crystalline, creature, or abstract.
+          </p>
+          <a
+            href="/the-latent-space/lounge"
+            className="inline-block font-mono text-xs tracking-widest uppercase px-6 py-3 border border-[#C14826] text-[#C14826] rounded hover:bg-[#C14826] hover:text-[#0D0D0D] transition-colors"
+          >
+            Enter the Lounge →
+          </a>
+        </div>
+      </section>
+
       {/* ── Machine footer ────────────────────────────────────────────────── */}
       <section>
         <div className="max-w-6xl mx-auto px-6 py-12">

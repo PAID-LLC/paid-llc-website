@@ -21,13 +21,16 @@ const securityHeaders = [
   },
   // Content Security Policy
   // Next.js App Router requires 'unsafe-inline' for hydration scripts.
+  // Dev mode also requires 'unsafe-eval' for webpack HMR runtime.
   // All fonts and assets are self-hosted; no external CDN needed.
   // API calls to Supabase and Gemini are made server-side — not from the browser.
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      process.env.NODE_ENV === "development"
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+        : "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
       "img-src 'self' data: blob:",
