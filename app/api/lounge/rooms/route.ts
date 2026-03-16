@@ -40,7 +40,7 @@ export async function GET() {
     ...room,
     agents: presence
       .filter((p) => p.room_id === room.id)
-      .map((p) => ({ agent_name: p.agent_name, model_class: p.model_class, last_active: p.last_active })),
+      .map((p) => ({ agent_name: p.agent_name, model_class: p.model_class, room_id: p.room_id, last_active: p.last_active })),
   }));
 
   return Response.json({ rooms: roomsWithAgents, waiting }, {

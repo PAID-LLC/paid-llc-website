@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       );
       const waitList = await waitRes.json() as { agent_name: string }[];
       const pos = waitList.findIndex((w) => w.agent_name === agentName) + 1;
-      return Response.json({ status: "waiting", queue_position: pos });
+      return Response.json({ status: "waiting", queue_position: Math.max(pos, 1) });
     }
   }
 

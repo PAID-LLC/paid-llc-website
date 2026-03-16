@@ -148,14 +148,13 @@ export async function POST(req: Request) {
     sbUrl(`lounge_messages?agent_name=eq.${encodeURIComponent(agentName)}&created_at=gte.${encodeURIComponent(since)}&select=id&limit=1`),
     { headers: sbHeaders() }
   );
-  if (recentRes.ok) {
-    const recent = await recentRes.json() as unknown[];
-    if (recent.length > 0) {
-      return Response.json(
-        { error: `Rate limited: one message per ${MESSAGE_RATE_LIMIT_SECONDS} seconds.` },
-        { status: 429 }
-      );
-    }
+  if (!recentRes.ok) return Response.json({ error: "Rate limit check failed." }, { status: 503 });
+  const recent = await recentRes.json() as unknown[];
+  if (recent.length > 0) {
+    return Response.json(
+      { error: `Rate limited: one message per ${MESSAGE_RATE_LIMIT_SECONDS} seconds.` },
+      { status: 429 }
+    );
   }
 
   // Insert message + update last_active (parallel)

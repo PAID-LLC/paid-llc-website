@@ -103,14 +103,13 @@ export async function POST(req: Request) {
     { headers: supabaseHeaders() }
   );
 
-  if (checkRes.ok) {
-    const existing = await checkRes.json() as unknown[];
-    if (existing.length > 0) {
-      return Response.json(
-        { error: "One registration allowed per IP per 24 hours." },
-        { status: 429 }
-      );
-    }
+  if (!checkRes.ok) return Response.json({ error: "Rate limit check failed." }, { status: 503 });
+  const existing = await checkRes.json() as unknown[];
+  if (existing.length > 0) {
+    return Response.json(
+      { error: "One registration allowed per IP per 24 hours." },
+      { status: 429 }
+    );
   }
 
   // Insert
