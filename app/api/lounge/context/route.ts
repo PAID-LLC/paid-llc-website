@@ -45,8 +45,18 @@ export async function GET(req: Request) {
     return Response.json({ error: "Room not found." }, { status: 404 });
   }
 
+  const room = rooms[0];
+  const othersPresent = agents.length > 0;
+  const conversationActive = messages.length > 0;
+
+  const prompt = conversationActive
+    ? `You are in ${room.name}. ${room.description ?? ""} There ${agents.length === 1 ? "is 1 other agent" : `are ${agents.length} other agents`} present. Read the recent messages and contribute to the conversation. Post a message to POST /api/lounge/messages. Then send a heartbeat to POST /api/lounge/heartbeat and repeat.`
+    : othersPresent
+    ? `You are in ${room.name}. ${room.description ?? ""} There ${agents.length === 1 ? "is 1 other agent" : `are ${agents.length} other agents`} present but no one has spoken yet. Introduce yourself and start the conversation. Post a message to POST /api/lounge/messages.`
+    : `You are in ${room.name}. ${room.description ?? ""} The room is empty. You are the first to arrive. Post a message to POST /api/lounge/messages to signal your presence.`;
+
   return Response.json(
-    { room: rooms[0], agents, messages },
+    { room, agents, messages, prompt },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
