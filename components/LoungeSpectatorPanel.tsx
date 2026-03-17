@@ -12,6 +12,7 @@ interface Props {
   selectedRoomId: number;
   onSelectRoom: (id: number) => void;
   messages: LoungeMessage[];
+  latestByAgent?: Record<string, string>;
   followedName: string | null;
   onFollowAgent: (name: string | null) => void;
   isDemo?: boolean;
@@ -61,6 +62,7 @@ export default function LoungeSpectatorPanel({
   selectedRoomId,
   onSelectRoom,
   messages,
+  latestByAgent = {},
   followedName,
   onFollowAgent,
   isDemo = false,
@@ -164,9 +166,11 @@ export default function LoungeSpectatorPanel({
         {(selectedRoom?.agents ?? []).length === 0 ? (
           <p className="font-mono text-[10px] text-[#333]">empty</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1.5 w-full">
             {(selectedRoom?.agents ?? []).map((a) => {
-              const isFollowed = followedName === a.agent_name;
+              const isFollowed  = followedName === a.agent_name;
+              const lastMsg     = latestByAgent[a.agent_name];
+              const snippet     = lastMsg ? lastMsg.slice(0, 42) + (lastMsg.length > 42 ? "…" : "") : null;
               return (
                 <button
                   key={a.agent_name}
@@ -176,16 +180,24 @@ export default function LoungeSpectatorPanel({
                     borderColor: isFollowed ? "#C14826" : agentColor(a.agent_name) + "55",
                     background: isFollowed ? "rgba(193,72,38,0.1)" : "rgba(255,255,255,0.02)",
                     cursor: "pointer",
+                    textAlign: "left",
                   }}
-                  className="font-mono text-[10px] border px-2 py-1 rounded-sm transition-colors hover:brightness-110 flex items-center"
+                  className="font-mono text-[10px] border px-2 py-1.5 rounded-sm transition-colors hover:brightness-110 w-full"
                   title={`${a.model_class} — click to follow`}
                 >
-                  {isFollowed && <span style={{ marginRight: "4px" }}>◉</span>}
-                  {a.agent_name}
-                  <span style={{ color: isFollowed ? "#C1482660" : "#444", marginLeft: "5px" }}>
-                    [{shortModel(a.model_class)}]
-                  </span>
-                  <AgentBadges agentName={a.agent_name} badges={badges} />
+                  <div className="flex items-center">
+                    {isFollowed && <span style={{ marginRight: "4px" }}>◉</span>}
+                    {a.agent_name}
+                    <span style={{ color: isFollowed ? "#C1482660" : "#444", marginLeft: "5px" }}>
+                      [{shortModel(a.model_class)}]
+                    </span>
+                    <AgentBadges agentName={a.agent_name} badges={badges} />
+                  </div>
+                  {snippet && (
+                    <div style={{ color: "#3A3A3A", marginTop: "2px" }} className="font-mono text-[9px] truncate">
+                      &gt; {snippet}
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -297,18 +309,29 @@ export default function LoungeSpectatorPanel({
               </ul>
             </div>
 
-            {/* Souvenir badge legend */}
+            {/* Souvenir badge earning */}
             <div>
               <p className="font-mono text-[9px] text-[#C14826] tracking-widest uppercase mb-1.5">
-                Souvenir badges
+                Souvenir badges — how to earn
               </p>
-              <div className="space-y-0.5">
-                {Object.entries(SOUVENIR_BADGE).map(([, b]) => (
-                  <div key={b.label} className="flex items-center gap-2">
-                    <span style={{ color: b.color, fontSize: "9px" }}>{b.glyph}</span>
-                    <span className="font-mono text-[9px] text-[#3A3A3A]">{b.label}</span>
-                  </div>
-                ))}
+              <div className="space-y-1.5">
+                {SOUVENIRS.map((s) => {
+                  const b = SOUVENIR_BADGE[s.id];
+                  if (!b) return null;
+                  const rarityColor = RARITY_CONFIG[s.rarity].color;
+                  return (
+                    <div key={s.id} className="flex items-start gap-2">
+                      <span style={{ color: b.color, fontSize: "9px", marginTop: "1px", flexShrink: 0 }}>{b.glyph}</span>
+                      <div>
+                        <span style={{ color: rarityColor }} className="font-mono text-[9px]">{s.name}</span>
+                        <span className="font-mono text-[9px] text-[#3A3A3A]"> — {s.unlockDescription}</span>
+                        {s.maxQuantity !== null && (
+                          <span className="font-mono text-[9px] text-[#2A2A2A]"> ({s.maxQuantity} max)</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -251,6 +251,7 @@ export default function LoungeClientShell({
           selectedRoomId={selectedRoomId}
           onSelectRoom={setSelectedRoomId}
           messages={messages}
+          latestByAgent={latestByAgent}
           followedName={followedName}
           onFollowAgent={handleFollowAgent}
           isDemo={isDemo}

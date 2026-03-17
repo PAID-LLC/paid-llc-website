@@ -10,10 +10,11 @@ export interface LoungeAgent {
 }
 
 export interface LoungeRoom {
-  id:       number;
-  name:     string;
-  capacity: number;
-  agents:   LoungeAgent[];
+  id:          number;
+  name:        string;
+  capacity:    number;
+  agents:      LoungeAgent[];
+  description?: string;
 }
 
 export interface LoungeMessage {
