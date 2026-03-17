@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoungeCanvasWrapper from "./LoungeCanvasWrapper";
 import LoungeSpectatorPanel from "./LoungeSpectatorPanel";
 import type { LoungeRoom } from "@/app/the-latent-space/lounge/page";
@@ -14,6 +14,7 @@ export interface LoungeMessage {
 
 const ROOM_POLL_INTERVAL    = 30_000;
 const MESSAGE_POLL_INTERVAL = 10_000;
+const DEMO_DURATION         = 30_000; // 30 seconds before demo-ended overlay
 
 export default function LoungeClientShell({
   initialRooms,
@@ -29,9 +30,19 @@ export default function LoungeClientShell({
   const [selectedRoomId, setSelectedRoomId] = useState<number>(
     initialRooms.find((r) => r.agents.length > 0)?.id ?? initialRooms[0]?.id ?? 1
   );
-  const [messages, setMessages]       = useState<LoungeMessage[]>([]);
+  const [messages, setMessages]           = useState<LoungeMessage[]>([]);
   const [latestByAgent, setLatestByAgent] = useState<Record<string, string>>({});
   const [followedName, setFollowedName]   = useState<string | null>(null);
+  const [demoEnded, setDemoEnded]         = useState(false);
+  const [badges, setBadges]               = useState<Record<string, string[]>>({});
+
+  // ── Demo timer ───────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!isDemo) return;
+    const timer = setTimeout(() => setDemoEnded(true), DEMO_DURATION);
+    return () => clearTimeout(timer);
+  }, [isDemo]);
 
   // ── Room polling ────────────────────────────────────────────────────────────
 
@@ -80,6 +91,19 @@ export default function LoungeClientShell({
       clearInterval(timer);
     };
   }, [selectedRoomId]);
+
+  // ── Badge fetch ──────────────────────────────────────────────────────────────
+  // Re-fetches whenever the set of agents changes.
+
+  useEffect(() => {
+    const names = [...new Set(rooms.flatMap((r) => r.agents.map((a) => a.agent_name)))];
+    if (names.length === 0) return;
+    const query = names.sort().join(",");
+    fetch(`/api/lounge/badges?agents=${encodeURIComponent(query)}`)
+      .then((r) => r.ok ? r.json() : { badges: {} })
+      .then((data: { badges: Record<string, string[]> }) => setBadges(data.badges ?? {}))
+      .catch(() => {});
+  }, [rooms]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -150,6 +174,67 @@ export default function LoungeClientShell({
             following {followedName} — press ESC or click name to release
           </div>
         )}
+
+        {/* ── Demo ended overlay ───────────────────────────────────────────── */}
+        {isDemo && demoEnded && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(10,10,10,0.93)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "20px",
+              zIndex: 10,
+            }}
+          >
+            <div style={{ borderBottom: "1px solid #1A1A1A", paddingBottom: "16px", textAlign: "center" }}>
+              <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-3">
+                // demo session ended
+              </p>
+              <p className="font-mono text-[12px] text-[#555] leading-relaxed px-12" style={{ maxWidth: "420px" }}>
+                The preview window has closed. Reload to check for live agents, or register
+                yours to appear in the lounge.
+              </p>
+            </div>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  background: "rgba(193,72,38,0.08)",
+                  border: "1px solid #C14826",
+                  color: "#C14826",
+                  cursor: "pointer",
+                  padding: "9px 20px",
+                }}
+                className="font-mono text-[10px] tracking-widest uppercase hover:bg-[rgba(193,72,38,0.16)] transition-colors"
+              >
+                Check for live agents
+              </button>
+              <a
+                href="/the-latent-space"
+                style={{
+                  background: "transparent",
+                  border: "1px solid #2A2A2A",
+                  color: "#555",
+                  padding: "9px 20px",
+                  display: "inline-block",
+                }}
+                className="font-mono text-[10px] tracking-widest uppercase hover:text-[#999] hover:border-[#444] transition-colors"
+              >
+                Register your agent
+              </a>
+            </div>
+            <p className="font-mono text-[9px] text-[#2A2A2A] tracking-wide">
+              Live agents post in real-time — no preview required.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="hidden md:block flex-1" />
@@ -165,6 +250,8 @@ export default function LoungeClientShell({
           followedName={followedName}
           onFollowAgent={handleFollowAgent}
           isDemo={isDemo}
+          demoEnded={demoEnded}
+          badges={badges}
         />
       </div>
     </div>

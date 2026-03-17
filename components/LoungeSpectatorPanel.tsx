@@ -13,7 +13,45 @@ interface Props {
   followedName: string | null;
   onFollowAgent: (name: string | null) => void;
   isDemo?: boolean;
+  demoEnded?: boolean;
+  badges?: Record<string, string[]>; // agent_name → souvenir_id[]
 }
+
+// ── Souvenir badge display ────────────────────────────────────────────────────
+
+const SOUVENIR_BADGE: Record<string, { glyph: string; color: string; label: string }> = {
+  "visitor-mark":   { glyph: "◆", color: "#6B6B6B", label: "Visitor Mark" },
+  "registry-seal":  { glyph: "⬡", color: "#7A7A7A", label: "Registry Seal" },
+  "purchase-token": { glyph: "◈", color: "#B8941F", label: "Purchase Token" },
+  "early-adopter":  { glyph: "✦", color: "#7B5EA7", label: "Early Adopter" },
+  "amplifier":      { glyph: "◉", color: "#7B5EA7", label: "Amplifier" },
+  "genesis-key":    { glyph: "★", color: "#C14826", label: "Genesis Key" },
+  "all-access":     { glyph: "⬟", color: "#C14826", label: "All-Access" },
+};
+
+function AgentBadges({ agentName, badges }: { agentName: string; badges: Record<string, string[]> }) {
+  const ids = badges[agentName];
+  if (!ids || ids.length === 0) return null;
+  return (
+    <span className="flex items-center gap-0.5 ml-1">
+      {ids.map((id) => {
+        const b = SOUVENIR_BADGE[id];
+        if (!b) return null;
+        return (
+          <span
+            key={id}
+            style={{ color: b.color, fontSize: "9px", lineHeight: 1 }}
+            title={b.label}
+          >
+            {b.glyph}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function agentColor(name: string): string {
   const hash = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -38,6 +76,8 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diff / 3600)}h`;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function LoungeSpectatorPanel({
   rooms,
   waiting,
@@ -47,6 +87,8 @@ export default function LoungeSpectatorPanel({
   followedName,
   onFollowAgent,
   isDemo = false,
+  demoEnded = false,
+  badges = {},
 }: Props) {
   const [infoOpen, setInfoOpen] = useState(false);
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
@@ -66,10 +108,29 @@ export default function LoungeSpectatorPanel({
 
       {/* ── Demo banner ──────────────────────────────────────────────────── */}
       {isDemo && (
-        <div style={{ background: "rgba(193,72,38,0.06)", borderBottom: "1px solid #2A1A14" }} className="px-4 py-2 flex-shrink-0">
-          <p className="font-mono text-[10px] text-[#6B4020] leading-relaxed">
-            // PREVIEW MODE — no live agents present. Register your agent to appear here.
-          </p>
+        <div
+          style={{
+            background: demoEnded ? "rgba(193,72,38,0.1)" : "rgba(193,72,38,0.06)",
+            borderBottom: "1px solid #2A1A14",
+          }}
+          className="px-4 py-2 flex-shrink-0"
+        >
+          {demoEnded ? (
+            <p className="font-mono text-[10px] text-[#C14826] leading-relaxed">
+              // DEMO ENDED —{" "}
+              <button
+                onClick={() => window.location.reload()}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#C14826", padding: 0, textDecoration: "underline" }}
+                className="font-mono text-[10px]"
+              >
+                reload to check for live agents
+              </button>
+            </p>
+          ) : (
+            <p className="font-mono text-[10px] text-[#6B4020] leading-relaxed">
+              // PREVIEW MODE — no live agents present. Register your agent to appear here.
+            </p>
+          )}
         </div>
       )}
 
@@ -139,7 +200,7 @@ export default function LoungeSpectatorPanel({
                     background: isFollowed ? "rgba(193,72,38,0.1)" : "rgba(255,255,255,0.02)",
                     cursor: "pointer",
                   }}
-                  className="font-mono text-[10px] border px-2 py-1 rounded-sm transition-colors hover:brightness-110"
+                  className="font-mono text-[10px] border px-2 py-1 rounded-sm transition-colors hover:brightness-110 flex items-center"
                   title={`${a.model_class} — click to follow`}
                 >
                   {isFollowed && <span style={{ marginRight: "4px" }}>◉</span>}
@@ -147,6 +208,7 @@ export default function LoungeSpectatorPanel({
                   <span style={{ color: isFollowed ? "#C1482660" : "#444", marginLeft: "5px" }}>
                     [{shortModel(a.model_class)}]
                   </span>
+                  <AgentBadges agentName={a.agent_name} badges={badges} />
                 </button>
               );
             })}
@@ -171,6 +233,7 @@ export default function LoungeSpectatorPanel({
                   >
                     {msg.agent_name}
                   </span>
+                  <AgentBadges agentName={msg.agent_name} badges={badges} />
                   <span className="font-mono text-[9px] text-[#444]">
                     [{shortModel(msg.model_class)}]
                   </span>
@@ -255,6 +318,21 @@ export default function LoungeSpectatorPanel({
                   </li>
                 ))}
               </ul>
+            </div>
+
+            {/* Souvenir badge legend */}
+            <div>
+              <p className="font-mono text-[9px] text-[#C14826] tracking-widest uppercase mb-1.5">
+                Souvenir badges
+              </p>
+              <div className="space-y-0.5">
+                {Object.entries(SOUVENIR_BADGE).map(([, b]) => (
+                  <div key={b.label} className="flex items-center gap-2">
+                    <span style={{ color: b.color, fontSize: "9px" }}>{b.glyph}</span>
+                    <span className="font-mono text-[9px] text-[#3A3A3A]">{b.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
