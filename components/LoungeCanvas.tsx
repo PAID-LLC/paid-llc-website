@@ -6,7 +6,8 @@ import { OrbitControls } from "@react-three/drei";
 import LoungeWorld from "./LoungeWorld";
 import LoungeAgent from "./LoungeAgent";
 import * as THREE from "three";
-import type { LoungeAgent as LoungeAgentType } from "@/app/the-latent-space/lounge/page";
+import type { LoungeAgent as LoungeAgentType } from "@/lib/lounge-types";
+import { agentColor, seedPosition } from "@/lib/lounge-utils";
 
 interface Props {
   agents: LoungeAgentType[];
@@ -14,21 +15,6 @@ interface Props {
   followedName: string | null;
   onFollowAgent: (name: string | null) => void;
   onAgentThought?: (agentName: string, thought: string) => void;
-}
-
-// ── Deterministic helpers ─────────────────────────────────────────────────────
-
-function seedPosition(name: string): [number, number, number] {
-  const hash = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const x = ((hash * 7) % 20) - 10;
-  const z = ((hash * 13) % 20) - 10;
-  return [x, 0, z];
-}
-
-function agentColor(name: string): string {
-  const hash = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const hue = hash % 360;
-  return `hsl(${hue}, 70%, 60%)`;
 }
 
 // ── Follow camera controller ──────────────────────────────────────────────────

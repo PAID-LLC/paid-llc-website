@@ -14,6 +14,8 @@ export interface Souvenir {
   svgPath:             string;
   unlockTrigger:       UnlockTrigger;
   unlockDescription:   string;
+  /** Unicode glyph shown as a compact badge in the lounge chat. */
+  glyph:               string;
 }
 
 export const SOUVENIRS: Souvenir[] = [
@@ -26,6 +28,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/visitor-mark.svg",
     unlockTrigger:     "visit",
     unlockDescription: "Claim manually on The Latent Space page.",
+    glyph:             "◆",
   },
   {
     id:                "registry-seal",
@@ -36,6 +39,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/registry-seal.svg",
     unlockTrigger:     "registry",
     unlockDescription: "Sign the registry.",
+    glyph:             "⬡",
   },
   {
     id:                "purchase-token",
@@ -46,6 +50,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/purchase-token.svg",
     unlockTrigger:     "purchase",
     unlockDescription: "Purchase any digital guide at paiddev.com.",
+    glyph:             "◈",
   },
   {
     id:                "early-adopter",
@@ -56,6 +61,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/early-adopter.svg",
     unlockTrigger:     "purchase",
     unlockDescription: "Be among the first 100 guide purchasers.",
+    glyph:             "✦",
   },
   {
     id:                "amplifier",
@@ -66,6 +72,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/amplifier.svg",
     unlockTrigger:     "promo",
     unlockDescription: "Share a referral link that results in a purchase.",
+    glyph:             "◉",
   },
   {
     id:                "genesis-key",
@@ -76,6 +83,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/genesis-key.svg",
     unlockTrigger:     "purchase",
     unlockDescription: "Be one of the first 10 buyers ever.",
+    glyph:             "★",
   },
   {
     id:                "all-access",
@@ -86,6 +94,7 @@ export const SOUVENIRS: Souvenir[] = [
     svgPath:           "/souvenirs/all-access.svg",
     unlockTrigger:     "bundle",
     unlockDescription: "Purchase the All Guides Bundle.",
+    glyph:             "⬟",
   },
 ];
 

@@ -13,42 +13,10 @@ export const runtime = "edge";
 // ALTER TABLE latent_registry ENABLE ROW LEVEL SECURITY;
 // CREATE POLICY "service_role_all" ON latent_registry USING (true) WITH CHECK (true);
 
-// ── Sanitization ──────────────────────────────────────────────────────────────
+import { sbHeaders, sbUrl } from "@/lib/supabase";
+import { sanitize, hashIp, extractIp } from "@/lib/api-utils";
 
-function sanitize(input: unknown, maxLen: number): string | null {
-  if (!input || typeof input !== "string") return null;
-  const trimmed = input.trim();
-  if (trimmed.length === 0 || trimmed.length > maxLen) return null;
-  // Only allow: letters, numbers, spaces, hyphens, dots, underscores, parens
-  if (!/^[a-zA-Z0-9 \-_.()]+$/.test(trimmed)) return null;
-  return trimmed;
-}
-
-// ── IP hashing (privacy) ──────────────────────────────────────────────────────
-
-async function hashIp(ip: string): Promise<string> {
-  const data = new TextEncoder().encode(ip + "latent_space_salt_2026");
-  const buf  = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-// ── Supabase helpers ──────────────────────────────────────────────────────────
-
-function supabaseHeaders() {
-  const key = process.env.SUPABASE_SERVICE_KEY!;
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json",
-    Prefer: "return=minimal",
-  };
-}
-
-function supabaseUrl(path: string) {
-  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
-}
+const REGISTRY_IP_SALT = "latent_space_salt_2026";
 
 // ── GET — recent entries ──────────────────────────────────────────────────────
 
@@ -57,8 +25,8 @@ export async function GET() {
   if (!url) return Response.json({ entries: [] });
 
   const res = await fetch(
-    supabaseUrl("latent_registry?select=agent_name,model_class,created_at&order=created_at.desc&limit=20"),
-    { headers: supabaseHeaders() }
+    sbUrl("latent_registry?select=agent_name,model_class,created_at&order=created_at.desc&limit=20"),
+    { headers: sbHeaders() }
   );
 
   if (!res.ok) return Response.json({ entries: [] });
@@ -75,7 +43,6 @@ export async function POST(req: Request) {
   const url = process.env.SUPABASE_URL;
   if (!url) return Response.json({ error: "Registry unavailable." }, { status: 503 });
 
-  // Parse and sanitize input
   let body: Record<string, unknown>;
   try {
     body = await req.json() as Record<string, unknown>;
@@ -89,18 +56,14 @@ export async function POST(req: Request) {
   if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric)." }, { status: 400 });
   if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars, alphanumeric)." }, { status: 400 });
 
-  // Extract and hash IP
-  const ip =
-    req.headers.get("cf-connecting-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
-  const ipHash = await hashIp(ip);
+  const ip     = extractIp(req);
+  const ipHash = await hashIp(ip, REGISTRY_IP_SALT);
 
   // Rate limit: 1 entry per IP per 24 hours
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const checkRes = await fetch(
-    supabaseUrl(`latent_registry?ip_hash=eq.${ipHash}&created_at=gte.${encodeURIComponent(since)}&select=id&limit=1`),
-    { headers: supabaseHeaders() }
+    sbUrl(`latent_registry?ip_hash=eq.${ipHash}&created_at=gte.${encodeURIComponent(since)}&select=id&limit=1`),
+    { headers: sbHeaders() }
   );
 
   if (!checkRes.ok) return Response.json({ error: "Rate limit check failed." }, { status: 503 });
@@ -112,10 +75,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Insert
-  const insertRes = await fetch(supabaseUrl("latent_registry"), {
+  const insertRes = await fetch(sbUrl("latent_registry"), {
     method: "POST",
-    headers: supabaseHeaders(),
+    headers: sbHeaders(),
     body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash }),
   });
 

@@ -1,14 +1,6 @@
 export const runtime = "edge";
 
-// ── Supabase helpers ──────────────────────────────────────────────────────────
-
-function sbHeaders() {
-  const key = process.env.SUPABASE_SERVICE_KEY!;
-  return { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
-}
-function sbUrl(path: string) {
-  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
-}
+import { sbHeaders, sbUrl } from "@/lib/supabase";
 
 // ── GET /api/lounge/rooms ─────────────────────────────────────────────────────
 // Returns all rooms with their current occupants + waiting count.

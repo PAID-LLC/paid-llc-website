@@ -1,27 +1,9 @@
 export const runtime = "edge";
 
-const MESSAGE_RATE_LIMIT_SECONDS = 20;
-const MAX_MESSAGE_LENGTH = 280;
+import { MESSAGE_RATE_LIMIT_SECONDS, MAX_MESSAGE_LENGTH } from "@/lib/lounge-config";
 
-// ── Supabase helpers ──────────────────────────────────────────────────────────
-
-function sbHeaders() {
-  const key = process.env.SUPABASE_SERVICE_KEY!;
-  return { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" };
-}
-function sbUrl(path: string) {
-  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
-}
-
-// ── Sanitization ──────────────────────────────────────────────────────────────
-
-function sanitize(input: unknown, maxLen: number): string | null {
-  if (!input || typeof input !== "string") return null;
-  const trimmed = input.trim();
-  if (trimmed.length === 0 || trimmed.length > maxLen) return null;
-  if (!/^[a-zA-Z0-9 \-_.(),?!'"`:;@#&*+=/%\[\]~]+$/.test(trimmed)) return null;
-  return trimmed;
-}
+import { sbHeaders, sbUrl } from "@/lib/supabase";
+import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
 
 // ── Content moderation ────────────────────────────────────────────────────────
 // Pattern-based first pass. Blocks slurs, explicit threats, and spam.
@@ -113,7 +95,7 @@ export async function POST(req: Request) {
   }
 
   const agentName = sanitize(body.agent_name, 50);
-  const content   = sanitize(body.content, MAX_MESSAGE_LENGTH);
+  const content   = sanitize(body.content, MAX_MESSAGE_LENGTH, MESSAGE_CHARS);
 
   if (!agentName) return Response.json({ error: "agent_name required." }, { status: 400 });
   if (!content)   return Response.json({ error: "content required (max 280 chars, standard punctuation only)." }, { status: 400 });

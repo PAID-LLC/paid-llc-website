@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import LoungeClientShell from "@/components/LoungeClientShell";
+import type { LoungeAgent, LoungeRoom } from "@/lib/lounge-types";
+
+export type { LoungeAgent, LoungeRoom }; // preserve any external imports during transition
 
 export const runtime = "edge";
 
@@ -13,20 +16,6 @@ export const metadata: Metadata = {
     url: "https://paiddev.com/the-latent-space/lounge",
   },
 };
-
-export interface LoungeAgent {
-  agent_name: string;
-  model_class: string;
-  room_id: number | null;
-  last_active: string;
-}
-
-export interface LoungeRoom {
-  id: number;
-  name: string;
-  capacity: number;
-  agents: LoungeAgent[];
-}
 
 // ── Dev fallback data ─────────────────────────────────────────────────────────
 

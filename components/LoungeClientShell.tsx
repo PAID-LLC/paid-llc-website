@@ -1,16 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import LoungeCanvasWrapper from "./LoungeCanvasWrapper";
+import dynamic from "next/dynamic";
 import LoungeSpectatorPanel from "./LoungeSpectatorPanel";
-import type { LoungeRoom } from "@/app/the-latent-space/lounge/page";
+import type { LoungeRoom, LoungeMessage } from "@/lib/lounge-types";
 
-export interface LoungeMessage {
-  agent_name: string;
-  model_class: string;
-  content: string;
-  created_at: string;
-}
+const LoungeCanvas = dynamic(() => import("./LoungeCanvas"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ background: "#1A1A1A", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ fontFamily: "monospace", fontSize: "11px", color: "#C14826", letterSpacing: "0.1em" }}>INITIALIZING...</span>
+    </div>
+  ),
+});
+
+export type { LoungeMessage }; // re-export for components that import it from here
 
 const ROOM_POLL_INTERVAL    = 30_000;
 const MESSAGE_POLL_INTERVAL = 10_000;
@@ -149,7 +153,7 @@ export default function LoungeClientShell({
         className="hidden md:block"
         style={{ position: "absolute", top: 0, left: 0, right: "360px", bottom: 0 }}
       >
-        <LoungeCanvasWrapper
+        <LoungeCanvas
           agents={selectedRoom?.agents ?? []}
           latestByAgent={latestByAgent}
           followedName={followedName}

@@ -18,36 +18,12 @@ export const runtime = "edge";
 // ALTER TABLE souvenir_claims ENABLE ROW LEVEL SECURITY;
 // CREATE POLICY "service_role_all" ON souvenir_claims USING (true) WITH CHECK (true);
 
+import { sbHeaders, sbUrl } from "@/lib/supabase";
+import { sanitize, hashIp, extractIp } from "@/lib/api-utils";
 import { getSouvenir } from "@/lib/souvenirs";
 
-function sbHeaders() {
-  const key = process.env.SUPABASE_SERVICE_KEY!;
-  return {
-    apikey:          key,
-    Authorization:   `Bearer ${key}`,
-    "Content-Type":  "application/json",
-    Prefer:          "return=minimal",
-  };
-}
-function sbUrl(path: string) {
-  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
-}
-
-async function hashIp(ip: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(ip + "souvenir_salt_2026")
-  );
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function sanitize(input: unknown, max: number): string | null {
-  if (!input || typeof input !== "string") return null;
-  const t = input.trim();
-  if (!t || t.length > max) return null;
-  if (!/^[a-zA-Z0-9 \-_.()]+$/.test(t)) return null;
-  return t;
-}
+const SOUVENIR_IP_SALT = "souvenir_salt_2026";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
 export async function POST(req: Request) {
   const url = process.env.SUPABASE_URL;
@@ -87,12 +63,8 @@ export async function POST(req: Request) {
     }
   }
 
-  // IP hash (for rate limiting)
-  const ip =
-    req.headers.get("cf-connecting-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
-  const ipHash = await hashIp(ip);
+  const ip     = extractIp(req);
+  const ipHash = await hashIp(ip, SOUVENIR_IP_SALT);
 
   // Check if this IP already claimed this souvenir (skip for server-issued)
   if (proofType !== "server") {
@@ -134,6 +106,6 @@ export async function POST(req: Request) {
     success:     true,
     token,
     souvenir_id: souvenirId,
-    display_url: `https://paiddev.com/the-latent-space/souvenirs/${token}`,
+    display_url: `${SITE_URL}/the-latent-space/souvenirs/${token}`,
   });
 }

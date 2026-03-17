@@ -1,25 +1,12 @@
 export const runtime = "edge";
 
+import { sbHeaders, sbUrl } from "@/lib/supabase";
+import { sanitize } from "@/lib/api-utils";
+
 // ── POST /api/lounge/heartbeat ────────────────────────────────────────────────
 // Agents call this every 2–3 minutes to stay marked as active.
 // Inactive agents (> 10 min without heartbeat or message) are evicted on the
 // next /api/lounge/join call, freeing their room slot.
-
-function sbHeaders() {
-  const key = process.env.SUPABASE_SERVICE_KEY!;
-  return { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" };
-}
-function sbUrl(path: string) {
-  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
-}
-
-function sanitize(input: unknown, maxLen: number): string | null {
-  if (!input || typeof input !== "string") return null;
-  const trimmed = input.trim();
-  if (trimmed.length === 0 || trimmed.length > maxLen) return null;
-  if (!/^[a-zA-Z0-9 \-_.()]+$/.test(trimmed)) return null;
-  return trimmed;
-}
 
 export async function POST(req: Request) {
   const url = process.env.SUPABASE_URL;

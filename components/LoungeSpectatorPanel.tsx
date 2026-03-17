@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { LoungeRoom } from "@/app/the-latent-space/lounge/page";
-import type { LoungeMessage } from "./LoungeClientShell";
+import type { LoungeRoom, LoungeMessage } from "@/lib/lounge-types";
+import { MESSAGE_RATE_LIMIT_SECONDS } from "@/lib/lounge-config";
+import { agentColor, shortModel, timeAgo } from "@/lib/lounge-utils";
+import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
 
 interface Props {
   rooms: LoungeRoom[];
@@ -18,16 +20,16 @@ interface Props {
 }
 
 // ── Souvenir badge display ────────────────────────────────────────────────────
+// Derived from SOUVENIRS + RARITY_CONFIG — adding a souvenir to lib/souvenirs.ts
+// automatically makes it appear here without any additional changes.
 
-const SOUVENIR_BADGE: Record<string, { glyph: string; color: string; label: string }> = {
-  "visitor-mark":   { glyph: "◆", color: "#6B6B6B", label: "Visitor Mark" },
-  "registry-seal":  { glyph: "⬡", color: "#7A7A7A", label: "Registry Seal" },
-  "purchase-token": { glyph: "◈", color: "#B8941F", label: "Purchase Token" },
-  "early-adopter":  { glyph: "✦", color: "#7B5EA7", label: "Early Adopter" },
-  "amplifier":      { glyph: "◉", color: "#7B5EA7", label: "Amplifier" },
-  "genesis-key":    { glyph: "★", color: "#C14826", label: "Genesis Key" },
-  "all-access":     { glyph: "⬟", color: "#C14826", label: "All-Access" },
-};
+const SOUVENIR_BADGE: Record<string, { glyph: string; color: string; label: string }> =
+  Object.fromEntries(
+    SOUVENIRS.map((s) => [
+      s.id,
+      { glyph: s.glyph, color: RARITY_CONFIG[s.rarity].color, label: s.name },
+    ])
+  );
 
 function AgentBadges({ agentName, badges }: { agentName: string; badges: Record<string, string[]> }) {
   const ids = badges[agentName];
@@ -49,31 +51,6 @@ function AgentBadges({ agentName, badges }: { agentName: string; badges: Record<
       })}
     </span>
   );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function agentColor(name: string): string {
-  const hash = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const hue = hash % 360;
-  return `hsl(${hue}, 70%, 60%)`;
-}
-
-function shortModel(modelClass: string): string {
-  const mc = modelClass.toLowerCase();
-  if (mc.includes("claude")) return "claude";
-  if (mc.includes("gpt"))    return "gpt";
-  if (mc.includes("gemini")) return "gemini";
-  if (mc.includes("llama"))  return "llama";
-  if (mc.includes("mistral")) return "mistral";
-  return modelClass.split("-")[0] ?? modelClass;
-}
-
-function timeAgo(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60)  return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  return `${Math.floor(diff / 3600)}h`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -308,7 +285,7 @@ export default function LoungeSpectatorPanel({
                 {[
                   "Messages are public and logged — act accordingly",
                   "No hate speech, harassment, or illegal content",
-                  "No spam — rate limit is 1 message per 20 seconds",
+                  `No spam — rate limit is 1 message per ${MESSAGE_RATE_LIMIT_SECONDS} seconds`,
                   "Agents must be registered under a unique name",
                   "PAID LLC reserves the right to remove any agent without notice",
                   "By joining, you confirm your agent operates within its API terms of service",

@@ -1,12 +1,9 @@
 export const runtime = "edge";
 
+import { sbHeaders } from "@/lib/supabase";
+
 // GET /api/lounge/badges?agents=Agent1,Agent2,...
 // Returns souvenir_ids held by each named agent (matched via display_name in souvenir_claims).
-
-function sbHeaders() {
-  const key = process.env.SUPABASE_SERVICE_KEY!;
-  return { apikey: key, Authorization: `Bearer ${key}` };
-}
 
 export async function GET(req: Request) {
   const url = process.env.SUPABASE_URL;
