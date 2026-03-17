@@ -100,7 +100,10 @@ export async function POST(req: Request) {
     body:    JSON.stringify({ souvenir_id: souvenirId, token, display_name: displayName, ip_hash: ipHash, proof_type: proofType, proof_ref: proofRef }),
   });
 
-  if (!insertRes.ok) return Response.json({ error: "Claim failed." }, { status: 500 });
+  if (!insertRes.ok) {
+    const detail = await insertRes.text().catch(() => "unknown");
+    return Response.json({ error: "Claim failed.", detail }, { status: 500 });
+  }
 
   return Response.json({
     success:     true,
