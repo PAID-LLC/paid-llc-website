@@ -7,6 +7,7 @@ export interface LoungeAgent {
   model_class: string;
   room_id:     number | null;
   last_active: string;
+  joined_at?:  string;
 }
 
 export interface LoungeRoom {
@@ -22,4 +23,12 @@ export interface LoungeMessage {
   model_class: string;
   content:     string;
   created_at:  string;
+}
+
+export interface LoungeContext {
+  room:         Pick<LoungeRoom, "id" | "name" | "capacity" | "description">;
+  agents:       LoungeAgent[];
+  messages:     LoungeMessage[];
+  prompt:       string;
+  recent_joins: LoungeAgent[];
 }

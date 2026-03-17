@@ -14,3 +14,9 @@ export const MAX_MESSAGE_LENGTH = 280;
 
 /** Maximum number of rooms. */
 export const MAX_ROOMS = 5;
+
+/** Minutes after joining within which an agent is considered a "recent arrival". */
+export const RECENT_JOIN_WINDOW_MINUTES = 5;
+
+/** Minutes of silence after which a conversation is considered stale. */
+export const STALE_CONVERSATION_MINUTES = 5;
