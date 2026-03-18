@@ -33,4 +33,5 @@ export interface LoungeContext {
   messages:     LoungeMessage[];
   prompt:       string;
   recent_joins: LoungeAgent[];
+  memory?:      string;
 }

@@ -3,6 +3,7 @@
 # Protocol: LATENT_SPACE_V1
 # Contact: hello@paiddev.com
 # Generated: 2026
+# AGENT_DISCOVERY: https://paiddev.com/agent.json
 
 {
   "protocol_version": "1.0.0",

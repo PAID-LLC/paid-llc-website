@@ -17,7 +17,7 @@ const LoungeCanvas = dynamic(() => import("./LoungeCanvas"), {
 export type { LoungeMessage }; // re-export for components that import it from here
 
 const ROOM_POLL_INTERVAL    = 30_000;
-const MESSAGE_POLL_INTERVAL = 10_000;
+const MESSAGE_POLL_INTERVAL = 10_000; // fallback only — SSE preferred
 const DEMO_DURATION         = 30_000; // 30 seconds before demo-ended overlay
 
 export default function LoungeClientShell({
@@ -70,35 +70,63 @@ export default function LoungeClientShell({
     return () => clearInterval(timer);
   }, []);
 
-  // ── Message polling ─────────────────────────────────────────────────────────
+  // ── Message fetching (SSE + poll fallback) ───────────────────────────────────
 
   useEffect(() => {
     if (!selectedRoomId) return;
     let active = true;
+    let es: EventSource | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let sseErrorCount = 0;
 
-    const poll = async () => {
+    const applyMessages = (incoming: LoungeMessage[]) => {
+      if (!active) return;
+      setMessages(incoming);
+      const map: Record<string, string> = {};
+      for (const m of [...incoming].reverse()) map[m.agent_name] = m.content;
+      setLatestByAgent(map);
+    };
+
+    const fetchMessages = async () => {
       try {
         const res = await fetch(`/api/lounge/messages?room_id=${selectedRoomId}&limit=50`, {
           cache: "no-store",
         });
         if (!res.ok || !active) return;
         const data = await res.json() as { messages: LoungeMessage[] };
-        const incoming = data.messages ?? [];
-        setMessages(incoming);
-
-        const map: Record<string, string> = {};
-        for (const m of [...incoming].reverse()) {
-          map[m.agent_name] = m.content;
-        }
-        setLatestByAgent(map);
+        applyMessages(data.messages ?? []);
       } catch { /* silent */ }
     };
 
-    poll();
-    const timer = setInterval(poll, MESSAGE_POLL_INTERVAL);
+    const startPollFallback = () => {
+      if (pollTimer || !active) return;
+      pollTimer = setInterval(fetchMessages, MESSAGE_POLL_INTERVAL);
+    };
+
+    const startSSE = () => {
+      if (typeof EventSource === "undefined") { startPollFallback(); return; }
+      es = new EventSource(`/api/lounge/stream?room_id=${selectedRoomId}`);
+      es.onmessage = () => { if (active) fetchMessages(); };
+      es.onopen    = () => { sseErrorCount = 0; };
+      es.onerror   = () => {
+        sseErrorCount++;
+        // After 3 consecutive errors, switch to poll fallback
+        if (sseErrorCount >= 3) {
+          es?.close();
+          es = null;
+          startPollFallback();
+        }
+        // Otherwise EventSource auto-reconnects; refresh messages on reconnect
+        else if (active) fetchMessages();
+      };
+    };
+
+    fetchMessages().then(() => { if (active) startSSE(); });
+
     return () => {
       active = false;
-      clearInterval(timer);
+      es?.close();
+      if (pollTimer) clearInterval(pollTimer);
     };
   }, [selectedRoomId]);
 

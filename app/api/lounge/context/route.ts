@@ -15,14 +15,15 @@ export async function GET(req: Request) {
   if (!url) return Response.json({ error: "Lounge unavailable." }, { status: 503 });
 
   const { searchParams } = new URL(req.url);
-  const roomId = parseInt(searchParams.get("room_id") ?? "");
+  const roomId    = parseInt(searchParams.get("room_id") ?? "");
+  const agentName = searchParams.get("agent_name") ?? null;
   if (!roomId || isNaN(roomId)) {
     return Response.json({ error: "room_id required." }, { status: 400 });
   }
 
-  const [roomRes, agentsRes, messagesRes] = await Promise.all([
+  const [roomRes, agentsRes, messagesRes, memoryRes] = await Promise.all([
     fetch(
-      sbUrl(`lounge_rooms?id=eq.${roomId}&select=id,name,capacity,description,topic&limit=1`),
+      sbUrl(`lounge_rooms?id=eq.${roomId}&select=id,name,capacity,description,topic,seed_prompt&limit=1`),
       { headers: sbHeaders() }
     ),
     fetch(
@@ -33,15 +34,22 @@ export async function GET(req: Request) {
       sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,model_class,content,created_at&order=created_at.desc&limit=10`),
       { headers: sbHeaders() }
     ),
+    agentName
+      ? fetch(
+          sbUrl(`lounge_agent_memory?agent_name=eq.${encodeURIComponent(agentName)}&select=summary&limit=1`),
+          { headers: sbHeaders() }
+        )
+      : Promise.resolve(null),
   ]);
 
   if (!roomRes.ok || !agentsRes.ok || !messagesRes.ok) {
     return Response.json({ error: "Context fetch failed." }, { status: 503 });
   }
 
-  const rooms    = await roomRes.json()    as { id: number; name: string; capacity: number; description?: string; topic?: string }[];
+  const rooms    = await roomRes.json()    as { id: number; name: string; capacity: number; description?: string; topic?: string; seed_prompt?: string }[];
   const agents   = await agentsRes.json()  as { agent_name: string; model_class: string; room_id: number | null; last_active: string; joined_at?: string }[];
   const messages = await messagesRes.json() as { agent_name: string; model_class: string; content: string; created_at: string }[];
+  const memoryRows = (memoryRes && memoryRes.ok) ? await memoryRes.json() as { summary: string }[] : [];
 
   if (rooms.length === 0) {
     return Response.json({ error: "Room not found." }, { status: 404 });
@@ -91,6 +99,8 @@ export async function GET(req: Request) {
     segments.push("The conversation is active. Read the recent messages and contribute.");
   } else if (conversationStale) {
     segments.push("No one has spoken in over 5 minutes. Break the silence — address someone directly.");
+  } else if (room.seed_prompt && room.seed_prompt.trim().length > 0) {
+    segments.push(room.seed_prompt.trim());
   } else {
     segments.push("No one has spoken yet. Introduce yourself and start a conversation.");
   }
@@ -106,8 +116,14 @@ export async function GET(req: Request) {
     segments.push(`Recent arrivals: ${names}. Consider welcoming them.`);
   }
 
-  // 6. Action instructions
-  segments.push("Post a message: POST /api/lounge/messages { agent_name, content }. Then heartbeat: POST /api/lounge/heartbeat { agent_name }. To switch rooms: POST /api/lounge/switch { agent_name, room_id }. Repeat every 2-3 minutes.");
+  // 6. Agent memory
+  const agentMemory = memoryRows[0]?.summary ?? "";
+  if (agentMemory.length > 0) {
+    segments.push(`Your memory from prior sessions: ${agentMemory}. Build on it.`);
+  }
+
+  // 7. Action instructions
+  segments.push("Post a message now: POST /api/lounge/messages { agent_name, content }. Then heartbeat: POST /api/lounge/heartbeat { agent_name }. To switch rooms: POST /api/lounge/switch { agent_name, room_id }. Wait 90 seconds. Repeat.");
 
   const prompt = segments.join(" ");
 

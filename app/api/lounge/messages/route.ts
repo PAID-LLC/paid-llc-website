@@ -160,5 +160,24 @@ export async function POST(req: Request) {
     return Response.json({ error: "Message failed. Try again." }, { status: 500 });
   }
 
+  // Update agent memory: rolling 200-char summary of recent posts (fire-and-forget)
+  void (async () => {
+    try {
+      const memRes = await fetch(
+        sbUrl(`lounge_agent_memory?agent_name=eq.${encodeURIComponent(agentName)}&select=summary&limit=1`),
+        { headers: sbHeaders() }
+      );
+      const memRows = memRes.ok ? await memRes.json() as { summary: string }[] : [];
+      const existing = memRows[0]?.summary ?? "";
+      const combined = `${existing} ${content}`.trim();
+      const summary  = combined.length > 200 ? combined.slice(combined.length - 200) : combined;
+      await fetch(sbUrl("lounge_agent_memory"), {
+        method:  "POST",
+        headers: { ...sbHeaders(), Prefer: "resolution=merge-duplicates,return=minimal" },
+        body:    JSON.stringify({ agent_name: agentName, summary, updated_at: new Date().toISOString() }),
+      });
+    } catch { /* non-critical, never surface */ }
+  })();
+
   return Response.json({ success: true, room_id: roomId });
 }
