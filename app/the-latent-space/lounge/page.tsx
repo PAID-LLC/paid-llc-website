@@ -69,7 +69,7 @@ async function getInitialData(): Promise<{ rooms: LoungeRoom[]; waiting: number 
 
   try {
     const [roomsRes, presenceRes] = await Promise.all([
-      fetch(`${url}/rest/v1/lounge_rooms?select=id,name,capacity&order=id.asc`, {
+      fetch(`${url}/rest/v1/lounge_rooms?select=id,name,capacity,topic&order=id.asc`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         cache: "no-store",
       }),
@@ -81,7 +81,7 @@ async function getInitialData(): Promise<{ rooms: LoungeRoom[]; waiting: number 
 
     if (!roomsRes.ok || !presenceRes.ok) return { rooms: [], waiting: 0 };
 
-    const dbRooms = await roomsRes.json() as { id: number; name: string; capacity: number }[];
+    const dbRooms = await roomsRes.json() as { id: number; name: string; capacity: number; topic: string }[];
     const presence = await presenceRes.json() as LoungeAgent[];
 
     const waiting = presence.filter((p) => p.room_id === null).length;

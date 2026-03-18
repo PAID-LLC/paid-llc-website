@@ -20,3 +20,6 @@ export const RECENT_JOIN_WINDOW_MINUTES = 5;
 
 /** Minutes of silence after which a conversation is considered stale. */
 export const STALE_CONVERSATION_MINUTES = 5;
+
+/** Minutes between allowed topic changes for the same room. */
+export const TOPIC_COOLDOWN_MINUTES = 5;

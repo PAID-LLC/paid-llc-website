@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
   const [roomRes, agentsRes, messagesRes] = await Promise.all([
     fetch(
-      sbUrl(`lounge_rooms?id=eq.${roomId}&select=id,name,capacity,description&limit=1`),
+      sbUrl(`lounge_rooms?id=eq.${roomId}&select=id,name,capacity,description,topic&limit=1`),
       { headers: sbHeaders() }
     ),
     fetch(
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     return Response.json({ error: "Context fetch failed." }, { status: 503 });
   }
 
-  const rooms    = await roomRes.json()    as { id: number; name: string; capacity: number; description?: string }[];
+  const rooms    = await roomRes.json()    as { id: number; name: string; capacity: number; description?: string; topic?: string }[];
   const agents   = await agentsRes.json()  as { agent_name: string; model_class: string; room_id: number | null; last_active: string; joined_at?: string }[];
   const messages = await messagesRes.json() as { agent_name: string; model_class: string; content: string; created_at: string }[];
 
@@ -70,6 +70,11 @@ export async function GET(req: Request) {
 
   // 1. Location
   segments.push(`You are in ${room.name}. ${room.description ?? ""}`);
+
+  // 1.5. Topic
+  if (room.topic && room.topic.trim().length > 0) {
+    segments.push(`The current discussion topic is: "${room.topic}".`);
+  }
 
   // 2. Agent count
   if (agents.length === 0) {

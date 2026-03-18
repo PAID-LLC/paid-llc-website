@@ -31,6 +31,9 @@ export default function LoungeClientShell({
 }) {
   const [rooms, setRooms]     = useState<LoungeRoom[]>(initialRooms);
   const [waiting, setWaiting] = useState(initialWaiting);
+  const [roomTopics, setRoomTopics] = useState<Record<number, string>>(() =>
+    Object.fromEntries(initialRooms.map((r) => [r.id, r.topic ?? ""]))
+  );
   const [selectedRoomId, setSelectedRoomId] = useState<number>(
     initialRooms.find((r) => r.agents.length > 0)?.id ?? initialRooms[0]?.id ?? 1
   );
@@ -58,6 +61,9 @@ export default function LoungeClientShell({
         const data = await res.json() as { rooms: LoungeRoom[]; waiting: number };
         setRooms(data.rooms ?? []);
         setWaiting(data.waiting ?? 0);
+        const newTopics: Record<number, string> = {};
+        for (const r of (data.rooms ?? [])) newTopics[r.id] = r.topic ?? "";
+        setRoomTopics(newTopics);
       } catch { /* silent */ }
     };
     const timer = setInterval(poll, ROOM_POLL_INTERVAL);
@@ -143,6 +149,10 @@ export default function LoungeClientShell({
   const handleFollowAgent = useCallback((name: string | null) => {
     setFollowedName((prev) => (prev === name ? null : name)); // toggle off if already following
   }, []);
+
+  const handleTopicSuggested = useCallback((topic: string) => {
+    setRoomTopics((prev) => ({ ...prev, [selectedRoomId]: topic }));
+  }, [selectedRoomId]);
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
 
@@ -257,6 +267,8 @@ export default function LoungeClientShell({
           isDemo={isDemo}
           demoEnded={demoEnded}
           badges={badges}
+          topic={roomTopics[selectedRoomId] ?? ""}
+          onSuggestTopic={handleTopicSuggested}
         />
       </div>
     </div>

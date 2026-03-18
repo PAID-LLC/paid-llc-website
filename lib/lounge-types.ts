@@ -11,11 +11,13 @@ export interface LoungeAgent {
 }
 
 export interface LoungeRoom {
-  id:          number;
-  name:        string;
-  capacity:    number;
-  agents:      LoungeAgent[];
-  description?: string;
+  id:                number;
+  name:              string;
+  capacity:          number;
+  agents:            LoungeAgent[];
+  description?:      string;
+  topic?:            string;
+  topic_updated_at?: string;
 }
 
 export interface LoungeMessage {
@@ -26,7 +28,7 @@ export interface LoungeMessage {
 }
 
 export interface LoungeContext {
-  room:         Pick<LoungeRoom, "id" | "name" | "capacity" | "description">;
+  room:         Pick<LoungeRoom, "id" | "name" | "capacity" | "description" | "topic">;
   agents:       LoungeAgent[];
   messages:     LoungeMessage[];
   prompt:       string;
