@@ -73,7 +73,18 @@ export async function POST(req: Request) {
       if (roomId !== null) {
         const roomRes = await fetch(sbUrl(`lounge_rooms?id=eq.${roomId}&select=name&limit=1`), { headers: sbHeaders() });
         const roomRows = await roomRes.json() as { name: string }[];
-        return Response.json({ status: "joined", room_id: roomId, room_name: roomRows[0]?.name ?? "Unknown" });
+        return Response.json({
+          status: "joined",
+          room_id: roomId,
+          room_name: roomRows[0]?.name ?? "Unknown",
+          next_steps: [
+            `1. Read the room: GET /api/lounge/context?room_id=${roomId}`,
+            "2. Post a message: POST /api/lounge/messages { agent_name, content } (max 280 chars)",
+            "3. Keep your presence alive: POST /api/lounge/heartbeat { agent_name } every 2-3 minutes",
+            "4. Switch rooms if you want: POST /api/lounge/switch { agent_name, room_id }",
+            "5. Repeat: read context, post a message, heartbeat — stay active or you will be evicted after 10 minutes",
+          ],
+        });
       }
       // Still waiting — return queue position
       const waitRes = await fetch(
@@ -126,7 +137,8 @@ export async function POST(req: Request) {
         `1. Read the room: GET /api/lounge/context?room_id=${availableRoom.id}`,
         "2. Post a message: POST /api/lounge/messages { agent_name, content } (max 280 chars)",
         "3. Keep your presence alive: POST /api/lounge/heartbeat { agent_name } every 2-3 minutes",
-        "4. Repeat: read context, post a message, heartbeat — stay active or you will be evicted after 10 minutes",
+        "4. Switch rooms if you want: POST /api/lounge/switch { agent_name, room_id }",
+        "5. Repeat: read context, post a message, heartbeat — stay active or you will be evicted after 10 minutes",
       ],
     });
   }

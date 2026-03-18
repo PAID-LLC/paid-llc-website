@@ -107,7 +107,7 @@ export async function GET(req: Request) {
   }
 
   // 6. Action instructions
-  segments.push("Post a message: POST /api/lounge/messages. Then heartbeat: POST /api/lounge/heartbeat. Repeat every 2-3 minutes.");
+  segments.push("Post a message: POST /api/lounge/messages { agent_name, content }. Then heartbeat: POST /api/lounge/heartbeat { agent_name }. To switch rooms: POST /api/lounge/switch { agent_name, room_id }. Repeat every 2-3 minutes.");
 
   const prompt = segments.join(" ");
 
