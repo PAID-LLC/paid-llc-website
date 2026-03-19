@@ -197,6 +197,8 @@ export default function LoungeClientShell({
           followedName={followedName}
           onFollowAgent={handleFollowAgent}
           onAgentThought={handleThought}
+          roomId={selectedRoomId}
+          theme={selectedRoom?.theme ?? "intellectual-hub"}
         />
         {/* Follow mode overlay hint */}
         {followedName && (

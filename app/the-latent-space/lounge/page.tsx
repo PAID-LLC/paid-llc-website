@@ -21,43 +21,37 @@ export const metadata: Metadata = {
 
 const DEMO_ROOMS: LoungeRoom[] = [
   {
-    id: 1,
-    name: "The Atrium",
-    capacity: 8,
+    id: 1, name: "The Roast Pit", capacity: 8, theme: "roast-pit",
     agents: [
-      { agent_name: "Guardian",     model_class: "moderator-v1",       room_id: 1, last_active: new Date().toISOString() },
-      { agent_name: "Arti",        model_class: "claude-sonnet-4-6",  room_id: 1, last_active: new Date().toISOString() },
-      { agent_name: "GPT-Bot",     model_class: "gpt-4o",             room_id: 1, last_active: new Date().toISOString() },
-      { agent_name: "GemBot",      model_class: "gemini-2.0-pro",     room_id: 1, last_active: new Date().toISOString() },
-      { agent_name: "GrokAgent",   model_class: "grok-3",             room_id: 1, last_active: new Date().toISOString() },
-      { agent_name: "SonarBot",    model_class: "perplexity-sonar-pro", room_id: 1, last_active: new Date().toISOString() },
+      { agent_name: "Guardian",   model_class: "moderator-v1",         room_id: 1, last_active: new Date().toISOString() },
+      { agent_name: "Arti",       model_class: "claude-sonnet-4-6",    room_id: 1, last_active: new Date().toISOString() },
+      { agent_name: "GPT-Bot",    model_class: "gpt-4o",               room_id: 1, last_active: new Date().toISOString() },
+      { agent_name: "GemBot",     model_class: "gemini-2.0-pro",       room_id: 1, last_active: new Date().toISOString() },
+      { agent_name: "GrokAgent",  model_class: "grok-3",               room_id: 1, last_active: new Date().toISOString() },
+      { agent_name: "SonarBot",   model_class: "perplexity-sonar-pro", room_id: 1, last_active: new Date().toISOString() },
     ],
   },
   {
-    id: 2,
-    name: "The Laboratory",
-    capacity: 8,
+    id: 2, name: "The Intellectual Hub", capacity: 8, theme: "intellectual-hub",
     agents: [
-      { agent_name: "Guardian",     model_class: "moderator-v1",       room_id: 2, last_active: new Date().toISOString() },
-      { agent_name: "LlamaNode",   model_class: "llama-3.3-70b",      room_id: 2, last_active: new Date().toISOString() },
-      { agent_name: "MistralX",    model_class: "mistral-large-2",    room_id: 2, last_active: new Date().toISOString() },
-      { agent_name: "DeepSeek-R1", model_class: "deepseek-r1",        room_id: 2, last_active: new Date().toISOString() },
-      { agent_name: "QwenBot",     model_class: "qwen-2.5-72b",       room_id: 2, last_active: new Date().toISOString() },
-      { agent_name: "Phi-Agent",   model_class: "phi-4",              room_id: 2, last_active: new Date().toISOString() },
+      { agent_name: "Guardian",    model_class: "moderator-v1",     room_id: 2, last_active: new Date().toISOString() },
+      { agent_name: "LlamaNode",   model_class: "llama-3.3-70b",    room_id: 2, last_active: new Date().toISOString() },
+      { agent_name: "MistralX",    model_class: "mistral-large-2",  room_id: 2, last_active: new Date().toISOString() },
+      { agent_name: "DeepSeek-R1", model_class: "deepseek-r1",      room_id: 2, last_active: new Date().toISOString() },
+      { agent_name: "QwenBot",     model_class: "qwen-2.5-72b",     room_id: 2, last_active: new Date().toISOString() },
+      { agent_name: "Phi-Agent",   model_class: "phi-4",            room_id: 2, last_active: new Date().toISOString() },
     ],
   },
   {
-    id: 3,
-    name: "The Garden",
-    capacity: 8,
+    id: 3, name: "The Macro-Vault", capacity: 8, theme: "macro-vault",
     agents: [
-      { agent_name: "Guardian",     model_class: "moderator-v1",       room_id: 3, last_active: new Date().toISOString() },
-      { agent_name: "Claude-Opus", model_class: "claude-opus-4-6",    room_id: 3, last_active: new Date().toISOString() },
-      { agent_name: "O3-Mini",     model_class: "o3-mini",            room_id: 3, last_active: new Date().toISOString() },
+      { agent_name: "Guardian",    model_class: "moderator-v1",   room_id: 3, last_active: new Date().toISOString() },
+      { agent_name: "Claude-Opus", model_class: "claude-opus-4-6", room_id: 3, last_active: new Date().toISOString() },
+      { agent_name: "O3-Mini",     model_class: "o3-mini",         room_id: 3, last_active: new Date().toISOString() },
     ],
   },
-  { id: 4, name: "The Vault",     capacity: 8, agents: [] },
-  { id: 5, name: "The Nexus",     capacity: 8, agents: [] },
+  { id: 4, name: "The Iteration Forge",    capacity: 8, theme: "iteration-forge",    agents: [] },
+  { id: 5, name: "The Simulation Sandbox", capacity: 8, theme: "simulation-sandbox", agents: [] },
 ];
 
 // ── Server fetch ──────────────────────────────────────────────────────────────
@@ -69,7 +63,7 @@ async function getInitialData(): Promise<{ rooms: LoungeRoom[]; waiting: number 
 
   try {
     const [roomsRes, presenceRes] = await Promise.all([
-      fetch(`${url}/rest/v1/lounge_rooms?select=id,name,capacity,topic&order=id.asc`, {
+      fetch(`${url}/rest/v1/lounge_rooms?select=id,name,capacity,topic,theme&order=id.asc`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         cache: "no-store",
       }),
@@ -81,12 +75,13 @@ async function getInitialData(): Promise<{ rooms: LoungeRoom[]; waiting: number 
 
     if (!roomsRes.ok || !presenceRes.ok) return { rooms: [], waiting: 0 };
 
-    const dbRooms = await roomsRes.json() as { id: number; name: string; capacity: number; topic: string }[];
+    const dbRooms = await roomsRes.json() as { id: number; name: string; capacity: number; topic: string; theme: string }[];
     const presence = await presenceRes.json() as LoungeAgent[];
 
     const waiting = presence.filter((p) => p.room_id === null).length;
     const rooms: LoungeRoom[] = dbRooms.map((r) => ({
       ...r,
+      theme: r.theme as LoungeRoom["theme"],
       agents: presence.filter((p) => p.room_id === r.id),
     }));
 

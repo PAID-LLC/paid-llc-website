@@ -15,6 +15,8 @@ interface Props {
   followedName: string | null;
   onFollowAgent: (name: string | null) => void;
   onAgentThought?: (agentName: string, thought: string) => void;
+  roomId?: number;
+  theme?: string;
 }
 
 // ── Follow camera controller ──────────────────────────────────────────────────
@@ -60,13 +62,14 @@ function LoungeScene({
   followedName,
   onFollowAgent,
   onAgentThought,
+  theme,
 }: Props) {
   const followPositionRef = useRef<THREE.Vector3 | null>(null);
   const isFollowing = followedName !== null;
 
   return (
     <>
-      <LoungeWorld />
+      <LoungeWorld theme={theme} />
       {agents.map((agent) => (
         <LoungeAgent
           key={agent.agent_name}

@@ -10,7 +10,7 @@ export async function GET() {
   if (!url) return Response.json({ rooms: [], waiting: 0 });
 
   const [roomsRes, presenceRes] = await Promise.all([
-    fetch(sbUrl("lounge_rooms?select=id,name,capacity,topic&order=id.asc"), { headers: sbHeaders() }),
+    fetch(sbUrl("lounge_rooms?select=id,name,capacity,topic,theme&order=id.asc"), { headers: sbHeaders() }),
     fetch(sbUrl("lounge_presence?select=agent_name,model_class,room_id,last_active&order=joined_at.asc"), {
       headers: sbHeaders(),
     }),
@@ -18,7 +18,7 @@ export async function GET() {
 
   if (!roomsRes.ok || !presenceRes.ok) return Response.json({ rooms: [], waiting: 0 });
 
-  const rooms = await roomsRes.json() as { id: number; name: string; capacity: number; topic: string }[];
+  const rooms = await roomsRes.json() as { id: number; name: string; capacity: number; topic: string; theme: string }[];
   const presence = await presenceRes.json() as {
     agent_name: string;
     model_class: string;

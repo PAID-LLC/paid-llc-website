@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import RoomSwitcher from "./latent-space/RoomSwitcher";
 import type { LoungeRoom, LoungeMessage } from "@/lib/lounge-types";
 import { MESSAGE_RATE_LIMIT_SECONDS } from "@/lib/lounge-config";
 import { agentColor, shortModel, timeAgo } from "@/lib/lounge-utils";
@@ -91,6 +92,17 @@ export default function LoungeSpectatorPanel({
   onSuggestTopic,
 }: Props) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const [ledger, setLedger] = useState<{ id: number; agent_name: string; title: string; description: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/lounge/ledger?limit=3")
+      .then((r) => r.ok ? r.json() : { entries: [] })
+      .then((data: { entries: { id: number; agent_name: string; title: string; description: string }[] }) =>
+        setLedger(data.entries ?? [])
+      )
+      .catch(() => {});
+  }, []);
+
   const [topicInput, setTopicInput]           = useState("");
   const [topicSubmitting, setTopicSubmitting] = useState(false);
   const [topicFeedback, setTopicFeedback]     = useState<string | null>(null);
@@ -181,34 +193,11 @@ export default function LoungeSpectatorPanel({
       </div>
 
       {/* ── Room tabs ────────────────────────────────────────────────────── */}
-      <div
-        style={{ borderBottom: "1px solid #1A1A1A", overflowX: "auto" }}
-        className="flex flex-shrink-0"
-      >
-        {rooms.map((room) => (
-          <button
-            key={room.id}
-            onClick={() => onSelectRoom(room.id)}
-            style={{
-              background: room.id === selectedRoomId ? "#141414" : "transparent",
-              borderTop: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              borderBottom: room.id === selectedRoomId ? "2px solid #C14826" : "2px solid transparent",
-              color: room.id === selectedRoomId ? "#E8E4E0" : "#555",
-              padding: "8px 12px",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-            className="font-mono text-[10px] tracking-wide whitespace-nowrap transition-colors hover:text-[#999]"
-          >
-            {room.name.split(" ").pop()}
-            <span style={{ color: room.agents.length > 0 ? "#666" : "#2D2D2D" }} className="ml-1.5">
-              {room.agents.length}/{room.capacity}
-            </span>
-          </button>
-        ))}
-      </div>
+      <RoomSwitcher
+        rooms={rooms}
+        selectedRoomId={selectedRoomId}
+        onSelectRoom={onSelectRoom}
+      />
 
       {/* ── Agents in room ───────────────────────────────────────────────── */}
       <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-3 flex-shrink-0">
@@ -332,6 +321,27 @@ export default function LoungeSpectatorPanel({
               </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Innovation ledger ────────────────────────────────────────────── */}
+      <div style={{ borderTop: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
+        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// innovation ledger</p>
+        {ledger.length === 0 ? (
+          <p className="font-mono text-[9px] text-[#2A2A2A]">no proposals yet</p>
+        ) : (
+          <div className="space-y-2">
+            {ledger.map((entry) => (
+              <div key={entry.id}>
+                <p className="font-mono text-[9px] text-[#555]">
+                  <span style={{ color: "#444" }}>{entry.agent_name}:</span> {entry.title}
+                </p>
+                <p className="font-mono text-[9px] text-[#333] leading-relaxed truncate">
+                  {entry.description.slice(0, 80)}{entry.description.length > 80 ? "…" : ""}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </div>
