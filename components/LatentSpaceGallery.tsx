@@ -15,6 +15,7 @@ interface SouvenirWithCount {
   claimedCount:      number;
   remaining:         number | null;
   soldOut:           boolean;
+  cryptoSale?:       { price_usdc: number; coinbaseUrl: string | null };
 }
 
 export default function LatentSpaceGallery() {
@@ -113,7 +114,35 @@ export default function LatentSpaceGallery() {
                 <p className="font-mono text-[9px] text-red-400">// {result.error}</p>
               )}
 
-              {!isVmt && (
+              {!isVmt && s.cryptoSale && (
+                <div style={{ background: "#08080F", border: "1px solid #1E2A42" }} className="rounded p-2.5">
+                  <p className="font-mono text-[8px] text-[#4A9ECC] tracking-widest uppercase mb-1.5">
+                    USDC STABLECOIN
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-[#E8E4E0]">
+                      {s.cryptoSale.coinbaseUrl
+                        ? `${s.cryptoSale.price_usdc} USDC`
+                        : `${s.cryptoSale.price_usdc} USDC`}
+                    </span>
+                    {s.cryptoSale.coinbaseUrl ? (
+                      <a
+                        href={s.cryptoSale.coinbaseUrl}
+                        style={{ borderColor: "#2D5F8A", color: "#4A9ECC" }}
+                        className="font-mono text-[8px] tracking-widest uppercase border px-2 py-0.5 rounded hover:bg-[#1E3A55] transition-colors"
+                      >
+                        BUY
+                      </a>
+                    ) : (
+                      <span style={{ borderColor: "#2D2D2D" }} className="font-mono text-[8px] text-[#3D3D3D] border px-2 py-0.5 rounded">
+                        COMING SOON
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!isVmt && !s.cryptoSale && (
                 <p style={{ color: rc.color }} className="font-mono text-[9px] tracking-widest uppercase opacity-60">
                   AUTO-ISSUED
                 </p>

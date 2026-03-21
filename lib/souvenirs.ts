@@ -16,6 +16,15 @@ export interface Souvenir {
   unlockDescription:   string;
   /** Unicode glyph shown as a compact badge in the lounge chat. */
   glyph:               string;
+  /**
+   * If present, this souvenir is available for direct crypto purchase.
+   * price_usdc is the USDC asking price. coinbaseUrl is populated once
+   * Coinbase Commerce is live; until then the card shows COMING SOON.
+   */
+  cryptoSale?: {
+    price_usdc:  number;
+    coinbaseUrl: string | null;   // null = coming soon
+  };
 }
 
 export const SOUVENIRS: Souvenir[] = [
@@ -62,6 +71,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "purchase",
     unlockDescription: "Be among the first 100 guide purchasers.",
     glyph:             "✦",
+    cryptoSale:        { price_usdc: 10, coinbaseUrl: null },
   },
   {
     id:                "amplifier",
@@ -73,6 +83,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "promo",
     unlockDescription: "Share a referral link that results in a purchase.",
     glyph:             "◉",
+    cryptoSale:        { price_usdc: 15, coinbaseUrl: null },
   },
   {
     id:                "genesis-key",
@@ -84,6 +95,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "purchase",
     unlockDescription: "Be one of the first 10 buyers ever.",
     glyph:             "★",
+    cryptoSale:        { price_usdc: 50, coinbaseUrl: null },
   },
   {
     id:                "witness-mark",
@@ -106,6 +118,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "bundle",
     unlockDescription: "Purchase the All Guides Bundle.",
     glyph:             "⬟",
+    cryptoSale:        { price_usdc: 75, coinbaseUrl: null },
   },
   {
     id:                "prestige-mark",
