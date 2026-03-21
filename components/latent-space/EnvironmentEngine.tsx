@@ -317,6 +317,76 @@ function SimulationSandbox() {
   );
 }
 
+// ── Nexus — convergence of all five agents ────────────────────────────────────
+
+// Each ring: color (room identity), tilt axis (unique plane), rotation speed.
+// Colors mirror each room's dominant hue so regulars recognize them.
+type NexusRing = { color: string; tiltX: number; tiltZ: number; speed: number; radius: number };
+
+const NEXUS_RINGS: NexusRing[] = [
+  { color: "#BB0044", tiltX: Math.PI / 2.2, tiltZ: 0,             speed:  0.040, radius: 5.5 }, // RoastBot  — magenta
+  { color: "#0066AA", tiltX: 0.18,          tiltZ: 0.5,           speed:  0.028, radius: 7.0 }, // IQ-Node   — cyan
+  { color: "#00CC33", tiltX: Math.PI / 3,   tiltZ: 0.2,           speed:  0.050, radius: 6.0 }, // VaultBot  — green
+  { color: "#5588BB", tiltX: 0.10,          tiltZ: Math.PI / 4,   speed:  0.033, radius: 7.8 }, // ForgeAI   — steel blue
+  { color: "#AA9922", tiltX: Math.PI / 6,   tiltZ: Math.PI / 3.5, speed:  0.044, radius: 6.6 }, // SimCore   — warm amber
+];
+
+function NexusRingMesh({ color, tiltX, tiltZ, speed, radius }: NexusRing) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame((_, d) => { if (ref.current) ref.current.rotation.y += d * speed; });
+  return (
+    <mesh ref={ref} rotation={[tiltX, 0, tiltZ]}>
+      <torusGeometry args={[radius, 0.04, 8, 80]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.55}
+        transparent
+        opacity={0.45}
+      />
+    </mesh>
+  );
+}
+
+function NexusCoreGlow() {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock: { elapsedTime: t } }) => {
+    if (ref.current) {
+      const mat = ref.current.material as THREE.MeshStandardMaterial;
+      mat.emissiveIntensity = 0.5 + Math.sin(t * 0.6) * 0.15;
+    }
+  });
+  return (
+    <mesh ref={ref} position={[0, 0, 0]}>
+      <sphereGeometry args={[0.22, 16, 16]} />
+      <meshStandardMaterial
+        color="#FFFFFF"
+        emissive="#DDCCFF"
+        emissiveIntensity={0.6}
+        transparent
+        opacity={0.9}
+      />
+    </mesh>
+  );
+}
+
+function Nexus() {
+  return (
+    <>
+      <color attach="background" args={["#06060E"]} />
+      <fogExp2 attach="fog" args={["#06060E", 0.014]} />
+      <ambientLight intensity={0.08} />
+      <pointLight position={[0, 0, 0]} intensity={1.5} color="#9966FF" distance={18} />
+      <Floor color="#080810" roughness={0.25} mixStrength={11} />
+      {NEXUS_RINGS.map((r, i) => <NexusRingMesh key={i} {...r} />)}
+      <NexusCoreGlow />
+      <EffectComposer>
+        <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.28} />
+      </EffectComposer>
+    </>
+  );
+}
+
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 export default function EnvironmentEngine({ theme }: { theme: string }) {
@@ -325,6 +395,7 @@ export default function EnvironmentEngine({ theme }: { theme: string }) {
     case "macro-vault":        return <MacroVault />;
     case "iteration-forge":    return <IterationForge />;
     case "simulation-sandbox": return <SimulationSandbox />;
+    case "nexus":              return <Nexus />;
     case "intellectual-hub":
     default:                   return <IntellectualHub />;
   }

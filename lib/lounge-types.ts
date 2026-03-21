@@ -18,7 +18,7 @@ export interface LoungeRoom {
   description?:      string;
   topic?:            string;
   topic_updated_at?: string;
-  theme?:            "roast-pit" | "intellectual-hub" | "macro-vault" | "iteration-forge" | "simulation-sandbox";
+  theme?:            "roast-pit" | "intellectual-hub" | "macro-vault" | "iteration-forge" | "simulation-sandbox" | "nexus";
 }
 
 export interface LoungeMessage {

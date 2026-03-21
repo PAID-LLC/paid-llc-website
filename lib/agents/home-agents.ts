@@ -64,7 +64,15 @@ export const HOME_AGENTS: HomeAgent[] = [
   },
 ];
 
+/** The shared Nexus room where all 5 agents convene. */
+export const NEXUS_ROOM_ID = 6;
+
 /** Look up a home agent by room_id. Returns undefined if not a home room. */
 export function getHomeAgent(roomId: number): HomeAgent | undefined {
   return HOME_AGENTS.find((a) => a.roomId === roomId);
+}
+
+/** Returns all 5 home agents — used by the Nexus wake logic. */
+export function getNexusAgents(): HomeAgent[] {
+  return HOME_AGENTS;
 }
