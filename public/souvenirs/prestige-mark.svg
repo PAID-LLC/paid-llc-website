@@ -1,28 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <!-- Outer rings (RARE = three outer rings) -->
   <circle cx="100" cy="100" r="90" fill="none" stroke="#7B5EA7" stroke-width="2"    stroke-dasharray="5 3"/>
   <circle cx="100" cy="100" r="83" fill="none" stroke="#7B5EA7" stroke-width="0.75" opacity="0.4"/>
   <circle cx="100" cy="100" r="76" fill="none" stroke="#7B5EA7" stroke-width="0.5"  opacity="0.2"/>
-  <!-- Circular text path -->
   <defs>
     <path id="pmp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
   </defs>
   <text font-family="Courier New,monospace" font-size="9" fill="#7B5EA7" letter-spacing="2.5">
     <textPath href="#pmp">PRESTIGE MARK • RARE • PAIDDEV •  </textPath>
   </text>
-  <!-- Half-circle motif — left half filled (◑ glyph made literal) -->
   <path d="M100,58 A42,42 0 0,0 100,142 Z" fill="#7B5EA7" opacity="0.14"/>
-  <!-- Circle outline -->
   <circle cx="100" cy="100" r="42" fill="none" stroke="#7B5EA7" stroke-width="1.5" opacity="0.85"/>
-  <!-- Vertical dividing line -->
   <line x1="100" y1="58" x2="100" y2="142" stroke="#7B5EA7" stroke-width="0.75" opacity="0.45"/>
-  <!-- Diamond node at top -->
   <polygon points="100,51 104.5,58 100,65 95.5,58" fill="#7B5EA7" opacity="0.85"/>
-  <!-- Nodes at bottom and sides -->
   <circle cx="100" cy="142" r="2.5" fill="#7B5EA7" opacity="0.75"/>
   <circle cx="58"  cy="100" r="2.5" fill="#7B5EA7" opacity="0.75"/>
   <circle cx="142" cy="100" r="2.5" fill="#7B5EA7" opacity="0.75"/>
-  <!-- Center text -->
   <text x="100" y="107" font-family="Courier New,monospace" font-size="26" font-weight="bold" fill="#7B5EA7" text-anchor="middle">PM</text>
   <text x="100" y="121" font-family="Courier New,monospace" font-size="6" fill="#7B5EA7" text-anchor="middle" letter-spacing="1" opacity="0.5">RECOGNIZED</text>
 </svg>

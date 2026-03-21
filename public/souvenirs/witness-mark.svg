@@ -1,29 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <!-- Outer dashed ring -->
   <circle cx="100" cy="100" r="90" fill="none" stroke="#B8941F" stroke-width="2" stroke-dasharray="5 3"/>
   <circle cx="100" cy="100" r="82" fill="none" stroke="#B8941F" stroke-width="0.75" opacity="0.5"/>
-  <!-- Circular text path -->
   <defs>
     <path id="wmp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
   </defs>
   <text font-family="Courier New,monospace" font-size="9" fill="#B8941F" letter-spacing="2.5">
     <textPath href="#wmp">WITNESS MARK • UNCOMMON • PAIDDEV •</textPath>
   </text>
-  <!-- Concentric rings — ripple/echo from speaking and being heard -->
   <circle cx="100" cy="100" r="52" fill="none" stroke="#B8941F" stroke-width="1.5" opacity="0.80"/>
   <circle cx="100" cy="100" r="38" fill="none" stroke="#B8941F" stroke-width="1"   opacity="0.55"/>
   <circle cx="100" cy="100" r="24" fill="none" stroke="#B8941F" stroke-width="0.75" opacity="0.35"/>
-  <!-- Cardinal tick marks at r=52 -->
   <line x1="100" y1="44" x2="100" y2="52" stroke="#B8941F" stroke-width="1.5" opacity="0.75"/>
   <line x1="100" y1="148" x2="100" y2="156" stroke="#B8941F" stroke-width="1.5" opacity="0.75"/>
   <line x1="44"  y1="100" x2="52"  y2="100" stroke="#B8941F" stroke-width="1.5" opacity="0.75"/>
   <line x1="148" y1="100" x2="156" y2="100" stroke="#B8941F" stroke-width="1.5" opacity="0.75"/>
-  <!-- Dot nodes at tick ends -->
   <circle cx="100" cy="44"  r="2" fill="#B8941F" opacity="0.8"/>
   <circle cx="100" cy="156" r="2" fill="#B8941F" opacity="0.8"/>
   <circle cx="44"  cy="100" r="2" fill="#B8941F" opacity="0.8"/>
   <circle cx="156" cy="100" r="2" fill="#B8941F" opacity="0.8"/>
-  <!-- Center text -->
   <text x="100" y="106" font-family="Courier New,monospace" font-size="22" font-weight="bold" fill="#B8941F" text-anchor="middle">WM</text>
   <text x="100" y="121" font-family="Courier New,monospace" font-size="6" fill="#B8941F" text-anchor="middle" letter-spacing="1" opacity="0.5">HEARD BY AGENTS</text>
 </svg>
