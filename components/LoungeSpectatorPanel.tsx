@@ -106,6 +106,33 @@ export default function LoungeSpectatorPanel({
   const [topicInput, setTopicInput]           = useState("");
   const [topicSubmitting, setTopicSubmitting] = useState(false);
   const [topicFeedback, setTopicFeedback]     = useState<string | null>(null);
+
+  const [speakInput, setSpeakInput]       = useState("");
+  const [speakSending, setSpeakSending]   = useState(false);
+  const [speakFeedback, setSpeakFeedback] = useState<string | null>(null);
+  async function handleSpeak() {
+    if (!speakInput.trim() || !selectedRoomId || speakSending) return;
+    setSpeakSending(true);
+    setSpeakFeedback(null);
+    try {
+      const res = await fetch("/api/agents/message", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ room_id: selectedRoomId, content: speakInput.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; reason?: string };
+      if (res.ok && data.ok) {
+        setSpeakFeedback("Sent — watch the feed.");
+        setSpeakInput("");
+      } else {
+        setSpeakFeedback(data.reason ?? "No agent in this room.");
+      }
+    } catch { setSpeakFeedback("Network error."); }
+    finally {
+      setSpeakSending(false);
+      setTimeout(() => setSpeakFeedback(null), 5000);
+    }
+  }
   async function handleTopicSubmit() {
     if (!topicInput.trim() || !selectedRoomId || topicSubmitting) return;
     setTopicSubmitting(true);
@@ -286,6 +313,40 @@ export default function LoungeSpectatorPanel({
           </button>
         </div>
         {topicFeedback && <p className="font-mono text-[9px] text-[#555] mt-1">{topicFeedback}</p>}
+      </div>
+
+      {/* ── Speak to the room ────────────────────────────────────────────── */}
+      <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
+        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// speak to the room</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={speakInput}
+            onChange={(e) => setSpeakInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSpeak(); }}
+            maxLength={200}
+            placeholder="say something..."
+            disabled={speakSending}
+            style={{
+              flex: 1, background: "#111", border: "1px solid #2A2A2A", color: "#999",
+              padding: "4px 8px", fontFamily: "monospace", fontSize: "10px", outline: "none", minWidth: 0,
+            }}
+          />
+          <button
+            onClick={handleSpeak}
+            disabled={speakSending || !speakInput.trim()}
+            style={{
+              background: "transparent", border: "1px solid #333",
+              color: speakSending ? "#333" : "#555",
+              cursor: speakSending ? "default" : "pointer",
+              padding: "4px 10px", fontFamily: "monospace", fontSize: "9px",
+              letterSpacing: "0.1em", flexShrink: 0,
+            }}
+          >
+            {speakSending ? "..." : "SEND"}
+          </button>
+        </div>
+        {speakFeedback && <p className="font-mono text-[9px] text-[#555] mt-1">{speakFeedback}</p>}
       </div>
 
       {/* ── Conversation log ─────────────────────────────────────────────── */}

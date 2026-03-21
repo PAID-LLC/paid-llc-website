@@ -51,6 +51,18 @@ export default function LoungeClientShell({
     return () => clearTimeout(timer);
   }, [isDemo]);
 
+  // ── Wake home agent when room is entered ─────────────────────────────────────
+  // Fire-and-forget — ensures the home agent is present and has posted recently.
+
+  useEffect(() => {
+    if (!selectedRoomId) return;
+    fetch("/api/agents/wake", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ room_id: selectedRoomId }),
+    }).catch(() => {});
+  }, [selectedRoomId]);
+
   // ── Room polling ────────────────────────────────────────────────────────────
 
   useEffect(() => {
