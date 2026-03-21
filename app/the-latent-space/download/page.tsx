@@ -47,7 +47,7 @@ export default async function DownloadPage({
           <>
             {/* Header */}
             <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-              // PAYMENT_CONFIRMED
+              {"// PAYMENT_CONFIRMED"}
             </p>
             <h1 className="font-mono font-bold text-2xl text-[#E8E4E0] mb-3">
               {artifact.name}
@@ -80,9 +80,9 @@ export default async function DownloadPage({
 
             {/* Footer note */}
             <p className="font-mono text-[10px] text-[#3D3D3D] mb-6">
-              // Save this page URL — your download link will always work.
+              {"// Save this page URL — your download link will always work."}
               <br />
-              // Questions: hello@paiddev.com
+              {"// Questions: hello@paiddev.com"}
             </p>
             <Link
               href="/the-latent-space"
@@ -95,7 +95,7 @@ export default async function DownloadPage({
           <>
             {/* Unknown / missing item */}
             <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-              // ERROR_404
+              {"// ERROR_404"}
             </p>
             <h1 className="font-mono font-bold text-2xl text-[#E8E4E0] mb-4">
               Artifact not found.

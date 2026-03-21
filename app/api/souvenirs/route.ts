@@ -9,7 +9,7 @@ export async function GET() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
 
-  let counts: Record<string, number> = {};
+  const counts: Record<string, number> = {};
   if (url && key) {
     const res = await fetch(
       sbUrl("souvenir_claims?select=souvenir_id"),

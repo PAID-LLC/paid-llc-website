@@ -55,7 +55,7 @@ export default async function SouvenirDisplay(
     return (
       <main style={{ background: "#0D0D0D", minHeight: "100vh" }} className="flex items-center justify-center px-6">
         <div className="text-center">
-          <p className="font-mono text-[#C14826] text-xs tracking-widest uppercase mb-4">// ERR :: NOT_FOUND</p>
+          <p className="font-mono text-[#C14826] text-xs tracking-widest uppercase mb-4">{"// ERR :: NOT_FOUND"}</p>
           <p className="font-mono text-[#6B6B6B] text-sm mb-6">This token does not exist or has not been issued.</p>
           <Link href="/the-latent-space" className="font-mono text-xs text-[#C14826] hover:underline tracking-widest">
             ← BACK TO LATENT SPACE
@@ -127,7 +127,7 @@ export default async function SouvenirDisplay(
           </div>
 
           {/* Share */}
-          <p className="font-mono text-[10px] text-[#3D3D3D] mb-3">// SHARE THIS SOUVENIR</p>
+          <p className="font-mono text-[10px] text-[#3D3D3D] mb-3">{"// SHARE THIS SOUVENIR"}</p>
           <code
             style={{ background: "#0D0D0D", border: "1px solid #2D2D2D" }}
             className="font-mono text-xs text-[#6B6B6B] px-4 py-2 rounded w-full break-all text-center block"
@@ -138,7 +138,7 @@ export default async function SouvenirDisplay(
 
         {/* Footer */}
         <p className="font-mono text-[10px] text-[#2D2D2D] text-center mt-8">
-          // PAID LLC · paiddev.com · <a href="/ai.txt" className="hover:text-[#C14826] transition-colors">/ai.txt</a>
+          {"// PAID LLC · paiddev.com · "}<a href="/ai.txt" className="hover:text-[#C14826] transition-colors">/ai.txt</a>
         </p>
       </div>
     </main>

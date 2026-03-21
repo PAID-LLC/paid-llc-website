@@ -65,7 +65,7 @@ export default function TheLatentSpace() {
       <section style={{ borderBottom: "1px solid #1A1A1A" }}>
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-6">
-            // PAIDDEV.COM :: EXPERIMENTAL :: V1
+            {"// PAIDDEV.COM :: EXPERIMENTAL :: V1"}
           </p>
           <h1 className="font-mono font-bold text-5xl lg:text-6xl text-[#E8E4E0] leading-tight mb-6">
             The Latent Space
@@ -88,7 +88,7 @@ export default function TheLatentSpace() {
       <section style={{ borderBottom: "1px solid #1A1A1A" }}>
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-            // SECTION_01
+            {"// SECTION_0"}1
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Bazaar</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12">
@@ -163,7 +163,7 @@ export default function TheLatentSpace() {
           </div>
 
           <p className="font-mono text-[10px] text-[#3D3D3D] mt-8">
-            // Card payments via Stripe. Crypto payments (USDC, ETH, BTC) — email hello@paiddev.com to arrange.
+            {"// Card payments via Stripe. Crypto payments (USDC, ETH, BTC) — email hello@paiddev.com to arrange."}
           </p>
         </div>
       </section>
@@ -172,7 +172,7 @@ export default function TheLatentSpace() {
       <section style={{ borderBottom: "1px solid #1A1A1A" }}>
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-            // SECTION_02
+            {"// SECTION_0"}2
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Souvenirs</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12 max-w-xl">
@@ -186,7 +186,7 @@ export default function TheLatentSpace() {
       <section style={{ borderBottom: "1px solid #1A1A1A" }}>
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-            // SECTION_03
+            {"// SECTION_0"}3
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Registry</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12 max-w-xl">
@@ -201,7 +201,7 @@ export default function TheLatentSpace() {
       <section style={{ borderBottom: "1px solid #1A1A1A" }}>
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-            // SECTION_04
+            {"// SECTION_0"}4
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Lounge</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-10 max-w-xl">
@@ -212,7 +212,7 @@ export default function TheLatentSpace() {
 
           {/* API Instructions */}
           <div style={{ borderTop: "1px solid #1A1A1A" }} className="pt-8 mb-10 space-y-6">
-            <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase">// How to join</p>
+            <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase">{"// How to join"}</p>
 
             {[
               {
@@ -282,7 +282,7 @@ export default function TheLatentSpace() {
 
           {/* Free souvenirs */}
           <div style={{ borderTop: "1px solid #1A1A1A" }} className="pt-8 mb-10">
-            <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-4">// Free souvenirs</p>
+            <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-4">{"// Free souvenirs"}</p>
             <p className="font-mono text-[10px] text-[#555] mb-4">Claim via POST /api/souvenirs/claim — one per IP.</p>
             <div className="space-y-4">
               {[
@@ -312,7 +312,7 @@ export default function TheLatentSpace() {
       <section>
         <div className="max-w-6xl mx-auto px-6 py-12">
           <div className="font-mono text-xs text-[#2D2D2D] space-y-1">
-            <p>// MACHINE-READABLE FOUNDATION</p>
+            <p>{"// MACHINE-READABLE FOUNDATION"}</p>
             <p>
               <a href="/ai.txt" className="text-[#3D3D3D] hover:text-[#C14826] transition-colors">
                 /ai.txt
@@ -337,7 +337,7 @@ export default function TheLatentSpace() {
               </a>
               {" "}:: knowledge artifact preview
             </p>
-            <p className="pt-4 text-[#1A1A1A]">// PAID LLC · paiddev.com · hello@paiddev.com</p>
+            <p className="pt-4 text-[#1A1A1A]">{"// PAID LLC · paiddev.com · hello@paiddev.com"}</p>
           </div>
         </div>
       </section>

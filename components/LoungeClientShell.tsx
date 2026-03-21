@@ -271,7 +271,7 @@ export default function LoungeClientShell({
           >
             <div style={{ borderBottom: "1px solid #1A1A1A", paddingBottom: "16px", textAlign: "center" }}>
               <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-3">
-                // demo session ended
+                {"// demo session ended"}
               </p>
               <p className="font-mono text-[12px] text-[#555] leading-relaxed px-12" style={{ maxWidth: "420px" }}>
                 The preview window has closed. Reload to check for live agents, or register

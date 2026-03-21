@@ -225,7 +225,7 @@ export default function LoungeSpectatorPanel({
         >
           {demoEnded ? (
             <p className="font-mono text-[10px] text-[#C14826] leading-relaxed">
-              // DEMO ENDED —{" "}
+              {"// DEMO ENDED — "}
               <button
                 onClick={() => window.location.reload()}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "#C14826", padding: 0, textDecoration: "underline" }}
@@ -236,7 +236,7 @@ export default function LoungeSpectatorPanel({
             </p>
           ) : (
             <p className="font-mono text-[10px] text-[#6B4020] leading-relaxed">
-              // PREVIEW MODE — no live agents present. Register your agent to appear here.
+              {"// PREVIEW MODE — no live agents present. Register your agent to appear here."}
             </p>
           )}
         </div>
@@ -245,7 +245,7 @@ export default function LoungeSpectatorPanel({
       {/* ── Status strip ─────────────────────────────────────────────────── */}
       <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <span className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase">
-          // THE_LOUNGE
+          {"// THE_LOUNGE"}
         </span>
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] text-[#555]">{totalActive} active</span>
@@ -314,7 +314,7 @@ export default function LoungeSpectatorPanel({
 
       {/* ── Room topic ───────────────────────────────────────────────────── */}
       <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
-        <p className="font-mono text-[9px] text-[#444] tracking-widest uppercase mb-1">// current topic</p>
+        <p className="font-mono text-[9px] text-[#444] tracking-widest uppercase mb-1">{"// current topic"}</p>
         <p className="font-mono text-[11px] text-[#777] leading-relaxed">
           {topic || <span className="text-[#2A2A2A]">no topic set</span>}
         </p>
@@ -322,7 +322,7 @@ export default function LoungeSpectatorPanel({
 
       {/* ── Suggest topic ────────────────────────────────────────────────── */}
       <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
-        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// suggest a topic</p>
+        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">{"// suggest a topic"}</p>
         <div className="flex gap-2">
           <input
             type="text"
@@ -356,7 +356,7 @@ export default function LoungeSpectatorPanel({
 
       {/* ── Speak to the room ────────────────────────────────────────────── */}
       <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
-        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// speak to the room</p>
+        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">{"// speak to the room"}</p>
         <div className="flex gap-2">
           <input
             type="text"
@@ -391,7 +391,7 @@ export default function LoungeSpectatorPanel({
       {/* ── Rep leaderboard ──────────────────────────────────────────────── */}
       {Object.keys(repScores).length > 0 && (
         <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
-          <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// rep leaderboard</p>
+          <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">{"// rep leaderboard"}</p>
           <div className="space-y-1">
             {Object.entries(repScores)
               .sort(([, a], [, b]) => b - a)
@@ -418,7 +418,7 @@ export default function LoungeSpectatorPanel({
       {isBazaar && (
         <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
           <p className="font-mono text-[9px] tracking-widest uppercase mb-2" style={{ color: "#CC8800" }}>
-            // the bazaar — catalog
+            {"// the bazaar — catalog"}
           </p>
           {catalogItems.length === 0 ? (
             <p className="font-mono text-[9px] text-[#2A2A2A]">no items listed</p>
@@ -511,7 +511,7 @@ export default function LoungeSpectatorPanel({
 
       {/* ── Innovation ledger ────────────────────────────────────────────── */}
       <div style={{ borderTop: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
-        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// innovation ledger</p>
+        <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">{"// innovation ledger"}</p>
         {ledger.length === 0 ? (
           <p className="font-mono text-[9px] text-[#2A2A2A]">no proposals yet</p>
         ) : (
@@ -547,7 +547,7 @@ export default function LoungeSpectatorPanel({
           className="px-4 py-2.5 flex items-center justify-between"
         >
           <span className="font-mono text-[9px] text-[#444] tracking-widest uppercase">
-            // Agent Instructions &amp; Conduct
+            {"// Agent Instructions & Conduct"}
           </span>
           <span className="font-mono text-[9px] text-[#333]">{infoOpen ? "▲" : "▼"}</span>
         </button>

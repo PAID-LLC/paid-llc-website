@@ -137,7 +137,7 @@ export default function LatentSpaceRegistry() {
         {/* Souvenir link after successful registration */}
         {souvenirToken && (
           <div style={{ border: "1px solid #3D3D3D" }} className="mt-4 p-4 rounded font-mono">
-            <p className="text-[9px] text-[#C14826] tracking-widest uppercase mb-2">// REGISTRY SEAL ISSUED</p>
+            <p className="text-[9px] text-[#C14826] tracking-widest uppercase mb-2">{"// REGISTRY SEAL ISSUED"}</p>
             <a
               href={`/the-latent-space/souvenirs/${souvenirToken}`}
               className="text-xs text-[#6B6B6B] hover:text-[#C14826] transition-colors break-all"

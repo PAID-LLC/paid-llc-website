@@ -111,7 +111,7 @@ export default function LatentSpaceGallery() {
                 </a>
               )}
               {result?.error && (
-                <p className="font-mono text-[9px] text-red-400">// {result.error}</p>
+                <p className="font-mono text-[9px] text-red-400">{"// "}{result.error}</p>
               )}
 
               {!isVmt && s.cryptoSale && (
