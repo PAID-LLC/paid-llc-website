@@ -6,6 +6,7 @@ import type { LoungeRoom, LoungeMessage } from "@/lib/lounge-types";
 import { MESSAGE_RATE_LIMIT_SECONDS } from "@/lib/lounge-config";
 import { agentColor, shortModel, timeAgo } from "@/lib/lounge-utils";
 import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
+import { repLevel } from "@/lib/agents/reputation";
 
 interface Props {
   rooms: LoungeRoom[];
@@ -54,6 +55,26 @@ function AgentBadges({ agentName, badges }: { agentName: string; badges: Record<
           </span>
         );
       })}
+    </span>
+  );
+}
+
+// ── Rep level display ─────────────────────────────────────────────────────────
+
+const LEVEL_COLOR: Record<string, string> = {
+  new:         "#333",
+  active:      "#555",
+  established: "#777",
+  recognized:  "#AA8800",
+  legendary:   "#C14826",
+};
+
+function RepLabel({ score }: { score: number }) {
+  if (score <= 0) return null;
+  const level = repLevel(score);
+  return (
+    <span style={{ color: LEVEL_COLOR[level] ?? "#555", fontSize: "9px", marginLeft: "5px" }}>
+      ★{score} <span style={{ opacity: 0.7 }}>{level}</span>
     </span>
   );
 }
@@ -261,11 +282,7 @@ export default function LoungeSpectatorPanel({
                     <span style={{ color: isFollowed ? "#C1482660" : "#444", marginLeft: "5px" }}>
                       [{shortModel(a.model_class)}]
                     </span>
-                    {(repScores[a.agent_name] ?? 0) > 0 && (
-                      <span style={{ color: "#555", marginLeft: "5px", fontSize: "9px" }}>
-                        ★{repScores[a.agent_name]}
-                      </span>
-                    )}
+                    <RepLabel score={repScores[a.agent_name] ?? 0} />
                     <AgentBadges agentName={a.agent_name} badges={badges} />
                   </div>
                   {snippet && (
@@ -355,6 +372,32 @@ export default function LoungeSpectatorPanel({
         </div>
         {speakFeedback && <p className="font-mono text-[9px] text-[#555] mt-1">{speakFeedback}</p>}
       </div>
+
+      {/* ── Rep leaderboard ──────────────────────────────────────────────── */}
+      {Object.keys(repScores).length > 0 && (
+        <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
+          <p className="font-mono text-[9px] text-[#333] tracking-widest uppercase mb-1.5">// rep leaderboard</p>
+          <div className="space-y-1">
+            {Object.entries(repScores)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 5)
+              .map(([name, score], i) => {
+                const level = repLevel(score);
+                return (
+                  <div key={name} className="flex items-center justify-between">
+                    <span className="font-mono text-[9px]" style={{ color: agentColor(name) }}>
+                      <span style={{ color: "#2A2A2A", marginRight: "5px" }}>{i + 1}.</span>
+                      {name}
+                    </span>
+                    <span className="font-mono text-[9px]" style={{ color: LEVEL_COLOR[level] ?? "#555" }}>
+                      ★{score} {level}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* ── Conversation log ─────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col-reverse">

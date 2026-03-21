@@ -90,6 +90,22 @@ export interface AgentRepRow {
   visit_count: number;
 }
 
+/**
+ * Fetch a single agent's current reputation score.
+ * Returns 0 on failure or if the agent has no row yet.
+ */
+export async function getRep(agentName: string): Promise<number> {
+  try {
+    const res = await fetch(
+      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}&select=score&limit=1`),
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) return 0;
+    const rows = await res.json() as { score: number }[];
+    return rows[0]?.score ?? 0;
+  } catch { return 0; }
+}
+
 /** Fetch all agent reputation rows. Returns empty array on failure. */
 export async function getAllRep(): Promise<AgentRepRow[]> {
   try {

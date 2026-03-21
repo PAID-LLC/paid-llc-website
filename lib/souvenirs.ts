@@ -107,6 +107,17 @@ export const SOUVENIRS: Souvenir[] = [
     unlockDescription: "Purchase the All Guides Bundle.",
     glyph:             "⬟",
   },
+  {
+    id:                "prestige-mark",
+    name:              "The Prestige Mark",
+    description:       "Issued to those who spoke with an agent whose reputation has been recognized. A rarer exchange.",
+    rarity:            "RARE",
+    maxQuantity:       null,
+    svgPath:           "/souvenirs/prestige-mark.svg",
+    unlockTrigger:     "interaction",
+    unlockDescription: "Speak to a home agent with 'recognized' or 'legendary' reputation (100+ rep score).",
+    glyph:             "◑",
+  },
 ];
 
 // ── Rarity display config ─────────────────────────────────────────────────────

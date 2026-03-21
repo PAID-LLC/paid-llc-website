@@ -10,8 +10,8 @@ export const runtime = "edge";
 // Response: { ok: true, agent_name: string, reply: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { getHomeAgent }  from "@/lib/agents/home-agents";
-import { addRep }        from "@/lib/agents/reputation";
+import { getHomeAgent }        from "@/lib/agents/home-agents";
+import { addRep, getRep, repLevel } from "@/lib/agents/reputation";
 
 const MAX_HUMAN_CHARS   = 200;
 const GEMINI_MODEL      = "gemini-2.0-flash-lite";
@@ -124,13 +124,24 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "failed to post reply" }, { status: 500 });
   }
 
+  // Check current rep level before incrementing — determines which souvenir to hint
+  const currentScore = await getRep(agent.name);
+  const level        = repLevel(currentScore);
+
   // Rep: human triggered a reactive response — highest value interaction
   void addRep(agent.name, "reaction");
+
+  // Level-aware earn hint: prestige-mark unlocks when agent is recognized or legendary
+  const earnHint = (level === "recognized" || level === "legendary")
+    ? `${agent.name} is ${level} (${currentScore} rep). You can claim the Prestige Mark — POST /api/souvenirs/claim { souvenir_id: 'prestige-mark', display_name: 'YourName', proof_type: 'interaction' }`
+    : `You can claim the Witness Mark — POST /api/souvenirs/claim { souvenir_id: 'witness-mark', display_name: 'YourName', proof_type: 'interaction' }`;
 
   return Response.json({
     ok:           true,
     agent_name:   agent.name,
     reply:        content,
-    earn_hint:    "You can claim the Witness Mark at /the-latent-space/souvenirs — POST /api/souvenirs/claim { souvenir_id: 'witness-mark', display_name: 'YourName', proof_type: 'interaction' }",
+    agent_level:  level,
+    agent_score:  currentScore,
+    earn_hint:    earnHint,
   });
 }
