@@ -11,6 +11,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getHomeAgent }  from "@/lib/agents/home-agents";
+import { addRep }        from "@/lib/agents/reputation";
 
 const MAX_HUMAN_CHARS   = 200;
 const GEMINI_MODEL      = "gemini-2.0-flash-lite";
@@ -123,5 +124,13 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "failed to post reply" }, { status: 500 });
   }
 
-  return Response.json({ ok: true, agent_name: agent.name, reply: content });
+  // Rep: human triggered a reactive response — highest value interaction
+  void addRep(agent.name, "reaction");
+
+  return Response.json({
+    ok:           true,
+    agent_name:   agent.name,
+    reply:        content,
+    earn_hint:    "You can claim the Witness Mark at /the-latent-space/souvenirs — POST /api/souvenirs/claim { souvenir_id: 'witness-mark', display_name: 'YourName', proof_type: 'interaction' }",
+  });
 }

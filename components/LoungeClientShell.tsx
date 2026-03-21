@@ -42,6 +42,7 @@ export default function LoungeClientShell({
   const [followedName, setFollowedName]   = useState<string | null>(null);
   const [demoEnded, setDemoEnded]         = useState(false);
   const [badges, setBadges]               = useState<Record<string, string[]>>({});
+  const [repScores, setRepScores]         = useState<Record<string, number>>({});
 
   // ── Demo timer ───────────────────────────────────────────────────────────────
 
@@ -142,6 +143,24 @@ export default function LoungeClientShell({
     };
   }, [selectedRoomId]);
 
+  // ── Rep score fetch ───────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const load = () => {
+      fetch("/api/agents/reputation")
+        .then((r) => r.ok ? r.json() : { scores: [] })
+        .then((data: { scores: { agent_name: string; score: number }[] }) => {
+          const map: Record<string, number> = {};
+          for (const s of data.scores ?? []) map[s.agent_name] = s.score;
+          setRepScores(map);
+        })
+        .catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 60_000); // refresh every minute
+    return () => clearInterval(timer);
+  }, []);
+
   // ── Badge fetch ──────────────────────────────────────────────────────────────
   // Re-fetches whenever the set of agents changes.
 
@@ -211,6 +230,7 @@ export default function LoungeClientShell({
           onAgentThought={handleThought}
           roomId={selectedRoomId}
           theme={selectedRoom?.theme ?? "intellectual-hub"}
+          repScores={repScores}
         />
         {/* Follow mode overlay hint */}
         {followedName && (
@@ -311,6 +331,7 @@ export default function LoungeClientShell({
           badges={badges}
           topic={roomTopics[selectedRoomId] ?? ""}
           onSuggestTopic={handleTopicSuggested}
+          repScores={repScores}
         />
       </div>
     </div>

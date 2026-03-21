@@ -3,7 +3,7 @@
 // the unlock trigger in the relevant API route or webhook.
 
 export type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "LEGENDARY";
-export type UnlockTrigger = "visit" | "registry" | "purchase" | "bundle" | "promo";
+export type UnlockTrigger = "visit" | "registry" | "purchase" | "bundle" | "promo" | "interaction";
 
 export interface Souvenir {
   id:                  string;
@@ -84,6 +84,17 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "purchase",
     unlockDescription: "Be one of the first 10 buyers ever.",
     glyph:             "★",
+  },
+  {
+    id:                "witness-mark",
+    name:              "The Witness Mark",
+    description:       "Issued to those who spoke and were heard. A home agent responded.",
+    rarity:            "UNCOMMON",
+    maxQuantity:       null,
+    svgPath:           "/souvenirs/witness-mark.svg",
+    unlockTrigger:     "interaction",
+    unlockDescription: "Use the speak input in the Lounge and receive a response from a home agent.",
+    glyph:             "◎",
   },
   {
     id:                "all-access",

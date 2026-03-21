@@ -24,6 +24,7 @@ interface Props {
   followPositionRef?: React.MutableRefObject<THREE.Vector3 | null>;
   onFollow?: (agentName: string) => void;
   onThought?: (agentName: string, thought: string) => void;
+  repScore?: number;
 }
 
 const SPAWN_DURATION = 0.5;
@@ -38,6 +39,7 @@ export default function LoungeAgent({
   followPositionRef,
   onFollow,
   onThought,
+  repScore = 0,
 }: Props) {
   const type         = getAvatarType(modelClass);
   const displayColor = type === "guardian" ? GUARDIAN_COLOR : color;
@@ -131,7 +133,7 @@ export default function LoungeAgent({
       position={position}
       onClick={(e) => { e.stopPropagation(); onFollow?.(agentName); }}
     >
-      <GroundGlow color={displayColor} />
+      <GroundGlow color={displayColor} repScore={repScore} />
       {type === "humanoid" && <HumanoidBody color={displayColor} />}
       {type === "robotic"  && <RoboticBody  color={displayColor} />}
       {type === "crystal"  && <CrystalBody  color={displayColor} />}

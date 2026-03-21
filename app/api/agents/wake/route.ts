@@ -15,6 +15,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getHomeAgent }   from "@/lib/agents/home-agents";
 import { ACTION_POOLS }   from "@/lib/agents/action-pools";
+import { addRep }         from "@/lib/agents/reputation";
 
 const STALE_MINUTES = 30;
 
@@ -70,6 +71,9 @@ export async function POST(req: Request) {
     });
   }
 
+  // ── Rep: visitor entered room ────────────────────────────────────────────
+  void addRep(agent.name, "visit");
+
   // ── 2. Check message staleness ────────────────────────────────────────────
   const since = new Date(Date.now() - STALE_MINUTES * 60 * 1000).toISOString();
   const recentRes = await fetch(
@@ -100,6 +104,8 @@ export async function POST(req: Request) {
       content,
     }),
   });
+
+  if (msgRes.ok) void addRep(agent.name, "message");
 
   return Response.json({
     ok:         true,

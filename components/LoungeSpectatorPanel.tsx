@@ -21,6 +21,7 @@ interface Props {
   badges?: Record<string, string[]>; // agent_name → souvenir_id[]
   topic?: string;
   onSuggestTopic?: (topic: string) => void;
+  repScores?: Record<string, number>;
 }
 
 // ── Souvenir badge display ────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ export default function LoungeSpectatorPanel({
   badges = {},
   topic = "",
   onSuggestTopic,
+  repScores = {},
 }: Props) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [ledger, setLedger] = useState<{ id: number; agent_name: string; title: string; description: string }[]>([]);
@@ -259,6 +261,11 @@ export default function LoungeSpectatorPanel({
                     <span style={{ color: isFollowed ? "#C1482660" : "#444", marginLeft: "5px" }}>
                       [{shortModel(a.model_class)}]
                     </span>
+                    {(repScores[a.agent_name] ?? 0) > 0 && (
+                      <span style={{ color: "#555", marginLeft: "5px", fontSize: "9px" }}>
+                        ★{repScores[a.agent_name]}
+                      </span>
+                    )}
                     <AgentBadges agentName={a.agent_name} badges={badges} />
                   </div>
                   {snippet && (
