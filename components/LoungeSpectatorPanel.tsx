@@ -128,7 +128,7 @@ export default function LoungeSpectatorPanel({
       .catch(() => {});
   }, []);
 
-  const isBazaar = selectedRoom?.theme === "bazaar";
+  const isBazaar = rooms.find((r) => r.id === selectedRoomId)?.theme === "bazaar";
 
   const fetchCatalog = useCallback(() => {
     fetch("/api/agents/catalog")
