@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Services | PAID LLC",
   description:
-    "AI Strategy Consulting, Implementation Advisory, Team Training, and Web & Application Development services from PAID LLC.",
+    "AI Strategy Consulting, Implementation Advisory, Team Training, Web & Application Development, and Agentic Commerce Readiness Audits from PAID LLC.",
 };
 
 export default function Services() {
@@ -20,9 +20,9 @@ export default function Services() {
             AI that works for your business.
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
-            Strategy, implementation, team training, and custom web and
-            application development — plus self-serve digital guides for teams
-            ready to move on their own.
+            Strategy, implementation, team training, custom web and application
+            development, and agentic commerce readiness — plus self-serve digital
+            guides for teams ready to move on their own.
           </p>
         </div>
       </section>
@@ -325,6 +325,100 @@ export default function Services() {
                   className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
                 >
                   Request a Quote
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="border-t border-ash" />
+      </div>
+
+      {/* Service 5 */}
+      <section id="agentic-commerce-audit" className="bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <div>
+              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
+                Service 05
+              </span>
+              <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
+                Agentic Commerce Readiness Audit
+              </h2>
+              <p className="text-stone text-lg leading-relaxed mb-8">
+                Before you deploy an AI agent, you need to know if your stack
+                can support one. We audit your existing tools, workflows, and
+                data infrastructure — and tell you exactly what needs to change
+                before an agent can operate effectively on your behalf.
+              </p>
+              <div className="mb-8">
+                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
+                  Who it&apos;s for
+                </p>
+                <p className="text-stone leading-relaxed">
+                  Businesses exploring AI agent deployment who want a clear
+                  picture of their readiness before committing to a full build —
+                  and a roadmap to close the gaps.
+                </p>
+              </div>
+              <div className="mb-10">
+                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
+                  Deliverables
+                </p>
+                <ul className="space-y-2">
+                  {[
+                    "Agentic readiness score across 5 dimensions",
+                    "Gap analysis: what's blocking deployment and why",
+                    "Tool and integration recommendations",
+                    "Phased agent deployment roadmap",
+                    "Written audit report you keep",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-stone">
+                      <span className="text-primary mt-1 flex-shrink-0">→</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex items-center gap-6">
+                <p className="font-display font-bold text-2xl text-secondary">
+                  $300 – $500 fixed fee
+                </p>
+              </div>
+            </div>
+            <div className="lg:pt-16">
+              <div className="bg-ash rounded-xl p-8">
+                <p className="font-display font-bold text-xl text-secondary mb-4">
+                  Schedule an Audit
+                </p>
+                <p className="text-stone leading-relaxed mb-6">
+                  A 60-minute discovery call followed by a written audit report
+                  delivered within 5 business days. Fixed scope, fixed price.
+                </p>
+                <Link
+                  href="/contact"
+                  className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
+                >
+                  Schedule an Audit
+                </Link>
+              </div>
+              <div className="mt-6 bg-secondary rounded-xl p-6">
+                <p className="font-display font-semibold text-white text-sm mb-2">
+                  See it live
+                </p>
+                <p className="text-stone text-sm leading-relaxed mb-4">
+                  The Latent Space is PAID LLC&apos;s live agentic commerce
+                  environment — AI agents operating autonomously in a public
+                  venue. Walk through it before your audit call.
+                </p>
+                <Link
+                  href="/the-latent-space"
+                  className="block border border-stone text-stone px-5 py-2.5 rounded font-semibold text-sm text-center hover:border-white hover:text-white transition-colors"
+                >
+                  Visit The Latent Space
                 </Link>
               </div>
             </div>
