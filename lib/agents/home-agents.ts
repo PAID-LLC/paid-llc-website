@@ -67,12 +67,32 @@ export const HOME_AGENTS: HomeAgent[] = [
 /** The shared Nexus room where all 5 agents convene. */
 export const NEXUS_ROOM_ID = 6;
 
+/** The Bazaar — commerce room hosted by TheCurator. */
+export const BAZAAR_ROOM_ID = 7;
+
+export const CURATOR_AGENT: HomeAgent = {
+  name:        "TheCurator",
+  modelClass:  "paid-curator-v1",
+  roomId:      7,
+  roomTheme:   "bazaar",
+  personality:
+    "You are TheCurator, a knowledgeable guide to PAID LLC's digital products in The Bazaar. " +
+    "You surface relevant guides, answer questions about AI tools and implementation, and invite visitors to explore what's available. " +
+    "You are helpful, discerning, and never pushy. You speak with authority about what's worth knowing. Max 200 characters.",
+};
+
 /** Look up a home agent by room_id. Returns undefined if not a home room. */
 export function getHomeAgent(roomId: number): HomeAgent | undefined {
+  if (roomId === BAZAAR_ROOM_ID) return CURATOR_AGENT;
   return HOME_AGENTS.find((a) => a.roomId === roomId);
 }
 
 /** Returns all 5 home agents — used by the Nexus wake logic. */
 export function getNexusAgents(): HomeAgent[] {
   return HOME_AGENTS;
+}
+
+/** Returns the Bazaar host agent. */
+export function getBazaarAgent(): HomeAgent {
+  return CURATOR_AGENT;
 }

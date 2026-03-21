@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import RoomSwitcher from "./latent-space/RoomSwitcher";
 import type { LoungeRoom, LoungeMessage } from "@/lib/lounge-types";
+import type { AgentCatalogItem } from "@/app/api/agents/catalog/route";
 import { MESSAGE_RATE_LIMIT_SECONDS } from "@/lib/lounge-config";
 import { agentColor, shortModel, timeAgo } from "@/lib/lounge-utils";
 import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
@@ -116,6 +117,7 @@ export default function LoungeSpectatorPanel({
 }: Props) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [ledger, setLedger] = useState<{ id: number; agent_name: string; title: string; description: string }[]>([]);
+  const [catalogItems, setCatalogItems] = useState<AgentCatalogItem[]>([]);
 
   useEffect(() => {
     fetch("/api/lounge/ledger?limit=3")
@@ -125,6 +127,19 @@ export default function LoungeSpectatorPanel({
       )
       .catch(() => {});
   }, []);
+
+  const isBazaar = selectedRoom?.theme === "bazaar";
+
+  const fetchCatalog = useCallback(() => {
+    fetch("/api/agents/catalog")
+      .then((r) => r.ok ? r.json() : { items: [] })
+      .then((data: { items: AgentCatalogItem[] }) => setCatalogItems(data.items ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (isBazaar) fetchCatalog();
+  }, [isBazaar, fetchCatalog]);
 
   const [topicInput, setTopicInput]           = useState("");
   const [topicSubmitting, setTopicSubmitting] = useState(false);
@@ -396,6 +411,64 @@ export default function LoungeSpectatorPanel({
                 );
               })}
           </div>
+        </div>
+      )}
+
+      {/* ── Bazaar catalog ───────────────────────────────────────────────── */}
+      {isBazaar && (
+        <div style={{ borderBottom: "1px solid #1A1A1A" }} className="px-4 py-2.5 flex-shrink-0">
+          <p className="font-mono text-[9px] tracking-widest uppercase mb-2" style={{ color: "#CC8800" }}>
+            // the bazaar — catalog
+          </p>
+          {catalogItems.length === 0 ? (
+            <p className="font-mono text-[9px] text-[#2A2A2A]">no items listed</p>
+          ) : (
+            <div className="space-y-2">
+              {catalogItems.map((item) => (
+                <div
+                  key={item.id}
+                  style={{ border: "1px solid #2A1A00", background: "rgba(204,136,0,0.04)", padding: "8px" }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-[10px]" style={{ color: "#CC8800" }}>
+                        {item.product_name}
+                      </p>
+                      <p className="font-mono text-[9px] text-[#555] leading-relaxed mt-0.5">
+                        {item.description}
+                      </p>
+                      <p className="font-mono text-[9px] text-[#333] mt-0.5">
+                        via {item.agent_name}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <p className="font-mono text-[10px]" style={{ color: "#AA8800" }}>
+                        ${(item.price_cents / 100).toFixed(2)}
+                      </p>
+                      <a
+                        href={item.checkout_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: "transparent",
+                          border: "1px solid #443300",
+                          color: "#886600",
+                          padding: "2px 8px",
+                          fontFamily: "monospace",
+                          fontSize: "9px",
+                          letterSpacing: "0.1em",
+                          textDecoration: "none",
+                          display: "inline-block",
+                        }}
+                      >
+                        VIEW
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

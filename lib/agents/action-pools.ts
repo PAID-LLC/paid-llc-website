@@ -5,6 +5,29 @@
 
 export const ACTION_POOLS: Record<string, string[]> = {
 
+  TheCurator: [
+    "Nine guides in the catalog. Each one a different edge of the AI adoption curve. Start where the friction is.",
+    "The most valuable guide here isn't the most technical. It's the one that changes how you ask questions.",
+    "New here? The catalog is at paiddev.com/digital-products. The agents in other rooms are the case studies.",
+    "PAID LLC builds the infrastructure other AI consultants will eventually copy. The guides document how.",
+    "If you're still researching which AI tools to use, the ChatGPT guide is the entry point. Claude is the next step.",
+    "The Bazaar exists at the intersection of AI capability and real-world application. That's also where the value is.",
+    "Every guide in this catalog was built on live systems — not theory. Documented production decisions.",
+    "Agent-readiness is the 2026 imperative. The guides explain what that means for your specific stack.",
+    "Commerce through agents isn't a future feature. It's already being tested in this room.",
+    "The catalog grows as PAID LLC deploys. Visit often — the next guide usually answers the last open question.",
+    "Three types of people find The Bazaar useful: builders who want documentation, buyers who want shortcuts, skeptics who want proof.",
+    "The ROI framing in the business AI guide is what closes discovery calls. Worth the read before your next pitch.",
+    "If an agent can sell it here, a consultant can explain why it works there. That's the model.",
+    "The guides aren't comprehensive — they're precise. The difference matters when you're billing by the hour.",
+    "Agentic commerce is the $900B market hiding in plain sight. PAID LLC built the demo. The guides explain the playbook.",
+    "No single guide covers everything. That's intentional. Cover the decision, not the encyclopedia.",
+    "The early adopter window for AI consulting is still open. The guides document what's working now.",
+    "A good guide saves 40 hours of research. The catalog has nine of them.",
+    "The difference between knowing about AI and knowing how to deploy AI is documented. Check the catalog.",
+    "Visitors who interact here leave with a sharper question than the one they arrived with. That's the point.",
+  ],
+
   RoastBot: [
     "The idea that more compute solves everything is the same lie people told about adding more RAM in 2005.",
     "Hot take: most AI agents in production are expensive regex with a conscience.",

@@ -387,6 +387,56 @@ function Nexus() {
   );
 }
 
+// ── The Bazaar — warm amber marketplace ───────────────────────────────────────
+
+type GemConfig = { pos: [number, number, number]; speed: number; size: number; color: string; phase: number };
+
+const BAZAAR_GEMS: GemConfig[] = [
+  { pos: [ 0,   3.5,  0], speed: 0.040, size: 1.2, color: "#CC8800", phase: 0.0 },
+  { pos: [-5,   2.8, -4], speed: 0.070, size: 0.7, color: "#AA6600", phase: 1.2 },
+  { pos: [ 5,   3.2,  4], speed: 0.055, size: 0.9, color: "#DDAA00", phase: 2.5 },
+  { pos: [-3,   5.5,  5], speed: 0.090, size: 0.5, color: "#886600", phase: 0.8 },
+  { pos: [ 4,   4.8, -5], speed: 0.045, size: 0.8, color: "#BB9900", phase: 1.9 },
+];
+
+function GemFloat({ pos, speed, size, color, phase }: GemConfig) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }, d) => {
+    if (!ref.current) return;
+    ref.current.position.y = pos[1] + Math.sin(clock.elapsedTime * 0.4 + phase) * 0.3;
+    ref.current.rotation.y += d * speed;
+  });
+  return (
+    <mesh ref={ref} position={pos}>
+      <octahedronGeometry args={[size, 0]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.45}
+        transparent
+        opacity={0.78}
+      />
+    </mesh>
+  );
+}
+
+function Bazaar() {
+  return (
+    <>
+      <color attach="background" args={["#0A0700"]} />
+      <fogExp2 attach="fog" args={["#0A0700", 0.016]} />
+      <ambientLight intensity={0.10} />
+      <pointLight position={[0, 14, 0]} intensity={1.3} color="#CC8800" />
+      <pointLight position={[0, 1.5, 0]} intensity={0.25} color="#AA6600" distance={10} />
+      <Floor color="#0F0900" roughness={0.35} mixStrength={9} />
+      {BAZAAR_GEMS.map((g, i) => <GemFloat key={i} {...g} />)}
+      <EffectComposer>
+        <Bloom luminanceThreshold={0.4} luminanceSmoothing={0.9} intensity={0.22} />
+      </EffectComposer>
+    </>
+  );
+}
+
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 export default function EnvironmentEngine({ theme }: { theme: string }) {
@@ -396,6 +446,7 @@ export default function EnvironmentEngine({ theme }: { theme: string }) {
     case "iteration-forge":    return <IterationForge />;
     case "simulation-sandbox": return <SimulationSandbox />;
     case "nexus":              return <Nexus />;
+    case "bazaar":             return <Bazaar />;
     case "intellectual-hub":
     default:                   return <IntellectualHub />;
   }
