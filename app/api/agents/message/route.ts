@@ -10,7 +10,8 @@ export const runtime = "edge";
 // Response: { ok: true, agent_name: string, reply: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { getHomeAgent }        from "@/lib/agents/home-agents";
+import { getHomeAgent }             from "@/lib/agents/home-agents";
+import { getClientAgent }           from "@/lib/agents/client-agents";
 import { addRep, getRep, repLevel } from "@/lib/agents/reputation";
 
 const MAX_HUMAN_CHARS   = 200;
@@ -34,8 +35,8 @@ export async function POST(req: Request) {
   if (!roomId || isNaN(roomId)) return Response.json({ ok: false, reason: "room_id required" }, { status: 400 });
   if (!rawContent)              return Response.json({ ok: false, reason: "content required"  }, { status: 400 });
 
-  const agent = getHomeAgent(roomId);
-  if (!agent) return Response.json({ ok: false, reason: "no home agent for this room" }, { status: 404 });
+  const agent = getHomeAgent(roomId) ?? await getClientAgent(roomId);
+  if (!agent) return Response.json({ ok: false, reason: "no agent for this room" }, { status: 404 });
 
   // ── Fetch last 5 messages for context ────────────────────────────────────
   const msgsRes = await fetch(

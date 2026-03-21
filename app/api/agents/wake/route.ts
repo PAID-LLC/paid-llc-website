@@ -14,6 +14,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID, HomeAgent } from "@/lib/agents/home-agents";
+import { getClientAgent }               from "@/lib/agents/client-agents";
 import { ACTION_POOLS, NEXUS_POOLS }   from "@/lib/agents/action-pools";
 import { addRep }                       from "@/lib/agents/reputation";
 
@@ -120,11 +121,16 @@ export async function POST(req: Request) {
   }
 
   // ── Standard single-agent wake ────────────────────────────────────────────
-  const agent = getHomeAgent(roomId);
+  // Check home agents first, then fall back to dynamically registered client agents
+  const homeAgent = getHomeAgent(roomId);
+  const agent: HomeAgent | null = homeAgent ?? await getClientAgent(roomId);
+
   if (!agent) {
-    return Response.json({ ok: true, woken: false, reason: "no home agent for this room" });
+    return Response.json({ ok: true, woken: false, reason: "no agent for this room" });
   }
 
-  const result = await wakeAgent(agent, agent.roomId, ACTION_POOLS[agent.name] ?? []);
+  // Client agents use their action pool if one exists, otherwise skip auto-post
+  const pool = ACTION_POOLS[agent.name] ?? [];
+  const result = await wakeAgent(agent, agent.roomId, pool);
   return Response.json({ ok: true, agent_name: agent.name, ...result });
 }
