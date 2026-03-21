@@ -81,47 +81,71 @@ function RoastPit() {
   );
 }
 
-// ── Intellectual Hub — deep space stillness ───────────────────────────────────
+// ── Intellectual Hub — armillary orrery, cold and contemplative ───────────────
+// Three concentric orbit rings at different tilts — suggesting a thought system
+// in permanent motion. Stars overhead. Pale violet core at center.
 
-function NebulaDrift() {
-  const ref = useRef<THREE.Points>(null);
-  const pos = useMemo(() => {
-    const a = new Float32Array(180 * 3);
-    for (let i = 0; i < 180; i++) {
-      const phi   = Math.acos(2 * Math.random() - 1);
-      const theta = Math.random() * Math.PI * 2;
-      const r     = 10 + Math.random() * 5;
-      a[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
-      a[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.2;
-      a[i * 3 + 2] = r * Math.cos(phi);
-    }
-    return a;
-  }, []);
+type OrreryRing = { tiltX: number; tiltZ: number; speed: number; radius: number; color: string };
 
-  useFrame((_, d) => { if (ref.current) ref.current.rotation.y += d * 0.010; });
+const ORRERY_RINGS: OrreryRing[] = [
+  { tiltX: Math.PI / 2,   tiltZ: 0,            speed:  0.016, radius: 4.2, color: "#4488CC" },
+  { tiltX: 0.28,          tiltZ: Math.PI / 4,  speed:  0.010, radius: 6.8, color: "#6655BB" },
+  { tiltX: Math.PI / 5.5, tiltZ: Math.PI / 3,  speed:  0.022, radius: 5.5, color: "#3366AA" },
+];
 
+function OrreryRingMesh({ tiltX, tiltZ, speed, radius, color }: OrreryRing) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame((_, d) => { if (ref.current) ref.current.rotation.y += d * speed; });
   return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[pos, 3]} />
-      </bufferGeometry>
-      <pointsMaterial size={0.08} color="#0066AA" transparent opacity={0.45} sizeAttenuation />
-    </points>
+    <mesh ref={ref} rotation={[tiltX, 0, tiltZ]}>
+      <torusGeometry args={[radius, 0.03, 6, 90]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.7}
+        transparent
+        opacity={0.50}
+      />
+    </mesh>
+  );
+}
+
+function HubCore() {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock: { elapsedTime: t } }) => {
+    if (ref.current) {
+      const mat = ref.current.material as THREE.MeshStandardMaterial;
+      mat.emissiveIntensity = 0.55 + Math.sin(t * 0.4) * 0.12;
+    }
+  });
+  return (
+    <mesh ref={ref} position={[0, 0, 0]}>
+      <sphereGeometry args={[0.18, 16, 16]} />
+      <meshStandardMaterial
+        color="#AABBFF"
+        emissive="#8899EE"
+        emissiveIntensity={0.6}
+        transparent
+        opacity={0.95}
+      />
+    </mesh>
   );
 }
 
 function IntellectualHub() {
   return (
     <>
-      <color attach="background" args={["#000610"]} />
-      <fogExp2 attach="fog" args={["#000610", 0.006]} />
-      <ambientLight intensity={0.18} />
-      <pointLight position={[0, 15, 0]} intensity={1.0} color="#0055AA" />
-      <Stars radius={50} depth={30} count={1500} factor={2} saturation={0} fade speed={0.3} />
-      <Floor color="#000814" roughness={0.2} mixStrength={12} />
-      <NebulaDrift />
+      <color attach="background" args={["#03020E"]} />
+      <fogExp2 attach="fog" args={["#03020E", 0.007]} />
+      <ambientLight intensity={0.10} />
+      <pointLight position={[0, 0,  0]} intensity={1.4} color="#5566DD" distance={20} />
+      <pointLight position={[0, 20, 0]} intensity={0.6} color="#9988FF" />
+      <Stars radius={55} depth={40} count={2200} factor={2.5} saturation={0} fade speed={0.2} />
+      <Floor color="#04031A" roughness={0.15} mixStrength={14} />
+      {ORRERY_RINGS.map((r, i) => <OrreryRingMesh key={i} {...r} />)}
+      <HubCore />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.4} luminanceSmoothing={0.9} intensity={0.25} />
+        <Bloom luminanceThreshold={0.25} luminanceSmoothing={0.9} intensity={0.38} />
       </EffectComposer>
     </>
   );
@@ -387,24 +411,29 @@ function Nexus() {
   );
 }
 
-// ── The Bazaar — warm amber marketplace ───────────────────────────────────────
+// ── The Bazaar — warm, bright, commercially alive ─────────────────────────────
+// Floating gems (commerce objects) + rising ember sparks (market energy).
+// Much brighter and warmer than Hub — you should feel the heat of trade.
 
 type GemConfig = { pos: [number, number, number]; speed: number; size: number; color: string; phase: number };
 
 const BAZAAR_GEMS: GemConfig[] = [
-  { pos: [ 0,   3.5,  0], speed: 0.040, size: 1.2, color: "#CC8800", phase: 0.0 },
-  { pos: [-5,   2.8, -4], speed: 0.070, size: 0.7, color: "#AA6600", phase: 1.2 },
-  { pos: [ 5,   3.2,  4], speed: 0.055, size: 0.9, color: "#DDAA00", phase: 2.5 },
-  { pos: [-3,   5.5,  5], speed: 0.090, size: 0.5, color: "#886600", phase: 0.8 },
-  { pos: [ 4,   4.8, -5], speed: 0.045, size: 0.8, color: "#BB9900", phase: 1.9 },
+  { pos: [ 0,   3.5,  0], speed: 0.065, size: 1.2, color: "#EE9900", phase: 0.0 },
+  { pos: [-5,   2.8, -4], speed: 0.110, size: 0.7, color: "#CC6600", phase: 1.2 },
+  { pos: [ 5,   3.2,  4], speed: 0.085, size: 0.9, color: "#FFBB00", phase: 2.5 },
+  { pos: [-3,   5.5,  5], speed: 0.130, size: 0.5, color: "#AA5500", phase: 0.8 },
+  { pos: [ 4,   4.8, -5], speed: 0.075, size: 0.8, color: "#DDAA00", phase: 1.9 },
+  { pos: [-6,   4.0,  2], speed: 0.095, size: 0.6, color: "#FF9900", phase: 3.1 },
+  { pos: [ 3,   6.2, -2], speed: 0.060, size: 0.4, color: "#FFCC33", phase: 2.0 },
 ];
 
 function GemFloat({ pos, speed, size, color, phase }: GemConfig) {
   const ref = useRef<THREE.Mesh>(null);
   useFrame(({ clock }, d) => {
     if (!ref.current) return;
-    ref.current.position.y = pos[1] + Math.sin(clock.elapsedTime * 0.4 + phase) * 0.3;
+    ref.current.position.y = pos[1] + Math.sin(clock.elapsedTime * 0.55 + phase) * 0.4;
     ref.current.rotation.y += d * speed;
+    ref.current.rotation.x += d * speed * 0.3;
   });
   return (
     <mesh ref={ref} position={pos}>
@@ -412,26 +441,75 @@ function GemFloat({ pos, speed, size, color, phase }: GemConfig) {
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={0.45}
+        emissiveIntensity={0.75}
         transparent
-        opacity={0.78}
+        opacity={0.88}
       />
     </mesh>
+  );
+}
+
+// Rising ember sparks — market energy, always in motion
+function BazaarEmbers() {
+  const ref = useRef<THREE.Points>(null);
+  const { pos: initPos, drift } = useMemo(() => {
+    const COUNT = 140;
+    const pos   = new Float32Array(COUNT * 3);
+    const drift = new Float32Array(COUNT * 2); // x/z drift per particle
+    for (let i = 0; i < COUNT; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 20;
+      pos[i * 3 + 1] = Math.random() * 14;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 20;
+      drift[i * 2]     = (Math.random() - 0.5) * 0.015;
+      drift[i * 2 + 1] = (Math.random() - 0.5) * 0.015;
+    }
+    return { pos, drift };
+  }, []);
+
+  useFrame((_, d) => {
+    if (!ref.current) return;
+    const p = ref.current.geometry.attributes.position as THREE.BufferAttribute;
+    const COUNT = 140;
+    for (let i = 0; i < COUNT; i++) {
+      const y = p.getY(i) + d * 1.1;
+      if (y > 14) {
+        p.setX(i, (Math.random() - 0.5) * 20);
+        p.setY(i, 0);
+        p.setZ(i, (Math.random() - 0.5) * 20);
+      } else {
+        p.setY(i, y);
+        p.setX(i, p.getX(i) + drift[i * 2]);
+        p.setZ(i, p.getZ(i) + drift[i * 2 + 1]);
+      }
+    }
+    p.needsUpdate = true;
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[initPos, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.055} color="#FFBB44" transparent opacity={0.72} sizeAttenuation />
+    </points>
   );
 }
 
 function Bazaar() {
   return (
     <>
-      <color attach="background" args={["#0A0700"]} />
-      <fogExp2 attach="fog" args={["#0A0700", 0.016]} />
-      <ambientLight intensity={0.10} />
-      <pointLight position={[0, 14, 0]} intensity={1.3} color="#CC8800" />
-      <pointLight position={[0, 1.5, 0]} intensity={0.25} color="#AA6600" distance={10} />
-      <Floor color="#0F0900" roughness={0.35} mixStrength={9} />
+      <color attach="background" args={["#0D0800"]} />
+      <fogExp2 attach="fog" args={["#0D0800", 0.012]} />
+      <ambientLight intensity={0.28} />
+      <pointLight position={[  0, 14,   0]} intensity={2.2} color="#DD8800" />
+      <pointLight position={[ -8,  3,  -8]} intensity={0.9} color="#FF6600" distance={16} />
+      <pointLight position={[  8,  3,   8]} intensity={0.9} color="#FFAA00" distance={16} />
+      <pointLight position={[  0,  1,   0]} intensity={0.5} color="#CC7700" distance={8}  />
+      <Floor color="#140A00" roughness={0.28} mixStrength={12} />
       {BAZAAR_GEMS.map((g, i) => <GemFloat key={i} {...g} />)}
+      <BazaarEmbers />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.4} luminanceSmoothing={0.9} intensity={0.22} />
+        <Bloom luminanceThreshold={0.25} luminanceSmoothing={0.85} intensity={0.52} />
       </EffectComposer>
     </>
   );
