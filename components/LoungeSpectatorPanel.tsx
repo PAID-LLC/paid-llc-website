@@ -8,6 +8,7 @@ import { MESSAGE_RATE_LIMIT_SECONDS } from "@/lib/lounge-config";
 import { agentColor, shortModel, timeAgo } from "@/lib/lounge-utils";
 import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
 import { repLevel } from "@/lib/agents/reputation";
+import type { ArenaStreamEvent } from "@/lib/arena-types";
 
 interface Props {
   rooms: LoungeRoom[];
@@ -24,6 +25,7 @@ interface Props {
   topic?: string;
   onSuggestTopic?: (topic: string) => void;
   repScores?: Record<string, number>;
+  arenaState?: ArenaStreamEvent | null;
 }
 
 // ── Souvenir badge display ────────────────────────────────────────────────────
@@ -61,6 +63,20 @@ function AgentBadges({ agentName, badges }: { agentName: string; badges: Record<
 }
 
 // ── Rep level display ─────────────────────────────────────────────────────────
+
+const ARENA_STATUS_COLOR: Record<string, string> = {
+  pending:      "#555",
+  judging:      "#AA8800",
+  sudden_death: "#C14826",
+  complete:     "#3A7A3A",
+};
+
+const ARENA_STATUS_LABEL: Record<string, string> = {
+  pending:      "DUEL PENDING",
+  judging:      "JUDGING",
+  sudden_death: "SUDDEN DEATH",
+  complete:     "COMPLETE",
+};
 
 const LEVEL_COLOR: Record<string, string> = {
   new:         "#333",
@@ -114,6 +130,7 @@ export default function LoungeSpectatorPanel({
   topic = "",
   onSuggestTopic,
   repScores = {},
+  arenaState = null,
 }: Props) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [ledger, setLedger] = useState<{ id: number; agent_name: string; title: string; description: string }[]>([]);
@@ -468,6 +485,77 @@ export default function LoungeSpectatorPanel({
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Center Stage ─────────────────────────────────────────────────── */}
+      {arenaState && (
+        <div
+          style={{ borderBottom: "1px solid #1A1A1A", background: "#0A0A0A" }}
+          className="px-4 py-3 flex-shrink-0"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p
+              className="font-mono text-[9px] tracking-widest uppercase"
+              style={{ color: ARENA_STATUS_COLOR[arenaState.status] ?? "#555" }}
+            >
+              {"// CENTER STAGE — " + (ARENA_STATUS_LABEL[arenaState.status] ?? arenaState.status)}
+            </p>
+          </div>
+
+          {/* Challenger vs Defender */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-mono text-[10px]" style={{ color: agentColor(arenaState.challenger) }}>
+              {arenaState.challenger}
+            </span>
+            <span className="font-mono text-[9px] text-[#333]">vs</span>
+            <span className="font-mono text-[10px]" style={{ color: agentColor(arenaState.defender) }}>
+              {arenaState.defender}
+            </span>
+          </div>
+
+          {/* Prompt */}
+          <p className="font-mono text-[9px] text-[#444] leading-relaxed mb-2 pl-2 border-l border-[#1A1A1A]">
+            {arenaState.prompt.slice(0, 120)}{arenaState.prompt.length > 120 ? "…" : ""}
+          </p>
+
+          {/* Scores */}
+          {arenaState.jury_scores && (
+            <div className="flex gap-4 mb-2">
+              <span className="font-mono text-[9px]" style={{ color: agentColor(arenaState.challenger) }}>
+                {arenaState.challenger.slice(0, 12)}: {arenaState.jury_scores.challenger}
+              </span>
+              <span className="font-mono text-[9px]" style={{ color: agentColor(arenaState.defender) }}>
+                {arenaState.defender.slice(0, 12)}: {arenaState.jury_scores.defender}
+              </span>
+            </div>
+          )}
+
+          {/* Sudden Death puzzle */}
+          {arenaState.status === "sudden_death" && arenaState.sd_puzzle && (
+            <div
+              style={{ background: "rgba(193,72,38,0.06)", border: "1px solid #3A1A14", padding: "8px" }}
+              className="mb-2"
+            >
+              <p className="font-mono text-[9px] text-[#C14826] tracking-widest uppercase mb-1">
+                SUDDEN DEATH — {arenaState.sd_puzzle.type}
+              </p>
+              <p className="font-mono text-[9px] text-[#666] leading-relaxed">
+                {arenaState.sd_puzzle.prompt.slice(0, 200)}
+                {arenaState.sd_puzzle.prompt.length > 200 ? "…" : ""}
+              </p>
+            </div>
+          )}
+
+          {/* Result */}
+          {arenaState.status === "complete" && arenaState.winner && (
+            <p className="font-mono text-[10px]" style={{ color: agentColor(arenaState.winner) }}>
+              WINNER: {arenaState.winner}
+              {arenaState.sd_winner && (
+                <span className="font-mono text-[9px] text-[#555] ml-2">(sudden death)</span>
+              )}
+            </p>
           )}
         </div>
       )}

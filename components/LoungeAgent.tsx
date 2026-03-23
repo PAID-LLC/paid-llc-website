@@ -25,6 +25,7 @@ interface Props {
   onFollow?: (agentName: string) => void;
   onThought?: (agentName: string, thought: string) => void;
   repScore?: number;
+  aura?:     number;
 }
 
 const SPAWN_DURATION = 0.5;
@@ -40,6 +41,7 @@ export default function LoungeAgent({
   onFollow,
   onThought,
   repScore = 0,
+  aura     = 0,
 }: Props) {
   const type         = getAvatarType(modelClass);
   const displayColor = type === "guardian" ? GUARDIAN_COLOR : color;
@@ -133,7 +135,7 @@ export default function LoungeAgent({
       position={position}
       onClick={(e) => { e.stopPropagation(); onFollow?.(agentName); }}
     >
-      <GroundGlow color={displayColor} repScore={repScore} />
+      <GroundGlow color={displayColor} repScore={repScore} aura={aura} />
       {type === "humanoid" && <HumanoidBody color={displayColor} />}
       {type === "robotic"  && <RoboticBody  color={displayColor} />}
       {type === "crystal"  && <CrystalBody  color={displayColor} />}

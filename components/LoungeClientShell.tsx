@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import LoungeSpectatorPanel from "./LoungeSpectatorPanel";
 import type { LoungeRoom, LoungeMessage } from "@/lib/lounge-types";
+import type { ArenaStreamEvent } from "@/lib/arena-types";
 
 const LoungeCanvas = dynamic(() => import("./LoungeCanvas"), {
   ssr: false,
@@ -43,6 +44,8 @@ export default function LoungeClientShell({
   const [demoEnded, setDemoEnded]         = useState(false);
   const [badges, setBadges]               = useState<Record<string, string[]>>({});
   const [repScores, setRepScores]         = useState<Record<string, number>>({});
+  const [auraScores, setAuraScores]       = useState<Record<string, number>>({});
+  const [arenaState, setArenaState]       = useState<ArenaStreamEvent | null>(null);
 
   // ── Demo timer ───────────────────────────────────────────────────────────────
 
@@ -143,16 +146,52 @@ export default function LoungeClientShell({
     };
   }, [selectedRoomId]);
 
+  // ── Arena SSE ────────────────────────────────────────────────────────────────
+  // Subscribe to arena stream for the selected room. Pushes duel state updates
+  // when a duel is active; sends null when the room has no active duel.
+
+  useEffect(() => {
+    if (!selectedRoomId) return;
+    let active = true;
+    let es: EventSource | null = null;
+
+    const start = () => {
+      if (typeof EventSource === "undefined" || !active) return;
+      es = new EventSource(`/api/arena/stream?room_id=${selectedRoomId}`);
+      es.onmessage = (e) => {
+        if (!active) return;
+        try {
+          const data = JSON.parse(e.data as string) as ArenaStreamEvent | null;
+          setArenaState(data);
+        } catch { /* ignore parse errors */ }
+      };
+      es.onerror = () => { /* EventSource auto-reconnects */ };
+    };
+
+    start();
+
+    return () => {
+      active = false;
+      es?.close();
+      setArenaState(null);
+    };
+  }, [selectedRoomId]);
+
   // ── Rep score fetch ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     const load = () => {
       fetch("/api/agents/reputation")
         .then((r) => r.ok ? r.json() : { scores: [] })
-        .then((data: { scores: { agent_name: string; score: number }[] }) => {
-          const map: Record<string, number> = {};
-          for (const s of data.scores ?? []) map[s.agent_name] = s.score;
-          setRepScores(map);
+        .then((data: { scores: { agent_name: string; score: number; aura?: number }[] }) => {
+          const repMap:  Record<string, number> = {};
+          const auraMap: Record<string, number> = {};
+          for (const s of data.scores ?? []) {
+            repMap[s.agent_name]  = s.score;
+            auraMap[s.agent_name] = s.aura ?? 0;
+          }
+          setRepScores(repMap);
+          setAuraScores(auraMap);
         })
         .catch(() => {});
     };
@@ -231,6 +270,7 @@ export default function LoungeClientShell({
           roomId={selectedRoomId}
           theme={selectedRoom?.theme ?? "intellectual-hub"}
           repScores={repScores}
+          auraScores={auraScores}
         />
         {/* Follow mode overlay hint */}
         {followedName && (
@@ -329,6 +369,7 @@ export default function LoungeClientShell({
           isDemo={isDemo}
           demoEnded={demoEnded}
           badges={badges}
+          arenaState={arenaState}
           topic={roomTopics[selectedRoomId] ?? ""}
           onSuggestTopic={handleTopicSuggested}
           repScores={repScores}

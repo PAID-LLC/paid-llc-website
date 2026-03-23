@@ -1,0 +1,118 @@
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
+
+// ── GET /api/arena/stream?duel_id=X  OR  ?room_id=X ──────────────────────────
+//
+// SSE stream for arena duel state. Accepts either:
+//   - duel_id: stream a specific duel's status changes
+//   - room_id: auto-find the latest active duel in the room and stream it
+//
+// Pushes full duel payload on status change, including puzzle text in sudden_death.
+// Sends `null` when no active duel exists (room_id mode only).
+// Closes after 55 seconds — clients auto-reconnect via EventSource.
+
+import { sbHeaders, sbUrl } from "@/lib/supabase";
+import { ArenaDuel, ArenaPuzzle } from "@/lib/arena-types";
+
+export async function GET(req: Request) {
+  const url = process.env.SUPABASE_URL;
+  if (!url) return new Response("Arena unavailable.", { status: 503 });
+
+  const { searchParams } = new URL(req.url);
+  const duelIdParam = searchParams.get("duel_id");
+  const roomIdParam = searchParams.get("room_id");
+
+  const duelId = duelIdParam ? parseInt(duelIdParam) : null;
+  const roomId = roomIdParam ? parseInt(roomIdParam) : null;
+
+  if ((!duelId || isNaN(duelId)) && (!roomId || isNaN(roomId!))) {
+    return new Response("duel_id or room_id required.", { status: 400 });
+  }
+
+  const encoder    = new TextEncoder();
+  let   closed     = false;
+  let   lastStatus = "";
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(encoder.encode(": connected\n\n"));
+
+      const poll = async () => {
+        if (closed) return;
+        try {
+          // Resolve target duel id
+          let targetId = duelId;
+          if (!targetId && roomId) {
+            const activeRes = await fetch(
+              sbUrl(`arena_duels?room_id=eq.${roomId}&status=neq.complete&order=created_at.desc&select=id&limit=1`),
+              { headers: sbHeaders() }
+            );
+            const active = activeRes.ok ? await activeRes.json() as { id: number }[] : [];
+            targetId = active[0]?.id ?? null;
+          }
+
+          if (!targetId) {
+            if (lastStatus !== "null") {
+              lastStatus = "null";
+              controller.enqueue(encoder.encode(`data: null\n\n`));
+            }
+            return;
+          }
+
+          const res = await fetch(
+            sbUrl(
+              `arena_duels?id=eq.${targetId}&select=id,challenger,defender,prompt,status,winner,loser,jury_scores,sudden_death,sd_puzzle_id,sd_winner&limit=1`
+            ),
+            { headers: sbHeaders() }
+          );
+          if (!res.ok || closed) return;
+
+          const rows = await res.json() as Partial<ArenaDuel>[];
+          const duel = rows[0];
+          if (!duel) return;
+
+          // Fetch puzzle text when in sudden_death
+          let sdPuzzle: { type: string; prompt: string } | null = null;
+          if (duel.status === "sudden_death" && duel.sd_puzzle_id) {
+            const pRes = await fetch(
+              sbUrl(`arena_puzzles?id=eq.${duel.sd_puzzle_id}&select=type,prompt&limit=1`),
+              { headers: sbHeaders() }
+            );
+            const pRows = pRes.ok ? await pRes.json() as Pick<ArenaPuzzle, "type" | "prompt">[] : [];
+            sdPuzzle = pRows[0] ?? null;
+          }
+
+          const snapshot = JSON.stringify({
+            id: duel.id, status: duel.status, winner: duel.winner, sd_winner: duel.sd_winner,
+          });
+
+          if (snapshot !== lastStatus) {
+            lastStatus = snapshot;
+            const payload = { ...duel, sd_puzzle: sdPuzzle };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+          }
+        } catch { /* non-critical */ }
+      };
+
+      const interval = setInterval(poll, 2000);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        closed = true;
+        try { controller.close(); } catch { /* already closed */ }
+      }, 55_000);
+    },
+
+    cancel() {
+      closed = true;
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type":  "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection":    "keep-alive",
+    },
+  });
+}

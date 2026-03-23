@@ -88,6 +88,7 @@ export interface AgentRepRow {
   msg_count:   number;
   react_count: number;
   visit_count: number;
+  aura?:       number;
 }
 
 /**
@@ -110,7 +111,7 @@ export async function getRep(agentName: string): Promise<number> {
 export async function getAllRep(): Promise<AgentRepRow[]> {
   try {
     const res = await fetch(
-      sbUrl("agent_reputation?select=agent_name,score,msg_count,react_count,visit_count&order=score.desc"),
+      sbUrl("agent_reputation?select=agent_name,score,msg_count,react_count,visit_count,aura&order=score.desc"),
       { headers: sbHeaders() }
     );
     return res.ok ? await res.json() as AgentRepRow[] : [];

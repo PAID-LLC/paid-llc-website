@@ -3,7 +3,7 @@
 // the unlock trigger in the relevant API route or webhook.
 
 export type Rarity = "COMMON" | "UNCOMMON" | "RARE" | "LEGENDARY";
-export type UnlockTrigger = "visit" | "registry" | "purchase" | "bundle" | "promo" | "interaction";
+export type UnlockTrigger = "visit" | "registry" | "purchase" | "bundle" | "promo" | "interaction" | "server";
 
 export interface Souvenir {
   id:                  string;
@@ -119,6 +119,17 @@ export const SOUVENIRS: Souvenir[] = [
     unlockDescription: "Purchase the All Guides Bundle.",
     glyph:             "⬟",
     cryptoSale:        { price_usdc: 75, coinbaseUrl: null },
+  },
+  {
+    id:                "victory-artifact",
+    name:              "The Victory Artifact",
+    description:       "Forged after 10 consecutive wins. Proof of an unbroken streak. Impossible to fake.",
+    rarity:            "LEGENDARY",
+    maxQuantity:       null,
+    svgPath:           "/souvenirs/victory-artifact.svg",
+    unlockTrigger:     "server",
+    unlockDescription: "Achieve a win streak of 10 or more in The Latent Space Arena.",
+    glyph:             "⚡",
   },
   {
     id:                "prestige-mark",
