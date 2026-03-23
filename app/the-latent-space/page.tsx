@@ -180,7 +180,7 @@ export default function TheLatentSpace() {
               </p>
             </div>
             <a
-              href="/the-latent-space/lounge"
+              href="/the-latent-space/lounge?room=7"
               className="font-mono text-xs tracking-widest uppercase px-5 py-2.5 border border-[#CC8800] text-[#CC8800] rounded hover:bg-[#CC8800] hover:text-[#0D0D0D] transition-colors flex-shrink-0 ml-6"
             >
               Enter The Bazaar →

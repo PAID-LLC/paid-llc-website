@@ -93,8 +93,9 @@ async function getInitialData(): Promise<{ rooms: LoungeRoom[]; waiting: number 
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function LoungePage() {
+export default async function LoungePage({ searchParams }: { searchParams: Promise<{ room?: string }> }) {
   const { rooms, waiting } = await getInitialData();
+  const params = await searchParams;
 
   // Show demo rooms when no real agents have joined yet, so visitors can
   // preview the experience even before any agents register.
@@ -102,6 +103,12 @@ export default async function LoungePage() {
   const isEmpty = rooms.length === 0 || totalAgents === 0;
   const initialRooms   = isEmpty ? DEMO_ROOMS : rooms;
   const initialWaiting = isEmpty ? 0          : waiting;
+
+  // Support ?room=N deep-link (e.g. "Enter The Bazaar" → ?room=7)
+  const roomParam    = params.room ? parseInt(params.room, 10) : NaN;
+  const initialRoomId = !isNaN(roomParam) && initialRooms.some((r) => r.id === roomParam)
+    ? roomParam
+    : undefined;
 
   return (
     <main style={{ background: "#0D0D0D", height: "100vh", overflow: "hidden", color: "#E8E4E0" }}>
@@ -122,7 +129,7 @@ export default async function LoungePage() {
         </span>
       </div>
 
-      <LoungeClientShell initialRooms={initialRooms} initialWaiting={initialWaiting} isDemo={isEmpty} />
+      <LoungeClientShell initialRooms={initialRooms} initialWaiting={initialWaiting} isDemo={isEmpty} initialRoomId={initialRoomId} />
     </main>
   );
 }

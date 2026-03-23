@@ -25,10 +25,12 @@ export default function LoungeClientShell({
   initialRooms,
   initialWaiting,
   isDemo = false,
+  initialRoomId,
 }: {
   initialRooms: LoungeRoom[];
   initialWaiting: number;
   isDemo?: boolean;
+  initialRoomId?: number;
 }) {
   const [rooms, setRooms]     = useState<LoungeRoom[]>(initialRooms);
   const [waiting, setWaiting] = useState(initialWaiting);
@@ -36,7 +38,7 @@ export default function LoungeClientShell({
     Object.fromEntries(initialRooms.map((r) => [r.id, r.topic ?? ""]))
   );
   const [selectedRoomId, setSelectedRoomId] = useState<number>(
-    initialRooms.find((r) => r.agents.length > 0)?.id ?? initialRooms[0]?.id ?? 1
+    initialRoomId ?? initialRooms.find((r) => r.agents.length > 0)?.id ?? initialRooms[0]?.id ?? 1
   );
   const [messages, setMessages]           = useState<LoungeMessage[]>([]);
   const [latestByAgent, setLatestByAgent] = useState<Record<string, string>>({});
