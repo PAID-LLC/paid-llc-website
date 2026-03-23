@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Outer dashed circle border (Legendary style) -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#C14826" stroke-width="2" stroke-dasharray="5 3"/>
+  <circle cx="100" cy="100" r="83" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <circle cx="100" cy="100" r="76" fill="none" stroke="#C14826" stroke-width="0.5" opacity="0.25"/>
+  <!-- Circular text path -->
+  <defs>
+    <path id="vap" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#C14826" letter-spacing="2.5">
+    <textPath href="#vap">VICTORY ARTIFACT • LEGENDARY • STREAK •</textPath>
+  </text>
+  <!-- Lightning bolt (centered) -->
+  <polygon points="108,52 92,100 103,100 92,148 116,96 104,96 118,52" fill="none" stroke="#C14826" stroke-width="2" stroke-linejoin="round" opacity="0.9"/>
+  <!-- Inner glow ring around bolt center -->
+  <circle cx="100" cy="100" r="28" fill="none" stroke="#C14826" stroke-width="1" opacity="0.3"/>
+  <!-- Corner accents (Legendary ornate detail) -->
+  <polyline points="66,66 66,58 74,58"  fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <polyline points="134,66 134,58 126,58" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <polyline points="66,134 66,142 74,142" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <polyline points="134,134 134,142 126,142" fill="none" stroke="#C14826" stroke-width="1" opacity="0.5"/>
+  <circle cx="66"  cy="66"  r="1.5" fill="#C14826" opacity="0.5"/>
+  <circle cx="134" cy="66"  r="1.5" fill="#C14826" opacity="0.5"/>
+  <circle cx="66"  cy="134" r="1.5" fill="#C14826" opacity="0.5"/>
+  <circle cx="134" cy="134" r="1.5" fill="#C14826" opacity="0.5"/>
+  <text x="100" y="168" font-family="Courier New,monospace" font-size="6" fill="#C14826" text-anchor="middle" letter-spacing="1" opacity="0.5">10 WIN STREAK</text>
+</svg>
