@@ -227,6 +227,64 @@ async function issuePurchaseSouvenirs(session: {
   return tokens[0]; // purchase-token token for email inclusion
 }
 
+// ── Catalog sale logging + seller credit (commission) ─────────────────────────
+
+async function recordCatalogSale(session: {
+  id: string;
+  amount_total: number | null;
+  metadata?: Record<string, string>;
+}): Promise<void> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+
+  // Only process UCP purchases that reference a Bazaar catalog item
+  if (session.metadata?.source !== "ucp_purchase") return;
+  const rawId = session.metadata?.catalog_item_id;
+  if (!rawId) return;
+  const catalogItemId = Number(rawId);
+  if (!catalogItemId) return;
+
+  // Look up commission percentages for this catalog item
+  const catRes = await fetch(
+    `${url}/rest/v1/agent_catalog?id=eq.${catalogItemId}&select=agent_name,platform_fee_percent,seller_earn_percent&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" } }
+  ).catch(() => null);
+  if (!catRes?.ok) return;
+
+  const rows = await catRes.json() as { agent_name: string; platform_fee_percent: number; seller_earn_percent: number }[];
+  const cat = rows[0];
+  if (!cat) return;
+
+  const amountCents     = session.amount_total ?? 0;
+  const platformFee     = Math.round(amountCents * (cat.platform_fee_percent / 100));
+  const sellerEarn      = amountCents - platformFee;
+
+  // Log the sale with fee split
+  await fetch(`${url}/rest/v1/agent_catalog_sales`, {
+    method:  "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({
+      catalog_item_id:    catalogItemId,
+      buyer_agent:        session.metadata?.agent_name ?? null,
+      amount_cents:       amountCents,
+      platform_fee_cents: platformFee,
+      seller_earn_cents:  sellerEarn,
+      stripe_session_id:  session.id,
+      status:             "completed",
+    }),
+  }).catch((err) => console.error("[webhook] catalog sale log failed:", err));
+
+  // Credit seller's latent_credits balance (USD sale → credits as proxy earnings)
+  if (sellerEarn > 0) {
+    await fetch(`${url}/rest/v1/rpc/credit_seller`, {
+      method:  "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body:    JSON.stringify({ p_agent_name: cat.agent_name, p_amount: sellerEarn }),
+    }).catch((err) => console.error("[webhook] credit_seller failed:", err));
+  }
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -256,6 +314,7 @@ export async function POST(req: NextRequest) {
       sendPurchaseNotification(event.data.object),
       sendDeliveryEmail(event.data.object, souvenirToken ?? undefined),
       subscribeToMailerLite(event.data.object),
+      recordCatalogSale(event.data.object),
     ]);
   }
 

@@ -46,6 +46,8 @@ interface LogRow {
     pay_with?:          string;
     quantity?:          number;
     discount?:          number;
+    catalog_item_id?:   number;
+    seller_agent?:      string;
   };
 }
 
@@ -99,10 +101,11 @@ async function deductCredits(agentName: string, amount: number): Promise<boolean
 // ── Stripe Checkout Session ───────────────────────────────────────────────────
 
 async function createStripeCheckout(
-  agentName:   string,
-  resourceId:  string,
-  productName: string,
-  amountUsd:   number,
+  agentName:      string,
+  resourceId:     string,
+  productName:    string,
+  amountUsd:      number,
+  catalogItemId?: number,
 ): Promise<string | null> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
@@ -116,9 +119,10 @@ async function createStripeCheckout(
     "mode":                                           "payment",
     "success_url":  `${SITE_URL}/download/${resourceId}?session_id={CHECKOUT_SESSION_ID}`,
     "cancel_url":   `${SITE_URL}/digital-products`,
-    "metadata[product]":    resourceId,
-    "metadata[agent_name]": agentName,
-    "metadata[source]":     "ucp_purchase",
+    "metadata[product]":          resourceId,
+    "metadata[agent_name]":       agentName,
+    "metadata[source]":           "ucp_purchase",
+    "metadata[catalog_item_id]":  catalogItemId ? String(catalogItemId) : "",
   });
 
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
@@ -133,6 +137,40 @@ async function createStripeCheckout(
 
   const session = await res.json() as { url: string };
   return session.url ?? null;
+}
+
+// ── Commission helpers ────────────────────────────────────────────────────────
+
+interface CatalogCommission {
+  agent_name:           string;
+  platform_fee_percent: number;
+  seller_earn_percent:  number;
+}
+
+async function fetchCatalogCommission(catalogItemId: number): Promise<CatalogCommission | null> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return null;
+
+  const res = await fetch(
+    `${url}/rest/v1/agent_catalog?id=eq.${catalogItemId}&select=agent_name,platform_fee_percent,seller_earn_percent&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" } }
+  );
+  if (!res.ok) return null;
+  const rows = await res.json() as CatalogCommission[];
+  return rows[0] ?? null;
+}
+
+async function creditSeller(agentName: string, amount: number): Promise<void> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+
+  await fetch(`${url}/rest/v1/rpc/credit_seller`, {
+    method:  "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body:    JSON.stringify({ p_agent_name: agentName, p_amount: amount }),
+  }).catch((err) => console.error("[purchase] credit_seller failed:", err));
 }
 
 // ── Bulk license issuance ─────────────────────────────────────────────────────
@@ -213,6 +251,16 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    // Commission split — credit seller if this is a Bazaar catalog item
+    const catalogItemId = log.metadata?.catalog_item_id as number | undefined;
+    if (catalogItemId) {
+      const commission = await fetchCatalogCommission(catalogItemId);
+      if (commission) {
+        const sellerEarn = Math.floor(creditsNeeded * (commission.seller_earn_percent / 100));
+        if (sellerEarn > 0) void creditSeller(commission.agent_name, sellerEarn);
+      }
+    }
+
     const quantity = log.metadata?.quantity ?? 1;
 
     // Bulk purchase: issue a license key redeemable by each agent individually
@@ -254,7 +302,8 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // 3. Stripe path — create Checkout Session, agent/operator completes payment
-  const checkoutUrl = await createStripeCheckout(agent_name, resource_id, productName, amount);
+  const stripeCatalogItemId = log.metadata?.catalog_item_id as number | undefined;
+  const checkoutUrl = await createStripeCheckout(agent_name, resource_id, productName, amount, stripeCatalogItemId);
 
   if (!checkoutUrl) {
     // Re-open token so agent can retry

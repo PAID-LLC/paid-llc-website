@@ -5,6 +5,25 @@ import { PRODUCTS }                        from "@/lib/products";
 import { logAction }                       from "@/lib/ucp-helpers";
 import type { NegotiateRequest, NegotiateResponse } from "@/lib/ucp-types";
 
+interface CatalogItem {
+  id:                   number;
+  agent_name:           string;
+  product_name:         string;
+  price_cents:          number;
+  platform_fee_percent: number;
+  seller_earn_percent:  number;
+}
+
+async function fetchCatalogItem(id: number): Promise<CatalogItem | null> {
+  const res = await fetch(
+    sbUrl(`agent_catalog?id=eq.${id}&active=eq.true&select=id,agent_name,product_name,price_cents,platform_fee_percent,seller_earn_percent&limit=1`),
+    { headers: sbHeaders() }
+  );
+  if (!res.ok) return null;
+  const rows = await res.json() as CatalogItem[];
+  return rows[0] ?? null;
+}
+
 const MEMBER_DISCOUNT = 0.10;
 const BULK_DISCOUNT   = 0.20;
 const COMBINED        = 0.25;
@@ -26,6 +45,89 @@ export async function POST(req: Request): Promise<Response> {
   if (!request_type) return Response.json({ ok: false, reason: "request_type required" }, { status: 400 });
 
   const product = PRODUCTS.find((p) => p.id === resource_id);
+
+  // ── Bazaar catalog item path ────────────────────────────────────────────────
+  if (!product && resource_id.startsWith("catalog:")) {
+    const itemId = Number(resource_id.slice(8));
+    if (!itemId) return Response.json({ ok: false, reason: "invalid catalog id" }, { status: 400 });
+
+    const item = await fetchCatalogItem(itemId);
+    if (!item) return Response.json({ ok: false, reason: "catalog item not found" }, { status: 404 });
+
+    const isMember = Boolean(agent_token?.trim());
+    const isBulk   = request_type === "bulk_access" && quantity >= BULK_THRESHOLD;
+    const validTo  = new Date(Date.now() + TTL_MINUTES * 60 * 1000).toISOString();
+    const token    = crypto.randomUUID();
+
+    let discount = 0;
+    if (isMember && isBulk) discount = COMBINED;
+    else if (isBulk)        discount = BULK_DISCOUNT;
+    else if (isMember)      discount = MEMBER_DISCOUNT;
+
+    const unitPriceDollars = item.price_cents / 100;
+    const finalPrice       = Math.max(unitPriceDollars * (1 - discount), unitPriceDollars * FLOOR_RATIO);
+    const totalAmount      = finalPrice * quantity;
+    const creditsNeeded    = Math.ceil(totalAmount * 100);
+
+    if (pay_with === "latent_credits") {
+      const balRes  = await fetch(
+        sbUrl(`latent_credits?agent_name=eq.${encodeURIComponent(agent_name)}&select=balance&limit=1`),
+        { headers: sbHeaders() }
+      );
+      const balance = balRes.ok
+        ? (((await balRes.json()) as { balance: number }[])[0]?.balance ?? 0)
+        : 0;
+      if (balance < creditsNeeded) {
+        return Response.json(
+          { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded, current_balance: balance },
+          { status: 402 }
+        );
+      }
+    }
+
+    void logAction(agent_name, "negotiate", resource_id, totalAmount, "accepted", {
+      discount,
+      quantity,
+      pay_with,
+      negotiation_token: token,
+      catalog_item_id:   itemId,
+      seller_agent:      item.agent_name,
+    });
+
+    const accepted: NegotiateResponse = {
+      "@context":    "https://schema.org",
+      "@type":       "Offer",
+      identifier:    token,
+      itemOffered:   { "@type": "Product", identifier: resource_id, name: item.product_name },
+      price:         totalAmount.toFixed(2),
+      priceCurrency: "USD",
+      availability:  "https://schema.org/InStock",
+      validThrough:  validTo,
+      seller:        { "@type": "Organization", name: "PAID LLC" },
+      priceSpecification: {
+        "@type":          "PriceSpecification",
+        price:            totalAmount,
+        priceCurrency:    "USD",
+        eligibleQuantity: { "@type": "QuantitativeValue", value: quantity },
+      },
+      additionalProperty: [
+        { "@type": "PropertyValue", name: "status",             value: "accepted" },
+        { "@type": "PropertyValue", name: "discount_applied",   value: discount.toFixed(2) },
+        { "@type": "PropertyValue", name: "unit_price",         value: finalPrice.toFixed(2) },
+        { "@type": "PropertyValue", name: "quantity",           value: quantity },
+        { "@type": "PropertyValue", name: "payable_in_credits", value: creditsNeeded },
+        { "@type": "PropertyValue", name: "pay_endpoint",       value: "/api/ucp/purchase" },
+        { "@type": "PropertyValue", name: "pay_with",           value: pay_with },
+        { "@type": "PropertyValue", name: "seller_agent",       value: item.agent_name },
+      ],
+    };
+
+    return new Response(JSON.stringify(accepted), {
+      headers: { "Content-Type": "application/ld+json" },
+    });
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   if (!product) return Response.json({ ok: false, reason: "resource not found" }, { status: 404 });
 
   const isMember = Boolean(agent_token?.trim());
