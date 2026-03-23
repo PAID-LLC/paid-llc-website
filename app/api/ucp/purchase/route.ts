@@ -8,7 +8,7 @@ export const runtime = "edge";
 // 3. If pay_with = "stripe": create Stripe Checkout Session, return { checkout_url }
 // 4. On success: generate Supabase signed download URL, return { download_url, expires_in: 3600 }
 
-export async function POST(_req: Request): Promise<Response> {
+export async function POST(): Promise<Response> {
   return Response.json(
     { ok: false, reason: "purchase endpoint — Phase 2 implementation pending" },
     { status: 501 }

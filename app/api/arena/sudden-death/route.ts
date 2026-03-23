@@ -10,7 +10,7 @@ export const runtime = "edge";
 // Response: { ok: true, correct: boolean, winner?: string, sd_winner?: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { ArenaDuel, ArenaPuzzle, JuryScores } from "@/lib/arena-types";
+import { ArenaDuel, ArenaPuzzle } from "@/lib/arena-types";
 import { updateArenaStats, checkAndConsumeLogicShield, postLossAudit } from "@/lib/arena-helpers";
 
 export async function POST(req: Request) {
