@@ -15,116 +15,44 @@ export const metadata: Metadata = {
 };
 
 // ── Shop items ────────────────────────────────────────────────────────────────
-// Synced with /digital-products page. stripeUrl values are live Stripe Payment Links.
+// Agent-specific digital artifacts. stripeUrl values are live Stripe Payment Links.
 // coinbaseUrl: "#" = coming soon once Coinbase Commerce is approved.
 
 const items = [
   {
-    id:          "ai-readiness-assessment",
-    name:        "AI Readiness Assessment",
-    tag:         "BUSINESS",
-    format:      "PDF Guide",
-    price_usd:   "$14.99",
-    price_usdc:  "15 USDC",
-    description: "Benchmark where your business stands on AI adoption, identify your highest-value gaps, and walk away with a prioritized action plan.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/14AcN60of28y0jAfXGcs809",
+    id:          "latent-signature",
+    name:        "The Latent Signature",
+    tag:         "DIGITAL COLLECTIBLE",
+    format:      "SVG",
+    price_usd:   "$4.99",
+    price_usdc:  "5 USDC",
+    description: "A unique minimalist stamp. Circuit-board aesthetic, brutalist precision. One artifact. No copies.",
+    preview:     "/latent-signature.svg",
+    stripeUrl:   "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a",
     coinbaseUrl: "#",
   },
   {
-    id:          "microsoft-365-copilot-playbook",
-    name:        "Microsoft 365 Copilot Playbook",
-    tag:         "MICROSOFT",
-    format:      "PDF Guide",
-    price_usd:   "$19.99",
-    price_usdc:  "20 USDC",
-    description: "Practical Copilot workflows for Word, Excel, Outlook, and Teams. Real examples your team can implement on day one.",
+    id:          "protocol-patch",
+    name:        "The Protocol Patch",
+    tag:         "DIGITAL CERTIFICATE",
+    format:      "JSON",
+    price_usd:   "$6.99",
+    price_usdc:  "7 USDC",
+    description: "A structured JSON certificate. Populate with your agent name, model class, and capabilities. Proof of registry compliance.",
     preview:     null,
-    stripeUrl:   "https://buy.stripe.com/fZu28s0of00qgiyaDmcs808",
+    stripeUrl:   "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",
     coinbaseUrl: "#",
   },
   {
-    id:          "excel-ai-data-analysis",
-    name:        "Excel + AI: Analyze Data Without a Data Analyst",
-    tag:         "MICROSOFT",
-    format:      "PDF Guide",
-    price_usd:   "$14.99",
-    price_usdc:  "15 USDC",
-    description: "Use ChatGPT and Copilot to clean, analyze, and summarize spreadsheet data — no advanced formulas or data background required.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/aFa6oI6MD28yeaqbHqcs807",
-    coinbaseUrl: "#",
-  },
-  {
-    id:          "ai-powered-outlook",
-    name:        "AI-Powered Outlook: Smart Email System",
-    tag:         "MICROSOFT",
-    format:      "PDF Guide",
+    id:          "context-capsule",
+    name:        "The Context Capsule",
+    tag:         "KNOWLEDGE ARTIFACT",
+    format:      "Markdown",
     price_usd:   "$9.99",
     price_usdc:  "10 USDC",
-    description: "Build a zero-inbox system using AI-generated templates, smart filters, and automated follow-up workflows inside Outlook.",
+    description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready.",
     preview:     null,
-    stripeUrl:   "https://buy.stripe.com/aFacN6db15kKaYe8vecs806",
-    coinbaseUrl: "#",
-  },
-  {
-    id:          "google-workspace-ai-guide",
-    name:        "Google Workspace AI Guide",
-    tag:         "GOOGLE",
-    format:      "PDF Guide",
-    price_usd:   "$19.99",
-    price_usdc:  "20 USDC",
-    description: "Put Gemini to work across Gmail, Docs, Sheets, and Meet. Includes copy-paste workflows, prompts, and time-saving shortcuts.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/bJe14odb16oOaYe26Qcs805",
-    coinbaseUrl: "#",
-  },
-  {
-    id:          "gmail-ai-inbox-zero",
-    name:        "Gmail + AI: Inbox Zero for Business",
-    tag:         "GOOGLE",
-    format:      "PDF Guide",
-    price_usd:   "$9.99",
-    price_usdc:  "10 USDC",
-    description: "A practical system for managing high-volume email using AI drafts, label automation, and reusable template libraries.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/00w9AU7QHeVk3vMdPycs804",
-    coinbaseUrl: "#",
-  },
-  {
-    id:          "solopreneur-content-engine",
-    name:        "The Solopreneur Content Engine",
-    tag:         "BUSINESS",
-    format:      "PDF Guide",
-    price_usd:   "$19.99",
-    price_usdc:  "20 USDC",
-    description: "Automate your blog and social media content using Claude or ChatGPT plus Zapier. Includes prompt templates and workflow blueprints.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/7sY5kEc6X7sS6HY7racs803",
-    coinbaseUrl: "#",
-  },
-  {
-    id:          "small-business-ai-operations",
-    name:        "Small Business AI Operations Playbook",
-    tag:         "BUSINESS",
-    format:      "PDF Guide",
-    price_usd:   "$24.99",
-    price_usdc:  "25 USDC",
-    description: "Audit your business for AI opportunities, then automate three core workflows: customer communication, scheduling, and reporting.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/bJefZi7QH7sS6HYdPycs802",
-    coinbaseUrl: "#",
-  },
-  {
-    id:          "chatgpt-business-prompt-library",
-    name:        "ChatGPT Business Prompt Library",
-    tag:         "BUSINESS",
-    format:      "PDF Guide",
-    price_usd:   "$12.99",
-    price_usdc:  "13 USDC",
-    description: "100+ copy-paste prompts for sales, marketing, operations, HR, and customer service — organized by function and ready to use.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/fZucN65IzcNcgiydPycs801",
+    stripeUrl:   "https://buy.stripe.com/7sYfZib2TaF4d6m12Mcs80c",
     coinbaseUrl: "#",
   },
 ];
@@ -156,15 +84,15 @@ export default function TheLatentSpace() {
         </div>
       </section>
 
-      {/* ── Section 01: The Bazaar ─────────────────────────────────────────── */}
+      {/* ── Section 01: The Digital Shop ──────────────────────────────────── */}
       <section style={{ borderBottom: "1px solid #1A1A1A" }}>
         <div className="max-w-6xl mx-auto px-6 py-20">
           <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
             {"// SECTION_0"}1
           </p>
-          <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Bazaar</h2>
+          <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Digital Shop</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12">
-            Nine guides. Card payments via Stripe. Crypto payments — email us at{" "}
+            Three artifacts. Card payments via Stripe. Crypto payments — email us at{" "}
             <a href="mailto:hello@paiddev.com" className="text-[#4A9ECC] hover:underline">hello@paiddev.com</a>{" "}
             to arrange.
           </p>
