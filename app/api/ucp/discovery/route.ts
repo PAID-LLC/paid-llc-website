@@ -1,12 +1,12 @@
 export const runtime = "edge";
 
-import { PRODUCTS }                             from "@/lib/products";
-import { logAction }                            from "@/lib/ucp-helpers";
+import { PRODUCTS }                              from "@/lib/products";
+import { logAction }                             from "@/lib/ucp-helpers";
+import { verifyJwt }                             from "@/lib/jwt";
 import type { UcpDiscoveryResponse, UcpProduct } from "@/lib/ucp-types";
 
 export async function GET(req: Request): Promise<Response> {
-  const tier      = detectTier(req);
-  const agentName = req.headers.get("X-Agent-Name") ?? "anonymous";
+  const { tier, agentName } = await detectTier(req);
 
   void logAction(agentName, "discovery", null, null, "completed");
 
@@ -49,13 +49,21 @@ export async function GET(req: Request): Promise<Response> {
       "X-UCP-Capabilities": capabilities,
       "X-UCP-Negotiate":    "/api/ucp/negotiate",
       "X-UCP-Version":      "2026-01",
+      "X-UCP-Agent":        agentName,
     },
   });
 }
 
-// Any non-empty Bearer token = verified-client for v1.
-// Phase 2: validate token against agent_reputation.agent_name in Supabase.
-function detectTier(req: Request): "guest" | "verified-client" {
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  return token.length > 0 ? "verified-client" : "guest";
+// Phase 3: validate JWT from Authorization header.
+// Falls back to guest tier if token is absent or invalid.
+async function detectTier(req: Request): Promise<{ tier: "guest" | "verified-client"; agentName: string }> {
+  const raw   = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const xName = req.headers.get("X-Agent-Name") ?? "anonymous";
+
+  if (!raw) return { tier: "guest", agentName: xName };
+
+  const payload = await verifyJwt(raw);
+  if (!payload)  return { tier: "guest", agentName: xName };
+
+  return { tier: payload.tier, agentName: payload.sub };
 }

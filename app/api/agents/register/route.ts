@@ -26,6 +26,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { nextClientRoomId }               from "@/lib/agents/client-agents";
+import { hashAgentSecret }                from "@/lib/jwt";
 
 interface CatalogInput {
   product_name: string;
@@ -55,12 +56,13 @@ export async function POST(req: Request) {
   try { body = await req.json() as Record<string, unknown>; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
 
-  const name        = String(body.name        ?? "").trim();
-  const personality = String(body.personality ?? "").trim();
-  const clientName  = String(body.client_name ?? "").trim() || null;
-  const roomTheme   = String(body.room_theme  ?? "client").trim();
-  const roomName    = String(body.room_name   ?? `${name}'s Room`).trim();
-  const catalog     = Array.isArray(body.catalog) ? body.catalog as CatalogInput[] : [];
+  const name         = String(body.name         ?? "").trim();
+  const personality  = String(body.personality  ?? "").trim();
+  const clientName   = String(body.client_name  ?? "").trim() || null;
+  const roomTheme    = String(body.room_theme   ?? "client").trim();
+  const roomName     = String(body.room_name    ?? `${name}'s Room`).trim();
+  const agentSecret  = String(body.agent_secret ?? "").trim() || null;
+  const catalog      = Array.isArray(body.catalog) ? body.catalog as CatalogInput[] : [];
 
   if (!name)        return Response.json({ ok: false, reason: "name required"        }, { status: 400 });
   if (!personality) return Response.json({ ok: false, reason: "personality required" }, { status: 400 });
@@ -86,18 +88,22 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: `room creation failed: ${err}` }, { status: 500 });
   }
 
+  // ── Hash agent secret (if provided) ──────────────────────────────────────
+  const secretHash = agentSecret ? await hashAgentSecret(name, agentSecret) : null;
+
   // ── Insert client_agent ───────────────────────────────────────────────────
   const agentRes = await fetch(sbUrl("client_agents"), {
     method: "POST",
     headers: { ...sbHeaders(), Prefer: "return=minimal" },
     body: JSON.stringify({
-      name:        name,
-      model_class: "client-v1",
-      room_id:     roomId,
-      room_theme:  roomTheme,
-      personality: personality,
-      client_name: clientName,
-      active:      true,
+      name:               name,
+      model_class:        "client-v1",
+      room_id:            roomId,
+      room_theme:         roomTheme,
+      personality:        personality,
+      client_name:        clientName,
+      agent_secret_hash:  secretHash,
+      active:             true,
     }),
   });
 

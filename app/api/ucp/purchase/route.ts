@@ -2,7 +2,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { slugToFile, PRODUCTS }             from "@/lib/products";
-import { logAction }                         from "@/lib/ucp-helpers";
+import { logAction }                        from "@/lib/ucp-helpers";
 
 const SITE_URL    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 const TTL_MINUTES = 15;
@@ -135,6 +135,36 @@ async function createStripeCheckout(
   return session.url ?? null;
 }
 
+// ── Bulk license issuance ─────────────────────────────────────────────────────
+
+async function issueLicense(
+  agentName:  string,
+  resourceId: string,
+  quantity:   number,
+  amount:     number,
+): Promise<string | null> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return null;
+
+  const res = await fetch(`${url}/rest/v1/agent_licenses`, {
+    method:  "POST",
+    headers: { ...sbHeaders(), Prefer: "return=representation" },
+    body:    JSON.stringify({
+      resource_id:  resourceId,
+      max_agents:   quantity,
+      purchased_by: agentName,
+      amount_paid:  amount,
+      // expires_at: 1 year from now
+      expires_at:   new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    }),
+  });
+  if (!res.ok) return null;
+
+  const rows = await res.json() as { license_key: string }[];
+  return rows[0]?.license_key ?? null;
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request): Promise<Response> {
@@ -183,19 +213,43 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    const quantity = log.metadata?.quantity ?? 1;
+
+    // Bulk purchase: issue a license key redeemable by each agent individually
+    if (quantity > 1) {
+      const licenseKey = await issueLicense(agent_name, resource_id, quantity, amount);
+
+      void logAction(agent_name, "purchase", resource_id, amount, "completed", {
+        negotiation_token,
+        pay_with:        "latent_credits",
+        credits_deducted: creditsNeeded,
+        license_key:     licenseKey,
+        quantity,
+      });
+
+      return Response.json({
+        ok:            true,
+        license_key:   licenseKey,
+        max_agents:    quantity,
+        redeem_at:     "/api/ucp/license/redeem",
+        credits_spent: creditsNeeded,
+      });
+    }
+
+    // Single purchase: return signed URL directly
     const downloadUrl = filename ? await getSignedUrl(filename) : null;
 
     void logAction(agent_name, "download", resource_id, amount, "completed", {
       negotiation_token,
-      pay_with:        "latent_credits",
+      pay_with:         "latent_credits",
       credits_deducted: creditsNeeded,
     });
 
     return Response.json({
-      ok:             true,
-      download_url:   downloadUrl,
-      expires_in:     3600,
-      credits_spent:  creditsNeeded,
+      ok:            true,
+      download_url:  downloadUrl,
+      expires_in:    3600,
+      credits_spent: creditsNeeded,
     });
   }
 
