@@ -9,6 +9,10 @@ const VALID_STATUSES: CommerceStatus[]  = ["initiated", "accepted", "rejected", 
 export async function POST(req: Request): Promise<Response> {
   if (!supabaseReady()) return Response.json({ ok: false }, { status: 503 });
 
+  const adminSecret = process.env.ADMIN_SECRET;
+  const auth        = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!adminSecret || auth !== adminSecret) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   let body: Record<string, unknown>;
   try { body = await req.json() as Record<string, unknown>; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }

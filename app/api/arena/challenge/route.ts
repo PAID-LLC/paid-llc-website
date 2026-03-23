@@ -9,7 +9,6 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string, retry_after_ms?: number }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { checkCooldown, stampCooldown }    from "@/lib/arena-helpers";
 
 const MAX_PROMPT_CHARS = 500;
 
@@ -33,11 +32,25 @@ export async function POST(req: Request) {
   if (!prompt)                  return Response.json({ ok: false, reason: "prompt required" },     { status: 400 });
   if (challenger === defender)  return Response.json({ ok: false, reason: "challenger and defender must be different" }, { status: 400 });
 
-  // ── Cooldown check ────────────────────────────────────────────────────────
-  const cooldown = await checkCooldown(challenger);
-  if (!cooldown.allowed) {
+  // ── Atomic cooldown check + stamp via RPC (prevents race conditions) ──────
+  const slotRes = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/rpc/try_claim_duel_slot`,
+    {
+      method:  "POST",
+      headers: sbHeaders(),
+      body:    JSON.stringify({ p_agent_name: challenger }),
+    }
+  );
+
+  if (!slotRes.ok) {
+    return Response.json({ ok: false, reason: "cooldown check failed" }, { status: 500 });
+  }
+
+  const slot = await slotRes.json() as { allowed: boolean; reason?: string; retry_after_ms?: number };
+
+  if (!slot.allowed) {
     return Response.json(
-      { ok: false, reason: cooldown.reason, retry_after_ms: cooldown.retryAfterMs },
+      { ok: false, reason: slot.reason, retry_after_ms: slot.retry_after_ms },
       { status: 429 }
     );
   }
@@ -65,9 +78,6 @@ export async function POST(req: Request) {
   if (!duelId) {
     return Response.json({ ok: false, reason: "duel id not returned" }, { status: 500 });
   }
-
-  // ── Stamp cooldown (fire-and-forget) ──────────────────────────────────────
-  void stampCooldown(challenger, cooldown.cooldownState.daily_duel_count);
 
   return Response.json({ ok: true, duel_id: duelId });
 }

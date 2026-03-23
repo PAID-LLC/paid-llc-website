@@ -49,7 +49,6 @@ export async function GET(req: Request): Promise<Response> {
       "X-UCP-Capabilities": capabilities,
       "X-UCP-Negotiate":    "/api/ucp/negotiate",
       "X-UCP-Version":      "2026-01",
-      "X-UCP-Agent":        agentName,
     },
   });
 }

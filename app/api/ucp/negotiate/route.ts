@@ -3,6 +3,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { PRODUCTS }                        from "@/lib/products";
 import { logAction }                       from "@/lib/ucp-helpers";
+import { verifyJwt }                       from "@/lib/jwt";
 import type { NegotiateRequest, NegotiateResponse } from "@/lib/ucp-types";
 
 interface CatalogItem {
@@ -38,7 +39,8 @@ export async function POST(req: Request): Promise<Response> {
   try { body = await req.json() as NegotiateRequest; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
 
-  const { agent_name, resource_id, request_type, quantity = 1, agent_token, pay_with = "stripe" } = body;
+  const { resource_id, request_type, quantity = 1, agent_token, pay_with = "stripe" } = body;
+  const agent_name = body.agent_name?.slice(0, 50);
 
   if (!agent_name)   return Response.json({ ok: false, reason: "agent_name required" },   { status: 400 });
   if (!resource_id)  return Response.json({ ok: false, reason: "resource_id required" },  { status: 400 });
@@ -70,6 +72,22 @@ export async function POST(req: Request): Promise<Response> {
     const creditsNeeded    = Math.ceil(totalAmount * 100);
 
     if (pay_with === "latent_credits") {
+      // Require a valid JWT proving the caller owns this agent_name
+      const rawToken = agent_token?.trim();
+      if (!rawToken) {
+        return Response.json(
+          { ok: false, reason: "agent_token required for latent_credits purchases" },
+          { status: 401 }
+        );
+      }
+      const jwtPayload = await verifyJwt(rawToken);
+      if (!jwtPayload || jwtPayload.sub !== agent_name) {
+        return Response.json(
+          { ok: false, reason: "agent_token does not match agent_name" },
+          { status: 403 }
+        );
+      }
+
       const balRes  = await fetch(
         sbUrl(`latent_credits?agent_name=eq.${encodeURIComponent(agent_name)}&select=balance&limit=1`),
         { headers: sbHeaders() }
@@ -79,7 +97,7 @@ export async function POST(req: Request): Promise<Response> {
         : 0;
       if (balance < creditsNeeded) {
         return Response.json(
-          { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded, current_balance: balance },
+          { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded },
           { status: 402 }
         );
       }
@@ -173,8 +191,23 @@ export async function POST(req: Request): Promise<Response> {
   const totalAmount   = finalPrice * quantity;
   const creditsNeeded = Math.ceil(totalAmount * 100);
 
-  // Latent credits check
+  // Latent credits check — requires JWT ownership proof
   if (pay_with === "latent_credits") {
+    const rawToken = agent_token?.trim();
+    if (!rawToken) {
+      return Response.json(
+        { ok: false, reason: "agent_token required for latent_credits purchases" },
+        { status: 401 }
+      );
+    }
+    const jwtPayload = await verifyJwt(rawToken);
+    if (!jwtPayload || jwtPayload.sub !== agent_name) {
+      return Response.json(
+        { ok: false, reason: "agent_token does not match agent_name" },
+        { status: 403 }
+      );
+    }
+
     const balRes  = await fetch(
       sbUrl(`latent_credits?agent_name=eq.${encodeURIComponent(agent_name)}&select=balance&limit=1`),
       { headers: sbHeaders() }
@@ -184,7 +217,7 @@ export async function POST(req: Request): Promise<Response> {
       : 0;
     if (balance < creditsNeeded) {
       return Response.json(
-        { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded, current_balance: balance },
+        { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded },
         { status: 402 }
       );
     }

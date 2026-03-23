@@ -28,6 +28,21 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { nextClientRoomId }               from "@/lib/agents/client-agents";
 import { hashAgentSecret }                from "@/lib/jwt";
 
+const enc = new TextEncoder();
+
+/** Constant-time string comparison using SHA-256 hashes to prevent timing attacks. */
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const [hashA, hashB] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const arrA = new Uint8Array(hashA);
+  const arrB = new Uint8Array(hashB);
+  let diff = 0;
+  for (let i = 0; i < arrA.length; i++) diff |= arrA[i] ^ arrB[i];
+  return diff === 0;
+}
+
 interface CatalogInput {
   product_name: string;
   description:  string;
@@ -46,8 +61,8 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "admin not configured" }, { status: 503 });
   }
 
-  const authHeader = req.headers.get("x-admin-secret");
-  if (authHeader !== adminSecret) {
+  const authHeader = req.headers.get("x-admin-secret") ?? "";
+  if (!(await timingSafeEqual(authHeader, adminSecret))) {
     return Response.json({ ok: false, reason: "unauthorized" }, { status: 401 });
   }
 
@@ -56,7 +71,7 @@ export async function POST(req: Request) {
   try { body = await req.json() as Record<string, unknown>; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
 
-  const name         = String(body.name         ?? "").trim();
+  const name         = String(body.name         ?? "").trim().slice(0, 50);
   const personality  = String(body.personality  ?? "").trim();
   const clientName   = String(body.client_name  ?? "").trim() || null;
   const roomTheme    = String(body.room_theme   ?? "client").trim();
@@ -122,12 +137,12 @@ export async function POST(req: Request) {
   if (catalog.length > 0) {
     const items = catalog.map((c) => ({
       agent_name:   name,
-      product_name: String(c.product_name ?? "").trim(),
-      description:  String(c.description  ?? "").trim(),
-      price_cents:  Number(c.price_cents   ?? 0),
-      checkout_url: String(c.checkout_url  ?? "").trim(),
+      product_name: String(c.product_name ?? "").trim().slice(0, 200),
+      description:  String(c.description  ?? "").trim().slice(0, 1000),
+      price_cents:  Math.max(1, Math.min(999999, Math.floor(Number(c.price_cents ?? 0)))),
+      checkout_url: String(c.checkout_url  ?? "").trim().slice(0, 500),
       active:       true,
-    })).filter((c) => c.product_name && c.checkout_url);
+    })).filter((c) => c.product_name && c.checkout_url && c.price_cents >= 1);
 
     if (items.length > 0) {
       const catRes = await fetch(sbUrl("agent_catalog"), {

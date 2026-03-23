@@ -86,9 +86,28 @@ export async function verifyJwt(token: string): Promise<JwtPayload | null> {
   }
 }
 
-/** Deterministic secret hash: SHA-256(agent_name:agent_secret:JWT_SECRET) */
+/**
+ * Deterministic PBKDF2 hash for agent secrets.
+ * Salt = agent_name + JWT_SECRET (deterministic, no extra storage needed).
+ * 100,000 SHA-256 iterations — brute-force resistant on Edge.
+ */
 export async function hashAgentSecret(agentName: string, agentSecret: string): Promise<string> {
   const secret = process.env.JWT_SECRET ?? "";
-  const hash   = await crypto.subtle.digest("SHA-256", enc.encode(`${agentName}:${agentSecret}:${secret}`));
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const salt   = enc.encode(`${agentName}:${secret}`);
+
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(agentSecret),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
+  );
+
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 100_000 },
+    baseKey,
+    256
+  );
+
+  return Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }

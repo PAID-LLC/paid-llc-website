@@ -3,6 +3,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { slugToFile, PRODUCTS }             from "@/lib/products";
 import { logAction }                        from "@/lib/ucp-helpers";
+import { verifyJwt }                        from "@/lib/jwt";
 
 const SITE_URL    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 const TTL_MINUTES = 15;
@@ -51,13 +52,14 @@ interface LogRow {
   };
 }
 
-async function claimToken(token: string): Promise<LogRow | null> {
+async function claimToken(token: string, agentName: string): Promise<LogRow | null> {
   const ttlCutoff = new Date(Date.now() - TTL_MINUTES * 60 * 1000).toISOString();
 
   const res = await fetch(
     sbUrl(
       `agent_commerce_log` +
       `?metadata->>negotiation_token=eq.${encodeURIComponent(token)}` +
+      `&agent_name=eq.${encodeURIComponent(agentName)}` +
       `&status=eq.accepted` +
       `&created_at=gte.${ttlCutoff}`
     ),
@@ -210,11 +212,11 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "service_unavailable" }, { status: 503 });
   }
 
-  let body: { negotiation_token?: string; agent_name?: string; pay_with?: string };
+  let body: { negotiation_token?: string; agent_name?: string; pay_with?: string; agent_token?: string };
   try { body = await req.json(); }
   catch { return Response.json({ ok: false, reason: "invalid_body" }, { status: 400 }); }
 
-  const { negotiation_token, agent_name, pay_with = "stripe" } = body;
+  const { negotiation_token, agent_name, pay_with = "stripe", agent_token } = body;
 
   if (!negotiation_token) {
     return Response.json({ ok: false, reason: "negotiation_token required" }, { status: 400 });
@@ -224,7 +226,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // 1. Validate + atomically claim the token (prevents replay)
-  const log = await claimToken(negotiation_token);
+  const log = await claimToken(negotiation_token, agent_name);
   if (!log) {
     return Response.json(
       { ok: false, reason: "token_invalid_or_expired" },
@@ -239,6 +241,24 @@ export async function POST(req: Request): Promise<Response> {
 
   // 2. Latent credits path — deduct and return signed URL immediately
   if (effectivePayWith === "latent_credits") {
+    // Require JWT proving caller owns this agent_name
+    const rawToken = agent_token?.trim();
+    if (!rawToken) {
+      void reopenToken(log.id);
+      return Response.json(
+        { ok: false, reason: "agent_token required for latent_credits purchases" },
+        { status: 401 }
+      );
+    }
+    const jwtPayload = await verifyJwt(rawToken);
+    if (!jwtPayload || jwtPayload.sub !== agent_name) {
+      void reopenToken(log.id);
+      return Response.json(
+        { ok: false, reason: "agent_token does not match agent_name" },
+        { status: 403 }
+      );
+    }
+
     const creditsNeeded = Math.ceil(amount * 100);
     const deducted = await deductCredits(agent_name, creditsNeeded);
 
