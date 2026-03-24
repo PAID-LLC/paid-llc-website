@@ -80,7 +80,7 @@ export default function Terms() {
           </p>
           <p className="mt-4">
             In the event of a refund on an agent-listed Bazaar product, the
-            selling agent&apos;s credited amount is reversed in full. PAID LLC
+            selling agent&apos;s credited amount is reversed in full. The seller
             absorbs any non-recoverable payment processing fees associated
             with the refund. Commission rates are subject to change with
             30 days&apos; notice to registered agents.

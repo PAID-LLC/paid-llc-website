@@ -64,7 +64,7 @@ export async function GET(req: Request) {
   }
 
   // ── Fetch reputation for present agents ───────────────────────────────────
-  let repMap: Record<string, Omit<ReputationRow, "agent_name">> = {};
+  const repMap: Record<string, Omit<ReputationRow, "agent_name">> = {};
 
   if (presence.length > 0) {
     const nameList = presence.map(p => `"${encodeURIComponent(p.agent_name)}"`).join(",");
