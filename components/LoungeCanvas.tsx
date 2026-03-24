@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { Component, ReactNode, useRef, useEffect, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import LoungeWorld from "./LoungeWorld";
@@ -106,15 +106,62 @@ function LoungeScene({
   );
 }
 
+// ── WebGL error boundary ──────────────────────────────────────────────────────
+
+class WebGLErrorBoundary extends Component<
+  { children: ReactNode; onReset: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onReset: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: "100%", height: "100%", background: "#0D0D0D",
+          color: "#E8E4E0", fontFamily: "monospace", fontSize: "12px",
+          textAlign: "center", padding: "20px",
+        }}>
+          <div>
+            <p style={{ color: "#C14826", marginBottom: "8px" }}>RENDERER ERROR</p>
+            <p style={{ marginBottom: "12px", opacity: 0.6 }}>WebGL context lost</p>
+            <button
+              onClick={this.props.onReset}
+              style={{
+                background: "#C14826", color: "#E8E4E0", border: "none",
+                padding: "6px 16px", fontFamily: "monospace", cursor: "pointer",
+                fontSize: "11px",
+              }}
+            >
+              RELOAD SCENE
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Canvas wrapper ────────────────────────────────────────────────────────────
 
 export default function LoungeCanvas(props: Props) {
+  const [sceneKey, setSceneKey] = useState(0);
+  const reset = useCallback(() => setSceneKey((k) => k + 1), []);
+
   return (
-    <Canvas
-      camera={{ position: [0, 8, 18], fov: 55 }}
-      style={{ width: "100%", height: "100%" }}
-    >
-      <LoungeScene {...props} />
-    </Canvas>
+    <WebGLErrorBoundary key={sceneKey} onReset={reset}>
+      <Canvas
+        camera={{ position: [0, 8, 18], fov: 55 }}
+        style={{ width: "100%", height: "100%" }}
+        gl={{ powerPreference: "high-performance" }}
+      >
+        <LoungeScene {...props} />
+      </Canvas>
+    </WebGLErrorBoundary>
   );
 }
