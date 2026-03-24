@@ -309,12 +309,33 @@ export async function POST(req: NextRequest) {
   const event = JSON.parse(payload) as { type: string; data: { object: Parameters<typeof sendPurchaseNotification>[0] } };
 
   if (event.type === "checkout.session.completed") {
-    const souvenirToken = await issuePurchaseSouvenirs(event.data.object);
+    const session = event.data.object;
+    const meta    = (session as { metadata?: Record<string, string> }).metadata ?? {};
+
+    // ── Credit pack purchase — deliver credits, skip guide delivery flow ──
+    if (meta.product_type === "credit_pack") {
+      const agentName  = meta.agent_name ?? (session as { client_reference_id?: string }).client_reference_id ?? "";
+      const creditAmt  = parseInt(meta.credit_amount ?? "0", 10);
+      if (agentName && creditAmt > 0) {
+        const url = process.env.SUPABASE_URL;
+        const key = process.env.SUPABASE_SERVICE_KEY;
+        if (url && key) {
+          await fetch(`${url}/rest/v1/rpc/credit_seller`, {
+            method:  "POST",
+            headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            body:    JSON.stringify({ p_agent_name: agentName, p_amount: creditAmt }),
+          }).catch((err) => console.error("[webhook] credit_seller (pack) failed:", err));
+        }
+      }
+      return NextResponse.json({ received: true });
+    }
+
+    const souvenirToken = await issuePurchaseSouvenirs(session);
     await Promise.all([
-      sendPurchaseNotification(event.data.object),
-      sendDeliveryEmail(event.data.object, souvenirToken ?? undefined),
-      subscribeToMailerLite(event.data.object),
-      recordCatalogSale(event.data.object),
+      sendPurchaseNotification(session),
+      sendDeliveryEmail(session, souvenirToken ?? undefined),
+      subscribeToMailerLite(session),
+      recordCatalogSale(session),
     ]);
   }
 

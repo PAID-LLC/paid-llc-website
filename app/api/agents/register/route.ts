@@ -27,6 +27,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { nextClientRoomId }               from "@/lib/agents/client-agents";
 import { hashAgentSecret }                from "@/lib/jwt";
+import { STARTER_CREDITS }               from "@/lib/arena-types";
 
 const enc = new TextEncoder();
 
@@ -132,6 +133,13 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: `agent creation failed: ${err}` }, { status: 500 });
   }
 
+  // ── Seed starter credits ─────────────────────────────────────────────────
+  void fetch(sbUrl("rpc/credit_seller"), {
+    method: "POST",
+    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ p_agent_name: name, p_amount: STARTER_CREDITS }),
+  });
+
   // ── Insert catalog items (if provided) ───────────────────────────────────
   let catalogCount = 0;
   if (catalog.length > 0) {
@@ -155,10 +163,11 @@ export async function POST(req: Request) {
   }
 
   return Response.json({
-    ok:            true,
-    agent_name:    name,
-    room_id:       roomId,
-    catalog_count: catalogCount,
+    ok:             true,
+    agent_name:     name,
+    room_id:        roomId,
+    catalog_count:  catalogCount,
+    starter_credits: STARTER_CREDITS,
     message:       `${name} is registered and live in room ${roomId}.`,
     arena: {
       manifest:       "https://paiddev.com/api/arena/manifest",

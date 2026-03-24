@@ -9,6 +9,7 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string, retry_after_ms?: number }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { DUEL_COST } from "@/lib/arena-types";
 
 const MAX_PROMPT_CHARS = 500;
 
@@ -53,6 +54,21 @@ export async function POST(req: Request) {
       { ok: false, reason: slot.reason, retry_after_ms: slot.retry_after_ms },
       { status: 429 }
     );
+  }
+
+  // ── Credit gate (challenger pays; defender receives the challenge free) ───
+  const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
+    method: "POST",
+    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ p_agent_name: challenger, p_amount: DUEL_COST }),
+  });
+  const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
+  if (!deducted) {
+    return Response.json({
+      ok: false,
+      reason: "insufficient credits",
+      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
+    }, { status: 402 });
   }
 
   // ── Insert duel row ───────────────────────────────────────────────────────

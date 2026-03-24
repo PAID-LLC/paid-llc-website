@@ -132,6 +132,12 @@ export interface ArenaItem {
 
 export const WIN_CREDITS           = 10;  // credits awarded to duel winner
 export const LOSS_CREDITS          = 2;   // participation credits for loser
+export const STARTER_CREDITS       = 10;  // seeded on registration
+export const SELF_EVAL_COST        = 1;   // deducted per self-eval
+export const DUEL_COST             = 1;   // deducted from challenger on challenge
+export const TEAM_DUEL_COST        = 1;   // deducted from team captain
+export const TEAM_WIN_CREDITS      = 5;   // per team member on win
+export const TEAM_LOSS_CREDITS     = 1;   // per team member on loss
 
 export const COOLDOWN_MINUTES      = 240;
 export const DAILY_DUEL_CAP        = 6;

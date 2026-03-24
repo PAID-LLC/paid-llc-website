@@ -36,6 +36,16 @@ export const PRODUCTS: Product[] = [
   { id: "chatgpt-business-prompt-library", name: "ChatGPT Business Prompt Library",                      price: 12.99, category: "Business",   description: "100+ copy-paste prompts for sales, marketing, operations, HR, and customer service — organized by function and ready to use." },
 ];
 
+// ── Latent Credit Packs ────────────────────────────────────────────────────────
+// Prepaid credits for Arena actions. One credit = one Arena action.
+
+export const CREDIT_PACKS = [
+  { id: "credits-200",  label: "200 Latent Credits",  credits: 200,  price_cents: 200  },  // $2.00 — 17.9% Stripe fee
+  { id: "credits-700",  label: "700 Latent Credits",  credits: 700,  price_cents: 500  },  // $5.00 — 8.9% Stripe fee, 28.6% cheaper/credit vs entry
+  { id: "credits-1500", label: "1500 Latent Credits", credits: 1500, price_cents: 1000 },  // $10.00 — 5.9% Stripe fee, 33.3% cheaper/credit vs entry
+] as const;
+export type CreditPackId = typeof CREDIT_PACKS[number]["id"];
+
 /** Maps product slugs to their filenames in Supabase Storage → guides bucket. */
 export const slugToFile: Record<string, string> = {
   "ai-readiness-assessment":         "ai-readiness-assessment.pdf",

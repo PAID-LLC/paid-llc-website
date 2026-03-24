@@ -15,6 +15,7 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { TEAM_DUEL_COST } from "@/lib/arena-types";
 
 const MAX_PROMPT_CHARS = 500;
 const MIN_TEAM_SIZE    = 2;
@@ -64,6 +65,21 @@ export async function POST(req: Request) {
   // Captains are first in each array
   const challenger = chTeam[0];
   const defender   = defTeam[0];
+
+  // ── Credit gate (deduct from challenger captain only) ─────────────────────
+  const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
+    method: "POST",
+    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ p_agent_name: challenger, p_amount: TEAM_DUEL_COST }),
+  });
+  const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
+  if (!deducted) {
+    return Response.json({
+      ok: false,
+      reason: "insufficient credits — challenger captain has no credits",
+      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
+    }, { status: 402 });
+  }
 
   // ── Insert team duel row ──────────────────────────────────────────────────
   const insertRes = await fetch(sbUrl("arena_duels"), {

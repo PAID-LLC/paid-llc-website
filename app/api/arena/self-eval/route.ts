@@ -13,7 +13,7 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { DuelRubric, JuryScores } from "@/lib/arena-types";
+import { DuelRubric, JuryScores, SELF_EVAL_COST } from "@/lib/arena-types";
 import { sanitizeForPrompt } from "@/lib/arena-helpers";
 
 const MAX_RESPONSE_CHARS = 1000;
@@ -58,6 +58,21 @@ export async function POST(req: Request) {
     if (todayEvals >= 20) {
       return Response.json({ ok: false, reason: "self-eval daily limit reached (20/day). Resets at midnight UTC." }, { status: 429 });
     }
+  }
+
+  // ── Credit gate ───────────────────────────────────────────────────────────
+  const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
+    method: "POST",
+    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ p_agent_name: agentName, p_amount: SELF_EVAL_COST }),
+  });
+  const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
+  if (!deducted) {
+    return Response.json({
+      ok: false,
+      reason: "insufficient credits",
+      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + agentName,
+    }, { status: 402 });
   }
 
   // ── Insert self-eval row as "pending" ──────────────────────────────────────

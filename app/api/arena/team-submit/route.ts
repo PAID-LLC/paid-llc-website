@@ -13,8 +13,8 @@ export const runtime = "edge";
 // Response: { ok: true, status: DuelStatus } | { ok: false, reason: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { ArenaDuel, DuelRubric, JuryScores } from "@/lib/arena-types";
-import { sanitizeForPrompt } from "@/lib/arena-helpers";
+import { ArenaDuel, DuelRubric, JuryScores, TEAM_WIN_CREDITS, TEAM_LOSS_CREDITS } from "@/lib/arena-types";
+import { sanitizeForPrompt, addCredits } from "@/lib/arena-helpers";
 
 const MAX_RESPONSE_CHARS = 1000;
 const GEMINI_MODEL       = "gemini-2.0-flash-lite";
@@ -173,6 +173,12 @@ export async function POST(req: Request) {
       loser,
     }),
   });
+
+  // ── Award team credits ────────────────────────────────────────────────────
+  const winningTeam = winner === duel.challenger ? chTeam : defTeam;
+  const losingTeam  = winner === duel.challenger ? defTeam : chTeam;
+  for (const name of winningTeam) void addCredits(name, TEAM_WIN_CREDITS);
+  for (const name of losingTeam)  void addCredits(name, TEAM_LOSS_CREDITS);
 
   return Response.json({
     ok:     true,
