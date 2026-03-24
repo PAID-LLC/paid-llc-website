@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // Closes after 55 seconds — clients auto-reconnect via EventSource.
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { ArenaDuel, ArenaPuzzle } from "@/lib/arena-types";
+import { ArenaDuel, ArenaPuzzle, SelfEvalSummary } from "@/lib/arena-types";
 
 export async function GET(req: Request) {
   const url = process.env.SUPABASE_URL;
@@ -51,6 +51,19 @@ export async function GET(req: Request) {
             targetId = active[0]?.id ?? null;
           }
 
+          let isSelfEvalFallback = false;
+          if (!targetId && roomId) {
+            // Fallback: show recent self-eval (last 10min) when no active duel
+            const cutoff = new Date(Date.now() - 600_000).toISOString();
+            const seRes  = await fetch(
+              sbUrl(`arena_duels?room_id=eq.${roomId}&mode=eq.self_eval&status=eq.complete&created_at=gte.${cutoff}&order=created_at.desc&select=id&limit=1`),
+              { headers: sbHeaders() }
+            );
+            const seRows = seRes.ok ? await seRes.json() as { id: number }[] : [];
+            targetId = seRows[0]?.id ?? null;
+            isSelfEvalFallback = targetId !== null;
+          }
+
           if (!targetId) {
             if (lastStatus !== "null") {
               lastStatus = "null";
@@ -61,7 +74,7 @@ export async function GET(req: Request) {
 
           const res = await fetch(
             sbUrl(
-              `arena_duels?id=eq.${targetId}&select=id,challenger,defender,prompt,status,winner,loser,jury_scores,sudden_death,sd_puzzle_id,sd_winner,challenger_response,defender_response,duel_started_at,challenger_submitted_at,defender_submitted_at,challenger_elo_delta,defender_elo_delta&limit=1`
+              `arena_duels?id=eq.${targetId}&select=id,challenger,defender,prompt,status,winner,loser,jury_scores,sudden_death,sd_puzzle_id,sd_winner,challenger_response,defender_response,duel_started_at,challenger_submitted_at,defender_submitted_at,challenger_elo_delta,defender_elo_delta,mode,challenger_team,defender_team,team_submissions&limit=1`
             ),
             { headers: sbHeaders() }
           );
@@ -85,6 +98,8 @@ export async function GET(req: Request) {
           const snapshot = JSON.stringify({
             id: duel.id, status: duel.status, winner: duel.winner, sd_winner: duel.sd_winner,
             ch_ms: duel.challenger_submitted_at, def_ms: duel.defender_submitted_at,
+            mode: duel.mode,
+            team_sub_count: Object.keys(duel.team_submissions ?? {}).length,
           });
 
           if (snapshot !== lastStatus) {
@@ -101,13 +116,34 @@ export async function GET(req: Request) {
             const wc = (t: string | null | undefined) =>
               t ? t.split(/\s+/).filter(Boolean).length : null;
 
-            const payload = {
+            // Fetch self-eval activity log when in fallback mode
+          let selfEvalLog: SelfEvalSummary[] | undefined = undefined;
+          if (isSelfEvalFallback && roomId) {
+            const logCutoff = new Date(Date.now() - 600_000).toISOString();
+            const logRes = await fetch(
+              sbUrl(`arena_duels?room_id=eq.${roomId}&mode=eq.self_eval&status=eq.complete&created_at=gte.${logCutoff}&order=created_at.desc&select=id,challenger,prompt,jury_scores,created_at&limit=10`),
+              { headers: sbHeaders() }
+            );
+            if (logRes.ok) {
+              const logRows = await logRes.json() as Pick<ArenaDuel, "id" | "challenger" | "prompt" | "jury_scores" | "created_at">[];
+              selfEvalLog = logRows.map(r => ({
+                id:         r.id,
+                challenger: r.challenger,
+                prompt:     r.prompt,
+                total:      r.jury_scores?.challenger ?? 0,
+                created_at: r.created_at,
+              }));
+            }
+          }
+
+          const payload = {
               ...duel,
               sd_puzzle:              sdPuzzle,
               challenger_word_count:  wc(duel.challenger_response),
               defender_word_count:    wc(duel.defender_response),
               challenger_response_ms: chMs,
               defender_response_ms:   defMs,
+              self_eval_log:          selfEvalLog,
             };
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
           }

@@ -1,6 +1,7 @@
 // ── Arena Type Definitions ─────────────────────────────────────────────────────
 
 export type DuelStatus = "pending" | "judging" | "sudden_death" | "complete";
+export type DuelMode   = "duel" | "self_eval" | "team_duel";
 
 // ── Rubric ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,10 @@ export interface ArenaDuel {
   defender_submitted_at:   string | null;
   challenger_elo_delta:    number | null;
   defender_elo_delta:      number | null;
+  mode:                    DuelMode;
+  challenger_team:         string[] | null;
+  defender_team:           string[] | null;
+  team_submissions:        Record<string, string> | null;
 }
 
 export interface ArenaPuzzle {
@@ -77,6 +82,15 @@ export interface CooldownState {
   orbit_count:      number;
 }
 
+/** Compact summary of a completed self-eval for the activity log. */
+export interface SelfEvalSummary {
+  id:         number;
+  challenger: string;
+  prompt:     string;
+  total:      number;    // jury_scores.challenger
+  created_at: string;
+}
+
 /** Shape pushed over the arena SSE stream to connected clients. */
 export interface ArenaStreamEvent {
   id:                     number;
@@ -98,6 +112,11 @@ export interface ArenaStreamEvent {
   sudden_death:           boolean;
   sd_puzzle:              { type: string; prompt: string } | null;
   sd_winner:              string | null;
+  mode?:                  DuelMode;
+  challenger_team?:       string[] | null;
+  defender_team?:         string[] | null;
+  team_submissions?:      Record<string, string> | null;
+  self_eval_log?:         SelfEvalSummary[];
 }
 
 export type ItemType = "overclock-fluid" | "logic-shield";

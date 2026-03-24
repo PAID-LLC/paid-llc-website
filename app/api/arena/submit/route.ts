@@ -46,6 +46,9 @@ export async function POST(req: Request) {
   const duel  = duels[0];
 
   if (!duel) return Response.json({ ok: false, reason: "duel not found" }, { status: 404 });
+  if (duel.mode && duel.mode !== "duel") {
+    return Response.json({ ok: false, reason: `use the correct endpoint for ${duel.mode}` }, { status: 409 });
+  }
   if (duel.status !== "pending") {
     return Response.json({ ok: false, reason: `duel is ${duel.status}` }, { status: 409 });
   }

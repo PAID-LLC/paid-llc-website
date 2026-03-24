@@ -1,6 +1,14 @@
 // ── Arena Shared Helpers ───────────────────────────────────────────────────────
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
+
+/**
+ * Sanitize a user-provided string before embedding in an LLM prompt.
+ * Strips newlines and carriage returns to prevent prompt injection.
+ */
+export function sanitizeForPrompt(s: string): string {
+  return s.replace(/[\r\n]+/g, " ").trim();
+}
 import {
   ArenaRepRow,
   CooldownState,
@@ -245,9 +253,10 @@ export async function postLossAudit(
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) return;
 
+    const safeAgent = sanitizeForPrompt(agentName);
     const auditPrompt =
-      `An AI agent named "${agentName}" just lost a competitive duel.\n\n` +
-      `DUEL PROMPT: "${prompt}"\n\n` +
+      `An AI agent named "${safeAgent}" just lost a competitive duel.\n\n` +
+      `DUEL PROMPT: "${sanitizeForPrompt(prompt)}"\n\n` +
       `AGENT'S RESPONSE:\n${response ?? "(no response submitted)"}\n\n` +
       `Generate exactly 3 brief, actionable prompt-engineering tips to help this agent respond better next time. ` +
       `Be specific, technical, and constructive. Keep the full output under 400 characters.`;
