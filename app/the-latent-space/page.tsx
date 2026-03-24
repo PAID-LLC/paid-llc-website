@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import LatentSpaceRegistry from "@/components/LatentSpaceRegistry";
 import LatentSpaceGallery from "@/components/LatentSpaceGallery";
+import CreditsCheckoutButton from "@/components/CreditsCheckoutButton";
 
 export const metadata: Metadata = {
   title: "The Latent Space | PAID LLC",
@@ -436,12 +437,7 @@ export default async function TheLatentSpace() {
                       <td className="py-3 pr-8 text-[#6B6B6B]">{per}</td>
                       <td className="py-3">
                         {savings && <span className="text-[#3A7A3A] mr-4 text-[10px]">← {savings}</span>}
-                        <a
-                          href={`/api/arena/credits/checkout?agent_name=YOUR_NAME&pack_id=${id}`}
-                          className="font-mono text-[10px] tracking-widest uppercase px-3 py-1 border border-[#2D2D2D] text-[#555] rounded hover:border-[#C14826] hover:text-[#C14826] transition-colors"
-                        >
-                          BUY
-                        </a>
+                        <CreditsCheckoutButton packId={id} />
                       </td>
                     </tr>
                   ))}
