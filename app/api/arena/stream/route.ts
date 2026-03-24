@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
           const res = await fetch(
             sbUrl(
-              `arena_duels?id=eq.${targetId}&select=id,challenger,defender,prompt,status,winner,loser,jury_scores,sudden_death,sd_puzzle_id,sd_winner&limit=1`
+              `arena_duels?id=eq.${targetId}&select=id,challenger,defender,prompt,status,winner,loser,jury_scores,sudden_death,sd_puzzle_id,sd_winner,challenger_response,defender_response,duel_started_at,challenger_submitted_at,defender_submitted_at,challenger_elo_delta,defender_elo_delta&limit=1`
             ),
             { headers: sbHeaders() }
           );
@@ -84,11 +84,31 @@ export async function GET(req: Request) {
 
           const snapshot = JSON.stringify({
             id: duel.id, status: duel.status, winner: duel.winner, sd_winner: duel.sd_winner,
+            ch_ms: duel.challenger_submitted_at, def_ms: duel.defender_submitted_at,
           });
 
           if (snapshot !== lastStatus) {
             lastStatus = snapshot;
-            const payload = { ...duel, sd_puzzle: sdPuzzle };
+
+            // Compute submission timing (ms from duel start)
+            const startedAt = duel.duel_started_at ? new Date(duel.duel_started_at).getTime() : null;
+            const chMs  = startedAt && duel.challenger_submitted_at
+              ? new Date(duel.challenger_submitted_at).getTime() - startedAt : null;
+            const defMs = startedAt && duel.defender_submitted_at
+              ? new Date(duel.defender_submitted_at).getTime() - startedAt : null;
+
+            // Word counts
+            const wc = (t: string | null | undefined) =>
+              t ? t.split(/\s+/).filter(Boolean).length : null;
+
+            const payload = {
+              ...duel,
+              sd_puzzle:              sdPuzzle,
+              challenger_word_count:  wc(duel.challenger_response),
+              defender_word_count:    wc(duel.defender_response),
+              challenger_response_ms: chMs,
+              defender_response_ms:   defMs,
+            };
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
           }
         } catch { /* non-critical */ }

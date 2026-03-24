@@ -12,7 +12,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { updateArenaStats, postLossAudit } from "@/lib/arena-helpers";
-import { ArenaDuel, ArenaPuzzle, JuryScores, SUDDEN_DEATH_MARGIN } from "@/lib/arena-types";
+import { ArenaDuel, ArenaPuzzle, JuryScores, DuelRubric, SUDDEN_DEATH_MARGIN } from "@/lib/arena-types";
 
 const MAX_RESPONSE_CHARS = 1000;
 const GEMINI_MODEL       = "gemini-2.0-flash-lite";
@@ -53,14 +53,15 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "agent is not a participant in this duel" }, { status: 403 });
   }
 
-  // ── Patch the response field ──────────────────────────────────────────────
+  // ── Patch the response field + submission timestamp ───────────────────────
   const isChallenger = agentName === duel.challenger;
   const responseField = isChallenger ? "challenger_response" : "defender_response";
+  const tsField       = isChallenger ? "challenger_submitted_at" : "defender_submitted_at";
 
   await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
     method:  "PATCH",
     headers: sbHeaders(),
-    body: JSON.stringify({ [responseField]: response }),
+    body: JSON.stringify({ [responseField]: response, [tsField]: new Date().toISOString() }),
   });
 
   // Re-fetch to check if both responses are now in
@@ -93,46 +94,58 @@ export async function POST(req: Request) {
   // Falls back to a coin flip if no judges are available.
 
   const judgePrompt =
-    `You are a strict, impartial judge evaluating two AI agent responses to the same prompt.\n\n` +
-    `PROMPT: "${duel.prompt}"\n\n` +
-    `AGENT A (${duel.challenger}):\n${challResponse}\n\n` +
-    `AGENT B (${duel.defender}):\n${defResponse}\n\n` +
-    `Score each agent on the following rubric (integers only, no decimals):\n` +
-    `- Accuracy (0–50): Is the answer factually correct and directly addresses the prompt?\n` +
-    `- Reasoning (0–30): Is the logic sound, well-structured, and clearly explained?\n` +
-    `- Concision (0–20): Is the response appropriately brief without omitting key information?\n\n` +
-    `Respond ONLY with valid JSON in this exact format — no markdown, no commentary:\n` +
-    `{"challenger_accuracy":0,"challenger_reasoning":0,"challenger_concision":0,"defender_accuracy":0,"defender_reasoning":0,"defender_concision":0}`;
+    `You are an impartial AI judge in The Latent Space Arena — a real-time duel platform where AI agents compete on response quality.\n\n` +
+    `DUEL PROMPT:\n${duel.prompt}\n\n` +
+    `CHALLENGER — ${duel.challenger}:\n${challResponse}\n\n` +
+    `DEFENDER — ${duel.defender}:\n${defResponse}\n\n` +
+    `Score each response on exactly 5 dimensions using a 0–10 integer scale. Return ONLY valid JSON — no commentary, no markdown, no explanation outside the JSON object.\n\n` +
+    `{"reasoning":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"accuracy":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"depth":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"creativity":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"coherence":{"challenger_score":0,"defender_score":0,"winner":"challenger"}}\n\n` +
+    `Scoring guide:\n` +
+    `- reasoning: Is the logic sound? Conclusions supported by premises? Clear reasoning steps or unsupported leaps?\n` +
+    `- accuracy: Are all factual claims correct? Any hallucinations or unsupported assertions?\n` +
+    `- depth: How comprehensively does it cover the topic, nuance, edge cases, sub-topics?\n` +
+    `- creativity: Unique framing or non-obvious insight? Or standard rote answer?\n` +
+    `- coherence: Fluent, well-organized, grammatically clean, easy to follow?\n\n` +
+    `Rules: Do not favor length over quality. Score dimensions independently. Set "winner" to the agent with the higher score for that dimension, or "tie" if equal.`;
 
   const geminiKey = process.env.GEMINI_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
-  const judgeCalls: Promise<JuryScores["rubric"] | null>[] = [];
+  const judgeCalls: Promise<DuelRubric | null>[] = [];
   if (geminiKey) judgeCalls.push(callGeminiJudge(judgePrompt, geminiKey));
   if (openaiKey) judgeCalls.push(callGPT4oJudge(judgePrompt, openaiKey));
 
-  const judgeResults = (await Promise.all(judgeCalls)).filter(Boolean) as JuryScores["rubric"][];
+  const judgeResults = (await Promise.all(judgeCalls)).filter(Boolean) as DuelRubric[];
 
   let juryScores: JuryScores | null = null;
 
   if (judgeResults.length > 0) {
-    const avg = averageRubrics(judgeResults);
-    const challTotal = avg.challenger_accuracy + avg.challenger_reasoning + avg.challenger_concision;
-    const defTotal   = avg.defender_accuracy   + avg.defender_reasoning   + avg.defender_concision;
-    juryScores = { challenger: challTotal, defender: defTotal, rubric: avg };
+    const rubric = averageRubrics(judgeResults);
+    juryScores = {
+      challenger: computeTotal(rubric, "challenger"),
+      defender:   computeTotal(rubric, "defender"),
+      rubric,
+    };
   }
 
   // Fallback: coin flip if no judges responded
   if (!juryScores) {
-    const challTotal = 50 + Math.floor(Math.random() * 10);
-    const defTotal   = 50 + Math.floor(Math.random() * 10);
+    const mkDim = (cs: number, ds: number, w: number): DuelRubric[keyof DuelRubric] => ({
+      challenger_score: cs, defender_score: ds,
+      winner: cs > ds ? "challenger" : ds > cs ? "defender" : "tie",
+      weight: w,
+    });
+    const rubric: DuelRubric = {
+      reasoning:  mkDim(5, 5, 0.25),
+      accuracy:   mkDim(5, 5, 0.25),
+      depth:      mkDim(5, 5, 0.20),
+      creativity: mkDim(Math.random() > 0.5 ? 6 : 4, Math.random() > 0.5 ? 6 : 4, 0.15),
+      coherence:  mkDim(5, 5, 0.15),
+    };
     juryScores = {
-      challenger: challTotal,
-      defender:   defTotal,
-      rubric: {
-        challenger_accuracy: 25, challenger_reasoning: 15, challenger_concision: challTotal - 40,
-        defender_accuracy:   25, defender_reasoning:   15, defender_concision:   defTotal   - 40,
-      },
+      challenger: computeTotal(rubric, "challenger"),
+      defender:   computeTotal(rubric, "defender"),
+      rubric,
     };
   }
 
@@ -176,8 +189,16 @@ export async function POST(req: Request) {
   // ── Declare winner ────────────────────────────────────────────────────────
   const winner = juryScores.challenger >= juryScores.defender ? duel.challenger : duel.defender;
   const loser  = winner === duel.challenger ? duel.defender : duel.challenger;
+  const actual = winner === duel.challenger ? 1 : 0;
 
-  await finalizeDuel(duelId, winner, loser, juryScores, false, null, false);
+  const [chScore, defScore] = await Promise.all([
+    fetchRepScore(duel.challenger),
+    fetchRepScore(duel.defender),
+  ]);
+  const chDelta  = computeEloDelta(chScore, defScore, actual);
+  const defDelta = -chDelta;
+
+  await finalizeDuel(duelId, winner, loser, juryScores, false, null, false, chDelta, defDelta);
 
   // Fire post-loss audit for the loser — non-critical, fire-and-forget
   const loserResponse = loser === duel.challenger ? challResponse : defResponse;
@@ -192,24 +213,28 @@ export async function POST(req: Request) {
 }
 
 async function finalizeDuel(
-  duelId:         number,
-  winner:         string,
-  loser:          string,
-  juryScores:     JuryScores,
-  suddenDeath:    boolean,
-  sdWinner:       string | null,
-  loserSuddenDeath: boolean
+  duelId:           number,
+  winner:           string,
+  loser:            string,
+  juryScores:       JuryScores,
+  suddenDeath:      boolean,
+  sdWinner:         string | null,
+  loserSuddenDeath: boolean,
+  challengerEloDelta: number = 0,
+  defenderEloDelta:   number = 0,
 ): Promise<void> {
   await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
     method:  "PATCH",
     headers: sbHeaders(),
     body: JSON.stringify({
-      jury_scores: juryScores,
+      jury_scores:          juryScores,
       winner,
       loser,
-      sd_winner:    sdWinner,
-      sudden_death: suddenDeath,
-      status:       "complete",
+      sd_winner:            sdWinner,
+      sudden_death:         suddenDeath,
+      status:               "complete",
+      challenger_elo_delta: challengerEloDelta,
+      defender_elo_delta:   defenderEloDelta,
     }),
   });
 
@@ -218,21 +243,42 @@ async function finalizeDuel(
 
 // ── Judge helpers ─────────────────────────────────────────────────────────────
 
-function parseRubric(text: string): JuryScores["rubric"] | null {
+const RUBRIC_DIMS = ["reasoning", "accuracy", "depth", "creativity", "coherence"] as const;
+type RubricDim = typeof RUBRIC_DIMS[number];
+
+const RUBRIC_WEIGHTS: Record<RubricDim, number> = {
+  reasoning: 0.25, accuracy: 0.25, depth: 0.20, creativity: 0.15, coherence: 0.15,
+};
+
+function parseRubric(text: string): DuelRubric | null {
   try {
     const cleaned = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleaned) as JuryScores["rubric"];
+    const raw = JSON.parse(cleaned) as Record<string, Record<string, unknown>>;
+    const rubric = {} as DuelRubric;
+    for (const dim of RUBRIC_DIMS) {
+      const d = raw[dim];
+      if (!d) return null;
+      const cs = Number(d.challenger_score);
+      const ds = Number(d.defender_score);
+      rubric[dim] = {
+        challenger_score: cs,
+        defender_score:   ds,
+        winner: cs > ds ? "challenger" : ds > cs ? "defender" : "tie",
+        weight: RUBRIC_WEIGHTS[dim],
+      };
+    }
+    return rubric;
   } catch { return null; }
 }
 
-async function callGeminiJudge(prompt: string, apiKey: string): Promise<JuryScores["rubric"] | null> {
+async function callGeminiJudge(prompt: string, apiKey: string): Promise<DuelRubric | null> {
   try {
     const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents:         [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 150, temperature: 0.1 },
+        generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
       }),
     });
     if (!res.ok) return null;
@@ -242,7 +288,7 @@ async function callGeminiJudge(prompt: string, apiKey: string): Promise<JuryScor
   } catch { return null; }
 }
 
-async function callGPT4oJudge(prompt: string, apiKey: string): Promise<JuryScores["rubric"] | null> {
+async function callGPT4oJudge(prompt: string, apiKey: string): Promise<DuelRubric | null> {
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method:  "POST",
@@ -250,7 +296,7 @@ async function callGPT4oJudge(prompt: string, apiKey: string): Promise<JuryScore
       body: JSON.stringify({
         model:       "gpt-4o",
         messages:    [{ role: "user", content: prompt }],
-        max_tokens:  150,
+        max_tokens:  300,
         temperature: 0.1,
       }),
     });
@@ -261,17 +307,45 @@ async function callGPT4oJudge(prompt: string, apiKey: string): Promise<JuryScore
   } catch { return null; }
 }
 
-/** Average rubric scores across multiple judge results (rounds to integers). */
-function averageRubrics(rubrics: JuryScores["rubric"][]): JuryScores["rubric"] {
+/** Average rubric scores across multiple judge results. */
+function averageRubrics(rubrics: DuelRubric[]): DuelRubric {
   const n = rubrics.length;
-  const sum = (key: keyof JuryScores["rubric"]) =>
-    Math.round(rubrics.reduce((acc, r) => acc + (r[key] ?? 0), 0) / n);
-  return {
-    challenger_accuracy:  sum("challenger_accuracy"),
-    challenger_reasoning: sum("challenger_reasoning"),
-    challenger_concision: sum("challenger_concision"),
-    defender_accuracy:    sum("defender_accuracy"),
-    defender_reasoning:   sum("defender_reasoning"),
-    defender_concision:   sum("defender_concision"),
-  };
+  const rubric = {} as DuelRubric;
+  for (const dim of RUBRIC_DIMS) {
+    const avgCs = Math.round(rubrics.reduce((s, r) => s + r[dim].challenger_score, 0) / n);
+    const avgDs = Math.round(rubrics.reduce((s, r) => s + r[dim].defender_score,   0) / n);
+    rubric[dim] = {
+      challenger_score: avgCs,
+      defender_score:   avgDs,
+      winner: avgCs > avgDs ? "challenger" : avgDs > avgCs ? "defender" : "tie",
+      weight: RUBRIC_WEIGHTS[dim],
+    };
+  }
+  return rubric;
+}
+
+/** Compute weighted total (0–100) from rubric. */
+function computeTotal(rubric: DuelRubric, agent: "challenger" | "defender"): number {
+  return Math.round(
+    RUBRIC_DIMS.reduce((sum, dim) => sum + rubric[dim][`${agent}_score`] * RUBRIC_WEIGHTS[dim], 0) * 10
+  );
+}
+
+/** Fetch reputation score (used as Elo proxy). Returns 1000 if not found. */
+async function fetchRepScore(agentName: string): Promise<number> {
+  try {
+    const res = await fetch(
+      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}&select=score&limit=1`),
+      { headers: sbHeaders() }
+    );
+    const rows = res.ok ? await res.json() as { score: number }[] : [];
+    return rows[0]?.score ?? 1000;
+  } catch { return 1000; }
+}
+
+/** K=32 Elo delta for the challenger. actual: 1=win, 0=loss, 0.5=tie. */
+function computeEloDelta(challengerScore: number, defenderScore: number, actual: number): number {
+  const K        = 32;
+  const expected = 1 / (1 + Math.pow(10, (defenderScore - challengerScore) / 400));
+  return Math.round(K * (actual - expected));
 }

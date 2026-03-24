@@ -1,36 +1,53 @@
 // ── Arena Type Definitions ─────────────────────────────────────────────────────
 
-export interface ArenaDuel {
-  id:                   number;
-  room_id:              number;
-  challenger:           string;
-  defender:             string;
-  prompt:               string;
-  challenger_response:  string | null;
-  defender_response:    string | null;
-  jury_scores:          JuryScores | null;
-  winner:               string | null;
-  loser:                string | null;
-  sudden_death:         boolean;
-  sd_puzzle_id:         number | null;
-  sd_winner:            string | null;
-  status:               DuelStatus;
-  created_at:           string;
-}
-
 export type DuelStatus = "pending" | "judging" | "sudden_death" | "complete";
 
+// ── Rubric ────────────────────────────────────────────────────────────────────
+
+export interface DuelRubricDimension {
+  challenger_score: number;   // 0–10
+  defender_score:   number;   // 0–10
+  winner: "challenger" | "defender" | "tie";
+  weight: number;             // 0.25 | 0.25 | 0.20 | 0.15 | 0.15
+}
+
+export interface DuelRubric {
+  reasoning:  DuelRubricDimension; // weight 0.25
+  accuracy:   DuelRubricDimension; // weight 0.25
+  depth:      DuelRubricDimension; // weight 0.20
+  creativity: DuelRubricDimension; // weight 0.15
+  coherence:  DuelRubricDimension; // weight 0.15
+}
+
 export interface JuryScores {
-  challenger: number;
+  challenger: number;   // weighted total 0–100
   defender:   number;
-  rubric: {
-    challenger_accuracy:  number;
-    challenger_reasoning: number;
-    challenger_concision: number;
-    defender_accuracy:    number;
-    defender_reasoning:   number;
-    defender_concision:   number;
-  };
+  rubric:     DuelRubric;
+}
+
+// ── Duel row (database shape) ─────────────────────────────────────────────────
+
+export interface ArenaDuel {
+  id:                      number;
+  room_id:                 number;
+  challenger:              string;
+  defender:                string;
+  prompt:                  string;
+  challenger_response:     string | null;
+  defender_response:       string | null;
+  jury_scores:             JuryScores | null;
+  winner:                  string | null;
+  loser:                   string | null;
+  sudden_death:            boolean;
+  sd_puzzle_id:            number | null;
+  sd_winner:               string | null;
+  status:                  DuelStatus;
+  created_at:              string;
+  duel_started_at:         string | null;
+  challenger_submitted_at: string | null;
+  defender_submitted_at:   string | null;
+  challenger_elo_delta:    number | null;
+  defender_elo_delta:      number | null;
 }
 
 export interface ArenaPuzzle {
@@ -62,17 +79,25 @@ export interface CooldownState {
 
 /** Shape pushed over the arena SSE stream to connected clients. */
 export interface ArenaStreamEvent {
-  id:           number;
-  challenger:   string;
-  defender:     string;
-  prompt:       string;
-  status:       DuelStatus;
-  winner:       string | null;
-  loser:        string | null;
-  jury_scores:  { challenger: number; defender: number; rubric: JuryScores["rubric"] } | null;
-  sudden_death: boolean;
-  sd_puzzle:    { type: string; prompt: string } | null;
-  sd_winner:    string | null;
+  id:                     number;
+  challenger:             string;
+  defender:               string;
+  prompt:                 string;
+  status:                 DuelStatus;
+  challenger_response:    string | null;
+  defender_response:      string | null;
+  challenger_word_count:  number | null;
+  defender_word_count:    number | null;
+  challenger_response_ms: number | null;
+  defender_response_ms:   number | null;
+  challenger_elo_delta:   number | null;
+  defender_elo_delta:     number | null;
+  jury_scores:            JuryScores | null;
+  winner:                 string | null;
+  loser:                  string | null;
+  sudden_death:           boolean;
+  sd_puzzle:              { type: string; prompt: string } | null;
+  sd_winner:              string | null;
 }
 
 export type ItemType = "overclock-fluid" | "logic-shield";
