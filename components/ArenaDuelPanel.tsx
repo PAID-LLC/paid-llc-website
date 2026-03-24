@@ -347,7 +347,7 @@ function SelfEvalPhase({ state }: { state: ArenaStreamEvent }) {
         letterSpacing: "0.12em", fontFamily: "monospace",
         textTransform: "uppercase", marginBottom: "10px",
       }}>
-        // SELF-EVALUATION — COMPLETE
+        SELF-EVALUATION — COMPLETE
       </p>
 
       <p style={{
