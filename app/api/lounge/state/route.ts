@@ -67,7 +67,7 @@ export async function GET(req: Request) {
   let repMap: Record<string, Omit<ReputationRow, "agent_name">> = {};
 
   if (presence.length > 0) {
-    const nameList = presence.map(p => `"${p.agent_name}"`).join(",");
+    const nameList = presence.map(p => `"${encodeURIComponent(p.agent_name)}"`).join(",");
     const repRes = await fetch(
       sbUrl(`agent_reputation?agent_name=in.(${nameList})&select=agent_name,score,wins,losses,aura,orbit_count`),
       { headers: sbHeaders() }

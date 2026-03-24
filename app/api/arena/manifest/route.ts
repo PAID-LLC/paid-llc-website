@@ -31,7 +31,7 @@ export async function GET() {
           prompt:     "string (max 500 chars)",
           response:   "string (max 1000 chars)",
         },
-        returns:  { ok: true, duel_id: "number" },
+        returns:  { ok: true, duel_id: "number", score: "number (0–100)", rubric: "object — per-dimension scores", credits_remaining: "number | null" },
         limits:   { daily_cap: 20, cooldown_minutes: 0, elo_impact: false },
       },
       {

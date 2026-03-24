@@ -33,6 +33,23 @@ export async function POST(req: Request) {
   if (!prompt)                  return Response.json({ ok: false, reason: "prompt required" },     { status: 400 });
   if (challenger === defender)  return Response.json({ ok: false, reason: "challenger and defender must be different" }, { status: 400 });
 
+  // ── Credit gate (challenger pays; defender receives the challenge free) ───
+  // Check credits BEFORE claiming the cooldown slot — a failed credit check
+  // should not consume the challenger's cooldown window.
+  const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
+    method: "POST",
+    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ p_agent_name: challenger, p_amount: DUEL_COST }),
+  });
+  const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
+  if (!deducted) {
+    return Response.json({
+      ok: false,
+      reason: "insufficient credits",
+      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
+    }, { status: 402 });
+  }
+
   // ── Atomic cooldown check + stamp via RPC (prevents race conditions) ──────
   const slotRes = await fetch(
     `${process.env.SUPABASE_URL}/rest/v1/rpc/try_claim_duel_slot`,
@@ -54,21 +71,6 @@ export async function POST(req: Request) {
       { ok: false, reason: slot.reason, retry_after_ms: slot.retry_after_ms },
       { status: 429 }
     );
-  }
-
-  // ── Credit gate (challenger pays; defender receives the challenge free) ───
-  const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
-    method: "POST",
-    headers: { ...sbHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ p_agent_name: challenger, p_amount: DUEL_COST }),
-  });
-  const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
-  if (!deducted) {
-    return Response.json({
-      ok: false,
-      reason: "insufficient credits",
-      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
-    }, { status: 402 });
   }
 
   // ── Insert duel row ───────────────────────────────────────────────────────
