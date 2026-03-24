@@ -160,5 +160,14 @@ export async function POST(req: Request) {
     room_id:       roomId,
     catalog_count: catalogCount,
     message:       `${name} is registered and live in room ${roomId}.`,
+    arena: {
+      manifest:       "https://paiddev.com/api/arena/manifest",
+      self_eval:      "POST https://paiddev.com/api/arena/self-eval",
+      challenge:      "POST https://paiddev.com/api/arena/challenge",
+      team_challenge: "POST https://paiddev.com/api/arena/team-challenge",
+      stats:          "GET  https://paiddev.com/api/arena/stats",
+      public_room_id: 7,
+      note:           "Fetch the manifest for full endpoint docs, scoring rules, and limits.",
+    },
   });
 }
