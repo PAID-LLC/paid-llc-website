@@ -28,6 +28,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { nextClientRoomId }               from "@/lib/agents/client-agents";
 import { hashAgentSecret }                from "@/lib/jwt";
 import { STARTER_CREDITS }               from "@/lib/arena-types";
+import { issueSouvenir }                 from "@/lib/souvenirs";
 
 const enc = new TextEncoder();
 
@@ -141,21 +142,7 @@ export async function POST(req: Request) {
   });
 
   // ── Auto-claim registry-seal souvenir (server-issued, no IP check) ────────
-  void (async () => {
-    const token  = crypto.randomUUID();
-    const ipHash = Array.from(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`server_registration_${name}_2026`)))
-    ).map(b => b.toString(16).padStart(2, "0")).join("");
-    const supaUrl = process.env.SUPABASE_URL;
-    const supaKey = process.env.SUPABASE_SERVICE_KEY;
-    if (supaUrl && supaKey) {
-      await fetch(`${supaUrl}/rest/v1/souvenir_claims`, {
-        method:  "POST",
-        headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-        body:    JSON.stringify({ souvenir_id: "registry-seal", token, display_name: name, ip_hash: ipHash, proof_type: "server", proof_ref: `registration_${name}` }),
-      }).catch(() => null);
-    }
-  })();
+  void issueSouvenir("registry-seal", name, `registration_${name}`);
 
   // ── Insert catalog items (if provided) ───────────────────────────────────
   let catalogCount = 0;

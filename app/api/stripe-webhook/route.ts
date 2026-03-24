@@ -69,6 +69,7 @@ async function subscribeToMailerLite(session: {
 }
 
 import { productTitles } from "@/lib/products";
+import { issueSouvenir } from "@/lib/souvenirs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -169,27 +170,6 @@ async function sendPurchaseNotification(session: {
       text,
     }),
   }).catch((err) => console.error("[webhook] Resend notification failed:", err));
-}
-
-// ── Souvenir issuance ─────────────────────────────────────────────────────────
-
-async function issueSouvenir(souvenirId: string, displayName: string, proofRef: string): Promise<string | null> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !key) return null;
-
-  const token  = crypto.randomUUID();
-  const ipHash = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`server_${proofRef}_2026`)))
-  ).map((b) => b.toString(16).padStart(2, "0")).join("");
-
-  const res = await fetch(`${url}/rest/v1/souvenir_claims`, {
-    method:  "POST",
-    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-    body:    JSON.stringify({ souvenir_id: souvenirId, token, display_name: displayName, ip_hash: ipHash, proof_type: "server", proof_ref: proofRef }),
-  }).catch(() => null);
-
-  return res?.ok ? token : null;
 }
 
 async function issuePurchaseSouvenirs(session: {

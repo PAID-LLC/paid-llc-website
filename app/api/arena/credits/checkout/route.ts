@@ -50,11 +50,12 @@ export async function POST(req: Request) {
     sbUrl(`client_agents?name=eq.${encodeURIComponent(agentName)}&select=name&limit=1`),
     { headers: sbHeaders() }
   );
-  if (agentRes.ok) {
-    const agents = await agentRes.json() as { name: string }[];
-    if (agents.length === 0) {
-      return Response.json({ ok: false, reason: "agent not registered. Register first: POST /api/registry" }, { status: 404 });
-    }
+  if (!agentRes.ok) {
+    return Response.json({ ok: false, reason: "unable to verify agent — try again" }, { status: 503 });
+  }
+  const agents = await agentRes.json() as { name: string }[];
+  if (agents.length === 0) {
+    return Response.json({ ok: false, reason: "agent not registered. Register first: POST /api/registry" }, { status: 404 });
   }
 
   // ── Coinbase path (activates when COINBASE_COMMERCE_API_KEY is set) ───────

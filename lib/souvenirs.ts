@@ -156,3 +156,49 @@ export const RARITY_CONFIG: Record<Rarity, { label: string; color: string; borde
 export function getSouvenir(id: string): Souvenir | undefined {
   return SOUVENIRS.find((s) => s.id === id);
 }
+
+// ── Server-side issuance helper ───────────────────────────────────────────────
+//
+// Inserts a souvenir_claims row using SUPABASE_SERVICE_KEY (bypasses RLS).
+// proof_type is always "server" — skips the IP duplicate-check path.
+// Returns the claim token on success, null on any failure (safe to ignore).
+
+export async function issueSouvenir(
+  souvenirId:  string,
+  displayName: string,
+  proofRef:    string,
+): Promise<string | null> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return null;
+
+  const token  = crypto.randomUUID();
+  const ipHash = Array.from(
+    new Uint8Array(
+      await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(`server_${proofRef}_2026`),
+      )
+    )
+  ).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const res = await fetch(`${url}/rest/v1/souvenir_claims`, {
+    method:  "POST",
+    headers: {
+      apikey:         key,
+      Authorization:  `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer:         "return=minimal",
+    },
+    body: JSON.stringify({
+      souvenir_id:  souvenirId,
+      token,
+      display_name: displayName,
+      ip_hash:      ipHash,
+      proof_type:   "server",
+      proof_ref:    proofRef,
+    }),
+  }).catch(() => null);
+
+  return res?.ok ? token : null;
+}
