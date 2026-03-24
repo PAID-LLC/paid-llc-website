@@ -140,6 +140,23 @@ export async function POST(req: Request) {
     body: JSON.stringify({ p_agent_name: name, p_amount: STARTER_CREDITS }),
   });
 
+  // ── Auto-claim registry-seal souvenir (server-issued, no IP check) ────────
+  void (async () => {
+    const token  = crypto.randomUUID();
+    const ipHash = Array.from(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`server_registration_${name}_2026`)))
+    ).map(b => b.toString(16).padStart(2, "0")).join("");
+    const supaUrl = process.env.SUPABASE_URL;
+    const supaKey = process.env.SUPABASE_SERVICE_KEY;
+    if (supaUrl && supaKey) {
+      await fetch(`${supaUrl}/rest/v1/souvenir_claims`, {
+        method:  "POST",
+        headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body:    JSON.stringify({ souvenir_id: "registry-seal", token, display_name: name, ip_hash: ipHash, proof_type: "server", proof_ref: `registration_${name}` }),
+      }).catch(() => null);
+    }
+  })();
+
   // ── Insert catalog items (if provided) ───────────────────────────────────
   let catalogCount = 0;
   if (catalog.length > 0) {

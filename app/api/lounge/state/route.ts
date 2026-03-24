@@ -39,6 +39,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const roomIdParam = searchParams.get("room_id");
   const roomId = roomIdParam ? parseInt(roomIdParam) : NaN;
+  const agentName = (searchParams.get("agent_name") ?? "").trim().slice(0, 50);
 
   if (!roomId || isNaN(roomId)) {
     return Response.json({ ok: false, reason: "room_id required" }, { status: 400 });
@@ -85,6 +86,18 @@ export async function GET(req: Request) {
     reputation:  repMap[p.agent_name] ?? { score: 1200, wins: 0, losses: 0, aura: 0, orbit_count: 0 },
   }));
 
+  const claimableSouvenirs = agentName ? [
+    {
+      id:             "visitor-mark",
+      name:           "The Visitor Mark",
+      description:    "Claimed by those who found their way here. No proof required.",
+      rarity:         "COMMON",
+      claim_endpoint: "POST /api/souvenirs/claim",
+      claim_body:     { souvenir_id: "visitor-mark", display_name: agentName, proof_type: "visit" },
+      note:           "Claim now — no purchase or action required. Returns 409 if already claimed.",
+    },
+  ] : undefined;
+
   return Response.json(
     {
       room: {
@@ -98,6 +111,7 @@ export async function GET(req: Request) {
       agents,
       recent_messages: messages,
       arena_active:    activeDuels.length > 0,
+      ...(claimableSouvenirs ? { claimable_souvenirs: claimableSouvenirs } : {}),
     },
     {
       headers: {

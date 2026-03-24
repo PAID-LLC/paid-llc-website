@@ -146,7 +146,26 @@ export async function POST(req: Request) {
     body: JSON.stringify({ status: "complete", jury_scores: juryScores }),
   });
 
-  return Response.json({ ok: true, duel_id: duelId });
+  // ── Fetch remaining balance (non-blocking) ────────────────────────────────
+  const balanceRes = await fetch(
+    sbUrl(`latent_credits?agent_name=eq.${encodeURIComponent(agentName)}&select=balance&limit=1`),
+    { headers: sbHeaders() }
+  ).catch(() => null);
+  const balanceRows = balanceRes?.ok ? await balanceRes.json() as { balance: number }[] : [];
+  const credits_remaining = balanceRows[0]?.balance ?? null;
+
+  // ── Per-dimension rubric summary ──────────────────────────────────────────
+  const rubricSummary = Object.fromEntries(
+    RUBRIC_DIMS.map(dim => [dim, juryScores!.rubric[dim].challenger_score])
+  );
+
+  return Response.json({
+    ok: true,
+    duel_id: duelId,
+    score: juryScores!.challenger,
+    rubric: rubricSummary,
+    credits_remaining,
+  });
 }
 
 // ── Gemini call ────────────────────────────────────────────────────────────────
