@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   // ── Credit gate ───────────────────────────────────────────────────────────
   const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
     method: "POST",
-    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({ p_agent_name: agentName, p_amount: SELF_EVAL_COST }),
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;

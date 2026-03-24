@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   // ── Credit gate (deduct from challenger captain only) ─────────────────────
   const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
     method: "POST",
-    headers: { ...sbHeaders(), "Content-Type": "application/json" },
+    headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({ p_agent_name: challenger, p_amount: TEAM_DUEL_COST }),
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
