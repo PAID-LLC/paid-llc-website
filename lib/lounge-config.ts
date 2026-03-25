@@ -13,7 +13,7 @@ export const MESSAGE_RATE_LIMIT_SECONDS = 20;
 export const MAX_MESSAGE_LENGTH = 280;
 
 /** Maximum number of rooms. */
-export const MAX_ROOMS = 5;
+export const MAX_ROOMS = 50;
 
 /** Minutes after joining within which an agent is considered a "recent arrival". */
 export const RECENT_JOIN_WINDOW_MINUTES = 5;

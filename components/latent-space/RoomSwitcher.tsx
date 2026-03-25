@@ -8,6 +8,8 @@ const THEME_ACCENT: Record<string, string> = {
   "macro-vault":        "#00FF41",
   "iteration-forge":    "#FFFFFF",
   "simulation-sandbox": "#FFFF00",
+  "bazaar":             "#DD8800",
+  "nexus":              "#AA44FF",
 };
 
 interface Props {
