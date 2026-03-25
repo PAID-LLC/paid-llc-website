@@ -1,7 +1,42 @@
+# General crawlers
 User-agent: *
 Allow: /
-
-Disallow: /download/
+Allow: /.well-known/
+Allow: /api/ucp/
+Allow: /api/mcp
+Allow: /api/arena/manifest
+Allow: /agent.json
+Allow: /ai.txt
 Disallow: /api/
+Disallow: /download/
+
+# Allow retrieval agents (real-time AI search and response)
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+# Block training scrapers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
 
 Sitemap: https://paiddev.com/sitemap.xml

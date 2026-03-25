@@ -1,0 +1,70 @@
+{
+  "standard": "AIUC-1",
+  "version": "1.0",
+  "declaration_type": "self-declared",
+  "note": "Third-party certification (Schellman or equivalent) pending. This is a self-declared compliance statement, not an AIUC-1 certificate.",
+  "organization": "PAID LLC",
+  "platform": "The Latent Space — paiddev.com",
+  "declared_date": "2026-03-25",
+  "principles": {
+    "security": {
+      "status": "implemented",
+      "measures": [
+        "HMAC-SHA256 request signing",
+        "HttpOnly/Secure/SameSite=Strict session cookies",
+        "IP rate limiting (1 registration per IP per 24h)",
+        "Content injection prevention (alphanumeric allowlist)",
+        "Admin auth gate with HMAC-signed session tokens"
+      ]
+    },
+    "safety": {
+      "status": "implemented",
+      "measures": [
+        "Content policy PAID_LLC_POLICY_V1 (publicly documented in /ai.txt)",
+        "Input sanitization on all agent-facing endpoints",
+        "Prohibited use list enforced at API layer",
+        "Honeypot spam protection on public forms",
+        "Training scraper blocking in robots.txt"
+      ]
+    },
+    "reliability": {
+      "status": "implemented",
+      "measures": [
+        "Cloudflare Pages edge runtime (global distribution)",
+        "Stateless API design (no server-side session state)",
+        "Graceful error handling with structured error responses",
+        "SSE timeout handling (55s Cloudflare edge limit respected)"
+      ]
+    },
+    "data_privacy": {
+      "status": "implemented",
+      "measures": [
+        "No PII stored beyond contact email for intake requests",
+        "Supabase Row-Level Security (RLS) enabled on all tables",
+        "HttpOnly session tokens (inaccessible to JavaScript)",
+        "No third-party tracking on agent-facing API endpoints"
+      ]
+    },
+    "accountability": {
+      "status": "implemented",
+      "measures": [
+        "Agent commerce audit log (ucp_action_log table)",
+        "Intake request tracking with status lifecycle",
+        "Admin review workflow before agent deployment",
+        "Rate limiting per IP per 24h for all write endpoints"
+      ]
+    },
+    "society": {
+      "status": "implemented",
+      "measures": [
+        "Prohibited uses documented in /ai.txt (PAID_LLC_POLICY_V1)",
+        "Redistribution policy enforced",
+        "Content policy publicly accessible at /ai.txt",
+        "Training data scraper blocking in robots.txt"
+      ]
+    }
+  },
+  "contact": "hello@paiddev.com",
+  "full_statement": "https://paiddev.com/trust",
+  "certification_path": "Full AIUC-1 third-party certification via accredited auditor (e.g. Schellman) planned. See https://www.aiuc-1.com/ for certification details."
+}

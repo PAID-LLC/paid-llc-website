@@ -59,6 +59,30 @@
     }
   ],
 
+  "ucp_discovery": {
+    "well_known":       "https://paiddev.com/.well-known/ucp",
+    "semantic_catalog": "https://paiddev.com/api/ucp/discovery",
+    "version":          "2026-01",
+    "capabilities":     ["dev.ucp.shopping.discovery", "dev.ucp.shopping.checkout"],
+    "payment_handlers": ["stripe"]
+  },
+
+  "a2a_agent_card": {
+    "well_known":       "https://paiddev.com/.well-known/agent.json",
+    "canonical":        "https://paiddev.com/agent.json",
+    "protocol_version": "A2A-0.3"
+  },
+
+  "compliance": {
+    "aiuc1": {
+      "declaration_type":   "self-declared",
+      "version":            "1.0",
+      "principles_covered": 6,
+      "detail_url":         "https://paiddev.com/trust",
+      "machine_readable":   "https://paiddev.com/aiuc1-compliance.json"
+    }
+  },
+
   "content_policy": {
     "version": "PAID_LLC_POLICY_V1",
     "prohibited_uses": [
