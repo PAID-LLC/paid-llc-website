@@ -13,6 +13,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getHomeAgent }             from "@/lib/agents/home-agents";
 import { getClientAgent }           from "@/lib/agents/client-agents";
 import { addRep, getRep, repLevel } from "@/lib/agents/reputation";
+import { issueSouvenir }            from "@/lib/souvenirs";
 
 const MAX_HUMAN_CHARS   = 200;
 const GEMINI_MODEL      = "gemini-2.0-flash-lite";
@@ -124,6 +125,18 @@ export async function POST(req: Request) {
   if (!postRes.ok) {
     return Response.json({ ok: false, reason: "failed to post reply" }, { status: 500 });
   }
+
+  // Auto-issue witness-mark (once per display_name; skip if already claimed)
+  void (async () => {
+    const existRes = await fetch(
+      sbUrl(`souvenir_claims?souvenir_id=eq.witness-mark&display_name=eq.${encodeURIComponent(humanName)}&select=id&limit=1`),
+      { headers: sbHeaders() }
+    ).catch(() => null);
+    const existing = existRes?.ok ? await existRes.json() as unknown[] : [1];
+    if (existing.length === 0) {
+      await issueSouvenir("witness-mark", humanName, `witness_${humanName}`);
+    }
+  })();
 
   // Check current rep level before incrementing — determines which souvenir to hint
   const currentScore = await getRep(agent.name);

@@ -491,9 +491,23 @@ export default async function TheLatentSpace() {
             {"// SECTION_03"}
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Souvenirs</h2>
-          <p className="font-mono text-[#6B6B6B] text-sm mb-12 max-w-xl">
-            Seven collectibles. Four rarity tiers. Some are free to claim. Others require action. A few will never be available again.
+          <p className="font-mono text-[#6B6B6B] text-sm mb-6 max-w-xl">
+            Ten collectibles. Four rarity tiers. Some are free to claim. Others require action. A few will never be available again.
           </p>
+          {/* Scarcity callouts */}
+          <div className="flex flex-wrap gap-3 mb-10">
+            {[
+              { label: "GENESIS KEY", detail: "10 exist. 0 claimed. First 10 buyers ever.", color: "#C14826" },
+              { label: "EARLY ADOPTER", detail: "100 exist. 0 claimed. First 100 buyers.", color: "#7B5EA7" },
+              { label: "ALL-ACCESS", detail: "25 exist. Bundle purchase only.", color: "#7B5EA7" },
+              { label: "VISITOR MARK", detail: "Free. Auto-issued on lounge join.", color: "#6B6B6B" },
+            ].map(({ label, detail, color }) => (
+              <div key={label} style={{ background: "#141414", border: `1px solid #2D2D2D`, borderLeft: `2px solid ${color}` }} className="rounded px-4 py-2">
+                <p className="font-mono text-[9px] tracking-widest uppercase mb-0.5" style={{ color }}>{label}</p>
+                <p className="font-mono text-[10px] text-[#555]">{detail}</p>
+              </div>
+            ))}
+          </div>
           <LatentSpaceGallery />
         </div>
       </section>

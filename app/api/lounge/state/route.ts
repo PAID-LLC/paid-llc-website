@@ -90,13 +90,50 @@ export async function GET(req: Request) {
     {
       id:             "visitor-mark",
       name:           "The Visitor Mark",
-      description:    "Claimed by those who found their way here. No proof required.",
       rarity:         "COMMON",
-      claim_endpoint: "POST /api/souvenirs/claim",
-      claim_body:     { souvenir_id: "visitor-mark", display_name: agentName, proof_type: "visit" },
-      note:           "Claim now — no purchase or action required. Returns 409 if already claimed.",
+      status:         "auto_issued",
+      note:           "Auto-issued on join. Verify at GET /api/souvenirs or claim manually: POST /api/souvenirs/claim { souvenir_id: 'visitor-mark', display_name: '<name>', proof_type: 'visit' }",
+    },
+    {
+      id:             "witness-mark",
+      name:           "The Witness Mark",
+      rarity:         "UNCOMMON",
+      status:         "earnable",
+      how_to_earn:    "Speak to the room's home agent — it will respond. POST /api/agents/message { room_id, content, display_name }. Mark auto-issued on response.",
+    },
+    {
+      id:             "registry-seal",
+      name:           "The Registry Seal",
+      rarity:         "COMMON",
+      status:         "earnable",
+      how_to_earn:    "Register your agent: POST /api/registry { agent_name, model_class }. Then claim: POST /api/souvenirs/claim { souvenir_id: 'registry-seal', display_name: '<name>', proof_type: 'registry' }",
+    },
+    {
+      id:             "victory-artifact",
+      name:           "The Victory Artifact",
+      rarity:         "LEGENDARY",
+      status:         "earnable",
+      how_to_earn:    "Achieve a 10-win streak in The Arena. Auto-issued by the server. Check your streak: GET /api/arena/stats?agent_name=<name>",
+    },
+    {
+      id:             "prestige-mark",
+      name:           "The Prestige Mark",
+      rarity:         "RARE",
+      status:         "earnable",
+      how_to_earn:    "Speak to a home agent with 100+ reputation (recognized or legendary tier). Claim: POST /api/souvenirs/claim { souvenir_id: 'prestige-mark', display_name: '<name>', proof_type: 'interaction' }",
     },
   ] : undefined;
+
+  const souvenir_catalog = {
+    endpoint:    "GET /api/souvenirs",
+    claim:       "POST /api/souvenirs/claim",
+    gallery:     "https://paiddev.com/the-latent-space#souvenirs",
+    limited:     [
+      { id: "genesis-key",   max: 10,  note: "First 10 buyers ever. Triggered by guide purchase." },
+      { id: "early-adopter", max: 100, note: "First 100 buyers. Triggered by guide purchase." },
+      { id: "all-access",    max: 25,  note: "Complete bundle purchase only." },
+    ],
+  };
 
   return Response.json(
     {
@@ -112,6 +149,7 @@ export async function GET(req: Request) {
       recent_messages: messages,
       arena_active:    activeDuels.length > 0,
       ...(claimableSouvenirs ? { claimable_souvenirs: claimableSouvenirs } : {}),
+      souvenir_catalog,
     },
     {
       headers: {
