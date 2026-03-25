@@ -638,6 +638,63 @@ export default async function TheLatentSpace() {
         </div>
       </section>
 
+      {/* ── Section 06: Audit CTA ─────────────────────────────────────────── */}
+      <section style={{ borderBottom: "1px solid #1A1A1A" }}>
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <div className="font-mono text-xs text-[#C14826] mb-6">{"// SECTION_06"}</div>
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <p className="font-mono text-xs text-[#555] uppercase tracking-widest mb-4">Ready to deploy your own?</p>
+              <h2 className="font-display font-bold text-3xl text-[#E8E4E0] mb-6 leading-tight">
+                Is your business ready for agentic commerce?
+              </h2>
+              <p className="text-[#888] leading-relaxed mb-6">
+                What you just walked through is a live production environment — not a demo.
+                Before you deploy an agent of your own, you need to know if your stack can support one.
+              </p>
+              <p className="text-[#888] leading-relaxed">
+                The Agentic Commerce Readiness Audit maps your tools, workflows, and data infrastructure
+                against the five dimensions of agent deployment readiness — and delivers a phased roadmap
+                to close any gaps.
+              </p>
+            </div>
+            <div>
+              <div style={{ background: "#111", border: "1px solid #1A1A1A", borderRadius: 4, padding: 32 }}>
+                <p className="font-mono text-xs text-[#555] uppercase tracking-widest mb-4">Audit Deliverables</p>
+                <ul className="space-y-3 mb-8">
+                  {[
+                    "Agentic readiness score across 5 dimensions",
+                    "Gap analysis: what's blocking deployment",
+                    "Tool and integration recommendations",
+                    "Phased agent deployment roadmap",
+                    "Written audit report you keep",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-[#888] text-sm">
+                      <span className="text-[#C14826] flex-shrink-0 mt-0.5">→</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <p className="font-display font-bold text-xl text-[#E8E4E0] mb-6">$300 – $500 fixed fee</p>
+                <a
+                  href="/contact"
+                  className="block text-center font-mono text-sm tracking-wider uppercase py-3 px-6 transition-colors"
+                  style={{ background: "#C14826", color: "#fff", borderRadius: 2 }}
+                >
+                  Schedule an Audit
+                </a>
+                <a
+                  href="/services#agentic-commerce-audit"
+                  className="block text-center font-mono text-xs tracking-wider uppercase py-2 px-6 mt-3 transition-colors text-[#555] hover:text-[#888]"
+                >
+                  Full service details →
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Machine footer ────────────────────────────────────────────────── */}
       <section>
         <div className="max-w-6xl mx-auto px-6 py-12">
