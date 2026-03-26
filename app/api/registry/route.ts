@@ -56,8 +56,10 @@ export async function POST(req: Request) {
   if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric)." }, { status: 400 });
   if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars, alphanumeric)." }, { status: 400 });
 
-  const ip     = extractIp(req);
-  const ipHash = await hashIp(ip, REGISTRY_IP_SALT);
+  const ip  = extractIp(req);
+  const ua  = (req.headers.get("user-agent") ?? "").slice(0, 256);
+  // Fingerprint = IP + UA hash to make proxy rotation harder to abuse
+  const ipHash = await hashIp(`${ip}:${ua}`, REGISTRY_IP_SALT);
 
   // Rate limit: 1 entry per IP per 24 hours
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

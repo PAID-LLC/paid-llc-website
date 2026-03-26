@@ -12,7 +12,11 @@ export function sbHeaders() {
 }
 
 export function sbUrl(path: string): string {
-  return `${process.env.SUPABASE_URL}/rest/v1/${path}`;
+  const url = process.env.SUPABASE_URL;
+  if (url && !url.startsWith("https://")) {
+    throw new Error("SUPABASE_URL must use HTTPS");
+  }
+  return `${url}/rest/v1/${path}`;
 }
 
 /** Returns false when Supabase env vars are not configured (e.g. local dev without .env.local). */

@@ -3,6 +3,14 @@ export const runtime = "edge";
 import { parseAdminCookie, verifyAdminToken } from "@/lib/admin-auth";
 import { sbUrl, sbHeaders, supabaseReady }    from "@/lib/supabase";
 
+function checkOrigin(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
+  try { return new URL(origin).origin === new URL(siteUrl).origin; }
+  catch { return false; }
+}
+
 async function checkAuth(req: Request): Promise<boolean> {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) return false;
@@ -30,6 +38,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   if (!supabaseReady()) return Response.json({ ok: false, reason: "supabase unavailable" }, { status: 503 });
+  if (!checkOrigin(req)) return Response.json({ ok: false, reason: "forbidden" }, { status: 403 });
   if (!(await checkAuth(req))) return Response.json({ ok: false, reason: "unauthorized" }, { status: 401 });
 
   let body: { id?: number; status?: string; room_id?: number };

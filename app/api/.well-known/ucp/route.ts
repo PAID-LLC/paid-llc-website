@@ -31,9 +31,24 @@ export async function GET() {
 
   return new Response(JSON.stringify(manifest, null, 2), {
     headers: {
-      "Content-Type":                "application/json",
-      "Cache-Control":               "public, max-age=3600",
-      "Access-Control-Allow-Origin": "*",
+      "Content-Type":                  "application/json",
+      "Cache-Control":                 "public, max-age=3600",
+      "Access-Control-Allow-Origin":   "*",
+      "Access-Control-Allow-Methods":  "GET",
+      "X-Content-Type-Options":        "nosniff",
+      "X-Frame-Options":               "DENY",
+    },
+  });
+
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin":  "*",
+      "Access-Control-Allow-Methods": "GET",
+      "Access-Control-Max-Age":       "86400",
     },
   });
 }

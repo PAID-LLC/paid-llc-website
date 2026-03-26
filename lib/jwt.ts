@@ -63,25 +63,44 @@ export async function verifyJwt(token: string): Promise<JwtPayload | null> {
   const secret = process.env.JWT_SECRET;
   if (!secret) return null;
 
+  const start = Date.now();
+
+  // Always execute a full verification path even on malformed input to prevent
+  // timing side-channel attacks that could reveal valid token structure.
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
+  const p0 = parts[0] ?? "";
+  const p1 = parts[1] ?? "";
+  const p2 = parts[2] ?? "";
 
   try {
-    const message  = `${parts[0]}.${parts[1]}`;
-    const sigBytes = Uint8Array.from(
-      atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")),
-      (c) => c.charCodeAt(0)
-    );
+    const message  = `${p0}.${p1}`;
+    let sigBytes: Uint8Array;
+    try {
+      sigBytes = Uint8Array.from(
+        atob(p2.replace(/-/g, "+").replace(/_/g, "/")),
+        (c) => c.charCodeAt(0)
+      );
+    } catch {
+      // Invalid base64 — use a dummy 32-byte buffer so verify() still runs
+      sigBytes = new Uint8Array(32);
+    }
 
     const key   = await hmacKey(secret);
     const valid = await crypto.subtle.verify("HMAC", key, sigBytes, enc.encode(message));
-    if (!valid) return null;
 
-    const payload = JSON.parse(b64urlDecodeStr(parts[1])) as JwtPayload;
+    // Pad to a minimum 5ms regardless of result to normalize timing
+    const elapsed = Date.now() - start;
+    if (elapsed < 5) await new Promise((r) => setTimeout(r, 5 - elapsed));
+
+    if (!valid || parts.length !== 3) return null;
+
+    const payload = JSON.parse(b64urlDecodeStr(p1)) as JwtPayload;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
 
     return payload;
   } catch {
+    const elapsed = Date.now() - start;
+    if (elapsed < 5) await new Promise((r) => setTimeout(r, 5 - elapsed));
     return null;
   }
 }
@@ -92,7 +111,10 @@ export async function verifyJwt(token: string): Promise<JwtPayload | null> {
  * 100,000 SHA-256 iterations — brute-force resistant on Edge.
  */
 export async function hashAgentSecret(agentName: string, agentSecret: string): Promise<string> {
-  const secret = process.env.JWT_SECRET ?? "";
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters to hash agent secrets");
+  }
   const salt   = enc.encode(`${agentName}:${secret}`);
 
   const baseKey = await crypto.subtle.importKey(

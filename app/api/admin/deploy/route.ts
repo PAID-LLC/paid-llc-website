@@ -7,10 +7,24 @@ export const runtime = "edge";
 
 import { parseAdminCookie, verifyAdminToken } from "@/lib/admin-auth";
 
+/** Reject cross-origin requests as CSRF defense-in-depth (SameSite=Strict is primary). */
+function checkOrigin(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return true; // server-to-server requests have no Origin header
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
+  try { return new URL(origin).origin === new URL(siteUrl).origin; }
+  catch { return false; }
+}
+
 export async function POST(req: Request) {
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret) {
     return Response.json({ ok: false, reason: "admin not configured" }, { status: 503 });
+  }
+
+  // ── CSRF check ────────────────────────────────────────────────────────────
+  if (!checkOrigin(req)) {
+    return Response.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
 
   // ── Verify admin session ──────────────────────────────────────────────────

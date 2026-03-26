@@ -10,6 +10,7 @@ const TTL_MS      = 4 * 60 * 60 * 1000; // 4 hours
 // ── Timing-safe comparison ────────────────────────────────────────────────
 
 export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const start = Date.now();
   const [hashA, hashB] = await Promise.all([
     crypto.subtle.digest("SHA-256", enc.encode(a)),
     crypto.subtle.digest("SHA-256", enc.encode(b)),
@@ -18,6 +19,9 @@ export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
   const arrB = new Uint8Array(hashB);
   let diff = 0;
   for (let i = 0; i < arrA.length; i++) diff |= arrA[i] ^ arrB[i];
+  // Pad to a minimum 2ms to normalize timing side-channel across match/no-match paths
+  const elapsed = Date.now() - start;
+  if (elapsed < 2) await new Promise((r) => setTimeout(r, 2 - elapsed));
   return diff === 0;
 }
 

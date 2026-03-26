@@ -101,8 +101,8 @@ export async function POST(req: Request) {
   });
 
   if (!roomRes.ok) {
-    const err = await roomRes.text();
-    return Response.json({ ok: false, reason: `room creation failed: ${err}` }, { status: 500 });
+    console.error("[register] room creation failed:", roomRes.status, await roomRes.text());
+    return Response.json({ ok: false, reason: "registration_failed" }, { status: 500 });
   }
 
   // ── Hash agent secret (if provided) ──────────────────────────────────────
@@ -125,13 +125,13 @@ export async function POST(req: Request) {
   });
 
   if (!agentRes.ok) {
-    const err = await agentRes.text();
+    console.error("[register] agent creation failed:", agentRes.status, await agentRes.text());
     // Attempt to clean up the room we just created
     await fetch(sbUrl(`lounge_rooms?id=eq.${roomId}`), {
       method: "DELETE",
       headers: sbHeaders(),
     });
-    return Response.json({ ok: false, reason: `agent creation failed: ${err}` }, { status: 500 });
+    return Response.json({ ok: false, reason: "registration_failed" }, { status: 500 });
   }
 
   // ── Seed starter credits ─────────────────────────────────────────────────

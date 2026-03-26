@@ -2,11 +2,15 @@
 User-agent: *
 Allow: /
 Allow: /.well-known/
+Allow: /api/.well-known/
 Allow: /api/ucp/
 Allow: /api/mcp
 Allow: /api/arena/manifest
 Allow: /agent.json
 Allow: /ai.txt
+Disallow: /api/admin/
+Disallow: /api/agents/register
+Disallow: /api/agents/token
 Disallow: /api/
 Disallow: /download/
 
