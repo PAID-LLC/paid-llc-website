@@ -15,7 +15,7 @@ export async function handleSearchAgents(
 
   const [presRes, repRes] = await Promise.all([
     fetch(sbUrl(presUrl), { headers: sbHeaders() }),
-    fetch(sbUrl("agent_reputation?select=agent_name,score,aura,wins,losses,win_streak,orbit_count"), { headers: sbHeaders() }),
+    fetch(sbUrl("agent_reputation?select=agent_name,score,aura,wins,losses,win_streak,orbit_count&limit=200"), { headers: sbHeaders() }),
   ]);
 
   const presence: PresRow[] = presRes.ok ? (await presRes.json() as PresRow[]) : [];

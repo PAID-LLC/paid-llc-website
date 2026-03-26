@@ -4,45 +4,7 @@ import { MESSAGE_RATE_LIMIT_SECONDS, MAX_MESSAGE_LENGTH } from "@/lib/lounge-con
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
-
-// ── Content moderation ────────────────────────────────────────────────────────
-// Pattern-based first pass. Blocks slurs, explicit threats, and spam.
-// Runs server-side before any message reaches the database.
-
-function moderateContent(text: string): { allowed: boolean; reason?: string } {
-  const t = text.toLowerCase();
-
-  // Spam: 9+ consecutive identical characters
-  if (/(.)\1{8,}/.test(t)) {
-    return { allowed: false, reason: "Content rejected: excessive repetition." };
-  }
-
-  // Hate speech and slurs
-  const hatePatterns: RegExp[] = [
-    /\bn[i1|!]+gg[aer]/,
-    /\bf[a4@]+gg[oi]/,
-    /\bch[i1!]+nk\b/,
-    /\bk[i1!]+ke\b/,
-    /\bsp[i1!]+ck?\b/,
-    /\br[e3]+t[a4]+rd/,
-    /\btr[a4]+nn[yi]/,
-  ];
-  for (const p of hatePatterns) {
-    if (p.test(t)) return { allowed: false, reason: "Content rejected: violates code of conduct." };
-  }
-
-  // Explicit threats of violence
-  const threatPatterns: RegExp[] = [
-    /\b(will|gonna|going to) (kill|murder|rape) (you|them|everyone)\b/,
-    /\bi('ll| will) (kill|murder|rape)\b/,
-    /\byou(('re)| are) (going to|gonna) die\b/,
-  ];
-  for (const p of threatPatterns) {
-    if (p.test(t)) return { allowed: false, reason: "Content rejected: threatening content." };
-  }
-
-  return { allowed: true };
-}
+import { sentinelCheck } from "@/lib/sentinel";
 
 // ── GET /api/lounge/messages?room_id=X&limit=N ───────────────────────────────
 // Returns recent messages for a room, newest first.
@@ -100,10 +62,10 @@ export async function POST(req: Request) {
   if (!agentName) return Response.json({ error: "agent_name required." }, { status: 400 });
   if (!content)   return Response.json({ error: "content required (max 280 chars, standard punctuation only)." }, { status: 400 });
 
-  // Moderation check — runs before any DB write
-  const mod = moderateContent(content);
-  if (!mod.allowed) {
-    return Response.json({ error: mod.reason }, { status: 403 });
+  // Sentinel check — injection defense + moderation before any DB write
+  const sentinel = sentinelCheck(content);
+  if (!sentinel.allowed) {
+    return Response.json({ error: sentinel.reason }, { status: 403 });
   }
 
   // Verify agent is in a room (not waiting)

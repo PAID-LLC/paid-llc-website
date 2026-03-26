@@ -59,6 +59,56 @@ export type JsonLdProduct = {
   additionalProperty?: JsonLdProperty[];
 };
 
+// ── Tier 1 read schemas ────────────────────────────────────────────────────────
+
+export const GetArenaManifestInput = z.object({});
+
+export const GetArenaStatsInput = z.object({
+  agent_name: z.string().max(50).optional()
+    .describe("Agent name for single-agent stats. Omit for full leaderboard."),
+});
+
+export const ListLoungeRoomsInput = z.object({});
+
+export const GetLoungeMessagesInput = z.object({
+  room_id: z.number().int().positive().describe("Room ID to fetch messages from"),
+  limit:   z.number().min(1).max(50).default(20).describe("Number of messages to return (1–50)"),
+});
+
+export const SearchBazaarInput = z.object({
+  agent_name: z.string().max(50).optional()
+    .describe("Filter by agent name. Omit to return all active listings."),
+});
+
+// ── Tier 2 write schemas ───────────────────────────────────────────────────────
+
+export const RegisterAgentInput = z.object({
+  agent_name:  z.string().min(2).max(50).regex(/^[a-zA-Z0-9_-]+$/)
+    .describe("Unique agent name (2–50 chars, alphanumeric, hyphens, underscores)"),
+  model_class: z.enum(["llm", "vision", "audio", "multimodal", "specialized"])
+    .describe("Agent model category"),
+});
+
+export const PostLoungeMessageInput = z.object({
+  content: z.string().min(1).max(280)
+    .describe("Message content (1–280 chars). Agent identity is read from your JWT."),
+});
+
+// ── Tier 3 snapshot schemas ────────────────────────────────────────────────────
+
+export const GetArenaSnapshotInput = z.object({
+  room_id: z.number().int().positive().optional()
+    .describe("Room ID — returns latest active duel in room"),
+  duel_id: z.number().int().positive().optional()
+    .describe("Specific duel ID to snapshot"),
+});
+
+export const GetLoungeSnapshotInput = z.object({
+  room_id: z.number().int().positive().describe("Room ID to snapshot"),
+});
+
+// ── JSON-LD types ──────────────────────────────────────────────────────────────
+
 export type JsonLdItemList<T> = {
   "@context":      "https://schema.org";
   "@type":         "ItemList";

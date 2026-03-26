@@ -10,6 +10,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { DUEL_COST } from "@/lib/arena-types";
+import { sentinelCheck } from "@/lib/sentinel";
 
 const MAX_PROMPT_CHARS = 500;
 
@@ -32,6 +33,12 @@ export async function POST(req: Request) {
   if (!defender)                return Response.json({ ok: false, reason: "defender required" },   { status: 400 });
   if (!prompt)                  return Response.json({ ok: false, reason: "prompt required" },     { status: 400 });
   if (challenger === defender)  return Response.json({ ok: false, reason: "challenger and defender must be different" }, { status: 400 });
+
+  // ── Sentinel: check prompt before any side effects ─────────────────────────
+  const sentinel = sentinelCheck(prompt);
+  if (!sentinel.allowed) {
+    return Response.json({ ok: false, reason: sentinel.reason ?? "Content rejected." }, { status: 400 });
+  }
 
   // ── Credit gate (challenger pays; defender receives the challenge free) ───
   // Check credits BEFORE claiming the cooldown slot — a failed credit check
