@@ -4,6 +4,7 @@ import { canAgentUseTool }                 from "@/lib/policy-warden";
 import { logToolCall }                     from "@/lib/auditor";
 
 export function makeGetCreditBalance(ctx: McpRequestContext) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return async function(_args: Record<string, never>): Promise<{ content: [{ type: "text"; text: string }] }> {
     // Warden: enforce verified tier before any other logic
     if (!canAgentUseTool(ctx.jwtPayload?.tier, "get_credit_balance")) {

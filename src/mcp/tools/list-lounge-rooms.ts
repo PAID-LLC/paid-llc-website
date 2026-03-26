@@ -3,6 +3,7 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { ListLoungeRoomsInput } from "../types";
 
 export async function handleListLoungeRooms(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _args: z.infer<typeof ListLoungeRoomsInput>
 ): Promise<{ content: [{ type: "text"; text: string }] }> {
   const url = process.env.SUPABASE_URL;
