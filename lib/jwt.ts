@@ -74,11 +74,13 @@ export async function verifyJwt(token: string): Promise<JwtPayload | null> {
 
   try {
     const message  = `${p0}.${p1}`;
-    let sigBytes: Uint8Array;
+    let sigBytes: Uint8Array<ArrayBuffer>;
     try {
-      sigBytes = Uint8Array.from(
-        atob(p2.replace(/-/g, "+").replace(/_/g, "/")),
-        (c) => c.charCodeAt(0)
+      sigBytes = new Uint8Array(
+        Array.from(
+          atob(p2.replace(/-/g, "+").replace(/_/g, "/")),
+          (c) => c.charCodeAt(0)
+        )
       );
     } catch {
       // Invalid base64 — use a dummy 32-byte buffer so verify() still runs
