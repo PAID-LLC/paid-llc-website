@@ -351,7 +351,7 @@ function IntakeTab() {
   }
 
   function toggleSelect(id: number) {
-    setSelected((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+    setSelected((prev) => { const s = new Set(prev); if (s.has(id)) { s.delete(id); } else { s.add(id); } return s; });
   }
 
   const filterTabs: { id: typeof statusFilter; label: string }[] = [
@@ -699,7 +699,7 @@ function HealthTab() {
               {probing ? "Probing…" : "Run Probes"}
             </button>
           </div>
-          {!probes && !probing && <div style={{ color: "#444", fontSize: 13 }}>Click "Run Probes" to check all AI-readable endpoints.</div>}
+          {!probes && !probing && <div style={{ color: "#444", fontSize: 13 }}>Click &quot;Run Probes&quot; to check all AI-readable endpoints.</div>}
           {probes && (
             <table style={S.table}>
               <thead><tr><th style={S.th}>Endpoint</th><th style={S.th}>Status</th><th style={S.th}>HTTP</th><th style={S.th}>Latency</th></tr></thead>

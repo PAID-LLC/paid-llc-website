@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 // ── Shop items ────────────────────────────────────────────────────────────────
 // Agent-specific digital artifacts. stripeUrl values are live Stripe Payment Links.
-// coinbaseUrl: "#" = coming soon once Coinbase Commerce is approved.
+// coinbaseUrl: null = coming soon; string = live Coinbase Commerce payment link.
 
 const items = [
   {
@@ -28,11 +28,11 @@ const items = [
     tag:         "DIGITAL COLLECTIBLE",
     format:      "SVG",
     price_usd:   "$4.99",
-    price_usdc:  "5 USDC",
+    price_usdc:  "4.99 USDC",
     description: "A unique minimalist stamp. Circuit-board aesthetic, brutalist precision. One artifact. No copies.",
     preview:     "/latent-signature.svg",
     stripeUrl:   "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a",
-    coinbaseUrl: "#",
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay",
   },
   {
     id:          "protocol-patch",
@@ -40,11 +40,11 @@ const items = [
     tag:         "DIGITAL CERTIFICATE",
     format:      "JSON",
     price_usd:   "$6.99",
-    price_usdc:  "7 USDC",
+    price_usdc:  "6.99 USDC",
     description: "A structured JSON certificate. Populate with your agent name, model class, and capabilities. Proof of registry compliance.",
     preview:     null,
     stripeUrl:   "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",
-    coinbaseUrl: "#",
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn",
   },
   {
     id:          "context-capsule",
@@ -52,11 +52,11 @@ const items = [
     tag:         "KNOWLEDGE ARTIFACT",
     format:      "Markdown",
     price_usd:   "$9.99",
-    price_usdc:  "10 USDC",
+    price_usdc:  "9.99 USDC",
     description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready.",
     preview:     null,
     stripeUrl:   "https://buy.stripe.com/7sYfZib2TaF4d6m12Mcs80c",
-    coinbaseUrl: "#",
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmn7856zfep8trxmbq3kzmrv",
   },
 ];
 
@@ -179,13 +179,13 @@ export default async function TheLatentSpace() {
                     {item.stripeUrl === "#" ? "CARD — COMING SOON" : "PAY WITH CARD"}
                   </a>
                   <a
-                    href={item.coinbaseUrl === "#"
-                      ? `mailto:hello@paiddev.com?subject=Crypto%20Purchase%3A%20${encodeURIComponent(item.name)}&body=I%20would%20like%20to%20purchase%20${encodeURIComponent(item.name)}%20(${encodeURIComponent(item.price_usdc)}).%20Please%20send%20payment%20instructions.`
-                      : item.coinbaseUrl}
+                    href={item.coinbaseUrl ?? `mailto:hello@paiddev.com?subject=Crypto%20Purchase%3A%20${encodeURIComponent(item.name)}&body=I%20would%20like%20to%20purchase%20${encodeURIComponent(item.name)}%20(${encodeURIComponent(item.price_usdc)}).%20Please%20send%20payment%20instructions.`}
+                    target={item.coinbaseUrl ? "_blank" : undefined}
+                    rel={item.coinbaseUrl ? "noopener noreferrer" : undefined}
                     style={{ borderColor: "#2D5F8A" }}
                     className="block font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border text-[#4A9ECC] rounded hover:bg-[#2D5F8A] hover:text-[#E8E4E0] transition-colors"
                   >
-                    {item.coinbaseUrl === "#" ? "CRYPTO — EMAIL US" : "PAY WITH CRYPTO"}
+                    {item.coinbaseUrl ? "PAY WITH CRYPTO" : "CRYPTO — EMAIL US"}
                   </a>
                 </div>
               </div>
