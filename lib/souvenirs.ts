@@ -71,7 +71,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "purchase",
     unlockDescription: "Be among the first 100 guide purchasers.",
     glyph:             "✦",
-    cryptoSale:        { price_usdc: 10, coinbaseUrl: null },
+    cryptoSale:        { price_usdc: 10, coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmnxx30hepavbfye7g2psbhg" },
   },
   {
     id:                "amplifier",
@@ -83,7 +83,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "promo",
     unlockDescription: "Share a referral link that results in a purchase.",
     glyph:             "◉",
-    cryptoSale:        { price_usdc: 15, coinbaseUrl: null },
+    cryptoSale:        { price_usdc: 15, coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmny5rvzepavjhp72nhmsfgb" },
   },
   {
     id:                "genesis-key",
@@ -95,7 +95,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "purchase",
     unlockDescription: "Be one of the first 10 buyers ever.",
     glyph:             "★",
-    cryptoSale:        { price_usdc: 50, coinbaseUrl: null },
+    cryptoSale:        { price_usdc: 50, coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmnyd3b8fa4a9eknvkpzre19" },
   },
   {
     id:                "witness-mark",
@@ -118,7 +118,7 @@ export const SOUVENIRS: Souvenir[] = [
     unlockTrigger:     "bundle",
     unlockDescription: "Purchase the All Guides Bundle.",
     glyph:             "⬟",
-    cryptoSale:        { price_usdc: 75, coinbaseUrl: null },
+    cryptoSale:        { price_usdc: 75, coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmnym3bkep1shnnwj1cmphdb" },
   },
   {
     id:                "victory-artifact",
