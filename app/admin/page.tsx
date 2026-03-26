@@ -694,7 +694,7 @@ function HealthTab() {
       {section === "readability" && (
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={S.sectionHd} style2={{ marginBottom: 0 }}>MACHINE READABILITY PROBES</div>
+            <div style={{ ...S.sectionHd, marginBottom: 0 }}>MACHINE READABILITY PROBES</div>
             <button onClick={runProbes} disabled={probing} style={{ ...S.btn, opacity: probing ? 0.6 : 1 }}>
               {probing ? "Probing…" : "Run Probes"}
             </button>
