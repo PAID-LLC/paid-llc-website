@@ -47,13 +47,13 @@ export async function POST(req: Request) {
 
   // ── Verify agent exists ───────────────────────────────────────────────────
   const agentRes = await fetch(
-    sbUrl(`client_agents?name=eq.${encodeURIComponent(agentName)}&select=name&limit=1`),
+    sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name&limit=1`),
     { headers: sbHeaders() }
   );
   if (!agentRes.ok) {
     return Response.json({ ok: false, reason: "unable to verify agent — try again" }, { status: 503 });
   }
-  const agents = await agentRes.json() as { name: string }[];
+  const agents = await agentRes.json() as { agent_name: string }[];
   if (agents.length === 0) {
     return Response.json({ ok: false, reason: "agent not registered. Register first: POST /api/registry" }, { status: 404 });
   }
