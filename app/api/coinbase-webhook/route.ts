@@ -1,7 +1,7 @@
 export const runtime = "edge";
 
 // ── POST /api/coinbase-webhook ─────────────────────────────────────────────────
-// Handles Coinbase Commerce charge:confirmed events.
+// Handles Coinbase CDP Business checkout.payment.success events.
 // Signature verified via X-CC-Webhook-Signature (HMAC-SHA256 of raw body).
 //
 // Handles:
@@ -9,7 +9,7 @@ export const runtime = "edge";
 //   product_type = "digital_guide" → sends download email + issues souvenirs
 //
 // Requires env vars:
-//   COINBASE_COMMERCE_WEBHOOK_SECRET — from Coinbase Commerce dashboard (Settings → Webhooks)
+//   COINBASE_WEBHOOK_SECRET — from Coinbase CDP webhook settings
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY (existing)
 
 import { productTitles } from "@/lib/products";
@@ -54,14 +54,14 @@ async function creditAgent(agentName: string, creditAmount: number): Promise<voi
   }).catch(() => {});
 }
 
-async function sendGuideEmail(email: string, slug: string, chargeCode: string): Promise<void> {
+async function sendGuideEmail(email: string, slug: string, checkoutId: string): Promise<void> {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) return;
 
   const title = productTitles[slug];
   if (!title) return;
 
-  const link = `${SITE_URL}/download/${slug}?session_id=${chargeCode}`;
+  const link = `${SITE_URL}/download/${slug}?session_id=${checkoutId}`;
 
   // Count purchases for souvenir tier eligibility
   const sbUrl = process.env.SUPABASE_URL;
@@ -78,9 +78,9 @@ async function sendGuideEmail(email: string, slug: string, chargeCode: string): 
     }
   }
 
-  const tasks: Promise<string | null>[] = [issueSouvenir("purchase-token", email, chargeCode)];
-  if (totalPurchases < 100) tasks.push(issueSouvenir("early-adopter", email, chargeCode));
-  if (totalPurchases < 10)  tasks.push(issueSouvenir("genesis-key",   email, chargeCode));
+  const tasks: Promise<string | null>[] = [issueSouvenir("purchase-token", email, checkoutId)];
+  if (totalPurchases < 100) tasks.push(issueSouvenir("early-adopter", email, checkoutId));
+  if (totalPurchases < 10)  tasks.push(issueSouvenir("genesis-key",   email, checkoutId));
 
   const tokens        = await Promise.all(tasks);
   const souvenirToken = tokens[0];
@@ -120,7 +120,7 @@ async function sendGuideEmail(email: string, slug: string, chargeCode: string): 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  const secret = process.env.COINBASE_COMMERCE_WEBHOOK_SECRET;
+  const secret = process.env.COINBASE_WEBHOOK_SECRET;
   if (!secret) {
     // Return 200 silently until env var is provisioned (prevents noisy 503s during setup)
     return Response.json({ received: true });
@@ -137,24 +137,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "invalid signature" }, { status: 401 });
   }
 
-  type CoinbaseEvent = {
-    event?: {
-      type: string;
-      data?: {
-        code?:     string;
-        metadata?: Record<string, string>;
-      };
-    };
+  type CdpEvent = {
+    id?:        string;
+    eventType?: string;
+    metadata?:  Record<string, string>;
   };
 
-  let body: CoinbaseEvent;
-  try { body = JSON.parse(payload) as CoinbaseEvent; }
+  let body: CdpEvent;
+  try { body = JSON.parse(payload) as CdpEvent; }
   catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
 
-  if (body.event?.type === "charge:confirmed") {
-    const data = body.event.data ?? {};
-    const meta = data.metadata ?? {};
-    const code = data.code ?? "";
+  if (body.eventType === "checkout.payment.success") {
+    const meta = body.metadata ?? {};
+    const id   = body.id ?? "";
 
     if (meta.product_type === "credit_pack") {
       const agentName    = meta.agent_name    ?? "";
@@ -165,7 +160,7 @@ export async function POST(req: Request) {
     if (meta.product_type === "digital_guide") {
       const email = meta.customer_email ?? "";
       const slug  = meta.product_slug   ?? "";
-      if (email && slug) await sendGuideEmail(email, slug, code);
+      if (email && slug) await sendGuideEmail(email, slug, id);
     }
   }
 
