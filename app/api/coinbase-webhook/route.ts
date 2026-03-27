@@ -2,14 +2,14 @@ export const runtime = "edge";
 
 // ── POST /api/coinbase-webhook ─────────────────────────────────────────────────
 // Handles Coinbase CDP Business checkout.payment.success events.
-// Signature verified via X-CC-Webhook-Signature (HMAC-SHA256 of raw body).
+// Signature verified via X-Hook0-Signature (Hook0 HMAC-SHA256 format).
 //
 // Handles:
 //   product_type = "credit_pack"   → credits agent via credit_seller RPC
 //   product_type = "digital_guide" → sends download email + issues souvenirs
 //
 // Requires env vars:
-//   COINBASE_WEBHOOK_SECRET — from Coinbase CDP webhook settings
+//   COINBASE_WEBHOOK_SECRET — returned by the webhook subscription creation API
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY (existing)
 
 import { productTitles } from "@/lib/products";
@@ -17,30 +17,63 @@ import { issueSouvenir } from "@/lib/souvenirs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
-async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
+// ── Hook0 signature verification ───────────────────────────────────────────────
+// Header format: t=1234567890,h=content-type x-other,v1=abc123...
+// Signed string: {t}.{h_names}.{h_values}.{body}  (or {t}.{body} if h is empty)
+
+async function verifyHook0Signature(
+  payload:  string,
+  sigHeader: string,
+  headers:  Headers,
+  secret:   string
+): Promise<boolean> {
   try {
+    // Parse header into key=value map
+    const parts: Record<string, string> = {};
+    for (const part of sigHeader.split(",")) {
+      const idx = part.indexOf("=");
+      if (idx > 0) parts[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
+    }
+
+    const t  = parts["t"];
+    const h  = parts["h"] ?? "";
+    const v1 = parts["v1"];
+    if (!t || !v1) return false;
+
+    // Build the string that was signed
+    let signed = t;
+    if (h) {
+      const names  = h.split(" ").filter(Boolean);
+      const values = names.map(n => headers.get(n) ?? "");
+      signed += "." + names.join(" ") + "." + values.join(".");
+    }
+    signed += "." + payload;
+
+    // HMAC-SHA256
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
       "raw", enc.encode(secret),
       { name: "HMAC", hash: "SHA-256" },
       false, ["sign"]
     );
-    const mac      = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+    const mac      = await crypto.subtle.sign("HMAC", key, enc.encode(signed));
     const computed = Array.from(new Uint8Array(mac))
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
     // Constant-time comparison
-    if (computed.length !== signature.length) return false;
+    if (computed.length !== v1.length) return false;
     let diff = 0;
     for (let i = 0; i < computed.length; i++) {
-      diff |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
+      diff |= computed.charCodeAt(i) ^ v1.charCodeAt(i);
     }
     return diff === 0;
   } catch {
     return false;
   }
 }
+
+// ── Fulfillment helpers ────────────────────────────────────────────────────────
 
 async function creditAgent(agentName: string, creditAmount: number): Promise<void> {
   const url = process.env.SUPABASE_URL;
@@ -122,17 +155,17 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
 export async function POST(req: Request) {
   const secret = process.env.COINBASE_WEBHOOK_SECRET;
   if (!secret) {
-    // Return 200 silently until env var is provisioned (prevents noisy 503s during setup)
+    // Return 200 silently until env var is provisioned
     return Response.json({ received: true });
   }
 
-  const signature = req.headers.get("x-cc-webhook-signature") ?? "";
-  if (!signature) {
+  const sigHeader = req.headers.get("x-hook0-signature") ?? "";
+  if (!sigHeader) {
     return Response.json({ error: "missing signature" }, { status: 400 });
   }
 
   const payload = await req.text();
-  const valid   = await verifySignature(payload, signature, secret);
+  const valid   = await verifyHook0Signature(payload, sigHeader, req.headers, secret);
   if (!valid) {
     return Response.json({ error: "invalid signature" }, { status: 401 });
   }
