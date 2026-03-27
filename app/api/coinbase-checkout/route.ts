@@ -67,7 +67,7 @@ function ensurePkcs8(pem: string): Uint8Array {
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
   const pkcs8 = ensurePkcs8(pem);
   return crypto.subtle.importKey(
-    "pkcs8", pkcs8.buffer,
+    "pkcs8", pkcs8.buffer as ArrayBuffer,
     { name: "ECDSA", namedCurve: "P-256" },
     false, ["sign"]
   );
