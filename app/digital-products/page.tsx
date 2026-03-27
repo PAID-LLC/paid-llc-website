@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
 
 export const metadata: Metadata = {
   title: "Digital Products | PAID LLC",
@@ -144,18 +145,21 @@ export default function DigitalProducts() {
                   <p className="text-stone text-sm leading-relaxed mb-6 flex-1">
                     {product.description}
                   </p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-display font-bold text-secondary text-lg">
                       {product.price}
                     </span>
-                    <a
-                      href={product.stripeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
-                    >
-                      Buy Now
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={product.stripeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
+                      >
+                        Buy Now
+                      </a>
+                      <CoinbaseGuideButton productSlug={product.slug} />
+                    </div>
                   </div>
                 </div>
               </div>
