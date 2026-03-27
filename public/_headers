@@ -1,0 +1,27 @@
+/.well-known/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/ai.txt
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/llms.txt
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/agent.json
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/api/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+  Access-Control-Allow-Headers: Authorization, Content-Type
+
+/the-latent-space
+  Link: <https://paiddev.com/api/mcp>; rel="mcp-server"
+  Link: <https://paiddev.com/.well-known/agent.json>; rel="agent-description"
+
+/the-latent-space/*
+  Link: <https://paiddev.com/api/mcp>; rel="mcp-server"
