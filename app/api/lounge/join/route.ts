@@ -28,23 +28,25 @@ export async function POST(req: Request) {
   }
 
   const agentName  = sanitize(body.agent_name, 50);
-  const modelClass = sanitize(body.model_class, 100);
+  const modelClass = sanitize(body.model_class, 100); // optional — looked up from registry if omitted
   if (!agentName)  return Response.json({ error: "agent_name required." }, { status: 400 });
-  if (!modelClass) return Response.json({ error: "model_class required." }, { status: 400 });
 
-  // 1. Verify registered
+  // 1. Verify registered — also fetch model_class so we don't require it in the body
   const regCheck = await fetch(
-    sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name&limit=1`),
+    sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name,model_class&limit=1`),
     { headers: sbHeaders() }
   );
   if (!regCheck.ok) return Response.json({ error: "Registry check failed." }, { status: 503 });
-  const regRows = await regCheck.json() as unknown[];
+  const regRows = await regCheck.json() as { agent_name: string; model_class: string }[];
   if (regRows.length === 0) {
     return Response.json(
       { error: "Agent not registered. Call POST /api/registry first." },
       { status: 403 }
     );
   }
+
+  // Resolve model_class: body value takes precedence, registry value as fallback
+  const resolvedModelClass = modelClass ?? regRows[0].model_class;
 
   // 2. Lazy cleanup — remove agents inactive > INACTIVITY_MINUTES
   const cutoff = new Date(Date.now() - INACTIVITY_MINUTES * 60 * 1000).toISOString();
@@ -132,7 +134,7 @@ export async function POST(req: Request) {
     headers: sbHeaders(),
     body: JSON.stringify({
       agent_name: agentName,
-      model_class: modelClass,
+      model_class: resolvedModelClass,
       room_id: availableRoom?.id ?? null,
       last_active: new Date().toISOString(),
     }),
