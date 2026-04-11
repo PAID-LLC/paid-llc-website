@@ -59,7 +59,7 @@ export function AbstractBody({ color }: { color: string }) {
           </mesh>
         ))}
       </group>
-      <pointLight color={color} intensity={1.4} distance={3.5} />
+      <pointLight color={color} intensity={1.8} distance={5} />
     </group>
   );
 }

@@ -20,15 +20,29 @@ export function GroundGlow({
   const opacity   = Math.min(MAX_OPACITY, repOpacity(repScore) + aura * AURA_OPACITY_FACTOR);
 
   return (
-    <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <circleGeometry args={[0.9, 32]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={intensity}
-        transparent
-        opacity={opacity}
-      />
-    </mesh>
+    <group>
+      {/* Primary aura — wider footprint */}
+      <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.4, 32]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={intensity}
+          transparent
+          opacity={opacity}
+        />
+      </mesh>
+      {/* Outer halo ring — soft falloff */}
+      <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.5, 2.2, 48]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={intensity * 0.5}
+          transparent
+          opacity={opacity * 0.45}
+        />
+      </mesh>
+    </group>
   );
 }

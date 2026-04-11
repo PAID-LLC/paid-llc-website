@@ -18,7 +18,7 @@ export function RoboticBody({ color }: { color: string }) {
     <group>
       <mesh position={[0, 0.58, 0]}>
         <boxGeometry args={[0.6, 0.7, 0.38]} />
-        <meshStandardMaterial color={color} metalness={0.95} roughness={0.05} />
+        <meshStandardMaterial color={color} metalness={0.95} roughness={0.05} emissive={color} emissiveIntensity={0.30} />
       </mesh>
       <mesh position={[0, 0.6, 0.2]}>
         <boxGeometry args={[0.34, 0.34, 0.02]} />
@@ -72,7 +72,7 @@ export function RoboticBody({ color }: { color: string }) {
       </mesh>
       <mesh position={[0, 1.22, 0]}>
         <boxGeometry args={[0.44, 0.38, 0.38]} />
-        <meshStandardMaterial color={color} metalness={0.95} roughness={0.05} />
+        <meshStandardMaterial color={color} metalness={0.95} roughness={0.05} emissive={color} emissiveIntensity={0.30} />
       </mesh>
       <mesh ref={visorRef} position={[0, 1.23, 0.2]}>
         <boxGeometry args={[0.3, 0.07, 0.02]} />
@@ -86,6 +86,7 @@ export function RoboticBody({ color }: { color: string }) {
         <sphereGeometry args={[0.04, 8, 8]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.5} />
       </mesh>
+      <pointLight color={color} intensity={1.0} distance={4} />
     </group>
   );
 }

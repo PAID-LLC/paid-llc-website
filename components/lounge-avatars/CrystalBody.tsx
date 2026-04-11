@@ -42,15 +42,15 @@ export function CrystalBody({ color }: { color: string }) {
       </mesh>
       <mesh ref={shard1Ref} position={[0.62, 0.88, 0]}>
         <tetrahedronGeometry args={[0.22]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.9} transparent opacity={0.88} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.2} transparent opacity={0.88} />
       </mesh>
       <mesh ref={shard2Ref} position={[0, 0.65, 0.55]}>
         <tetrahedronGeometry args={[0.17]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.7} transparent opacity={0.82} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.0} transparent opacity={0.82} />
       </mesh>
       <mesh ref={shard3Ref} position={[-0.5, 0.78, 0]}>
         <tetrahedronGeometry args={[0.14]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} transparent opacity={0.75} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.0} transparent opacity={0.75} />
       </mesh>
       <group ref={ringRef} position={[0, 0.75, 0]}>
         <mesh>
@@ -58,7 +58,7 @@ export function CrystalBody({ color }: { color: string }) {
           <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} transparent opacity={0.6} />
         </mesh>
       </group>
-      <pointLight color={color} intensity={2.2} distance={4} />
+      <pointLight color={color} intensity={2.5} distance={6} />
     </group>
   );
 }

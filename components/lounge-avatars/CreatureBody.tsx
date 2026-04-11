@@ -35,11 +35,11 @@ export function CreatureBody({ color }: { color: string }) {
     <group>
       <mesh ref={bodyRef} position={[0, 0.55, 0]}>
         <sphereGeometry args={[0.44, 14, 12]} />
-        <meshStandardMaterial color={color} roughness={0.82} />
+        <meshStandardMaterial color={color} roughness={0.82} emissive={color} emissiveIntensity={0.20} />
       </mesh>
       <mesh position={[0, 1.12, 0.16]}>
         <sphereGeometry args={[0.27, 14, 12]} />
-        <meshStandardMaterial color={color} roughness={0.82} />
+        <meshStandardMaterial color={color} roughness={0.82} emissive={color} emissiveIntensity={0.20} />
       </mesh>
       <mesh position={[-0.13, 1.42, 0.12]} rotation={[0.15, 0, -0.28]}>
         <coneGeometry args={[0.07, 0.28, 6]} />
@@ -65,7 +65,7 @@ export function CreatureBody({ color }: { color: string }) {
         <coneGeometry args={[0.08, 0.3, 7]} />
         <meshStandardMaterial color={color} roughness={0.85} />
       </mesh>
-      <pointLight color={color} intensity={0.7} distance={2.5} />
+      <pointLight color={color} intensity={1.2} distance={4} />
     </group>
   );
 }

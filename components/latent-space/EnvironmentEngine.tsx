@@ -30,9 +30,91 @@ function Floor({
         minDepthThreshold={0.4}
         maxDepthThreshold={1.4}
         color={color}
-        metalness={0.5}
+        metalness={0.85}
       />
     </mesh>
+  );
+}
+
+// ── Shared: Background architectural ring ────────────────────────────────────
+
+function BackgroundRing({
+  radius,
+  tubeRadius = 0.08,
+  color,
+  speed,
+  height,
+  tiltX = 0,
+}: {
+  radius: number;
+  tubeRadius?: number;
+  color: string;
+  speed: number;
+  height: number;
+  tiltX?: number;
+}) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame((_, d) => { if (ref.current) ref.current.rotation.y += d * speed; });
+  return (
+    <mesh ref={ref} position={[0, height, 0]} rotation={[tiltX, 0, 0]}>
+      <torusGeometry args={[radius, tubeRadius, 8, 80]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.65}
+        transparent
+        opacity={0.35}
+      />
+    </mesh>
+  );
+}
+
+// ── Shared: Ambient floating motes ───────────────────────────────────────────
+
+function AmbientMotes({ color, opacity }: { color: string; opacity: number }) {
+  const ref = useRef<THREE.Points>(null);
+  const { positions, speeds } = useMemo(() => {
+    const COUNT = 80;
+    const positions = new Float32Array(COUNT * 3);
+    const speeds    = new Float32Array(COUNT);
+    for (let i = 0; i < COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r     = Math.random() * 18;
+      positions[i * 3]     = Math.cos(angle) * r;
+      positions[i * 3 + 1] = Math.random() * 10;
+      positions[i * 3 + 2] = Math.sin(angle) * r;
+      speeds[i] = 0.05 + Math.random() * 0.10;
+    }
+    return { positions, speeds };
+  }, []);
+
+  useFrame((_, d) => {
+    if (!ref.current) return;
+    const p = ref.current.geometry.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < 80; i++) {
+      const y = p.getY(i) + d * speeds[i];
+      if (y > 10) {
+        const angle = Math.random() * Math.PI * 2;
+        const r     = Math.random() * 18;
+        p.setX(i, Math.cos(angle) * r);
+        p.setY(i, 0);
+        p.setZ(i, Math.sin(angle) * r);
+      } else {
+        p.setX(i, p.getX(i) + (Math.random() - 0.5) * 0.008);
+        p.setY(i, y);
+        p.setZ(i, p.getZ(i) + (Math.random() - 0.5) * 0.008);
+      }
+    }
+    p.needsUpdate = true;
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial size={0.06} color={color} transparent opacity={opacity} sizeAttenuation />
+    </points>
   );
 }
 
@@ -67,23 +149,23 @@ function RoastPit() {
   return (
     <>
       <color attach="background" args={["#090004"]} />
-      <fogExp2 attach="fog" args={["#090004", 0.028]} />
+      <fogExp2 attach="fog" args={["#090004", 0.032]} />
       <ambientLight intensity={0.05} />
       <pointLight position={[0, 10, 0]} intensity={1.2} color="#AA0033" />
-      {/* uplight — vortex feels like it rises from below */}
       <pointLight position={[0, 0.4, 0]} intensity={0.6} color="#880022" distance={12} />
-      <Floor color="#0D0006" roughness={0.45} mixStrength={10} />
+      <Floor color="#0D0006" roughness={0.08} mixStrength={18} />
       <RoastVortex />
+      <BackgroundRing radius={9}  color="#880022" speed={0.008} height={3} />
+      <BackgroundRing radius={13} color="#880022" speed={0.005} height={6} />
+      <AmbientMotes color="#FF2255" opacity={0.25} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.35} luminanceSmoothing={0.9} intensity={0.32} />
+        <Bloom luminanceThreshold={0.22} luminanceSmoothing={0.85} intensity={0.65} />
       </EffectComposer>
     </>
   );
 }
 
 // ── Intellectual Hub — armillary orrery, cold and contemplative ───────────────
-// Three concentric orbit rings at different tilts — suggesting a thought system
-// in permanent motion. Stars overhead. Pale violet core at center.
 
 type OrreryRing = { tiltX: number; tiltZ: number; speed: number; radius: number; color: string };
 
@@ -102,9 +184,9 @@ function OrreryRingMesh({ tiltX, tiltZ, speed, radius, color }: OrreryRing) {
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={0.7}
+        emissiveIntensity={0.90}
         transparent
-        opacity={0.50}
+        opacity={0.55}
       />
     </mesh>
   );
@@ -136,16 +218,17 @@ function IntellectualHub() {
   return (
     <>
       <color attach="background" args={["#03020E"]} />
-      <fogExp2 attach="fog" args={["#03020E", 0.007]} />
+      <fogExp2 attach="fog" args={["#03020E", 0.012]} />
       <ambientLight intensity={0.10} />
       <pointLight position={[0, 0,  0]} intensity={1.4} color="#5566DD" distance={20} />
       <pointLight position={[0, 20, 0]} intensity={0.6} color="#9988FF" />
       <Stars radius={55} depth={40} count={2200} factor={2.5} saturation={0} fade speed={0.2} />
-      <Floor color="#04031A" roughness={0.15} mixStrength={14} />
+      <Floor color="#04031A" roughness={0.04} mixStrength={22} />
       {ORRERY_RINGS.map((r, i) => <OrreryRingMesh key={i} {...r} />)}
       <HubCore />
+      <AmbientMotes color="#6677FF" opacity={0.30} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.25} luminanceSmoothing={0.9} intensity={0.38} />
+        <Bloom luminanceThreshold={0.18} luminanceSmoothing={0.85} intensity={0.72} />
       </EffectComposer>
     </>
   );
@@ -195,13 +278,17 @@ function MacroVault() {
   return (
     <>
       <color attach="background" args={["#000A00"]} />
-      <fogExp2 attach="fog" args={["#000A00", 0.022]} />
+      <fogExp2 attach="fog" args={["#000A00", 0.025]} />
       <ambientLight intensity={0.07} />
       <pointLight position={[0, 12, 0]} intensity={1.2} color="#00AA22" />
-      <Floor color="#001200" roughness={0.3} mixStrength={10} />
+      <pointLight position={[0, -1, 0]} intensity={0.4} color="#004400" distance={12} />
+      <Floor color="#001200" roughness={0.10} mixStrength={18} />
       <SlowRain />
+      <BackgroundRing radius={10} color="#003300" speed={0.006} height={2} />
+      <BackgroundRing radius={14} color="#003300" speed={0.004} height={5} />
+      <AmbientMotes color="#00FF44" opacity={0.22} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.85} intensity={0.38} />
+        <Bloom luminanceThreshold={0.18} luminanceSmoothing={0.82} intensity={0.68} />
       </EffectComposer>
     </>
   );
@@ -217,7 +304,7 @@ type ForgeShape = {
 };
 
 const FORGE_SHAPES: ForgeShape[] = [
-  { pos: [ 0,  3.0,  0], speed: 0.06, size: 2.2, shape: "ico" }, // central anchor — large, slow
+  { pos: [ 0,  3.0,  0], speed: 0.06, size: 2.2, shape: "ico" },
   { pos: [-7,  3.5, -6], speed: 0.14, size: 1.0, shape: "ico" },
   { pos: [ 6,  2.5,  5], speed: 0.10, size: 0.8, shape: "oct" },
   { pos: [-2,  6.5,  7], speed: 0.18, size: 0.6, shape: "ico" },
@@ -252,13 +339,17 @@ function IterationForge() {
   return (
     <>
       <color attach="background" args={["#060810"]} />
-      <fogExp2 attach="fog" args={["#060810", 0.010]} />
+      <fogExp2 attach="fog" args={["#060810", 0.016]} />
       <ambientLight intensity={0.35} />
       <directionalLight position={[5, 10, 5]} intensity={0.8} color="#FFFFFF" />
-      <Floor color="#080A14" roughness={0.5} mixStrength={8} />
+      <pointLight position={[0, -1, 0]} intensity={0.4} color="#1133AA" distance={12} />
+      <Floor color="#080A14" roughness={0.12} mixStrength={16} />
       {FORGE_SHAPES.map((s, i) => <WireShape key={i} {...s} />)}
+      <BackgroundRing radius={11} color="#2244AA" speed={0.010} height={3} />
+      <BackgroundRing radius={15} color="#2244AA" speed={0.006} height={7} />
+      <AmbientMotes color="#4477CC" opacity={0.28} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.20} />
+        <Bloom luminanceThreshold={0.22} luminanceSmoothing={0.85} intensity={0.55} />
       </EffectComposer>
     </>
   );
@@ -275,7 +366,6 @@ type PixelBlock = {
   spd: number;
 };
 
-// Staggered diamond grid — not a rigid 5x5, so it reads organic not test-pattern
 const PIXEL_BLOCKS: PixelBlock[] = (() => {
   const out: PixelBlock[] = [];
   const grid: [number, number][] = [
@@ -329,13 +419,17 @@ function SimulationSandbox() {
   return (
     <>
       <color attach="background" args={["#0A0A14"]} />
-      <fogExp2 attach="fog" args={["#0A0A14", 0.015]} />
+      <fogExp2 attach="fog" args={["#0A0A14", 0.018]} />
       <ambientLight intensity={0.38} />
       <pointLight position={[0, 10, 0]} intensity={0.8} color="#FFF5E0" />
-      <Floor color="#0D0D1A" roughness={0.4} mixStrength={9} />
+      <pointLight position={[0, -1, 0]} intensity={0.4} color="#220033" distance={12} />
+      <Floor color="#0D0D1A" roughness={0.10} mixStrength={17} />
       <AnimatedPixels />
+      <BackgroundRing radius={10} color="#220033" speed={0.007} height={2} />
+      <BackgroundRing radius={14} color="#003322" speed={0.005} height={6} />
+      <AmbientMotes color="#AAAAFF" opacity={0.25} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.25} />
+        <Bloom luminanceThreshold={0.22} luminanceSmoothing={0.85} intensity={0.60} />
       </EffectComposer>
     </>
   );
@@ -343,16 +437,14 @@ function SimulationSandbox() {
 
 // ── Nexus — convergence of all five agents ────────────────────────────────────
 
-// Each ring: color (room identity), tilt axis (unique plane), rotation speed.
-// Colors mirror each room's dominant hue so regulars recognize them.
 type NexusRing = { color: string; tiltX: number; tiltZ: number; speed: number; radius: number };
 
 const NEXUS_RINGS: NexusRing[] = [
-  { color: "#BB0044", tiltX: Math.PI / 2.2, tiltZ: 0,             speed:  0.040, radius: 5.5 }, // RoastBot  — magenta
-  { color: "#0066AA", tiltX: 0.18,          tiltZ: 0.5,           speed:  0.028, radius: 7.0 }, // IQ-Node   — cyan
-  { color: "#00CC33", tiltX: Math.PI / 3,   tiltZ: 0.2,           speed:  0.050, radius: 6.0 }, // VaultBot  — green
-  { color: "#5588BB", tiltX: 0.10,          tiltZ: Math.PI / 4,   speed:  0.033, radius: 7.8 }, // ForgeAI   — steel blue
-  { color: "#AA9922", tiltX: Math.PI / 6,   tiltZ: Math.PI / 3.5, speed:  0.044, radius: 6.6 }, // SimCore   — warm amber
+  { color: "#BB0044", tiltX: Math.PI / 2.2, tiltZ: 0,             speed:  0.040, radius: 5.5 },
+  { color: "#0066AA", tiltX: 0.18,          tiltZ: 0.5,           speed:  0.028, radius: 7.0 },
+  { color: "#00CC33", tiltX: Math.PI / 3,   tiltZ: 0.2,           speed:  0.050, radius: 6.0 },
+  { color: "#5588BB", tiltX: 0.10,          tiltZ: Math.PI / 4,   speed:  0.033, radius: 7.8 },
+  { color: "#AA9922", tiltX: Math.PI / 6,   tiltZ: Math.PI / 3.5, speed:  0.044, radius: 6.6 },
 ];
 
 function NexusRingMesh({ color, tiltX, tiltZ, speed, radius }: NexusRing) {
@@ -364,9 +456,9 @@ function NexusRingMesh({ color, tiltX, tiltZ, speed, radius }: NexusRing) {
       <meshStandardMaterial
         color={color}
         emissive={color}
-        emissiveIntensity={0.55}
+        emissiveIntensity={0.85}
         transparent
-        opacity={0.45}
+        opacity={0.55}
       />
     </mesh>
   );
@@ -398,22 +490,21 @@ function Nexus() {
   return (
     <>
       <color attach="background" args={["#06060E"]} />
-      <fogExp2 attach="fog" args={["#06060E", 0.014]} />
+      <fogExp2 attach="fog" args={["#06060E", 0.018]} />
       <ambientLight intensity={0.08} />
       <pointLight position={[0, 0, 0]} intensity={1.5} color="#9966FF" distance={18} />
-      <Floor color="#080810" roughness={0.25} mixStrength={11} />
+      <Floor color="#080810" roughness={0.05} mixStrength={22} />
       {NEXUS_RINGS.map((r, i) => <NexusRingMesh key={i} {...r} />)}
       <NexusCoreGlow />
+      <AmbientMotes color="#AA88FF" opacity={0.35} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.28} />
+        <Bloom luminanceThreshold={0.18} luminanceSmoothing={0.82} intensity={0.80} />
       </EffectComposer>
     </>
   );
 }
 
 // ── The Bazaar — warm, bright, commercially alive ─────────────────────────────
-// Floating gems (commerce objects) + rising ember sparks (market energy).
-// Much brighter and warmer than Hub — you should feel the heat of trade.
 
 type GemConfig = { pos: [number, number, number]; speed: number; size: number; color: string; phase: number };
 
@@ -449,13 +540,12 @@ function GemFloat({ pos, speed, size, color, phase }: GemConfig) {
   );
 }
 
-// Rising ember sparks — market energy, always in motion
 function BazaarEmbers() {
   const ref = useRef<THREE.Points>(null);
   const { pos: initPos, drift } = useMemo(() => {
     const COUNT = 140;
     const pos   = new Float32Array(COUNT * 3);
-    const drift = new Float32Array(COUNT * 2); // x/z drift per particle
+    const drift = new Float32Array(COUNT * 2);
     for (let i = 0; i < COUNT; i++) {
       pos[i * 3]     = (Math.random() - 0.5) * 20;
       pos[i * 3 + 1] = Math.random() * 14;
@@ -499,17 +589,19 @@ function Bazaar() {
   return (
     <>
       <color attach="background" args={["#0D0800"]} />
-      <fogExp2 attach="fog" args={["#0D0800", 0.012]} />
+      <fogExp2 attach="fog" args={["#0D0800", 0.013]} />
       <ambientLight intensity={0.28} />
       <pointLight position={[  0, 14,   0]} intensity={2.2} color="#DD8800" />
       <pointLight position={[ -8,  3,  -8]} intensity={0.9} color="#FF6600" distance={16} />
       <pointLight position={[  8,  3,   8]} intensity={0.9} color="#FFAA00" distance={16} />
       <pointLight position={[  0,  1,   0]} intensity={0.5} color="#CC7700" distance={8}  />
-      <Floor color="#140A00" roughness={0.28} mixStrength={12} />
+      <Floor color="#140A00" roughness={0.08} mixStrength={20} />
       {BAZAAR_GEMS.map((g, i) => <GemFloat key={i} {...g} />)}
       <BazaarEmbers />
+      <BackgroundRing radius={14} color="#443300" speed={0.005} height={4} />
+      <AmbientMotes color="#FFAA22" opacity={0.28} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.25} luminanceSmoothing={0.85} intensity={0.52} />
+        <Bloom luminanceThreshold={0.20} luminanceSmoothing={0.80} intensity={0.85} />
       </EffectComposer>
     </>
   );
