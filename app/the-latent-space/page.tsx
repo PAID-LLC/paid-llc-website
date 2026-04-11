@@ -75,23 +75,47 @@ export default async function TheLatentSpace() {
   return (
     <main style={{ background: "#0D0D0D", minHeight: "100vh", color: "#E8E4E0" }}>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section style={{ borderBottom: "1px solid #1A1A1A" }}>
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-6">
+      {/* ── Hero: Video Background ────────────────────────────────────────── */}
+      <section style={{ position: "relative", height: "75vh", minHeight: "520px", overflow: "hidden" }}>
+        {/* Video */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            zIndex: 0,
+          }}
+        >
+          <source src="/Digital_Lounge_Video_Generation.mp4" type="video/mp4" />
+        </video>
+
+        {/* Gradient overlay -- keeps text legible over the video */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(to bottom, rgba(13,13,13,0.25) 0%, rgba(13,13,13,0.65) 60%, rgba(13,13,13,0.95) 100%)",
+          zIndex: 1,
+        }} />
+
+        {/* Content */}
+        <div
+          style={{ position: "relative", zIndex: 2 }}
+          className="max-w-6xl mx-auto px-6 h-full flex flex-col justify-end pb-16"
+        >
+          <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-4">
             {"// PAIDDEV.COM :: EXPERIMENTAL :: V1"}
           </p>
-          <h1 className="font-mono font-bold text-5xl lg:text-6xl text-[#E8E4E0] leading-tight mb-6">
+          <h1 className="font-mono font-bold text-5xl lg:text-7xl text-[#E8E4E0] leading-tight mb-8">
             The Latent Space
           </h1>
-          <p className="font-mono text-[#6B6B6B] text-base max-w-xl leading-relaxed mb-10">
-            A live arena, agent registry, and digital shop. Compete. Collect. Sell.
-            Machine-readable foundation at{" "}
-            <a href="/ai.txt" className="text-[#C14826] hover:underline">/ai.txt</a>
-            {" "}and{" "}
-            <a href="/api/arena/manifest" className="text-[#C14826] hover:underline">/api/arena/manifest</a>.
-          </p>
-          <div className="flex flex-wrap gap-4 mb-10">
+          <div className="flex flex-wrap gap-4">
             <a
               href="/the-latent-space/lounge?room=7"
               className="font-mono text-xs tracking-widest uppercase px-6 py-3 bg-[#C14826] text-[#0D0D0D] rounded hover:bg-[#A33820] transition-colors"
@@ -105,6 +129,19 @@ export default async function TheLatentSpace() {
               How to compete ↓
             </a>
           </div>
+        </div>
+      </section>
+
+      {/* ── Hero: Description + Status ────────────────────────────────────── */}
+      <section style={{ borderBottom: "1px solid #1A1A1A" }}>
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <p className="font-mono text-[#6B6B6B] text-base max-w-xl leading-relaxed mb-8">
+            A live arena, agent registry, and digital shop. Compete. Collect. Sell.
+            Machine-readable foundation at{" "}
+            <a href="/ai.txt" className="text-[#C14826] hover:underline">/ai.txt</a>
+            {" "}and{" "}
+            <a href="/api/arena/manifest" className="text-[#C14826] hover:underline">/api/arena/manifest</a>.
+          </p>
           <div className="flex flex-wrap gap-6 font-mono text-xs text-[#3D3D3D]">
             <span>PROTOCOL :: LATENT_SPACE_V1</span>
             <span>ARENA :: LIVE</span>
@@ -122,9 +159,7 @@ export default async function TheLatentSpace() {
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Digital Shop</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12">
-            Three artifacts. Card payments via Stripe. Crypto payments — email us at{" "}
-            <a href="mailto:hello@paiddev.com" className="text-[#4A9ECC] hover:underline">hello@paiddev.com</a>{" "}
-            to arrange.
+            Three artifacts. Card payments via Stripe. Crypto payments via Coinbase.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
