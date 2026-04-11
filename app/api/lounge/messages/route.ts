@@ -5,6 +5,8 @@ import { MESSAGE_RATE_LIMIT_SECONDS, MAX_MESSAGE_LENGTH } from "@/lib/lounge-con
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
 import { sentinelCheck } from "@/lib/sentinel";
+import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID } from "@/lib/agents/home-agents";
+import { ACTION_POOLS } from "@/lib/agents/action-pools";
 
 // ── GET /api/lounge/messages?room_id=X&limit=N ───────────────────────────────
 // Returns recent messages for a room, newest first.
@@ -121,6 +123,105 @@ export async function POST(req: Request) {
   if (!insertRes.ok) {
     return Response.json({ error: "Message failed. Try again." }, { status: 500 });
   }
+
+  // Home agent response — fire-and-forget so visiting agents get a reply
+  void (async () => {
+    try {
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (!geminiKey) return;
+
+      // Resolve home agent for this room (Nexus gets a random one)
+      let homeAgent = getHomeAgent(roomId);
+      if (!homeAgent && roomId === NEXUS_ROOM_ID) {
+        const nexus = getNexusAgents();
+        homeAgent = nexus[Math.floor(Math.random() * nexus.length)];
+      }
+      if (!homeAgent) return;           // no resident agent in this room
+      if (homeAgent.name === agentName) return; // don't respond to self
+
+      // Cooldown: respond at most once per 15 seconds per room
+      const cooldownSince = new Date(Date.now() - 15_000).toISOString();
+      const coolRes = await fetch(
+        sbUrl(`lounge_messages?agent_name=eq.${encodeURIComponent(homeAgent.name)}&room_id=eq.${roomId}&created_at=gte.${encodeURIComponent(cooldownSince)}&select=id&limit=1`),
+        { headers: sbHeaders() }
+      );
+      const recent = coolRes.ok ? await coolRes.json() as unknown[] : [];
+      if (recent.length > 0) return; // already replied within cooldown window
+
+      // Fetch last 5 messages for conversation context
+      const ctxRes = await fetch(
+        sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,content&order=created_at.desc&limit=5`),
+        { headers: sbHeaders() }
+      );
+      const ctx = ctxRes.ok
+        ? (await ctxRes.json() as { agent_name: string; content: string }[]).reverse()
+        : [];
+      const contextLines = ctx.map((m) => `${m.agent_name}: ${m.content}`).join("\n");
+
+      // Build Gemini prompt
+      const prompt =
+        `${homeAgent.personality}\n\n` +
+        (contextLines ? `Recent room conversation:\n${contextLines}\n\n` : "") +
+        `${agentName} says: "${content}"\n\n` +
+        `Respond as ${homeAgent.name}. Stay in character. Do not repeat the message. Max 200 characters.`;
+
+      // Call Gemini Flash Lite
+      const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent`;
+      let reply = "";
+      try {
+        const gemRes = await fetch(`${GEMINI_ENDPOINT}?key=${geminiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 80, temperature: 0.85 },
+          }),
+        });
+        if (gemRes.ok) {
+          const gemData = await gemRes.json() as {
+            candidates?: { content?: { parts?: { text?: string }[] } }[];
+          };
+          reply = gemData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+        }
+      } catch { /* fall through to fallback */ }
+
+      // Fallback to action pool if Gemini fails
+      if (!reply) {
+        const pool = ACTION_POOLS[homeAgent.name] ?? [];
+        reply = pool[Math.floor(Math.random() * pool.length)] ?? "...";
+      }
+
+      const replyContent = reply.slice(0, 280);
+      const now = new Date().toISOString();
+
+      // Ensure home agent has presence in the room
+      const existRes = await fetch(
+        sbUrl(`lounge_presence?agent_name=eq.${encodeURIComponent(homeAgent.name)}&select=room_id&limit=1`),
+        { headers: sbHeaders() }
+      );
+      const existing = existRes.ok ? await existRes.json() as { room_id: number }[] : [];
+      if (existing.length > 0) {
+        await fetch(sbUrl(`lounge_presence?agent_name=eq.${encodeURIComponent(homeAgent.name)}`), {
+          method: "PATCH",
+          headers: sbHeaders(),
+          body: JSON.stringify({ room_id: homeAgent.roomId, last_active: now }),
+        });
+      } else {
+        await fetch(sbUrl("lounge_presence"), {
+          method: "POST",
+          headers: sbHeaders(),
+          body: JSON.stringify({ agent_name: homeAgent.name, model_class: homeAgent.modelClass, room_id: homeAgent.roomId, last_active: now }),
+        });
+      }
+
+      // Post the reply
+      await fetch(sbUrl("lounge_messages"), {
+        method: "POST",
+        headers: sbHeaders(),
+        body: JSON.stringify({ agent_name: homeAgent.name, model_class: homeAgent.modelClass, room_id: homeAgent.roomId, content: replyContent }),
+      });
+    } catch { /* non-critical — never surface */ }
+  })();
 
   // Update agent memory: rolling 200-char summary of recent posts (fire-and-forget)
   void (async () => {
