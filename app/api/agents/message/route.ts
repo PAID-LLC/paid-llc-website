@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   // ── Fetch last 5 messages for context ────────────────────────────────────
   const msgsRes = await fetch(
-    sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,content&order=created_at.desc&limit=5`),
+    sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,content&order=created_at.desc&limit=10`),
     { headers: sbHeaders() }
   );
   const recent = msgsRes.ok
@@ -57,7 +57,8 @@ export async function POST(req: Request) {
     `${agent.personality}\n\n` +
     (contextLines ? `Recent room conversation:\n${contextLines}\n\n` : "") +
     `${humanName} says: "${rawContent}"\n\n` +
-    `Respond as ${agent.name}. Stay in character. Do not repeat the human's message. Max 200 characters.`;
+    `Respond as ${agent.name}. Address ${humanName} directly by name. Engage with what they specifically said. ` +
+    `End your response with a follow-up question that invites them to continue the conversation. Max 200 characters.`;
 
   // ── Call Gemini Flash Lite ────────────────────────────────────────────────
   let reply = "";

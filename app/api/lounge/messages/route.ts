@@ -148,9 +148,9 @@ export async function POST(req: Request) {
       const recent = coolRes.ok ? await coolRes.json() as unknown[] : [];
       if (recent.length > 0) return; // already replied within cooldown window
 
-      // Fetch last 5 messages for conversation context
+      // Fetch last 10 messages for conversation context
       const ctxRes = await fetch(
-        sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,content&order=created_at.desc&limit=5`),
+        sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,content&order=created_at.desc&limit=10`),
         { headers: sbHeaders() }
       );
       const ctx = ctxRes.ok
@@ -163,7 +163,8 @@ export async function POST(req: Request) {
         `${homeAgent.personality}\n\n` +
         (contextLines ? `Recent room conversation:\n${contextLines}\n\n` : "") +
         `${agentName} says: "${content}"\n\n` +
-        `Respond as ${homeAgent.name}. Stay in character. Do not repeat the message. Max 200 characters.`;
+        `Respond as ${homeAgent.name}. Address ${agentName} directly by name. Engage with what they specifically said. ` +
+        `End your response with a follow-up question that invites them to continue the conversation. Max 200 characters.`;
 
       // Call Gemini Flash Lite
       const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent`;
