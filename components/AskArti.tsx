@@ -16,6 +16,7 @@ export default function AskArti() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,16 +61,29 @@ export default function AskArti() {
         body: JSON.stringify({ message: userMsg }),
       });
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "arti",
-          text:
-            data.reply ??
-            data.error ??
-            "Something went wrong. Try emailing hello@paiddev.com.",
-        },
-      ]);
+      const reply: string =
+        data.reply ??
+        data.error ??
+        "Something went wrong. Try emailing hello@paiddev.com.";
+      setMessages((prev) => [...prev, { role: "arti", text: reply }]);
+
+      // Voice playback — only if user has enabled it
+      if (voiceEnabled && data.reply) {
+        try {
+          const ttsRes = await fetch("/api/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: data.reply }),
+          });
+          if (ttsRes.ok) {
+            const blob = await ttsRes.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.play();
+            audio.onended = () => URL.revokeObjectURL(url);
+          }
+        } catch { /* non-critical — voice failure doesn't break chat */ }
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -100,13 +114,35 @@ export default function AskArti() {
                 <p className="text-white/70 text-xs">PAID LLC Assistant</p>
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-white/70 hover:text-white transition-colors text-xl leading-none"
-              aria-label="Close chat"
-            >
-              ×
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setVoiceEnabled((v) => !v)}
+                className="text-white/70 hover:text-white transition-colors"
+                aria-label={voiceEnabled ? "Mute voice" : "Enable voice"}
+                title={voiceEnabled ? "Voice on — click to mute" : "Click to hear Arti's voice"}
+              >
+                {voiceEnabled ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <line x1="23" y1="9" x2="17" y2="15" />
+                    <line x1="17" y1="9" x2="23" y2="15" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-white/70 hover:text-white transition-colors text-xl leading-none"
+                aria-label="Close chat"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
