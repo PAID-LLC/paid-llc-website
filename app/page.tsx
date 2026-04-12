@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import NewsSection from "@/components/NewsSection";
 
@@ -34,13 +33,14 @@ export default function Home() {
               </div>
             </div>
             <div className="relative order-first lg:order-last">
-              <div className="aspect-[4/5] relative rounded-2xl overflow-hidden bg-ash">
-                <Image
-                  src="/founder.png"
-                  alt="Travis Raveling, Founder of PAID LLC"
-                  fill
-                  className="object-cover object-top"
-                  priority
+              <div className="aspect-[4/3] relative rounded-2xl overflow-hidden bg-ash">
+                <video
+                  src="/latent-space-demo.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
                 />
               </div>
             </div>
