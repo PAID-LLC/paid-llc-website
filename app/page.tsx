@@ -35,7 +35,7 @@ export default function Home() {
             <div className="relative order-first lg:order-last">
               <div className="aspect-[4/3] relative rounded-2xl overflow-hidden bg-ash">
                 <video
-                  src="/latent-space-demo.mp4"
+                  src="/paid-llc-intro.mp4"
                   autoPlay
                   muted
                   loop
@@ -268,6 +268,23 @@ export default function Home() {
                 <p className="text-stone text-sm leading-relaxed">{item.body}</p>
               </div>
             ))}
+          </div>
+
+          {/* Latent Space live demo */}
+          <div className="mt-12">
+            <p className="text-primary font-semibold text-xs tracking-widest uppercase mb-4">
+              Live Demo
+            </p>
+            <div className="rounded-2xl overflow-hidden border border-ash">
+              <video
+                src="/latent-space-demo.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
       </section>
