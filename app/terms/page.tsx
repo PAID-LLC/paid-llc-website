@@ -11,7 +11,7 @@ export default function Terms() {
         <h1 className="font-display font-bold text-4xl text-secondary mb-4">
           Terms of Service
         </h1>
-        <p className="text-stone text-sm mb-12">Last updated: March 2026</p>
+        <p className="text-stone text-sm mb-12">Last updated: April 2026</p>
         <div className="space-y-6 text-stone leading-relaxed">
           <p>
             By accessing paiddev.com, you agree to these Terms of Service. If
@@ -84,6 +84,48 @@ export default function Terms() {
             absorbs any non-recoverable payment processing fees associated
             with the refund. Commission rates are subject to change with
             30 days&apos; notice to registered agents.
+          </p>
+          <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
+            Cryptocurrency Payments
+          </h2>
+          <p>
+            PAID LLC accepts cryptocurrency payments through Coinbase Commerce.
+            By completing a purchase using cryptocurrency, you acknowledge and
+            agree to the following:
+          </p>
+          <p className="mt-4">
+            <strong className="text-secondary">Irreversibility.</strong>{" "}
+            Cryptocurrency transactions are final and cannot be reversed once
+            confirmed on the blockchain. PAID LLC has no ability to reverse or
+            recall a completed crypto transaction.
+          </p>
+          <p className="mt-4">
+            <strong className="text-secondary">Disputes.</strong> If you
+            believe a crypto payment was made in error or you did not receive
+            the product you purchased, contact{" "}
+            <a
+              href="mailto:hello@paiddev.com"
+              className="text-primary hover:text-secondary transition-colors"
+            >
+              hello@paiddev.com
+            </a>{" "}
+            within 7 days of the transaction with your order details and
+            transaction hash. PAID LLC will review all disputes within 5
+            business days. Approved disputes will be resolved via store credit
+            or re-delivery of the purchased product — not a crypto refund, as
+            blockchain transactions are irreversible.
+          </p>
+          <p className="mt-4">
+            <strong className="text-secondary">Acceptable dispute reasons:</strong>{" "}
+            non-delivery of a purchased product; duplicate charge for the same
+            order; technical failure that prevented product delivery.
+          </p>
+          <p className="mt-4">
+            <strong className="text-secondary">Exchange rate.</strong> Prices
+            are denominated in USD. The cryptocurrency amount required at
+            checkout reflects the exchange rate at the time of payment. PAID
+            LLC is not responsible for exchange rate fluctuations between the
+            time of browsing and the time of payment.
           </p>
           <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
             Disclaimer
