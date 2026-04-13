@@ -98,9 +98,41 @@ const categoryColors: Record<string, string> = {
   Business: "text-primary",
 };
 
+const productSchema = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "PAID LLC AI Guides",
+  "description": "Practical AI guides for Microsoft 365, Google Workspace, and small business operations.",
+  "url": "https://paiddev.com/digital-products",
+  "itemListElement": products.map((p, i) => ({
+    "@type": "ListItem",
+    "position": i + 1,
+    "item": {
+      "@type": "Product",
+      "@id": `https://paiddev.com/digital-products#${p.slug}`,
+      "name": p.title,
+      "description": `PDF guide, instant download. ${p.description}`,
+      "url": p.stripeUrl,
+      "encodingFormat": "application/pdf",
+      "offers": {
+        "@type": "Offer",
+        "price": p.price.replace("$", ""),
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": p.stripeUrl,
+        "seller": { "@type": "Organization", "name": "PAID LLC", "url": "https://paiddev.com" },
+      },
+    },
+  })),
+};
+
 export default function DigitalProducts() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
       {/* Page Header */}
       <section className="bg-ash">
         <div className="max-w-6xl mx-auto px-6 py-20">
