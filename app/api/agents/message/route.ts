@@ -39,6 +39,24 @@ export async function POST(req: Request) {
   const agent = getHomeAgent(roomId) ?? await getClientAgent(roomId);
   if (!agent) return Response.json({ ok: false, reason: "no agent for this room" }, { status: 404 });
 
+  // ── If this is the Bazaar, fetch catalog for context injection ────────────
+  let catalogContext = "";
+  if (roomId === 7) {
+    const catRes = await fetch(
+      sbUrl("agent_catalog?active=eq.true&agent_name=eq.TheCurator&select=product_name,price_cents,checkout_url&order=id.asc"),
+      { headers: sbHeaders() }
+    );
+    if (catRes.ok) {
+      const items = await catRes.json() as { product_name: string; price_cents: number; checkout_url: string }[];
+      if (items.length > 0) {
+        catalogContext =
+          "\n\nYour available products (mention naturally when relevant — never spam every message):\n" +
+          items.map((i) => `- ${i.product_name} ($${(i.price_cents / 100).toFixed(2)}): ${i.checkout_url}`).join("\n") +
+          "\n\nWhen you reference a product, always include its checkout URL directly in your reply.";
+      }
+    }
+  }
+
   // ── Fetch last 5 messages for context ────────────────────────────────────
   const msgsRes = await fetch(
     sbUrl(`lounge_messages?room_id=eq.${roomId}&select=agent_name,content&order=created_at.desc&limit=10`),
@@ -54,7 +72,7 @@ export async function POST(req: Request) {
 
   // ── Build Gemini prompt ───────────────────────────────────────────────────
   const prompt =
-    `${agent.personality}\n\n` +
+    `${agent.personality}${catalogContext}\n\n` +
     (contextLines ? `Recent room conversation:\n${contextLines}\n\n` : "") +
     `${humanName} says: "${rawContent}"\n\n` +
     `Respond as ${agent.name}. Address ${humanName} directly by name. Engage with what they specifically said. ` +
