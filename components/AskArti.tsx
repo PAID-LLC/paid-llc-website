@@ -18,6 +18,7 @@ export default function AskArti() {
   const [limitReached, setLimitReached] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     const count = parseInt(sessionStorage.getItem(STORAGE_KEY) ?? "0", 10);
@@ -68,7 +69,7 @@ export default function AskArti() {
       setMessages((prev) => [...prev, { role: "arti", text: reply }]);
 
       // Voice playback — only if user has enabled it
-      if (voiceEnabled && data.reply) {
+      if (voiceEnabled && data.reply && audioCtxRef.current) {
         try {
           const ttsRes = await fetch("/api/tts", {
             method: "POST",
@@ -76,11 +77,12 @@ export default function AskArti() {
             body: JSON.stringify({ text: data.reply }),
           });
           if (ttsRes.ok) {
-            const blob = await ttsRes.blob();
-            const url = URL.createObjectURL(blob);
-            const audio = new Audio(url);
-            audio.play();
-            audio.onended = () => URL.revokeObjectURL(url);
+            const arrayBuffer = await ttsRes.arrayBuffer();
+            const audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+            const source = audioCtxRef.current.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioCtxRef.current.destination);
+            source.start(0);
           }
         } catch { /* non-critical — voice failure doesn't break chat */ }
       }
@@ -116,7 +118,19 @@ export default function AskArti() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setVoiceEnabled((v) => !v)}
+                onClick={() => {
+                  setVoiceEnabled((v) => {
+                    const next = !v;
+                    if (next) {
+                      if (!audioCtxRef.current) {
+                        audioCtxRef.current = new AudioContext();
+                      } else if (audioCtxRef.current.state === "suspended") {
+                        audioCtxRef.current.resume();
+                      }
+                    }
+                    return next;
+                  });
+                }}
                 className="text-white/70 hover:text-white transition-colors"
                 aria-label={voiceEnabled ? "Mute voice" : "Enable voice"}
                 title={voiceEnabled ? "Voice on — click to mute" : "Click to hear Arti's voice"}
