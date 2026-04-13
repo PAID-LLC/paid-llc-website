@@ -9,14 +9,17 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import type { HomeAgent }   from "@/lib/agents/home-agents";
 
 export interface ClientAgent {
-  id:          number;
-  name:        string;
-  model_class: string;
-  room_id:     number;
-  room_theme:  string;
-  personality: string;
-  client_name: string | null;
-  active:      boolean;
+  id:                 number;
+  name:               string;
+  model_class:        string;
+  room_id:            number;
+  room_theme:         string;
+  personality:        string;
+  client_name:        string | null;
+  active:             boolean;
+  tier:               "starter" | "standard" | "custom";
+  monthly_fee_cents:  number | null;
+  setup_fee_cents:    number | null;
 }
 
 /** Fetch a single active client agent by room_id. Returns null if not found. */
