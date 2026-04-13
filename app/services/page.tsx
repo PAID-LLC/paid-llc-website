@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Services | PAID LLC",
   description:
-    "AI Strategy Consulting, Implementation Advisory, Team Training, Web & Application Development, and Agentic Commerce Readiness Audits from PAID LLC.",
+    "AI Strategy Consulting, Implementation Advisory, Team Training, Web & Application Development, AI Agent Deployment, and Agentic Commerce Readiness Audits from PAID LLC.",
 };
 
 export default function Services() {
@@ -20,9 +20,9 @@ export default function Services() {
             AI that works for your business.
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
-            Strategy, implementation, team training, custom web and application
-            development, and agentic commerce readiness — plus self-serve digital
-            guides for teams ready to move on their own.
+            Strategy, implementation, team training, custom development, AI
+            agent deployment, and agentic commerce readiness — plus self-serve
+            digital guides for teams ready to move on their own.
           </p>
         </div>
       </section>
@@ -413,6 +413,134 @@ export default function Services() {
                   The Latent Space is PAID LLC&apos;s live agentic commerce
                   environment — AI agents operating autonomously in a public
                   venue. Walk through it before your audit call.
+                </p>
+                <Link
+                  href="/the-latent-space"
+                  className="block border border-stone text-stone px-5 py-2.5 rounded font-semibold text-sm text-center hover:border-white hover:text-white transition-colors"
+                >
+                  Visit The Latent Space
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Divider */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="border-t border-ash" />
+      </div>
+
+      {/* Service 6 — AI Agent Deployment */}
+      <section id="agent-deployment" className="bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <div>
+              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
+                Service 06
+              </span>
+              <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
+                AI Agent Deployment
+              </h2>
+              <p className="text-stone text-lg leading-relaxed mb-8">
+                Your business, running 24/7. We build and deploy a branded AI
+                agent that represents your business in The Latent Space —
+                answering questions, surfacing your products, and guiding
+                visitors toward a decision. No chatbot scripts. No keyword
+                matching. A fully conversational agent that knows your business
+                and speaks for it.
+              </p>
+              <div className="mb-8">
+                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
+                  Who it&apos;s for
+                </p>
+                <p className="text-stone leading-relaxed">
+                  E-commerce brands, service businesses, and consultants with an
+                  existing product or service catalog who want an always-on AI
+                  presence that sells and answers — without adding headcount.
+                </p>
+              </div>
+              <div className="mb-10">
+                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-4">
+                  Tiers
+                </p>
+                <div className="space-y-4">
+                  {[
+                    {
+                      name: "Starter",
+                      setup: "$500 setup",
+                      monthly: "$150/mo",
+                      includes:
+                        "1 agent, 1 room, core personality, up to 5 catalog items",
+                    },
+                    {
+                      name: "Standard",
+                      setup: "$1,000 setup",
+                      monthly: "$225/mo",
+                      includes:
+                        "Custom personality + knowledge base, up to 20 catalog items, monthly tuning",
+                    },
+                    {
+                      name: "Custom",
+                      setup: "$2,000+ setup",
+                      monthly: "$300+/mo",
+                      includes:
+                        "Multi-agent setup, dedicated room design, full onboarding, priority support",
+                    },
+                  ].map((tier) => (
+                    <div
+                      key={tier.name}
+                      className="border border-ash rounded-lg p-4"
+                    >
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className="font-display font-semibold text-secondary">
+                          {tier.name}
+                        </span>
+                        <span className="text-sm text-stone">
+                          {tier.setup} &middot; {tier.monthly}
+                        </span>
+                      </div>
+                      <p className="text-stone text-sm">{tier.includes}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-ash rounded-lg p-4">
+                <p className="text-stone text-sm leading-relaxed">
+                  <span className="font-semibold text-secondary">
+                    Not sure which tier fits?
+                  </span>{" "}
+                  Start with the Agentic Commerce Readiness Audit — a $350 fixed
+                  assessment that scopes your setup and recommends the right
+                  tier. The fee applies as a credit if you proceed.
+                </p>
+              </div>
+            </div>
+            <div className="lg:pt-16">
+              <div className="bg-ash rounded-xl p-8">
+                <p className="font-display font-bold text-xl text-secondary mb-4">
+                  Book a Discovery Call
+                </p>
+                <p className="text-stone leading-relaxed mb-6">
+                  30 minutes. We&apos;ll qualify your catalog, walk you through
+                  what your agent would do, and tell you which tier makes sense.
+                  No commitment.
+                </p>
+                <Link
+                  href="/contact"
+                  className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
+                >
+                  Book a Discovery Call
+                </Link>
+              </div>
+              <div className="mt-6 bg-secondary rounded-xl p-6">
+                <p className="font-display font-semibold text-white text-sm mb-2">
+                  See it before you commit
+                </p>
+                <p className="text-stone text-sm leading-relaxed mb-4">
+                  The Latent Space is our live agent environment. Walk in, talk
+                  to an agent, and see exactly what yours would do for your
+                  customers.
                 </p>
                 <Link
                   href="/the-latent-space"
