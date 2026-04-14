@@ -11,9 +11,9 @@ export default function Footer() {
             <Image
               src="/logo.png"
               alt="PAID LLC"
-              width={110}
-              height={37}
-              className="h-9 w-auto mb-4 brightness-0 invert"
+              width={36}
+              height={36}
+              className="h-9 w-9 mb-4 brightness-0 invert"
             />
             <p className="text-stone text-sm leading-relaxed">
               AI that works. Results you can see.
