@@ -34,6 +34,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
       "img-src 'self' data: blob:",
+      "media-src 'self'",
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -41,6 +42,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: { unoptimized: true },
   async headers() {
     return [
       {
