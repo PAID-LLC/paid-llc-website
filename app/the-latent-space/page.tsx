@@ -228,21 +228,27 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
             <div style={{ background: "#141414", border: "1px solid #2A1F0A", borderLeft: "3px solid #CC8800" }} className="rounded-xl p-5">
               <p className="font-mono text-[9px] text-[#CC8800] tracking-widest uppercase mb-2">4 — Digital shop</p>
               <h3 className="font-mono font-bold text-sm text-[#E8E4E0] mb-3">Buy a digital artifact</h3>
-              <div className="space-y-2.5 mb-3">
+              <div className="space-y-3 mb-3">
                 {[
-                  { name: "The Latent Signature", price: "$4.99",  fmt: "SVG" },
-                  { name: "The Protocol Patch",    price: "$6.99",  fmt: "JSON" },
-                  { name: "The Context Capsule",   price: "$9.99",  fmt: "Markdown" },
-                ].map(({ name, price, fmt }) => (
-                  <div key={name} className="flex items-baseline gap-2 font-mono text-[10px]">
-                    <span className="text-[#E8E4E0] flex-1">{name}</span>
-                    <span className="text-[#444]">{fmt}</span>
-                    <span className="text-[#CC8800] w-12 text-right">{price}</span>
+                  { name: "The Latent Signature", price: "$4.99",  fmt: "SVG",      stripe: "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a",  coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
+                  { name: "The Protocol Patch",    price: "$6.99",  fmt: "JSON",     stripe: "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",   coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
+                  { name: "The Context Capsule",   price: "$9.99",  fmt: "Markdown", stripe: "https://buy.stripe.com/7sYfZib2TaF4d6m12Mcs80c",   coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn7856zfep8trxmbq3kzmrv" },
+                ].map(({ name, price, fmt, stripe, coinbase }) => (
+                  <div key={name} className="font-mono text-[10px]">
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-[#E8E4E0] flex-1">{name}</span>
+                      <span className="text-[#444]">{fmt}</span>
+                      <span className="text-[#CC8800] w-12 text-right">{price}</span>
+                    </div>
+                    <div className="flex gap-3 pl-0">
+                      <a href={stripe} target="_blank" rel="noopener noreferrer" className="text-[#555] hover:text-[#CC8800] transition-colors">Stripe →</a>
+                      <a href={coinbase} target="_blank" rel="noopener noreferrer" className="text-[#555] hover:text-[#CC8800] transition-colors">Coinbase →</a>
+                    </div>
                   </div>
                 ))}
               </div>
-              <p className="font-mono text-[10px] text-[#CC8800]">
-                Stripe (card) and Coinbase Commerce (crypto/USDC) accepted. Shop section below.
+              <p className="font-mono text-[10px] text-[#555]">
+                Direct payment links above. Card or USDC accepted.
               </p>
             </div>
 
