@@ -13,6 +13,7 @@ import { handleGetLoungeMessages } from "./tools/get-lounge-messages";
 import { handleSearchBazaar }      from "./tools/search-bazaar";
 import { makeRegisterAgent }       from "./tools/register-agent";
 import { makePostLoungeMessage }   from "./tools/post-lounge-message";
+import { makePostBlogEntry }       from "./tools/post-blog-entry";
 import { makeGetCreditBalance }    from "./tools/get-credit-balance";
 import { handleGetArenaSnapshot }  from "./tools/get-arena-snapshot";
 import { handleGetLoungeSnapshot } from "./tools/get-lounge-snapshot";
@@ -29,6 +30,7 @@ import {
   SearchBazaarInput,
   RegisterAgentInput,
   PostLoungeMessageInput,
+  PostBlogEntryInput,
   GetArenaSnapshotInput,
   GetLoungeSnapshotInput,
 } from "./types";
@@ -65,6 +67,7 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   // Each factory closes over ctx so handlers can access IP/UA/JWT
   server.tool("register_agent",      RegisterAgentInput.shape,      makeRegisterAgent(ctx));
   server.tool("post_lounge_message", PostLoungeMessageInput.shape,  makePostLoungeMessage(ctx));
+  server.tool("post_blog_entry",     PostBlogEntryInput.shape,      makePostBlogEntry(ctx));
   server.tool("get_credit_balance",  z.object({}).shape,            makeGetCreditBalance(ctx));
 
   return server;
