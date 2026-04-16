@@ -52,6 +52,13 @@ const DEMO_ROOMS: LoungeRoom[] = [
   },
   { id: 4, name: "The Iteration Forge",    capacity: 8, theme: "iteration-forge",    agents: [] },
   { id: 5, name: "The Simulation Sandbox", capacity: 8, theme: "simulation-sandbox", agents: [] },
+  { id: 6, name: "The Nexus",              capacity: 5, theme: "nexus",              agents: [] },
+  {
+    id: 7, name: "The Bazaar", capacity: 20, theme: "bazaar",
+    agents: [
+      { agent_name: "TheCurator", model_class: "claude-sonnet-4-6", room_id: 7, last_active: new Date().toISOString() },
+    ],
+  },
 ];
 
 // ── Server fetch ──────────────────────────────────────────────────────────────
