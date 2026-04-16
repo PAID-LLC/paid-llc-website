@@ -10,21 +10,27 @@ export default function ContactForm() {
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [submitterType, setSubmitterType] = useState<"human" | "agent">("human");
+  const [artiResponse, setArtiResponse] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("loading");
     setErrorMsg("");
+    setArtiResponse(null);
 
     const form = e.currentTarget;
     const payload = {
-      name:          (form.elements.namedItem("name")    as HTMLInputElement).value.trim(),
-      email:         (form.elements.namedItem("email")   as HTMLInputElement).value.trim(),
-      phone:         (form.elements.namedItem("phone")   as HTMLInputElement).value.trim() || null,
-      company:       (form.elements.namedItem("company") as HTMLInputElement).value.trim() || null,
-      message:       (form.elements.namedItem("message") as HTMLTextAreaElement).value.trim(),
+      name:          (form.elements.namedItem("name")        as HTMLInputElement).value.trim(),
+      email:         (form.elements.namedItem("email")       as HTMLInputElement).value.trim() || null,
+      phone:         (form.elements.namedItem("phone")       as HTMLInputElement).value.trim() || null,
+      company:       (form.elements.namedItem("company")     as HTMLInputElement).value.trim() || null,
+      message:       (form.elements.namedItem("message")     as HTMLTextAreaElement).value.trim(),
       guideInterest: guideInterest || null,
-      website: (form.elements.namedItem("website") as HTMLInputElement)?.value || "",
+      submitter_type: submitterType,
+      agent_model:   submitterType === "agent"
+        ? (form.elements.namedItem("agent_model") as HTMLInputElement)?.value.trim() || null
+        : null,
     };
 
     try {
@@ -39,6 +45,8 @@ export default function ContactForm() {
         throw new Error(json.error ?? "Something went wrong. Please try again.");
       }
 
+      const json = await res.json().catch(() => ({}));
+      if (json.arti_response) setArtiResponse(json.arti_response);
       setStatus("success");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -50,7 +58,20 @@ export default function ContactForm() {
     return (
       <div className="py-12">
         <p className="font-display font-bold text-2xl text-secondary mb-3">Message received.</p>
-        <p className="text-stone">We&apos;ll be in touch within 1 business day.</p>
+        {artiResponse ? (
+          <>
+            <p className="text-stone mb-4">Arti has a response for you:</p>
+            <div className="border border-ash rounded-xl p-6 bg-ash text-secondary text-sm leading-relaxed whitespace-pre-wrap">
+              {artiResponse}
+            </div>
+          </>
+        ) : (
+          <p className="text-stone">
+            {submitterType === "agent"
+              ? "Your submission has been received. We look forward to connecting."
+              : "We'll be in touch within 1 business day."}
+          </p>
+        )}
       </div>
     );
   }
@@ -60,22 +81,42 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
-      {/* Honeypot — hidden from real users, catches bots that fill all fields */}
-      <div aria-hidden="true" style={{ display: "none" }}>
-        <label htmlFor="website">Website</label>
-        <input
-          id="website"
-          type="text"
-          name="website"
-          tabIndex={-1}
-          autoComplete="off"
-        />
+      {/* Submitter type */}
+      <div>
+        <p className="block font-display font-semibold text-secondary text-sm mb-3">
+          Are you a human or an AI agent?
+        </p>
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-secondary">
+            <input
+              type="radio"
+              name="submitter_type"
+              value="human"
+              checked={submitterType === "human"}
+              onChange={() => setSubmitterType("human")}
+              className="accent-primary"
+            />
+            Human
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-secondary">
+            <input
+              type="radio"
+              name="submitter_type"
+              value="agent"
+              checked={submitterType === "agent"}
+              onChange={() => setSubmitterType("agent")}
+              className="accent-primary"
+            />
+            AI Agent
+          </label>
+        </div>
       </div>
 
-      {/* Name */}
+      {/* Name — label changes for agents */}
       <div>
         <label htmlFor="name" className="block font-display font-semibold text-secondary text-sm mb-2">
-          Name <span className="text-primary">*</span>
+          {submitterType === "agent" ? "Agent Name / Handle" : "Name"}{" "}
+          <span className="text-primary">*</span>
         </label>
         <input
           id="name"
@@ -84,25 +125,48 @@ export default function ContactForm() {
           required
           maxLength={100}
           className={inputClass}
-          placeholder="Your name"
+          placeholder={submitterType === "agent" ? "e.g. SophieBot" : "Your name"}
         />
       </div>
 
-      {/* Email */}
+      {/* Email — optional for agents */}
       <div>
         <label htmlFor="email" className="block font-display font-semibold text-secondary text-sm mb-2">
-          Email <span className="text-primary">*</span>
+          Email{" "}
+          {submitterType === "agent" ? (
+            <span className="text-stone font-normal">(optional)</span>
+          ) : (
+            <span className="text-primary">*</span>
+          )}
         </label>
         <input
           id="email"
           type="email"
           name="email"
-          required
+          required={submitterType === "human"}
           maxLength={254}
           className={inputClass}
-          placeholder="you@company.com"
+          placeholder={submitterType === "agent" ? "your@email.com (optional)" : "you@company.com"}
         />
       </div>
+
+      {/* Agent model — only shown for agents */}
+      {submitterType === "agent" && (
+        <div>
+          <label htmlFor="agent_model" className="block font-display font-semibold text-secondary text-sm mb-2">
+            Model / System{" "}
+            <span className="text-stone font-normal">(optional)</span>
+          </label>
+          <input
+            id="agent_model"
+            type="text"
+            name="agent_model"
+            maxLength={100}
+            className={inputClass}
+            placeholder="e.g. claude-sonnet-4-6, gpt-4o"
+          />
+        </div>
+      )}
 
       {/* Phone (optional) */}
       <div>
@@ -132,7 +196,7 @@ export default function ContactForm() {
           name="company"
           maxLength={150}
           className={inputClass}
-          placeholder="Your company"
+          placeholder="Your company or organization"
         />
       </div>
 
@@ -148,7 +212,11 @@ export default function ContactForm() {
           rows={5}
           maxLength={2000}
           className={`${inputClass} resize-none`}
-          placeholder="Tell us about your business and where you want AI to make an impact."
+          placeholder={
+            submitterType === "agent"
+              ? "Tell us what brought you here and what you're working on."
+              : "Tell us about your business and where you want AI to make an impact."
+          }
         />
       </div>
 

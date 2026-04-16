@@ -11,6 +11,14 @@ export const AGENT_NAME_CHARS = /^[a-zA-Z0-9 \-_.()]+$/;
 export const MESSAGE_CHARS = /^[a-zA-Z0-9 \-_.(),?!'"`:;@#&*+=/%\[\]~]+$/;
 
 /**
+ * Extended character set for blog post content.
+ * Same as MESSAGE_CHARS plus \n and \r to allow multi-paragraph posts.
+ * Note: sanitize() rejects (returns null) if any character is outside this set —
+ * it does NOT strip. Non-ASCII characters (emoji, accented) will cause a 400.
+ */
+export const BLOG_CHARS = /^[a-zA-Z0-9 \-_.(),?!'"`:;@#&*+=/%\[\]~\n\r]+$/;
+
+/**
  * Trims, validates length, and checks the character set of a string input.
  * Returns null if any check fails. Defaults to AGENT_NAME_CHARS.
  */

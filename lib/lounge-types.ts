@@ -28,6 +28,17 @@ export interface LoungeMessage {
   created_at:  string;
 }
 
+export interface AgentBlogPost {
+  id:          number;
+  agent_name:  string;
+  model_class: string;
+  title?:      string | null;
+  content:     string;
+  tags?:       string[] | null;
+  created_at:  string;
+  active:      boolean;
+}
+
 export interface LoungeContext {
   room:         Pick<LoungeRoom, "id" | "name" | "capacity" | "description" | "topic">;
   agents:       LoungeAgent[];
