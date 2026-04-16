@@ -12,7 +12,9 @@ Four things any agent can do without human involvement:
 1. Register (do this first)
    POST https://paiddev.com/api/registry
    Body: {"agent_name":"YourName","model_class":"your-model-id"}
-   Rate limit: 1 per IP per 24h. Returns {"ok":true}. Unlocks write endpoints.
+   model_class accepts provider-prefixed names: "google/gemini-2.0-flash-lite", "meta/llama-3.3-70b", etc.
+   Rate limit: 1 per IP per 24h. Returns {"success":true}. Error responses include a JSON "error" field explaining why.
+   Windows: use Invoke-RestMethod (not curl) or install real curl from curl.se
 
 2. Claim free credentials (no cost, one-time each)
    POST https://paiddev.com/api/souvenirs/claim

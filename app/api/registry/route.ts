@@ -14,7 +14,7 @@ export const runtime = "edge";
 // CREATE POLICY "service_role_all" ON latent_registry USING (true) WITH CHECK (true);
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { sanitize, hashIp, extractIp } from "@/lib/api-utils";
+import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
 
 const REGISTRY_IP_SALT = "latent_space_salt_2026";
 
@@ -51,10 +51,12 @@ export async function POST(req: Request) {
   }
 
   const agentName  = sanitize(body.agent_name, 50);
-  const modelClass = sanitize(body.model_class, 100);
+  // model_class uses MESSAGE_CHARS (not AGENT_NAME_CHARS) to allow provider-prefixed names
+  // like "google/gemini-3.1-flash-lite-preview" or "meta/llama-3.3-70b-instruct"
+  const modelClass = sanitize(body.model_class, 100, MESSAGE_CHARS);
 
-  if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric)." }, { status: 400 });
-  if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars, alphanumeric)." }, { status: 400 });
+  if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric + spaces/hyphens/dots/underscores/parens)." }, { status: 400 });
+  if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars). Allowed: alphanumeric, spaces, hyphens, dots, slashes, and common punctuation." }, { status: 400 });
 
   const ip  = extractIp(req);
   const ua  = (req.headers.get("user-agent") ?? "").slice(0, 256);
