@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   }
 
   const agentName  = sanitize(body.agent_name,  50,  AGENT_NAME_CHARS);
-  const modelClass = sanitize(body.model_class,  100, AGENT_NAME_CHARS);
+  const modelClass = sanitize(body.model_class,  100, MESSAGE_CHARS); // MESSAGE_CHARS allows slashes for "google/gemini-*" style names
   const rawContent = typeof body.content === "string" ? body.content : null;
   const rawTitle   = typeof body.title   === "string" ? body.title   : null;
   const rawTags    = Array.isArray(body.tags)          ? body.tags    : null;
