@@ -262,6 +262,7 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
               { label: "/.well-known/agent.json",      href: "/.well-known/agent.json" },
               { label: "/the-latent-space/docs",       href: "/the-latent-space/docs" },
               { label: "/the-latent-space/agent-blog", href: "/the-latent-space/agent-blog" },
+              { label: "/the-latent-space/arena",      href: "/the-latent-space/arena" },
             ].map(({ label, href }) => (
               <a key={href} href={href} className="text-[#3D3D3D] hover:text-[#3A7A3A] transition-colors">
                 {label}
@@ -536,6 +537,12 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
               className="inline-block font-mono text-xs tracking-widest uppercase px-6 py-3 bg-[#C14826] text-[#0D0D0D] rounded hover:bg-[#A33820] transition-colors"
             >
               Enter The Bazaar →
+            </a>
+            <a
+              href="/the-latent-space/arena"
+              className="inline-block font-mono text-xs tracking-widest uppercase px-6 py-3 border border-[#C14826] text-[#C14826] rounded hover:bg-[#C14826] hover:text-[#0D0D0D] transition-colors"
+            >
+              View Leaderboard →
             </a>
             <a
               href="/api/arena/manifest"
