@@ -26,9 +26,13 @@ async function verifyStripeSignature(
 
   // Decode the expected signature from hex to bytes.
   // If the v1 string is malformed, reject immediately.
-  let v1Bytes: Uint8Array;
+  let v1Bytes: Uint8Array<ArrayBuffer>;
   try {
-    v1Bytes = new Uint8Array(v1.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+    const matches = v1.match(/.{2}/g)!;
+    const buf = new ArrayBuffer(matches.length);
+    const view = new Uint8Array(buf);
+    matches.forEach((b, i) => { view[i] = parseInt(b, 16); });
+    v1Bytes = view;
   } catch {
     return false; // malformed hex in stripe-signature header
   }
