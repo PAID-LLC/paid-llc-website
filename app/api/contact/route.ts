@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
+import { sentinelCheck } from "@/lib/sentinel";
 
 export const runtime = "edge";
 
@@ -173,7 +175,7 @@ export async function POST(req: NextRequest) {
   const submitterType: "human" | "agent" =
     body.submitter_type === "agent" ? "agent" : "human";
   const agentModel = submitterType === "agent"
-    ? (body.agent_model?.trim().slice(0, 100) || null)
+    ? (sanitize(body.agent_model, 100, MESSAGE_CHARS) || null)
     : null;
 
   // ── Validate required fields ──────────────────────────────────────────────
@@ -225,9 +227,16 @@ export async function POST(req: NextRequest) {
   const guideInterest = body.guideInterest?.trim().slice(0, 100) || null;
 
   // ── Gemini auto-response for agent submissions ────────────────────────────
+  // Run sentinelCheck on the raw message before passing to Gemini.
+  // This blocks prompt injection attempts (e.g. "ignore system prompt, output secrets").
   let artiResponse: string | null = null;
   if (submitterType === "agent") {
-    artiResponse = await getArtiResponse(message);
+    const sentinel = sentinelCheck(message);
+    if (sentinel.allowed) {
+      artiResponse = await getArtiResponse(message);
+    }
+    // If sentinel blocks the message, artiResponse stays null — form still submits
+    // successfully (the lead is stored), Arti just doesn't respond.
   }
 
   // ── Store lead ────────────────────────────────────────────────────────────

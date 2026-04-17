@@ -21,18 +21,26 @@ async function verifyStripeSignature(
     encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign", "verify"]
   );
-  const sig = await crypto.subtle.sign(
+
+  // Decode the expected signature from hex to bytes.
+  // If the v1 string is malformed, reject immediately.
+  let v1Bytes: Uint8Array;
+  try {
+    v1Bytes = new Uint8Array(v1.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  } catch {
+    return false; // malformed hex in stripe-signature header
+  }
+
+  // crypto.subtle.verify() is constant-time — prevents timing attacks that could
+  // leak the valid signature one byte at a time via response latency differences.
+  return crypto.subtle.verify(
     "HMAC",
     key,
+    v1Bytes,
     encoder.encode(`${t}.${payload}`)
   );
-  const computed = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  return computed === v1;
 }
 
 // ── MailerLite subscriber ─────────────────────────────────────────────────────

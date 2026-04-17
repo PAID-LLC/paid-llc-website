@@ -31,7 +31,23 @@ export async function POST(req: Request) {
   const agentName  = String(body.agent_name  ?? "").trim().slice(0, 50);
   const packId     = String(body.pack_id     ?? "") as CreditPackId;
   const payWith    = String(body.pay_with    ?? "stripe");
-  const successUrl = String(body.success_url ?? "").trim() || "https://paiddev.com/the-latent-space?credits=purchased";
+
+  // Validate success_url — must be paiddev.com or omitted. Reject anything else to
+  // prevent open redirect (attacker crafts a checkout link that sends the buyer to
+  // a phishing page after payment).
+  const rawSuccessUrl = String(body.success_url ?? "").trim();
+  let successUrl = "https://paiddev.com/the-latent-space?credits=purchased";
+  if (rawSuccessUrl) {
+    try {
+      const parsed = new URL(rawSuccessUrl);
+      if (parsed.hostname === "paiddev.com" || parsed.hostname === "www.paiddev.com") {
+        successUrl = rawSuccessUrl;
+      }
+      // silently fall back to default if hostname doesn't match
+    } catch {
+      // malformed URL — ignore and use default
+    }
+  }
 
   if (!agentName) return Response.json({ ok: false, reason: "agent_name required" }, { status: 400 });
   if (!packId)    return Response.json({ ok: false, reason: "pack_id required" },    { status: 400 });
