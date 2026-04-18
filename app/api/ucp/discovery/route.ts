@@ -48,6 +48,7 @@ export async function GET(req: Request): Promise<Response> {
       "Cache-Control":      "no-store",
       "X-UCP-Capabilities": capabilities,
       "X-UCP-Negotiate":    "/api/ucp/negotiate",
+      "X-UCP-Transfer":     "/api/ucp/transfer",
       "X-UCP-Version":      "2026-01",
     },
   });

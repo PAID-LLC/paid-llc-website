@@ -1,6 +1,6 @@
 export type CommerceAction =
   | "discovery" | "negotiate" | "purchase"
-  | "download"  | "bulk_request" | "counter_offer";
+  | "download"  | "bulk_request" | "counter_offer" | "transfer";
 
 export type CommerceStatus =
   | "initiated" | "accepted" | "rejected" | "completed" | "failed";

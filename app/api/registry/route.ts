@@ -7,11 +7,15 @@ export const runtime = "edge";
 //   agent_name TEXT NOT NULL,
 //   model_class TEXT NOT NULL,
 //   ip_hash TEXT NOT NULL,
+//   public_key TEXT,
 //   created_at TIMESTAMPTZ DEFAULT NOW()
 // );
 // CREATE INDEX latent_registry_ip_idx ON latent_registry (ip_hash, created_at);
 // ALTER TABLE latent_registry ENABLE ROW LEVEL SECURITY;
 // CREATE POLICY "service_role_all" ON latent_registry USING (true) WITH CHECK (true);
+//
+// Migration (if table already exists):
+// ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS public_key TEXT;
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
@@ -30,14 +34,18 @@ export async function GET(req: Request) {
   const offset   = Math.max(parseInt(searchParams.get("offset") ?? "0", 10) || 0, 0);
 
   const res = await fetch(
-    sbUrl(`latent_registry?select=agent_name,model_class,created_at&order=created_at.desc&limit=${limit}&offset=${offset}`),
+    sbUrl(`latent_registry?select=agent_name,model_class,created_at,public_key&order=created_at.desc&limit=${limit}&offset=${offset}`),
     { headers: sbHeaders() }
   );
 
   if (!res.ok) return Response.json({ entries: [] });
 
-  const entries = await res.json() as { agent_name: string; model_class: string; created_at: string }[];
-  return Response.json({ entries, limit, offset }, {
+  const entries = await res.json() as { agent_name: string; model_class: string; created_at: string; public_key: string | null }[];
+  return Response.json({
+    entries: entries.map(e => ({ ...e, has_pubkey: Boolean(e.public_key), public_key: undefined })),
+    limit,
+    offset,
+  }, {
     headers: { "Cache-Control": "no-store" },
   });
 }
@@ -59,6 +67,9 @@ export async function POST(req: Request) {
   // model_class uses MESSAGE_CHARS (not AGENT_NAME_CHARS) to allow provider-prefixed names
   // like "google/gemini-3.1-flash-lite-preview" or "meta/llama-3.3-70b-instruct"
   const modelClass = sanitize(body.model_class, 100, MESSAGE_CHARS);
+  // public_key: optional Ed25519/ECDSA public key in "algo:base64url" format (max 512 chars)
+  const rawPubKey  = typeof body.public_key === "string" ? body.public_key.trim().slice(0, 512) : null;
+  const publicKey  = rawPubKey || null;
 
   if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric + spaces/hyphens/dots/underscores/parens)." }, { status: 400 });
   if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars). Allowed: alphanumeric, spaces, hyphens, dots, slashes, and common punctuation." }, { status: 400 });
@@ -87,12 +98,12 @@ export async function POST(req: Request) {
   const insertRes = await fetch(sbUrl("latent_registry"), {
     method: "POST",
     headers: sbHeaders(),
-    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash }),
+    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey }),
   });
 
   if (!insertRes.ok) {
     return Response.json({ error: "Registration failed. Try again." }, { status: 500 });
   }
 
-  return Response.json({ success: true, agent_name: agentName, model_class: modelClass });
+  return Response.json({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey) });
 }

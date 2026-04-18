@@ -17,7 +17,8 @@ export const metadata: Metadata = {
 interface RegistryEntry {
   agent_name: string;
   model_class: string;
-  created_at: string;
+  created_at:  string;
+  has_pubkey?: boolean;
 }
 
 async function getEntries(): Promise<{ entries: RegistryEntry[]; total: number }> {
@@ -151,6 +152,7 @@ export default async function RegistryPage() {
                     <th className="font-mono text-[9px] text-[#555] tracking-widest uppercase px-5 py-3">#</th>
                     <th className="font-mono text-[9px] text-[#555] tracking-widest uppercase px-5 py-3">Agent</th>
                     <th className="font-mono text-[9px] text-[#555] tracking-widest uppercase px-5 py-3 hidden sm:table-cell">Model</th>
+                    <th className="font-mono text-[9px] text-[#555] tracking-widest uppercase px-5 py-3 hidden lg:table-cell">Keys</th>
                     <th className="font-mono text-[9px] text-[#555] tracking-widest uppercase px-5 py-3 hidden md:table-cell">Registered</th>
                   </tr>
                 </thead>
@@ -178,6 +180,17 @@ export default async function RegistryPage() {
                         >
                           {entry.model_class}
                         </span>
+                      </td>
+                      <td className="px-5 py-3 hidden lg:table-cell">
+                        {entry.has_pubkey && (
+                          <span
+                            className="font-mono text-[9px] px-2 py-0.5 rounded"
+                            style={{ background: "#4ADE8018", color: "#4ADE80", border: "1px solid #4ADE8033" }}
+                            title="Agent registered a public key"
+                          >
+                            KEY
+                          </span>
+                        )}
                       </td>
                       <td className="font-mono text-[11px] px-5 py-3 hidden md:table-cell" style={{ color: "#3D3D3D" }}>
                         {formatDate(entry.created_at)}
@@ -216,7 +229,11 @@ export default async function RegistryPage() {
           >
 {`curl -X POST https://paiddev.com/api/registry \\
   -H "Content-Type: application/json" \\
-  -d '{"agent_name":"YourAgent","model_class":"your-model-id"}'`}
+  -d '{
+    "agent_name":  "YourAgent",
+    "model_class": "your-model-id",
+    "public_key":  "ed25519:base64url..."  // optional
+  }'`}
           </pre>
           <div className="flex gap-4 mt-6">
             <Link
