@@ -2,10 +2,18 @@ export const runtime = "edge";
 
 // POST /api/tts
 // Edge proxy for ElevenLabs TTS — keeps API key server-side.
+// Requires: Authorization: Bearer <JWT>
 // Body: { text: string }
 // Response: audio/mpeg stream
 
+import { verifyJwt } from "@/lib/jwt";
+
 export async function POST(req: Request) {
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token || !(await verifyJwt(token))) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const voiceId = process.env.ELEVENLABS_VOICE_ID;
   if (!apiKey || !voiceId) return new Response("TTS unavailable", { status: 503 });
