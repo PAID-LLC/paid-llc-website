@@ -16,6 +16,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { TEAM_DUEL_COST } from "@/lib/arena-types";
+import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 
 const MAX_PROMPT_CHARS = 500;
 const MIN_TEAM_SIZE    = 2;
@@ -77,8 +78,9 @@ export async function POST(req: Request) {
     return Response.json({
       ok: false,
       reason: "insufficient credits — challenger captain has no credits",
+      credits_needed: TEAM_DUEL_COST,
       hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
-    }, { status: 402 });
+    }, { status: 402, headers: x402Headers(creditPaymentHeader(TEAM_DUEL_COST, challenger)) });
   }
 
   // ── Insert team duel row ──────────────────────────────────────────────────

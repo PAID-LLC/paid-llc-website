@@ -13,6 +13,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { ArenaItem, ItemType }              from "@/lib/arena-types";
+import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 
 const ITEM_COSTS: Record<ItemType, number> = {
   "overclock-fluid": 50,
@@ -51,8 +52,8 @@ export async function POST(req: Request) {
 
   if (balance < cost) {
     return Response.json(
-      { ok: false, reason: `insufficient credits — need ${cost}, have ${balance}` },
-      { status: 402 }
+      { ok: false, reason: `insufficient credits — need ${cost}, have ${balance}`, credits_needed: cost },
+      { status: 402, headers: x402Headers(creditPaymentHeader(cost)) }
     );
   }
 

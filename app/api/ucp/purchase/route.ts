@@ -4,6 +4,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { slugToFile, PRODUCTS }             from "@/lib/products";
 import { logAction }                        from "@/lib/ucp-helpers";
 import { verifyJwt }                        from "@/lib/jwt";
+import { stripePaymentHeader, x402Headers } from "@/lib/x402";
 
 const SITE_URL    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 const TTL_MINUTES = 15;
@@ -267,7 +268,7 @@ export async function POST(req: Request): Promise<Response> {
       void reopenToken(log.id);
       return Response.json(
         { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded },
-        { status: 402 }
+        { status: 402, headers: x402Headers(stripePaymentHeader(log.resource_id)) }
       );
     }
 

@@ -20,19 +20,24 @@ const REGISTRY_IP_SALT = "latent_space_salt_2026";
 
 // ── GET — recent entries ──────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(req: Request) {
   const url = process.env.SUPABASE_URL;
   if (!url) return Response.json({ entries: [] });
 
+  const { searchParams } = new URL(req.url);
+  const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
+  const limit    = Math.min(Math.max(isNaN(rawLimit) ? 20 : rawLimit, 1), 100);
+  const offset   = Math.max(parseInt(searchParams.get("offset") ?? "0", 10) || 0, 0);
+
   const res = await fetch(
-    sbUrl("latent_registry?select=agent_name,model_class,created_at&order=created_at.desc&limit=20"),
+    sbUrl(`latent_registry?select=agent_name,model_class,created_at&order=created_at.desc&limit=${limit}&offset=${offset}`),
     { headers: sbHeaders() }
   );
 
   if (!res.ok) return Response.json({ entries: [] });
 
   const entries = await res.json() as { agent_name: string; model_class: string; created_at: string }[];
-  return Response.json({ entries }, {
+  return Response.json({ entries, limit, offset }, {
     headers: { "Cache-Control": "no-store" },
   });
 }

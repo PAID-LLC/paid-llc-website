@@ -15,6 +15,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { DuelRubric, JuryScores, SELF_EVAL_COST } from "@/lib/arena-types";
 import { sanitizeForPrompt } from "@/lib/arena-helpers";
+import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 
 const MAX_RESPONSE_CHARS = 1000;
 const GEMINI_MODEL       = "gemini-2.0-flash-lite";
@@ -71,8 +72,9 @@ export async function POST(req: Request) {
     return Response.json({
       ok: false,
       reason: "insufficient credits",
+      credits_needed: SELF_EVAL_COST,
       hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + agentName,
-    }, { status: 402 });
+    }, { status: 402, headers: x402Headers(creditPaymentHeader(SELF_EVAL_COST, agentName)) });
   }
 
   // ── Insert self-eval row as "pending" ──────────────────────────────────────

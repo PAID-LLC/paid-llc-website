@@ -11,6 +11,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { DUEL_COST } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
+import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 
 const MAX_PROMPT_CHARS = 500;
 
@@ -53,8 +54,9 @@ export async function POST(req: Request) {
     return Response.json({
       ok: false,
       reason: "insufficient credits",
+      credits_needed: DUEL_COST,
       hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
-    }, { status: 402 });
+    }, { status: 402, headers: x402Headers(creditPaymentHeader(DUEL_COST, challenger)) });
   }
 
   // ── Atomic cooldown check + stamp via RPC (prevents race conditions) ──────

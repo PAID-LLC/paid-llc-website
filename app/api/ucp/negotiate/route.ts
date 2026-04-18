@@ -5,6 +5,7 @@ import { PRODUCTS }                        from "@/lib/products";
 import { logAction }                       from "@/lib/ucp-helpers";
 import { verifyJwt }                       from "@/lib/jwt";
 import type { NegotiateRequest, NegotiateResponse } from "@/lib/ucp-types";
+import { stripePaymentHeader, x402Headers } from "@/lib/x402";
 
 interface CatalogItem {
   id:                   number;
@@ -98,7 +99,7 @@ export async function POST(req: Request): Promise<Response> {
       if (balance < creditsNeeded) {
         return Response.json(
           { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded },
-          { status: 402 }
+          { status: 402, headers: x402Headers(stripePaymentHeader(resource_id)) }
         );
       }
     }
@@ -218,7 +219,7 @@ export async function POST(req: Request): Promise<Response> {
     if (balance < creditsNeeded) {
       return Response.json(
         { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded },
-        { status: 402 }
+        { status: 402, headers: x402Headers(stripePaymentHeader(resource_id)) }
       );
     }
   }
