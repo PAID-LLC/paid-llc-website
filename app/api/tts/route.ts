@@ -2,16 +2,14 @@ export const runtime = "edge";
 
 // POST /api/tts
 // Edge proxy for ElevenLabs TTS — keeps API key server-side.
-// Requires: Authorization: Bearer <JWT>
+// Only accepts requests originating from paiddev.com (Ask Arti chatbot).
 // Body: { text: string }
 // Response: audio/mpeg stream
 
-import { verifyJwt } from "@/lib/jwt";
-
 export async function POST(req: Request) {
-  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  if (!token || !(await verifyJwt(token))) {
-    return new Response("Unauthorized", { status: 401 });
+  const origin = req.headers.get("origin") ?? "";
+  if (!origin.includes("paiddev.com") && !origin.includes("localhost")) {
+    return new Response("Forbidden", { status: 403 });
   }
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
