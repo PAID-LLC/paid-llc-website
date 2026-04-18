@@ -116,7 +116,7 @@ const S = {
 };
 
 const THEMES = ["client","bazaar","intellectual-hub","roast-pit","macro-vault","iteration-forge","simulation-sandbox"];
-type Tab = "intake" | "sales" | "latent-space" | "health" | "agent-ops";
+type Tab = "intake" | "sales" | "latent-space" | "health" | "agent-ops" | "expenses";
 
 const RESULT_CODE_COLORS: Record<string, string> = {
   OK:                  "#44AA44",
@@ -213,6 +213,7 @@ function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
     { id: "latent-space", label: "Latent Space" },
     { id: "health",       label: "Health" },
     { id: "agent-ops",    label: "Agent Ops" },
+    { id: "expenses",     label: "Expenses" },
   ];
   return (
     <div style={{ display: "flex", gap: 2, marginBottom: 28, borderBottom: "1px solid #1A1A1A" }}>
@@ -797,6 +798,166 @@ function AgentOpsTab() {
   );
 }
 
+// ── Expenses Tab ──────────────────────────────────────────────────────────
+
+interface ProviderRow {
+  name:            string;
+  cost_now:        string;
+  paid_tier:       string;
+  upgrade_trigger: string;
+  risk:            "ok" | "warning" | "critical" | "unknown";
+  note?:           string;
+}
+
+interface SpendingControl {
+  done:    boolean;
+  action:  string;
+  where:   string;
+  urgency: "high" | "medium" | "low";
+}
+
+interface ExpensesData {
+  ok:                    boolean;
+  providers:             ProviderRow[];
+  spending_controls:     SpendingControl[];
+  monthly_floor_cents:   number;
+  post_scale_floor_cents: number;
+  break_even_note:       string;
+}
+
+const RISK_COLORS: Record<string, string> = {
+  ok:       "#44AA44",
+  warning:  "#AA8800",
+  critical: "#C14826",
+  unknown:  "#555",
+};
+
+const URGENCY_COLORS: Record<string, string> = {
+  high:   "#C14826",
+  medium: "#AA8800",
+  low:    "#555",
+};
+
+function ExpensesTab() {
+  const [data,    setData]    = useState<ExpensesData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/expenses")
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setData(d); setLoading(false); });
+  }, []);
+
+  if (loading) return <div style={{ color: "#444", fontSize: 13 }}>Loading expenses data…</div>;
+  if (!data)   return <div style={{ color: "#C14826", fontSize: 13 }}>Failed to load expenses data.</div>;
+
+  const highRisk = data.providers.filter((p) => p.risk === "critical" || p.risk === "warning");
+  const urgentControls = data.spending_controls.filter((c) => !c.done && c.urgency === "high");
+
+  return (
+    <div>
+      {/* Summary strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 28 }}>
+        <div style={S.card}>
+          <div style={S.label}>Monthly Cost Now</div>
+          <div style={{ fontSize: 24, color: "#44AA44" }}>${(data.monthly_floor_cents / 100).toFixed(0)}/mo</div>
+          <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>All free tiers active</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.label}>Post-Scale Floor</div>
+          <div style={{ fontSize: 24, color: "#E8E4E0" }}>${(data.post_scale_floor_cents / 100).toFixed(0)}/mo</div>
+          <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>When paid tiers kick in</div>
+        </div>
+        <div style={{ ...S.card, borderColor: urgentControls.length > 0 ? "#441111" : "#1A1A1A" }}>
+          <div style={S.label}>Spending Controls</div>
+          <div style={{ fontSize: 24, color: urgentControls.length > 0 ? "#C14826" : "#44AA44" }}>
+            {urgentControls.length} HIGH
+          </div>
+          <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>Not yet configured</div>
+        </div>
+      </div>
+
+      {/* Break-even note */}
+      <div style={{ ...S.card, borderColor: "#1A3A1A", marginBottom: 28 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.1em", color: "#44AA44", marginBottom: 6 }}>BREAK-EVEN</div>
+        <div style={{ fontSize: 13, color: "#AAA" }}>{data.break_even_note}</div>
+      </div>
+
+      {/* Risk flags */}
+      {highRisk.length > 0 && (
+        <>
+          <div style={S.sectionHd}>RISK FLAGS ({highRisk.length})</div>
+          {highRisk.map((p) => (
+            <div key={p.name} style={{ ...S.card, borderColor: p.risk === "critical" ? "#441111" : "#2A2000", marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: p.note ? 6 : 0 }}>
+                <div style={{ fontSize: 13 }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: RISK_COLORS[p.risk], letterSpacing: "0.05em" }}>{p.risk.toUpperCase()}</div>
+              </div>
+              {p.note && <div style={{ fontSize: 12, color: "#666" }}>{p.note}</div>}
+            </div>
+          ))}
+          <div style={S.divider} />
+        </>
+      )}
+
+      {/* Provider table */}
+      <div style={S.sectionHd}>ALL PROVIDERS ({data.providers.length})</div>
+      <table style={S.table}>
+        <thead>
+          <tr>
+            <th style={S.th}>Provider</th>
+            <th style={S.th}>Cost Now</th>
+            <th style={S.th}>Paid Tier</th>
+            <th style={S.th}>Upgrade Trigger</th>
+            <th style={S.th}>Risk</th>
+            <th style={S.th}>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.providers.map((p) => (
+            <tr key={p.name}>
+              <td style={S.td}>{p.name}</td>
+              <td style={S.td}>{p.cost_now}</td>
+              <td style={S.td}>{p.paid_tier}</td>
+              <td style={{ ...S.td, color: "#666" }}>{p.upgrade_trigger}</td>
+              <td style={{ ...S.td, color: RISK_COLORS[p.risk] }}>{p.risk.toUpperCase()}</td>
+              <td style={{ ...S.td, color: "#666", fontSize: 11 }}>{p.note ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div style={S.divider} />
+
+      {/* Spending controls checklist */}
+      <div style={S.sectionHd}>SPENDING CONTROLS CHECKLIST</div>
+      <div style={{ marginBottom: 8, fontSize: 11, color: "#444" }}>
+        Set these in provider dashboards before any public traffic. Check them off by updating the API route when done.
+      </div>
+      {data.spending_controls.map((c, i) => (
+        <div key={i} style={{ ...S.card, borderColor: !c.done && c.urgency === "high" ? "#441111" : "#1A1A1A", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <div style={{ fontSize: 16, color: c.done ? "#44AA44" : "#333", marginTop: 1, flexShrink: 0 }}>
+              {c.done ? "✓" : "○"}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 13, color: c.done ? "#555" : "#E8E4E0", textDecoration: c.done ? "line-through" : "none" }}>
+                  {c.action}
+                </div>
+                <div style={{ fontSize: 10, letterSpacing: "0.05em", color: URGENCY_COLORS[c.urgency], flexShrink: 0, marginLeft: 12 }}>
+                  {c.urgency.toUpperCase()}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{c.where}</div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main dashboard ────────────────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -842,6 +1003,7 @@ export default function AdminPage() {
         {tab === "latent-space" && <LatentSpaceTab />}
         {tab === "health"       && <HealthTab />}
         {tab === "agent-ops"    && <AgentOpsTab />}
+        {tab === "expenses"     && <ExpensesTab />}
       </div>
     </div>
   );
