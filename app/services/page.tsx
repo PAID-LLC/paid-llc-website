@@ -1,6 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+const CALENDAR_URL = process.env.NEXT_PUBLIC_CALENDAR_URL ?? "/contact";
+
+const AVAILABILITY = (
+  <div className="text-stone text-sm leading-relaxed mt-4 pt-4 border-t border-stone/20">
+    <p className="font-semibold text-secondary text-xs uppercase tracking-widest mb-2">Availability</p>
+    <p>Mon – Fri: 7:00 – 8:30 am &amp; 4:30 – 6:00 pm CST</p>
+    <p>Saturday: 8:00 am – 12:00 pm CST</p>
+  </div>
+);
+
 export const metadata: Metadata = {
   title: "Services | PAID LLC",
   description:
@@ -86,11 +96,12 @@ export default function Services() {
                   impact. We&apos;ll take it from there.
                 </p>
                 <Link
-                  href="/contact"
+                  href={CALENDAR_URL}
                   className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
                 >
                   Book a Consultation
                 </Link>
+                {AVAILABILITY}
               </div>
             </div>
           </div>
@@ -399,11 +410,12 @@ export default function Services() {
                   delivered within 5 business days. Fixed scope, fixed price.
                 </p>
                 <Link
-                  href="/contact"
+                  href={CALENDAR_URL}
                   className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
                 >
                   Schedule an Audit
                 </Link>
+                {AVAILABILITY}
               </div>
               <div className="mt-6 bg-secondary rounded-xl p-6">
                 <p className="font-display font-semibold text-white text-sm mb-2">
@@ -527,11 +539,12 @@ export default function Services() {
                   No commitment.
                 </p>
                 <Link
-                  href="/contact"
+                  href={CALENDAR_URL}
                   className="block bg-primary text-white px-6 py-3.5 rounded font-semibold text-sm text-center hover:bg-secondary transition-colors"
                 >
                   Book a Discovery Call
                 </Link>
+                {AVAILABILITY}
               </div>
               <div className="mt-6 bg-secondary rounded-xl p-6">
                 <p className="font-display font-semibold text-white text-sm mb-2">
