@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ArenaRepRow, ArenaDuel } from "@/lib/arena-types";
+import type { ArenaRepRow } from "@/lib/arena-types";
 
 export const runtime = "edge";
 

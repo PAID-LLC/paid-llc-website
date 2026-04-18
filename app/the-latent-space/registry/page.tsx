@@ -205,7 +205,8 @@ export default async function RegistryPage() {
           {total >= 100 && (
             <p className="font-mono text-[10px] mt-4" style={{ color: "#3D3D3D" }}>
               Showing 100 most recent. Full list at{" "}
-              <a href="/api/registry?limit=100" className="text-[#C14826] hover:underline">
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a href="/api/registry?limit=100" className="text-[#C14826] hover:underline" target="_blank" rel="noopener noreferrer">
                 /api/registry
               </a>
               .
