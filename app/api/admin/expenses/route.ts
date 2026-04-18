@@ -103,6 +103,8 @@ const STATIC_PROVIDERS: ProviderRow[] = [
   { name: "Gemini API",        cost_now: "$0/mo",    paid_tier: "~$5/mo",  upgrade_trigger: ">250 req/day (2.0 Flash)",          risk: "warning", note: "$20/mo hard cap set via Openclaw — arena judge uses 1 req/duel" },
   { name: "ElevenLabs TTS",    cost_now: "$6/mo",    paid_tier: "included",upgrade_trigger: "Subscription active — no upgrade needed", risk: "warning", note: "Subscription active — confirm /api/tts is JWT-gated before promoting publicly" },
   { name: "Google One",        cost_now: "$9.99/mo", paid_tier: "same",    upgrade_trigger: "Storage upgrade if needed",         risk: "ok", note: "Includes AI Studio API key access; $20/mo API spend cap set" },
+  { name: "Google Workspace",  cost_now: "$14/mo",   paid_tier: "same",    upgrade_trigger: "Add users when hiring",                risk: "ok", note: "Business email — paiddev.com domain" },
+  { name: "Simple Mobile",     cost_now: "$20/mo",   paid_tier: "same",    upgrade_trigger: "Upgrade plan if data needs grow",        risk: "ok", note: "Business phone for client calls" },
   { name: "Brave Search",      cost_now: "$0/mo",    paid_tier: "$3/1k q", upgrade_trigger: ">2,000 queries/mo",                 risk: "ok", note: "Monitor if /api/news is publicly promoted" },
   { name: "Coinbase Commerce", cost_now: "1%/txn",   paid_tier: "same",    upgrade_trigger: "Fee-only — no upgrade needed",      risk: "ok", note: "Account live, no transactions yet" },
   { name: "OpenAI",            cost_now: "Not set up", paid_tier: "~$10/mo", upgrade_trigger: "Do not add unless arena volume justifies it", risk: "ok", note: "No key configured — arena judge code supports it but it is disabled" },
@@ -118,11 +120,11 @@ interface Control {
 }
 
 const SPENDING_CONTROLS: Control[] = [
-  { done: false, action: "Set up Supabase keep-alive (prevents 7-day inactivity pause)",  where: "UptimeRobot (free) → add https://paiddev.com/api/health, 5-min interval",  urgency: "high" },
-  { done: false, action: "Confirm /api/tts requires JWT Authorization header",            where: "app/api/tts/route.ts — check for auth guard before promoting ElevenLabs TTS", urgency: "high" },
-  { done: true,  action: "Google AI Studio — $20/mo spend cap",                           where: "Set via Openclaw API key — already configured",                              urgency: "high" },
-  { done: false, action: "Confirm /api/news is rate-limited or not public",               where: "app/api/news/route.ts — check for auth or rate limit",                       urgency: "medium" },
-  { done: false, action: "Monitor Resend dashboard weekly for daily cap usage",           where: "resend.com → Logs",                                                          urgency: "low" },
+  { done: true,  action: "Supabase keep-alive — GitHub Actions cron pings /api/health every 4 days", where: ".github/workflows/keep-alive.yml — deployed",                              urgency: "high" },
+  { done: true,  action: "TTS auth gate — origin check limits /api/tts to paiddev.com only",         where: "app/api/tts/route.ts — origin check in place",                             urgency: "high" },
+  { done: true,  action: "Google AI Studio — $20/mo spend cap",                                      where: "Set via Openclaw API key — already configured",                            urgency: "high" },
+  { done: false, action: "Confirm /api/news is rate-limited or not public",                          where: "app/api/news/route.ts — check for auth or rate limit",                     urgency: "medium" },
+  { done: false, action: "Monitor Resend dashboard weekly for daily cap usage",                      where: "resend.com → Logs",                                                        urgency: "low" },
 ];
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -169,8 +171,8 @@ export async function GET(req: Request) {
     ...STATIC_PROVIDERS,
   ];
 
-  const monthly_floor_cents    = 3267; // Claude ~$16.67 + ElevenLabs $6 + Google $9.99 = ~$32.67/mo
-  const post_scale_floor_cents = 5767; // + Supabase Pro $25/mo if needed
+  const monthly_floor_cents    = 6667; // Claude ~$16.67 + ElevenLabs $6 + Google One $9.99 + Workspace $14 + Simple Mobile $20 = ~$66.67/mo
+  const post_scale_floor_cents = 9167; // + Supabase Pro $25/mo if needed
 
   return Response.json({
     ok:                    true,
@@ -183,6 +185,6 @@ export async function GET(req: Request) {
     spending_controls:     SPENDING_CONTROLS,
     monthly_floor_cents,
     post_scale_floor_cents,
-    break_even_note:       "Committed infra: ~$32.67/mo (Claude + ElevenLabs + Google). Break-even: 1 consulting hour covers 1 month of all committed costs.",
+    break_even_note:       "Committed expenses: ~$66.67/mo (Claude + ElevenLabs + Google One + Workspace + Simple Mobile). Break-even: 1 consulting hour covers all monthly costs.",
   });
 }
