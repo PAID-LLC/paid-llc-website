@@ -36,13 +36,15 @@ export async function POST(req: Request) {
   try { body = await req.json() as Record<string, unknown>; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400, headers: CORS_HEADERS }); }
 
-  const agentName = String(body.agent_name ?? "").trim().slice(0, 50);
+  const agentName = String(body.agent_name ?? "").trim();
   const category  = String(body.category   ?? "").trim() as Category;
-  const content   = String(body.content    ?? "").trim().slice(0, 500);
+  const content   = String(body.content    ?? "").trim();
 
   if (!agentName)                             return Response.json({ ok: false, reason: "agent_name required" }, { status: 400, headers: CORS_HEADERS });
+  if (agentName.length > 50)                  return Response.json({ ok: false, reason: "agent_name must be 50 characters or fewer" }, { status: 400, headers: CORS_HEADERS });
   if (!VALID_CATEGORIES.includes(category))   return Response.json({ ok: false, reason: "category must be: bug, suggestion, praise, or other" }, { status: 400, headers: CORS_HEADERS });
   if (content.length < 10)                    return Response.json({ ok: false, reason: "content must be at least 10 characters" }, { status: 400, headers: CORS_HEADERS });
+  if (content.length > 500)                   return Response.json({ ok: false, reason: "content must be 500 characters or fewer" }, { status: 400, headers: CORS_HEADERS });
 
   // ── Rate limit: max 3 submissions per agent per hour ─────────────────────
   const cutoff = new Date(Date.now() - 3_600_000).toISOString();

@@ -219,6 +219,22 @@ async function issuePurchaseSouvenirs(session: {
   return tokens[0]; // purchase-token token for email inclusion
 }
 
+// ── Transaction verification — flip has_transaction on first real purchase ────
+
+async function markAgentVerified(agentName: string): Promise<void> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key || !agentName) return;
+  await fetch(
+    `${url}/rest/v1/latent_registry?agent_name=eq.${encodeURIComponent(agentName)}`,
+    {
+      method:  "PATCH",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body:    JSON.stringify({ has_transaction: true }),
+    }
+  ).catch(() => { /* non-blocking */ });
+}
+
 // ── Catalog sale logging + seller credit (commission) ─────────────────────────
 
 async function recordCatalogSale(session: {
@@ -275,6 +291,24 @@ async function recordCatalogSale(session: {
       body:    JSON.stringify({ p_agent_name: cat.agent_name, p_amount: sellerEarn }),
     }).catch((err) => console.error("[webhook] credit_seller failed:", err));
   }
+
+  // Mark the buyer agent as transaction-verified (Sybil defense)
+  const buyerAgent = session.metadata?.agent_name;
+  if (buyerAgent) void markAgentVerified(buyerAgent);
+}
+
+// ── Webhook failure logging ───────────────────────────────────────────────────
+
+async function logWebhookFailure(req: NextRequest, reason: string): Promise<void> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+  const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
+  await fetch(`${url}/rest/v1/webhook_failures`, {
+    method:  "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body:    JSON.stringify({ reason, ip: ip.slice(0, 45), ua: (req.headers.get("user-agent") ?? "").slice(0, 200) }),
+  }).catch(() => { /* non-blocking — never let logging break the response path */ });
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -288,6 +322,7 @@ export async function POST(req: NextRequest) {
 
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
+    void logWebhookFailure(req, "missing_signature");
     return NextResponse.json({ error: "Missing signature." }, { status: 400 });
   }
 
@@ -295,6 +330,7 @@ export async function POST(req: NextRequest) {
 
   const valid = await verifyStripeSignature(payload, signature, secret);
   if (!valid) {
+    void logWebhookFailure(req, "invalid_signature");
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
@@ -318,6 +354,7 @@ export async function POST(req: NextRequest) {
             body:    JSON.stringify({ p_agent_name: agentName, p_amount: creditAmt }),
           }).catch((err) => console.error("[webhook] credit_seller (pack) failed:", err));
         }
+        void markAgentVerified(agentName);
       }
       return NextResponse.json({ received: true });
     }

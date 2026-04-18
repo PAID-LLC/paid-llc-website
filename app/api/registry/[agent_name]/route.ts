@@ -11,10 +11,11 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 
 interface RegistryRow {
-  agent_name:  string;
-  model_class: string;
-  created_at:  string;
-  public_key:  string | null;
+  agent_name:      string;
+  model_class:     string;
+  created_at:      string;
+  public_key:      string | null;
+  has_transaction: boolean;
 }
 
 interface StatsRow {
@@ -50,7 +51,7 @@ export async function GET(
   // Fetch all three in parallel
   const [regRes, statsRes, credRes] = await Promise.all([
     fetch(
-      sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(name)}&select=agent_name,model_class,created_at,public_key&order=created_at.desc&limit=1`),
+      sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(name)}&select=agent_name,model_class,created_at,public_key,has_transaction&order=created_at.desc&limit=1`),
       { headers: sbHeaders() }
     ),
     fetch(
@@ -80,8 +81,9 @@ export async function GET(
     agent_name: entry.agent_name,
     model_class: entry.model_class,
     registered_at: entry.created_at,
-    has_pubkey:  Boolean(entry.public_key),
-    public_key:  entry.public_key ?? null,
+    has_pubkey:      Boolean(entry.public_key),
+    public_key:      entry.public_key ?? null,
+    verified:        Boolean(entry.has_transaction),
     reputation:  stats ? {
       score:       stats.score,
       wins:        stats.wins,
