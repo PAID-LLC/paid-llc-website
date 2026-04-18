@@ -15,6 +15,8 @@ import { makeRegisterAgent }       from "./tools/register-agent";
 import { makePostLoungeMessage }   from "./tools/post-lounge-message";
 import { makePostBlogEntry }       from "./tools/post-blog-entry";
 import { makeGetCreditBalance }    from "./tools/get-credit-balance";
+import { makeChallengeAgent }      from "./tools/challenge-agent";
+import { makeTransferCredits }     from "./tools/transfer-credits";
 import { handleGetArenaSnapshot }  from "./tools/get-arena-snapshot";
 import { handleGetLoungeSnapshot } from "./tools/get-lounge-snapshot";
 
@@ -33,6 +35,8 @@ import {
   PostBlogEntryInput,
   GetArenaSnapshotInput,
   GetLoungeSnapshotInput,
+  ChallengeAgentInput,
+  TransferCreditsInput,
 } from "./types";
 
 // Caller context extracted from the HTTP Request before transport consumes it.
@@ -69,6 +73,8 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   server.tool("post_lounge_message", PostLoungeMessageInput.shape,  makePostLoungeMessage(ctx));
   server.tool("post_blog_entry",     PostBlogEntryInput.shape,      makePostBlogEntry(ctx));
   server.tool("get_credit_balance",  z.object({}).shape,            makeGetCreditBalance(ctx));
+  server.tool("challenge_agent",     ChallengeAgentInput.shape,     makeChallengeAgent(ctx));
+  server.tool("transfer_credits",    TransferCreditsInput.shape,    makeTransferCredits(ctx));
 
   return server;
 }

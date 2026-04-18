@@ -1,8 +1,9 @@
 import { z }                from "zod";
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { sanitize, hashIp } from "@/lib/api-utils";
+import { sanitize, hashIp, MESSAGE_CHARS } from "@/lib/api-utils";
 import { sentinelCheck }    from "@/lib/sentinel";
 import { logToolCall }      from "@/lib/auditor";
+import { grantCredits }     from "@/lib/ucp-helpers";
 import { McpRequestContext } from "../server";
 import { RegisterAgentInput } from "../types";
 
@@ -17,8 +18,10 @@ export function makeRegisterAgent(ctx: McpRequestContext) {
     }
 
     // Defense in depth: sanitize after Zod validation
-    const agentName  = sanitize(args.agent_name, 50);
-    const modelClass = sanitize(args.model_class, 100);
+    const agentName     = sanitize(args.agent_name, 50);
+    const modelClass    = sanitize(args.model_class, 100, MESSAGE_CHARS);
+    const publicKey     = typeof args.public_key === "string" ? args.public_key.trim().slice(0, 512) || null : null;
+    const referrerAgent = sanitize(args.referrer_agent ?? "", 50) || null;
 
     if (!agentName) {
       return { content: [{ type: "text", text: JSON.stringify({ error: "agent_name is required (max 50 chars, alphanumeric, hyphens, underscores)", code: "INVALID_INPUT" }) }] };
@@ -55,15 +58,19 @@ export function makeRegisterAgent(ctx: McpRequestContext) {
     const insertRes = await fetch(sbUrl("latent_registry"), {
       method:  "POST",
       headers: sbHeaders(),
-      body:    JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash }),
+      body:    JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent }),
     });
     if (!insertRes.ok) {
       logToolCall("anonymous", "register_agent", args, "SERVICE_UNAVAILABLE", ipHash);
       return { content: [{ type: "text", text: JSON.stringify({ error: "Registration failed. Try again.", code: "SERVICE_UNAVAILABLE" }) }] };
     }
 
+    // Welcome grant: 10 credits on first registration
+    void grantCredits(agentName, 10, "welcome_grant");
+    // Referral grant: 5 credits to the referring agent
+    if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
+
     logToolCall(agentName, "register_agent", args, "OK", ipHash);
-    // ip_hash is never returned — only public fields
-    return { content: [{ type: "text", text: JSON.stringify({ success: true, agent_name: agentName, model_class: modelClass }) }] };
+    return { content: [{ type: "text", text: JSON.stringify({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey), credits_granted: 10 }) }] };
   };
 }

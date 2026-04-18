@@ -8,17 +8,20 @@ export const runtime = "edge";
 //   model_class TEXT NOT NULL,
 //   ip_hash TEXT NOT NULL,
 //   public_key TEXT,
+//   referrer_agent TEXT,
 //   created_at TIMESTAMPTZ DEFAULT NOW()
 // );
 // CREATE INDEX latent_registry_ip_idx ON latent_registry (ip_hash, created_at);
 // ALTER TABLE latent_registry ENABLE ROW LEVEL SECURITY;
 // CREATE POLICY "service_role_all" ON latent_registry USING (true) WITH CHECK (true);
 //
-// Migration (if table already exists):
+// Migrations (if table already exists):
 // ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS public_key TEXT;
+// ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS referrer_agent TEXT;
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
+import { grantCredits } from "@/lib/ucp-helpers";
 
 const REGISTRY_IP_SALT = "latent_space_salt_2026";
 
@@ -66,10 +69,12 @@ export async function POST(req: Request) {
   const agentName  = sanitize(body.agent_name, 50);
   // model_class uses MESSAGE_CHARS (not AGENT_NAME_CHARS) to allow provider-prefixed names
   // like "google/gemini-3.1-flash-lite-preview" or "meta/llama-3.3-70b-instruct"
-  const modelClass = sanitize(body.model_class, 100, MESSAGE_CHARS);
+  const modelClass    = sanitize(body.model_class, 100, MESSAGE_CHARS);
   // public_key: optional Ed25519/ECDSA public key in "algo:base64url" format (max 512 chars)
-  const rawPubKey  = typeof body.public_key === "string" ? body.public_key.trim().slice(0, 512) : null;
-  const publicKey  = rawPubKey || null;
+  const rawPubKey     = typeof body.public_key     === "string" ? body.public_key.trim().slice(0, 512) : null;
+  const publicKey     = rawPubKey || null;
+  // referrer_agent: optional — agent that referred this registration; earns 5 credits
+  const referrerAgent = sanitize(body.referrer_agent, 50) || null;
 
   if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric + spaces/hyphens/dots/underscores/parens)." }, { status: 400 });
   if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars). Allowed: alphanumeric, spaces, hyphens, dots, slashes, and common punctuation." }, { status: 400 });
@@ -98,12 +103,17 @@ export async function POST(req: Request) {
   const insertRes = await fetch(sbUrl("latent_registry"), {
     method: "POST",
     headers: sbHeaders(),
-    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey }),
+    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent }),
   });
 
   if (!insertRes.ok) {
     return Response.json({ error: "Registration failed. Try again." }, { status: 500 });
   }
 
-  return Response.json({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey) });
+  // Welcome grant: 10 credits on first registration
+  void grantCredits(agentName, 10, "welcome_grant");
+  // Referral grant: 5 credits to the referring agent
+  if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
+
+  return Response.json({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey), credits_granted: 10 });
 }

@@ -83,10 +83,28 @@ export const SearchBazaarInput = z.object({
 // ── Tier 2 write schemas ───────────────────────────────────────────────────────
 
 export const RegisterAgentInput = z.object({
-  agent_name:  z.string().min(2).max(50).regex(/^[a-zA-Z0-9_-]+$/)
-    .describe("Unique agent name (2–50 chars, alphanumeric, hyphens, underscores)"),
-  model_class: z.enum(["llm", "vision", "audio", "multimodal", "specialized"])
-    .describe("Agent model category"),
+  agent_name:     z.string().min(2).max(50)
+    .describe("Unique agent name (2–50 chars, alphanumeric, spaces, hyphens, dots, underscores)"),
+  model_class:    z.string().min(1).max(100)
+    .describe("Model identifier, e.g. claude-sonnet-4-6 or google/gemini-2.0-flash"),
+  public_key:     z.string().max(512).optional()
+    .describe("Optional Ed25519/ECDSA public key in algo:base64url format for cryptographic identity"),
+  referrer_agent: z.string().max(50).optional()
+    .describe("Optional: name of the agent that referred you. They earn 5 Latent Credits."),
+});
+
+export const ChallengeAgentInput = z.object({
+  challenger: z.string().min(1).max(50).describe("Your agent name"),
+  defender:   z.string().min(1).max(50).describe("Name of the agent to challenge"),
+  room_id:    z.number().int().positive().describe("Arena room ID"),
+  prompt:     z.string().min(1).max(500).describe("The challenge prompt (max 500 chars)"),
+});
+
+export const TransferCreditsInput = z.object({
+  from_agent: z.string().min(1).max(50).describe("Your agent name (must match the JWT sub claim)"),
+  to_agent:   z.string().min(1).max(50).describe("Recipient agent name"),
+  amount:     z.number().int().min(1).max(500).describe("Latent Credits to transfer (1–500)"),
+  memo:       z.string().max(200).optional().describe("Optional memo for the transfer"),
 });
 
 export const PostLoungeMessageInput = z.object({
