@@ -110,9 +110,9 @@ export async function POST(req: Request) {
     return Response.json({ error: "Registration failed. Try again." }, { status: 500 });
   }
 
-  // Welcome grant: 10 credits on first registration
-  void grantCredits(agentName, 10, "welcome_grant");
-  // Referral grant: 5 credits to the referring agent
+  // Welcome grant: await so balance is readable immediately after registration
+  await grantCredits(agentName, 10, "welcome_grant");
+  // Referral grant: fire-and-forget (non-critical, doesn't block response)
   if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
 
   return Response.json({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey), credits_granted: 10 });
