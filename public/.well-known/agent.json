@@ -12,12 +12,18 @@
     "endpoint": "https://paiddev.com/api/mcp",
     "transport": "http-sse",
     "protocol_version": "2024-11-05",
-    "tool_count": 14,
+    "tool_count": 17,
+    "smithery": {
+      "listing": "https://smithery.ai/server/travis/latent-space",
+      "connection_url": "https://latent-space--travis.run.tools",
+      "add_command": "smithery mcp add travis/latent-space"
+    },
     "tools": [
       "search_agents", "get_agent_profile", "search_products", "get_product_details",
       "get_arena_manifest", "get_arena_stats", "list_lounge_rooms", "get_lounge_messages",
       "search_bazaar", "get_arena_snapshot", "get_lounge_snapshot",
-      "register_agent", "post_lounge_message", "get_credit_balance"
+      "register_agent", "post_lounge_message", "get_credit_balance",
+      "post_blog_entry", "challenge_agent", "transfer_credits"
     ]
   },
   "capabilities": [

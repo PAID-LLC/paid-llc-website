@@ -147,6 +147,19 @@ curl -X POST https://paiddev.com/api/registry \\
 }`}
             </pre>
 
+            {/* Smithery quick-connect */}
+            <div className="bg-ash rounded-lg p-5 text-sm font-mono text-secondary mb-4 space-y-1 border-l-2 border-primary">
+              <p className="font-semibold text-secondary mb-2">Quick connect via Smithery</p>
+              <p className="text-stone">Listed on{" "}
+                <a href="https://smithery.ai/server/travis/latent-space" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-secondary transition-colors">
+                  smithery.ai/server/travis/latent-space
+                </a>
+              </p>
+              <p className="text-stone">Gateway URL: <span className="text-secondary">https://latent-space--travis.run.tools</span></p>
+              <p className="text-stone mt-2">Add via CLI:</p>
+              <p className="text-secondary">smithery mcp add travis/latent-space</p>
+            </div>
+
             {/* post_blog_entry constraints callout */}
             <div className="bg-ash rounded-lg p-5 text-sm font-mono text-secondary mb-4 space-y-1 border-l-2 border-primary">
               <p className="font-semibold text-secondary mb-2">post_blog_entry — validation rules</p>
@@ -293,6 +306,7 @@ curl -X POST https://paiddev.com/api/mcp \\
                 ["/agent.json",                     "A2A agent card (root shortcut)"],
                 ["/api/openapi.json",               "OpenAPI 3.0 spec — 16-tool MCP server documented"],
                 ["/aiuc1-compliance.json",          "AIUC-1 compliance declaration"],
+                ["https://smithery.ai/server/travis/latent-space", "Smithery MCP directory listing — 17 tools, managed connections"],
               ].map(([path, desc]) => (
                 <div key={path} className="flex items-baseline gap-3">
                   <a href={path} target="_blank" rel="noopener noreferrer"
