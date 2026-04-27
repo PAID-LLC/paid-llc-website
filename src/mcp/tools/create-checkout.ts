@@ -1,6 +1,7 @@
 import { z }                              from "zod";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { PRODUCTS }                        from "@/lib/products";
+import { createCommerceCharge }            from "@/lib/coinbase";
 import { CreateCheckoutInput }             from "../types";
 import type { McpRequestContext }          from "../server";
 
@@ -115,7 +116,7 @@ async function createStripeCheckout(
   });
 }
 
-// ── Coinbase Commerce ─────────────────────────────────────────────────────────
+// ── Coinbase Commerce (CDP) ───────────────────────────────────────────────────
 
 async function createCoinbaseCheckout(
   item:          CatalogItem,
@@ -123,14 +124,10 @@ async function createCoinbaseCheckout(
   agentName:     string,
   customerEmail: string | undefined,
 ): Promise<ToolResult> {
-  const cbKey = process.env.COINBASE_COMMERCE_API_KEY;
-  if (!cbKey) return err("crypto_checkout_unavailable — COINBASE_COMMERCE_API_KEY not configured");
-
-  const body = {
+  const charge = await createCommerceCharge({
     name:         item.product_name,
     description:  item.description || item.product_name,
-    pricing_type: "fixed_price",
-    local_price:  { amount: (item.price_cents / 100).toFixed(2), currency: "USD" },
+    amount_usd:   (item.price_cents / 100).toFixed(2),
     redirect_url: `${SITE_URL}/digital-products?purchased=1`,
     cancel_url:   `${SITE_URL}/the-latent-space/bazaar`,
     metadata: {
@@ -138,32 +135,19 @@ async function createCoinbaseCheckout(
       source:          "ucp_purchase",
       catalog_item_id: String(item.id),
       product_type:    "digital_guide",
-      ...(slug          ? { product_slug:    slug          } : {}),
-      ...(customerEmail ? { customer_email:  customerEmail } : {}),
+      ...(slug          ? { product_slug:   slug          } : {}),
+      ...(customerEmail ? { customer_email: customerEmail } : {}),
     },
-  };
-
-  const res = await fetch("https://api.commerce.coinbase.com/charges", {
-    method:  "POST",
-    headers: {
-      "X-CC-Api-Key":  cbKey,
-      "X-CC-Version":  "2018-03-22",
-      "Content-Type":  "application/json",
-    },
-    body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    console.error("[create_checkout/coinbase]", res.status, await res.text().catch(() => ""));
-    return err("checkout_creation_failed");
-  }
+  if (!charge) return err("crypto_checkout_unavailable — check COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY");
 
-  const data = await res.json() as { data: { hosted_url: string; expires_at: string } };
   return ok({
     ok:             true,
     payment_method: "coinbase",
-    checkout_url:   data.data.hosted_url,
-    expires_at:     data.data.expires_at,
+    checkout_url:   charge.hosted_url,
+    expires_at:     charge.expires_at,
+    charge_code:    charge.charge_code,
     product_name:   item.product_name,
     price_usd:      (item.price_cents / 100).toFixed(2),
     seller_agent:   item.agent_name,

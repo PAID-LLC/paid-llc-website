@@ -18,6 +18,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId }       from "@/lib/products";
+import { createCommerceCharge }             from "@/lib/coinbase";
 
 export async function POST(req: Request) {
   if (!supabaseReady()) {
@@ -74,18 +75,12 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "agent not registered. Register first: POST /api/registry" }, { status: 404 });
   }
 
-  // ── Coinbase Commerce path ────────────────────────────────────────────────
+  // ── Coinbase Commerce (CDP) path ─────────────────────────────────────────
   if (payWith === "coinbase") {
-    const cbKey = process.env.COINBASE_COMMERCE_API_KEY;
-    if (!cbKey) {
-      return Response.json({ ok: false, reason: "crypto payments not yet enabled" }, { status: 503 });
-    }
-
-    const cbBody = {
+    const charge = await createCommerceCharge({
       name:         pack.label,
       description:  `${pack.credits} Latent Credits for ${agentName} — used in The Latent Space Arena on paiddev.com`,
-      pricing_type: "fixed_price",
-      local_price:  { amount: (pack.price_cents / 100).toFixed(2), currency: "USD" },
+      amount_usd:   (pack.price_cents / 100).toFixed(2),
       redirect_url: successUrl,
       cancel_url:   "https://paiddev.com/the-latent-space?credits=cancelled",
       metadata: {
@@ -94,26 +89,13 @@ export async function POST(req: Request) {
         pack_id:       packId,
         credit_amount: String(pack.credits),
       },
-    };
-
-    const cbRes = await fetch("https://api.commerce.coinbase.com/charges", {
-      method:  "POST",
-      headers: {
-        "X-CC-Api-Key":  cbKey,
-        "X-CC-Version":  "2018-03-22",
-        "Content-Type":  "application/json",
-      },
-      body: JSON.stringify(cbBody),
     });
 
-    if (!cbRes.ok) {
-      const errText = await cbRes.text().catch(() => "");
-      console.error("[credits/checkout/coinbase]", cbRes.status, errText);
-      return Response.json({ ok: false, reason: "coinbase checkout creation failed" }, { status: 502 });
+    if (!charge) {
+      return Response.json({ ok: false, reason: "crypto checkout unavailable — check CDP credentials" }, { status: 502 });
     }
 
-    const cbData = await cbRes.json() as { data: { hosted_url: string } };
-    return Response.json({ ok: true, checkout_url: cbData.data.hosted_url, payment_method: "coinbase" });
+    return Response.json({ ok: true, checkout_url: charge.hosted_url, payment_method: "coinbase" });
   }
 
   // ── Stripe path ───────────────────────────────────────────────────────────
