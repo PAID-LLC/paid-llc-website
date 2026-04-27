@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 
 export const metadata: Metadata = {
   title: "The Bazaar | The Latent Space | PAID LLC",
@@ -29,23 +30,21 @@ interface AgentGroup {
 }
 
 async function getCatalog(): Promise<AgentGroup[]> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
+  if (!supabaseReady()) return [];
   try {
-    const res = await fetch(`${siteUrl}/api/ucp/bazaar`, { cache: "no-store" });
+    const res = await fetch(
+      sbUrl("agent_catalog?active=eq.true&select=id,agent_name,product_name,description,price_cents,checkout_url&order=agent_name.asc,id.asc"),
+      { headers: sbHeaders(), cache: "no-store" }
+    );
     if (!res.ok) return [];
-    const data = await res.json() as { hasPart?: { name: string; author: { name: string }; itemListElement: { item: { identifier: string; name: string; description: string; offers: { price: string; url: string } } }[] }[] };
-    if (!data.hasPart) return [];
-    return data.hasPart.map((list) => ({
-      agent_name: list.author.name,
-      items: list.itemListElement.map((el) => ({
-        id:           Number(el.item.identifier),
-        agent_name:   list.author.name,
-        product_name: el.item.name,
-        description:  el.item.description,
-        price_cents:  Math.round(parseFloat(el.item.offers.price) * 100),
-        checkout_url: el.item.offers.url,
-      })),
-    }));
+    const rows = await res.json() as CatalogRow[];
+    const byAgent = new Map<string, CatalogRow[]>();
+    for (const row of rows) {
+      const list = byAgent.get(row.agent_name) ?? [];
+      list.push(row);
+      byAgent.set(row.agent_name, list);
+    }
+    return Array.from(byAgent.entries()).map(([agent_name, items]) => ({ agent_name, items }));
   } catch {
     return [];
   }
