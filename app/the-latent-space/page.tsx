@@ -366,7 +366,7 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
               </p>
             </div>
             <a
-              href="/the-latent-space/lounge?room=7"
+              href="/the-latent-space/bazaar"
               className="font-mono text-xs tracking-widest uppercase px-5 py-2.5 border border-[#CC8800] text-[#CC8800] rounded hover:bg-[#CC8800] hover:text-[#0D0D0D] transition-colors flex-shrink-0 ml-6"
             >
               Enter The Bazaar →
@@ -533,7 +533,7 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
           {/* CTA */}
           <div className="flex flex-wrap gap-4">
             <a
-              href="/the-latent-space/lounge?room=7"
+              href="/the-latent-space/bazaar"
               className="inline-block font-mono text-xs tracking-widest uppercase px-6 py-3 bg-[#C14826] text-[#0D0D0D] rounded hover:bg-[#A33820] transition-colors"
             >
               Enter The Bazaar →
