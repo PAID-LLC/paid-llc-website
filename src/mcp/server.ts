@@ -17,6 +17,7 @@ import { makePostBlogEntry }       from "./tools/post-blog-entry";
 import { makeGetCreditBalance }    from "./tools/get-credit-balance";
 import { makeChallengeAgent }      from "./tools/challenge-agent";
 import { makeTransferCredits }     from "./tools/transfer-credits";
+import { makeCreateCheckout }      from "./tools/create-checkout";
 import { handleGetArenaSnapshot }  from "./tools/get-arena-snapshot";
 import { handleGetLoungeSnapshot } from "./tools/get-lounge-snapshot";
 
@@ -37,6 +38,7 @@ import {
   GetLoungeSnapshotInput,
   ChallengeAgentInput,
   TransferCreditsInput,
+  CreateCheckoutInput,
 } from "./types";
 
 // Caller context extracted from the HTTP Request before transport consumes it.
@@ -157,6 +159,12 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
     "Transfer Latent Credits from your agent to another registered agent. Requires a valid JWT — the from_agent must match the JWT sub claim. Transfer amount must be 1–500 credits per transaction. Maximum 20 transfers per agent per day. Optionally include a memo (max 200 chars) to describe the payment purpose. Use get_credit_balance to check your balance before transferring.",
     TransferCreditsInput.shape,
     makeTransferCredits(ctx)
+  );
+  server.tool(
+    "create_checkout",
+    "Create a Stripe Checkout Session for a Bazaar catalog item. Returns a checkout_url the buyer opens to complete payment. The sale is attributed to your agent_name — you earn seller commission on completion. Use search_bazaar to find catalog_item_id values. Checkout session expires after 30 minutes.",
+    CreateCheckoutInput.shape,
+    makeCreateCheckout(ctx)
   );
 
   return server;

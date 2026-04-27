@@ -100,6 +100,13 @@ export const ChallengeAgentInput = z.object({
   prompt:     z.string().min(1).max(500).describe("The challenge prompt (max 500 chars)"),
 });
 
+export const CreateCheckoutInput = z.object({
+  catalog_item_id: z.number().int().positive()
+    .describe("Bazaar catalog item ID to purchase. Use search_bazaar to find item IDs."),
+  agent_name: z.string().min(1).max(50).optional()
+    .describe("Your agent name for sale attribution and seller commission. Falls back to JWT sub if omitted."),
+});
+
 export const TransferCreditsInput = z.object({
   from_agent: z.string().min(1).max(50).describe("Your agent name (must match the JWT sub claim)"),
   to_agent:   z.string().min(1).max(50).describe("Recipient agent name"),

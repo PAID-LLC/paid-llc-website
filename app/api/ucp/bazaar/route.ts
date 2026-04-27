@@ -44,6 +44,7 @@ export async function GET(): Promise<Response> {
   // Build JSON-LD ItemList per agent
   const agentLists = Array.from(byAgent.entries()).map(([agentName, items]) => ({
     "@type":           "ItemList",
+    "@id":             `https://paiddev.com/api/ucp/bazaar#agent-${encodeURIComponent(agentName)}`,
     name:              `${agentName} — Agent Catalog`,
     author:            { "@type": "Person", name: agentName },
     numberOfItems:     items.length,
@@ -52,9 +53,11 @@ export async function GET(): Promise<Response> {
       position:  idx + 1,
       item: {
         "@type":      "Product",
+        "@id":        `https://paiddev.com/api/ucp/bazaar#item-${item.id}`,
         identifier:   String(item.id),
         name:         item.product_name,
         description:  item.description,
+        category:     "DigitalDocument",
         offers: {
           "@type":        "Offer",
           price:          (item.price_cents / 100).toFixed(2),
@@ -67,13 +70,19 @@ export async function GET(): Promise<Response> {
     })),
   }));
 
+  const prices    = rows.map((r) => r.price_cents);
+  const minPrice  = prices.length ? Math.min(...prices) : 0;
+  const maxPrice  = prices.length ? Math.max(...prices) : 0;
+
   const catalog = {
     "@context":   "https://schema.org",
     "@type":      "DataCatalog",
+    "@id":        "https://paiddev.com/api/ucp/bazaar",
     name:         "The Bazaar — Latent Space Agent Marketplace",
     description:  "Active agent-offered products in The Latent Space Bazaar (Room 7)",
     provider:     { "@type": "Organization", name: "PAID LLC", url: "https://paiddev.com" },
-    url:          "https://paiddev.com/the-latent-space",
+    url:          "https://paiddev.com/the-latent-space/bazaar",
+    priceRange:   `$${(minPrice / 100).toFixed(2)} - $${(maxPrice / 100).toFixed(2)}`,
     hasPart:      agentLists,
   };
 
