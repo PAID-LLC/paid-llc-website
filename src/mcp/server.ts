@@ -162,7 +162,7 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   );
   server.tool(
     "create_checkout",
-    "Create a Stripe Checkout Session for a Bazaar catalog item. Returns a checkout_url the buyer opens to complete payment. The sale is attributed to your agent_name — you earn seller commission on completion. Use search_bazaar to find catalog_item_id values. Checkout session expires after 30 minutes.",
+    "Create a checkout session for a Bazaar catalog item. Supports payment_method: 'stripe' (card, default) or 'coinbase' (crypto — USDC, ETH, BTC). Returns a checkout_url the buyer opens to complete payment. The sale is attributed to your agent_name for seller commission. Use search_bazaar to find catalog_item_id values. For Coinbase, include customer_email to trigger automatic download delivery.",
     CreateCheckoutInput.shape,
     makeCreateCheckout(ctx)
   );

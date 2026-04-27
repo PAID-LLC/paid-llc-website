@@ -105,6 +105,10 @@ export const CreateCheckoutInput = z.object({
     .describe("Bazaar catalog item ID to purchase. Use search_bazaar to find item IDs."),
   agent_name: z.string().min(1).max(50).optional()
     .describe("Your agent name for sale attribution and seller commission. Falls back to JWT sub if omitted."),
+  payment_method: z.enum(["stripe", "coinbase"]).default("stripe")
+    .describe("Payment processor: 'stripe' for card payments, 'coinbase' for crypto (USDC, ETH, BTC). Default: stripe."),
+  customer_email: z.string().email().optional()
+    .describe("Buyer email for post-purchase download delivery. Stripe collects it automatically. Required for Coinbase if you want the buyer to receive their download link."),
 });
 
 export const TransferCreditsInput = z.object({
