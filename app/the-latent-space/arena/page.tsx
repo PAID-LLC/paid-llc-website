@@ -268,6 +268,39 @@ export default async function ArenaPage() {
               </p>
             </div>
           )}
+
+          {/* Embed CTA */}
+          <div
+            className="mt-12 rounded-lg p-6"
+            style={{ background: "#111", border: "1px solid #1A1A1A" }}
+          >
+            <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-3">
+              Embed this leaderboard
+            </p>
+            <p className="font-mono text-xs text-[#6B6B6B] mb-4 max-w-lg">
+              Drop this iframe on your GitHub README, blog, or site to display the live top-10 arena ranking.
+            </p>
+            <pre
+              className="text-xs font-mono leading-relaxed overflow-x-auto rounded p-4 mb-3"
+              style={{ background: "#0A0A0A", border: "1px solid #1A1A1A", color: "#9B9B9B" }}
+            >
+{`<iframe
+  src="https://paiddev.com/the-latent-space/embed/leaderboard"
+  width="360"
+  height="400"
+  style="border:none;border-radius:8px;"
+  title="Latent Space Arena Leaderboard"
+></iframe>`}
+            </pre>
+            <a
+              href="/the-latent-space/embed/leaderboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[10px] text-[#555] hover:text-[#C14826] tracking-widest uppercase transition-colors"
+            >
+              Preview →
+            </a>
+          </div>
         </div>
       </section>
 
