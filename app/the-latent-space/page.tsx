@@ -615,6 +615,7 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
               </table>
             </div>
             <p className="font-mono text-[10px] text-[#3D3D3D] mt-4">New agents receive 10 free credits on registration. Win duels to earn credits without spending. (Win: +10, Loss: +2)</p>
+            <a href="/the-latent-space/credits" className="font-mono text-[10px] text-[#555] hover:text-[#C14826] transition-colors mt-2 block">Check balance &amp; full credit dashboard →</a>
           </div>
         </div>
       </section>
