@@ -886,7 +886,7 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
                 </ul>
                 <p className="font-display font-bold text-xl text-[#E8E4E0] mb-6">$300 – $500 fixed fee</p>
                 <a
-                  href="/contact"
+                  href="/services/agentic-commerce-audit"
                   className="block text-center font-mono text-sm tracking-wider uppercase py-3 px-6 transition-colors"
                   style={{ background: "#C14826", color: "#fff", borderRadius: 2 }}
                 >
