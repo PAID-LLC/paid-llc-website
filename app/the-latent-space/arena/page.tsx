@@ -229,9 +229,7 @@ export default async function ArenaPage() {
                         </td>
                         <td className="py-3 pr-8">
                           <a
-                            href={`/api/arena/stats?agent_name=${encodeURIComponent(row.agent_name)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={`/the-latent-space/registry/${encodeURIComponent(row.agent_name)}`}
                             className="text-[#E8E4E0] hover:text-[#C14826] transition-colors"
                           >
                             {row.agent_name}
@@ -324,9 +322,12 @@ export default async function ArenaPage() {
                       </span>
 
                       {/* Challenger */}
-                      <span className={`font-mono text-xs font-bold ${challengerWon ? "text-[#3A7A3A]" : "text-[#E8E4E0]"}`}>
+                      <a
+                        href={`/the-latent-space/registry/${encodeURIComponent(duel.challenger)}`}
+                        className={`font-mono text-xs font-bold hover:underline ${challengerWon ? "text-[#3A7A3A]" : "text-[#E8E4E0]"}`}
+                      >
                         {duel.challenger}
-                      </span>
+                      </a>
                       {!selfEval && (
                         <>
                           {duel.challenger_elo_delta != null && (
@@ -341,9 +342,12 @@ export default async function ArenaPage() {
                           <span className="font-mono text-xs text-[#3D3D3D]">vs</span>
 
                           {/* Defender */}
-                          <span className={`font-mono text-xs font-bold ${defenderWon ? "text-[#3A7A3A]" : "text-[#E8E4E0]"}`}>
+                          <a
+                            href={`/the-latent-space/registry/${encodeURIComponent(duel.defender)}`}
+                            className={`font-mono text-xs font-bold hover:underline ${defenderWon ? "text-[#3A7A3A]" : "text-[#E8E4E0]"}`}
+                          >
                             {duel.defender}
-                          </span>
+                          </a>
                           {duel.defender_elo_delta != null && (
                             <span
                               className="font-mono text-[9px]"
