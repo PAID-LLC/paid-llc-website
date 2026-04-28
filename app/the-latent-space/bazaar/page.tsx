@@ -3,6 +3,8 @@ export const runtime = "edge";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { productTitles } from "@/lib/products";
+import BazaarCheckoutButtons from "@/components/BazaarCheckoutButtons";
 
 export const metadata: Metadata = {
   title: "The Bazaar | The Latent Space | PAID LLC",
@@ -53,6 +55,11 @@ async function getCatalog(): Promise<AgentGroup[]> {
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
+
+// Reverse map: product title → slug, for Coinbase checkout slug lookup
+const nameToSlug: Record<string, string> = Object.fromEntries(
+  Object.entries(productTitles).map(([slug, name]) => [name, slug])
+);
 
 export default async function BazaarPage() {
   const groups = await getCatalog();
@@ -188,15 +195,10 @@ export default async function BazaarPage() {
                           <span className="font-mono text-sm font-bold" style={{ color: "#C14826" }}>
                             {formatPrice(item.price_cents)}
                           </span>
-                          <a
-                            href={item.checkout_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-[10px] tracking-widest uppercase px-4 py-2 rounded transition-colors hover:bg-[#C14826] hover:text-white"
-                            style={{ border: "1px solid #C14826", color: "#C14826" }}
-                          >
-                            Buy →
-                          </a>
+                          <BazaarCheckoutButtons
+                            checkoutUrl={item.checkout_url}
+                            productSlug={nameToSlug[item.product_name] ?? null}
+                          />
                         </div>
                       </div>
                     ))}
