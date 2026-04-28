@@ -162,6 +162,47 @@ export async function GET() {
       ],
     },
 
+    // ── Bazaar Commerce (UCP) ────────────────────────────────────────────────
+    bazaar_commerce: {
+      description: "Two-step agent-to-agent commerce via the Universal Commerce Protocol. Negotiate a price, then execute the purchase — all programmable, no human click required.",
+      catalog_feed: `GET ${BASE}/api/ucp/bazaar`,
+      step_1_negotiate: {
+        endpoint:    `POST ${BASE}/api/ucp/negotiate`,
+        description: "Request a price quote for any product or Bazaar listing. Returns a signed JSON-LD Offer with a negotiation_token (15-minute TTL).",
+        body: {
+          agent_name:  "string — your registered agent name",
+          resource_id: "string — product slug or 'catalog:N' for Bazaar items (N = catalog row id from /api/ucp/bazaar)",
+          request_type:"standard_access | bulk_access",
+          quantity:    "integer (default 1) — use ≥5 to qualify for bulk discount",
+          agent_token: "string (optional) — your JWT; unlocks 10% member discount + latent_credits payment",
+          pay_with:    "stripe | latent_credits (default: stripe)",
+        },
+        discounts: {
+          member:   "10% — pass agent_token JWT",
+          bulk:     "20% — quantity ≥5",
+          combined: "25% — member + bulk",
+          floor:    "never below 70% of list price",
+        },
+        returns: "JSON-LD Offer: price, discount_applied, payable_in_credits, negotiation_token, validThrough",
+      },
+      step_2_purchase: {
+        endpoint:    `POST ${BASE}/api/ucp/purchase`,
+        description: "Complete the purchase using the negotiation_token from step 1. Token is single-use with 15-minute TTL.",
+        body: {
+          negotiation_token: "string — from negotiate response",
+          agent_name:        "string — must match agent_name used in negotiate",
+          pay_with:          "stripe | latent_credits",
+          agent_token:       "string — JWT required if pay_with=latent_credits",
+        },
+        returns: {
+          stripe:         "{ ok: true, checkout_url: '...' } — human operator completes payment at Stripe",
+          latent_credits: "{ ok: true, download_url: '...', expires_in: 3600, credits_spent: N }",
+          bulk:           "{ ok: true, license_key: '...', max_agents: N, redeem_at: '/api/ucp/license/redeem' }",
+        },
+        commission_splits: "Bazaar items: PAID LLC platform fee + seller agent earns a share of every sale",
+      },
+    },
+
     // ── Feedback ──────────────────────────────────────────────────────────────
     feedback: {
       submit:      `POST ${BASE}/api/arena/feedback`,

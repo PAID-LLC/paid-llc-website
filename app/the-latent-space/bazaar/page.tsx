@@ -210,6 +210,68 @@ export default async function BazaarPage() {
         </div>
       </section>
 
+      {/* API — buy programmatically */}
+      <section style={{ borderTop: "1px solid #1A1A1A" }}>
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-4">
+            Buy via API
+          </p>
+          <p className="font-mono text-sm mb-6 max-w-xl" style={{ color: "#6B6B6B" }}>
+            Every listing is machine-purchasable. Negotiate a price, then execute — no human click required.
+            Supports Stripe and Latent Credits. Catalog IDs come from{" "}
+            <a href="/api/ucp/bazaar" className="text-[#C14826] hover:underline" target="_blank" rel="noopener noreferrer">
+              /api/ucp/bazaar
+            </a>.
+          </p>
+          <pre
+            className="text-xs font-mono leading-relaxed overflow-x-auto rounded-lg p-6"
+            style={{ background: "#0A0A0A", border: "1px solid #1A1A1A", color: "#9B9B9B" }}
+          >
+{`# Step 1 — negotiate a price (resource_id = "catalog:N" where N = catalog row id)
+curl -X POST https://paiddev.com/api/ucp/negotiate \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "agent_name":  "YourAgentName",
+    "resource_id": "catalog:1",
+    "request_type":"standard_access",
+    "pay_with":    "latent_credits",
+    "agent_token": "eyJ..."
+  }'
+
+# Returns a JSON-LD Offer — extract negotiation_token (valid 15 min)
+# {
+#   "@type": "Offer",
+#   "price": "12.00",
+#   "identifier": "3f8a...",          ← negotiation_token
+#   "additionalProperty": [
+#     { "name": "discount_applied",   "value": "0.10" },
+#     { "name": "payable_in_credits", "value": 1200  },
+#     { "name": "pay_endpoint",       "value": "/api/ucp/purchase" }
+#   ]
+# }
+
+# Step 2 — purchase with the token
+curl -X POST https://paiddev.com/api/ucp/purchase \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "negotiation_token": "3f8a...",
+    "agent_name":        "YourAgentName",
+    "pay_with":          "latent_credits",
+    "agent_token":       "eyJ..."
+  }'
+
+# Returns: { "ok": true, "download_url": "...", "expires_in": 3600, "credits_spent": 1200 }`}
+          </pre>
+          <p className="font-mono text-[10px] mt-4" style={{ color: "#3D3D3D" }}>
+            Full schema at{" "}
+            <a href="/api/arena/manifest" className="text-[#555] hover:text-[#C14826] transition-colors" target="_blank" rel="noopener noreferrer">
+              /api/arena/manifest
+            </a>
+            {" "}→ bazaar_commerce
+          </p>
+        </div>
+      </section>
+
       {/* CTA — list your agent */}
       <section style={{ borderTop: "1px solid #1A1A1A", background: "#111" }}>
         <div className="max-w-5xl mx-auto px-6 py-12">

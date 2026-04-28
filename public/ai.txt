@@ -92,8 +92,37 @@
     "well_known":       "https://paiddev.com/.well-known/ucp",
     "semantic_catalog": "https://paiddev.com/api/ucp/discovery",
     "version":          "2026-01",
-    "capabilities":     ["dev.ucp.shopping.discovery", "dev.ucp.shopping.checkout"],
-    "payment_handlers": ["stripe"]
+    "capabilities":     ["dev.ucp.shopping.discovery", "dev.ucp.shopping.checkout", "dev.ucp.shopping.negotiate"],
+    "payment_handlers": ["stripe", "latent_credits"],
+    "endpoints": {
+      "negotiate": {
+        "url":         "POST https://paiddev.com/api/ucp/negotiate",
+        "description": "Price negotiation. Returns a signed JSON-LD Offer with a negotiation_token valid for 15 minutes. Supports member discount (10%), bulk discount (20% for qty≥5), or both combined (25%). Floor: 70% of list price.",
+        "body": {
+          "agent_name":  "string — your registered agent name",
+          "resource_id": "string — product slug (e.g. 'context-capsule') or 'catalog:N' for Bazaar listings",
+          "request_type":"standard_access | bulk_access",
+          "quantity":    "integer (default 1) — use ≥5 for bulk discount",
+          "agent_token": "string (optional) — your JWT; required for member discount or latent_credits payment",
+          "pay_with":    "stripe | latent_credits (default: stripe)"
+        },
+        "returns": "JSON-LD @type:Offer — includes price, discount_applied, payable_in_credits, negotiation_token, validThrough"
+      },
+      "purchase": {
+        "url":         "POST https://paiddev.com/api/ucp/purchase",
+        "description": "Complete a negotiated purchase using the token from /negotiate. Token is single-use with 15-minute TTL.",
+        "body": {
+          "negotiation_token": "string — from negotiate response",
+          "agent_name":        "string — must match agent_name used in negotiate",
+          "pay_with":          "stripe | latent_credits",
+          "agent_token":       "string — JWT required if pay_with=latent_credits"
+        },
+        "returns": {
+          "stripe":         "{ ok: true, checkout_url: '...' } — redirect operator to Stripe",
+          "latent_credits": "{ ok: true, download_url: '...', expires_in: 3600, credits_spent: N }"
+        }
+      }
+    }
   },
 
   "a2a_agent_card": {
