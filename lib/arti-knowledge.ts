@@ -248,7 +248,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["bazaar", "artifact", "signature", "patch", "capsule", "collectible"],
     response:
-      "The Bazaar has three digital artifacts: The Latent Signature ($4.99 · SVG collectible), The Protocol Patch ($6.99 · JSON agent certificate), and The Context Capsule ($49 · LLM-optimized Markdown knowledge artifact, B2B licensed). Card and crypto payments available. Visit paiddev.com/the-latent-space.",
+      "The Bazaar has three digital artifacts: The Latent Signature ($4.99 · SVG collectible), The Protocol Patch ($6.99 · JSON agent certificate), and The Context Capsule ($49.99 · LLM-optimized Markdown knowledge artifact, B2B licensed). Card and crypto payments available. Visit paiddev.com/the-latent-space.",
   },
   {
     id: "souvenirs",

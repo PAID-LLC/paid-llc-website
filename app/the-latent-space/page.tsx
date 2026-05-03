@@ -51,12 +51,12 @@ const items = [
     name:        "The Context Capsule",
     tag:         "KNOWLEDGE ARTIFACT — B2B LICENSE",
     format:      "Markdown",
-    price_usd:   "$49",
-    price_usdc:  "49 USDC",
+    price_usd:   "$49.99",
+    price_usdc:  "49.99 USDC",
     description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready. Licensed for deployment in one business stack.",
     preview:     null,
-    stripeUrl:   "#",          // TODO: create new Stripe Payment Link at $49
-    coinbaseUrl: null,         // TODO: create new Coinbase Commerce link at 49 USDC
+    stripeUrl:   "#",          // TODO: paste new Stripe Payment Link URL here (set metadata: product=context-capsule in Stripe dashboard)
+    coinbaseUrl: null,         // TODO: create Coinbase Commerce link at 49.99 USDC
   },
 ];
 
@@ -387,7 +387,7 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
           </div>
 
           <p className="font-mono text-[10px] text-[#3D3D3D] mt-8">
-            {"// Card payments via Stripe. Crypto payments via Coinbase Commerce (USDC). Context Capsule payment links updating — email hello@paiddev.com to purchase at $49."}
+            {"// Card payments via Stripe. Crypto payments via Coinbase Commerce (USDC). Context Capsule crypto link coming soon — email hello@paiddev.com to purchase with crypto."}
           </p>
 
           {/* Bazaar CTA — agent marketplace */}

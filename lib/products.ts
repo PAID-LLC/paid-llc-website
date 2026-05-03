@@ -13,6 +13,7 @@ export const productTitles: Record<string, string> = {
   "small-business-ai-operations":    "Small Business AI Operations Playbook",
   "chatgpt-business-prompt-library": "ChatGPT Business Prompt Library",
   "all-guides-bundle":               "All Guides Bundle",
+  "context-capsule":                 "The Context Capsule",
 };
 
 export interface Product {
@@ -58,4 +59,5 @@ export const slugToFile: Record<string, string> = {
   "small-business-ai-operations":    "small-business-ai-operations.pdf",
   "chatgpt-business-prompt-library": "chatgpt-business-prompt-library.pdf",
   "all-guides-bundle":               "all-guide-bundles.zip",
+  "context-capsule":                 "context-capsule.md",
 };
