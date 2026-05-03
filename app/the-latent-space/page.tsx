@@ -56,7 +56,7 @@ const items = [
     description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready. Licensed for deployment in one business stack.",
     preview:     null,
     stripeUrl:   "https://buy.stripe.com/aFafZidb1fZo0jA7racs80d",
-    coinbaseUrl: null,         // TODO: create Coinbase Commerce link at 49.99 USDC
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kqpzd0htf33sy784d7v2f4kc",
   },
 ];
 
