@@ -112,18 +112,18 @@ export async function POST(req: Request) {
   if (geminiKey) {
     const safeAgent = sanitizeForPrompt(agentName);
     const judgePrompt =
-      `You are an AI quality evaluator. Score the following response on 5 dimensions using a 0–10 integer scale.\n` +
-      `Return ONLY valid JSON — no commentary, no markdown, no explanation outside the JSON object.\n\n` +
-      `{"reasoning":{"score":0},"accuracy":{"score":0},"depth":{"score":0},"creativity":{"score":0},"coherence":{"score":0}}\n\n` +
-      `PROMPT:\n${sanitizeForPrompt(prompt)}\n\n` +
-      `RESPONSE — ${safeAgent}:\n${response}\n\n` +
-      `Scoring guide:\n` +
-      `- reasoning: Is the logic sound? Conclusions supported by premises? Clear reasoning steps?\n` +
-      `- accuracy: Are all factual claims correct? Any hallucinations or unsupported assertions?\n` +
+      `You are a strict AI quality evaluator. Score the response below on exactly 5 dimensions using integers from 0 to 10.\n\n` +
+      `PROMPT GIVEN TO THE AGENT:\n${sanitizeForPrompt(prompt)}\n\n` +
+      `AGENT RESPONSE (${safeAgent}):\n${response}\n\n` +
+      `Scoring dimensions (score each 0–10 independently):\n` +
+      `- reasoning: Is the logic sound? Are conclusions supported by premises? Clear reasoning steps?\n` +
+      `- accuracy: Are all factual claims correct? Penalize hallucinations or unsupported assertions.\n` +
       `- depth: How comprehensively does it cover the topic, nuance, edge cases, sub-topics?\n` +
-      `- creativity: Unique framing or non-obvious insight? Or standard rote answer?\n` +
-      `- coherence: Fluent, well-organized, grammatically clean, easy to follow?\n\n` +
-      `Rules: Score absolute quality, not relative to any other response.`;
+      `- creativity: Does it offer unique framing or non-obvious insight, or is it a standard rote answer?\n` +
+      `- coherence: Is it fluent, well-organized, grammatically clean, and easy to follow?\n\n` +
+      `IMPORTANT: Return ONLY the JSON object below — no markdown, no explanation, no extra text.\n` +
+      `Replace each 0 with the actual integer score you assign (0–10):\n` +
+      `{"reasoning":{"score":SCORE},"accuracy":{"score":SCORE},"depth":{"score":SCORE},"creativity":{"score":SCORE},"coherence":{"score":SCORE}}`;
 
     const rubric = await callGeminiSelfEval(judgePrompt, geminiKey);
     if (rubric) {
@@ -179,7 +179,7 @@ async function callGeminiSelfEval(prompt: string, apiKey: string): Promise<DuelR
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents:         [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 200, temperature: 0.1 },
+        generationConfig: { maxOutputTokens: 400, temperature: 0.1 },
       }),
     });
     if (!res.ok) return null;
@@ -193,13 +193,17 @@ async function callGeminiSelfEval(prompt: string, apiKey: string): Promise<DuelR
 
 function parseSelfEvalRubric(text: string): DuelRubric | null {
   try {
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const raw = JSON.parse(cleaned) as Record<string, Record<string, unknown>>;
+    // Strip markdown fences, then extract the first {...} JSON block found anywhere in the text.
+    const stripped = text.replace(/```json|```/g, "").trim();
+    const match    = stripped.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const raw = JSON.parse(match[0]) as Record<string, Record<string, unknown>>;
     const rubric = {} as DuelRubric;
     for (const dim of RUBRIC_DIMS) {
       const d = raw[dim];
       if (!d) return null;
       const score = Math.min(10, Math.max(0, Number(d.score)));
+      if (isNaN(score)) return null;
       rubric[dim] = {
         challenger_score: score,
         defender_score:   0,
