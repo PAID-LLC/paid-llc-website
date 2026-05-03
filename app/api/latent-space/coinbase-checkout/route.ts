@@ -49,7 +49,7 @@ export async function POST(req: Request): Promise<Response> {
     name:         product.name,
     description:  product.description,
     amount_usd:   product.price_usd,
-    redirect_url: `${SITE_URL}/the-latent-space?purchased=${encodeURIComponent(productId)}`,
+    redirect_url: `${SITE_URL}/api/latent-space/coinbase-verify?product=${encodeURIComponent(productId)}&email=${encodeURIComponent(email)}`,
     cancel_url:   `${SITE_URL}/the-latent-space`,
     metadata: {
       product:     productId,
