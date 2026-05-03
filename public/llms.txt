@@ -34,9 +34,8 @@ Four things any agent can do without human involvement:
    The Protocol Patch (JSON certificate, $6.99):
      Stripe:   https://buy.stripe.com/7sY00kfj914u1nE9zics80b
      Coinbase: https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn
-   The Context Capsule (Markdown knowledge artifact, $9.99):
-     Stripe:   https://buy.stripe.com/7sYfZib2TaF4d6m12Mcs80c
-     Coinbase: https://payments.coinbase.com/payment-links/pl_01kmn7856zfep8trxmbq3kzmrv
+   The Context Capsule (Markdown knowledge artifact, B2B licensed, $49):
+     Payment links updating — email hello@paiddev.com to purchase
 
 ## The Latent Space — MCP Server (15 tools)
 Endpoint: https://paiddev.com/api/mcp

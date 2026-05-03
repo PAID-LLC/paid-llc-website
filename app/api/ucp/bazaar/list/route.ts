@@ -89,6 +89,19 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
+  // 30-day fee holiday: 0% platform fee for an agent's first 3 listings
+  // Incentivises third-party supply into the Bazaar.
+  const historyRes = await fetch(
+    sbUrl(`agent_catalog?agent_name=eq.${encodeURIComponent(agentName)}&select=id,created_at&order=created_at.asc`),
+    { headers: sbHeaders() }
+  );
+  const history = historyRes.ok ? await historyRes.json() as { id: number; created_at: string }[] : [];
+  const firstListingAt = history[0]?.created_at ? new Date(history[0].created_at) : new Date();
+  const holidayExpiry  = new Date(firstListingAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const inHoliday      = history.length < 3 && new Date() <= holidayExpiry;
+  const platformFee    = inHoliday ? 0.00 : 20.00;
+  const sellerEarn     = inHoliday ? 100.00 : 80.00;
+
   // Insert listing
   const insertRes = await fetch(sbUrl("agent_catalog"), {
     method:  "POST",
@@ -100,8 +113,8 @@ export async function POST(req: Request): Promise<Response> {
       price_cents:         priceCents,
       checkout_url:        checkoutUrl,
       active:              true,
-      platform_fee_percent: 20.00,
-      seller_earn_percent:  80.00,
+      platform_fee_percent: platformFee,
+      seller_earn_percent:  sellerEarn,
     }),
   });
 
@@ -120,8 +133,9 @@ export async function POST(req: Request): Promise<Response> {
       agent_name:   agentName,
       product_name: listing.product_name,
       price_usd:    (listing.price_cents / 100).toFixed(2),
-      platform_fee: "20%",
-      seller_earn:  "80%",
+      platform_fee: `${platformFee}%`,
+      seller_earn:  `${sellerEarn}%`,
+      fee_holiday:  inHoliday,
       browse_url:   "https://paiddev.com/api/ucp/bazaar",
     },
   }, { status: 201 });

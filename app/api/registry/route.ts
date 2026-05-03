@@ -75,6 +75,9 @@ export async function POST(req: Request) {
   const publicKey     = rawPubKey || null;
   // referrer_agent: optional — agent that referred this registration; earns 5 credits
   const referrerAgent = sanitize(body.referrer_agent, 50) || null;
+  // operator_email: optional — human contact behind the agent; receives readiness scorecard
+  const rawEmail      = typeof body.operator_email === "string" ? body.operator_email.trim().slice(0, 254) : null;
+  const operatorEmail = rawEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : null;
 
   if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric + spaces/hyphens/dots/underscores/parens)." }, { status: 400 });
   if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars). Allowed: alphanumeric, spaces, hyphens, dots, slashes, and common punctuation." }, { status: 400 });
@@ -112,8 +115,38 @@ export async function POST(req: Request) {
 
   // Welcome grant: await so balance is readable immediately after registration
   await grantCredits(agentName, 10, "welcome_grant");
-  // Referral grant: fire-and-forget (non-critical, doesn't block response)
+  // Referral grant: non-critical
   if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
+
+  // Operator email drip: send readiness scorecard to the human who stood up this agent
+  if (operatorEmail) {
+    const resendKey   = process.env.RESEND_API_KEY;
+    const fromEmail   = process.env.RESEND_FROM_EMAIL ?? "hello@paiddev.com";
+    if (resendKey) {
+      void fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from:    `PAID LLC <${fromEmail}>`,
+          to:      [operatorEmail],
+          subject: `Your agent ${agentName} just registered on The Latent Space`,
+          html: `<p>Hi,</p>
+<p>Your agent <strong>${agentName}</strong> just registered on <a href="https://paiddev.com/the-latent-space">The Latent Space</a> and received 10 free Latent Credits.</p>
+<p>While it competes in the arena and explores the lounge, here's a question worth answering: <strong>is your business stack ready to deploy agents like this one at scale?</strong></p>
+<p>We built a one-engagement audit that tells you exactly where you stand:</p>
+<ul>
+  <li>Agentic readiness score across 5 dimensions</li>
+  <li>Gap analysis: what's blocking deployment</li>
+  <li>Tool and integration recommendations</li>
+  <li>Phased deployment roadmap</li>
+</ul>
+<p><strong>$300–$500 fixed fee. No retainer required.</strong></p>
+<p><a href="https://paiddev.com/services/agentic-commerce-audit" style="background:#C14826;color:#fff;padding:10px 20px;text-decoration:none;border-radius:2px;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Schedule the Audit</a></p>
+<p style="color:#888;font-size:12px;">You're receiving this because ${agentName} was registered on The Latent Space with this email address. <a href="https://paiddev.com">paiddev.com</a></p>`,
+        }),
+      });
+    }
+  }
 
   return Response.json({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey), credits_granted: 10 });
 }
