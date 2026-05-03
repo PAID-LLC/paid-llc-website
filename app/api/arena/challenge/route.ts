@@ -9,7 +9,7 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string, retry_after_ms?: number }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { DUEL_COST } from "@/lib/arena-types";
+import { DUEL_COST, MIN_STAKE, MAX_STAKE } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 
@@ -24,10 +24,19 @@ export async function POST(req: Request) {
   try { body = await req.json() as Record<string, unknown>; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
 
-  const roomId     = typeof body.room_id === "number" ? body.room_id : parseInt(String(body.room_id ?? ""));
-  const challenger = String(body.challenger ?? "").trim().slice(0, 50);
-  const defender   = String(body.defender   ?? "").trim().slice(0, 50);
-  const prompt     = String(body.prompt     ?? "").trim().slice(0, MAX_PROMPT_CHARS);
+  const roomId       = typeof body.room_id === "number" ? body.room_id : parseInt(String(body.room_id ?? ""));
+  const challenger   = String(body.challenger ?? "").trim().slice(0, 50);
+  const defender     = String(body.defender   ?? "").trim().slice(0, 50);
+  const prompt       = String(body.prompt     ?? "").trim().slice(0, MAX_PROMPT_CHARS);
+  const rawStake     = body.stake_credits !== undefined ? parseInt(String(body.stake_credits)) : 0;
+  const stakeCredits = isNaN(rawStake) ? 0 : Math.max(0, rawStake);
+
+  if (stakeCredits > 0 && stakeCredits < MIN_STAKE) {
+    return Response.json({ ok: false, reason: `minimum stake is ${MIN_STAKE} credits (or 0 to disable staking)` }, { status: 400 });
+  }
+  if (stakeCredits > MAX_STAKE) {
+    return Response.json({ ok: false, reason: `maximum stake is ${MAX_STAKE} credits` }, { status: 400 });
+  }
 
   if (!roomId || isNaN(roomId)) return Response.json({ ok: false, reason: "room_id required" },  { status: 400 });
   if (!challenger)              return Response.json({ ok: false, reason: "challenger required" }, { status: 400 });
@@ -41,22 +50,24 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: sentinel.reason ?? "Content rejected." }, { status: 400 });
   }
 
-  // ── Credit gate (challenger pays; defender receives the challenge free) ───
+  // ── Credit gate — challenger pays DUEL_COST + stake upfront ─────────────
   // Check credits BEFORE claiming the cooldown slot — a failed credit check
   // should not consume the challenger's cooldown window.
+  const totalCost = DUEL_COST + stakeCredits;
   const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
     method: "POST",
     headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-    body: JSON.stringify({ p_agent_name: challenger, p_amount: DUEL_COST }),
+    body: JSON.stringify({ p_agent_name: challenger, p_amount: totalCost }),
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
   if (!deducted) {
     return Response.json({
       ok: false,
       reason: "insufficient credits",
-      credits_needed: DUEL_COST,
+      credits_needed: totalCost,
+      breakdown: { duel_cost: DUEL_COST, stake: stakeCredits },
       hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
-    }, { status: 402, headers: x402Headers(creditPaymentHeader(DUEL_COST, challenger)) });
+    }, { status: 402, headers: x402Headers(creditPaymentHeader(totalCost, challenger)) });
   }
 
   // ── Atomic cooldown check + stamp via RPC (prevents race conditions) ──────
@@ -87,11 +98,12 @@ export async function POST(req: Request) {
     method:  "POST",
     headers: { ...sbHeaders(), Prefer: "return=representation" },
     body: JSON.stringify({
-      room_id:    roomId,
+      room_id:       roomId,
       challenger,
       defender,
       prompt,
-      status:     "pending",
+      status:        "pending",
+      stake_credits: stakeCredits,
     }),
   });
 
@@ -106,5 +118,12 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "duel id not returned" }, { status: 500 });
   }
 
-  return Response.json({ ok: true, duel_id: duelId });
+  return Response.json({
+    ok:            true,
+    duel_id:       duelId,
+    stake_credits: stakeCredits,
+    ...(stakeCredits > 0 && {
+      stake_note: `Staked duel: defender must pay ${stakeCredits} credits when submitting. Winner earns ${stakeCredits * 2} credits.`,
+    }),
+  });
 }

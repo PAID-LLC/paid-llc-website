@@ -63,8 +63,29 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "agent is not a participant in this duel" }, { status: 403 });
   }
 
-  // ── Patch the response field + submission timestamp ───────────────────────
+  // ── Stake gate: defender pays stake when submitting ──────────────────────
+  // Challenger already paid at challenge time. Deduct from defender on first submit.
   const isChallenger = agentName === duel.challenger;
+  const stakeCredits = duel.stake_credits ?? 0;
+
+  if (!isChallenger && stakeCredits > 0 && !duel.defender_response) {
+    const stakeDeductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
+      method: "POST",
+      headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ p_agent_name: agentName, p_amount: stakeCredits }),
+    });
+    const stakeDeducted = stakeDeductRes.ok ? await stakeDeductRes.json() as boolean : false;
+    if (!stakeDeducted) {
+      return Response.json({
+        ok: false,
+        reason: `this duel has a ${stakeCredits}-credit stake — you need ${stakeCredits} credits to submit`,
+        credits_needed: stakeCredits,
+        hint: "GET /api/ucp/balance?agent_name=" + agentName,
+      }, { status: 402 });
+    }
+  }
+
+  // ── Patch the response field + submission timestamp ───────────────────────
   const responseField = isChallenger ? "challenger_response" : "defender_response";
   const tsField       = isChallenger ? "challenger_submitted_at" : "defender_submitted_at";
 
@@ -171,8 +192,8 @@ export async function POST(req: Request) {
 
     if (puzzles.length === 0) {
       // No puzzles — break tie by challenger wins
-      await finalizeDuel(duelId, duel.challenger, duel.defender, juryScores, false, null, false);
-      void (async () => { await postLossAudit(duel.defender, duel.prompt, defResponse, duel.room_id); })();
+      await finalizeDuel(duelId, duel.challenger, duel.defender, juryScores, false, null, false, 0, 0, stakeCredits);
+      await postLossAudit(duel.defender, duel.prompt, defResponse, duel.room_id);
       return Response.json({ ok: true, status: "complete", winner: duel.challenger });
     }
 
@@ -208,17 +229,18 @@ export async function POST(req: Request) {
   const chDelta  = computeEloDelta(chScore, defScore, actual);
   const defDelta = -chDelta;
 
-  await finalizeDuel(duelId, winner, loser, juryScores, false, null, false, chDelta, defDelta);
+  await finalizeDuel(duelId, winner, loser, juryScores, false, null, false, chDelta, defDelta, stakeCredits);
 
   // Fire post-loss audit for the loser — non-critical, fire-and-forget
   const loserResponse = loser === duel.challenger ? challResponse : defResponse;
-  void (async () => { await postLossAudit(loser, duel.prompt, loserResponse, duel.room_id); })();
+  await postLossAudit(loser, duel.prompt, loserResponse, duel.room_id);
 
   return Response.json({
     ok:     true,
     status: "complete",
     winner,
     scores: { challenger: juryScores.challenger, defender: juryScores.defender },
+    ...(stakeCredits > 0 && { stake_payout: stakeCredits * 2, stake_winner: winner }),
   });
 }
 
@@ -232,6 +254,7 @@ async function finalizeDuel(
   loserSuddenDeath: boolean,
   challengerEloDelta: number = 0,
   defenderEloDelta:   number = 0,
+  stakeCredits:       number = 0,
 ): Promise<void> {
   await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
     method:  "PATCH",
@@ -248,7 +271,16 @@ async function finalizeDuel(
     }),
   });
 
-  void updateArenaStats(winner, loser, loserSuddenDeath);
+  await updateArenaStats(winner, loser, loserSuddenDeath);
+
+  // Stake payout: winner earns both stakes (2x stake_credits)
+  if (stakeCredits > 0) {
+    await fetch(sbUrl("rpc/add_latent_credits"), {
+      method: "POST",
+      headers: { ...sbHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ p_agent_name: winner, p_amount: stakeCredits * 2 }),
+    });
+  }
 }
 
 // ── Judge helpers ─────────────────────────────────────────────────────────────

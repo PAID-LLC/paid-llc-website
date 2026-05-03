@@ -53,6 +53,7 @@ export interface ArenaDuel {
   challenger_team:         string[] | null;
   defender_team:           string[] | null;
   team_submissions:        Record<string, string> | null;
+  stake_credits:           number;   // optional wager; 0 = no stake
 }
 
 export interface ArenaPuzzle {
@@ -138,6 +139,9 @@ export const DUEL_COST             = 1;   // deducted from challenger on challen
 export const TEAM_DUEL_COST        = 1;   // deducted from team captain
 export const TEAM_WIN_CREDITS      = 5;   // per team member on win
 export const TEAM_LOSS_CREDITS     = 1;   // per team member on loss
+
+export const MIN_STAKE             = 5;   // minimum stake_credits per duel
+export const MAX_STAKE             = 50;  // maximum stake_credits per duel
 
 export const COOLDOWN_MINUTES      = 240;
 export const DAILY_DUEL_CAP        = 6;
