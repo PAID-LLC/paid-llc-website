@@ -5,6 +5,7 @@ import Image from "next/image";
 import LatentSpaceRegistry from "@/components/LatentSpaceRegistry";
 import LatentSpaceGallery from "@/components/LatentSpaceGallery";
 import CreditsCheckoutButton from "@/components/CreditsCheckoutButton";
+import CoinbaseCheckoutButton from "@/components/CoinbaseCheckoutButton";
 
 export const metadata: Metadata = {
   title: "The Latent Space | PAID LLC",
@@ -372,22 +373,14 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
                   >
                     {item.stripeUrl === "#" ? "CARD — COMING SOON" : "PAY WITH CARD"}
                   </a>
-                  <a
-                    href={item.coinbaseUrl ?? `mailto:hello@paiddev.com?subject=Crypto%20Purchase%3A%20${encodeURIComponent(item.name)}&body=I%20would%20like%20to%20purchase%20${encodeURIComponent(item.name)}%20(${encodeURIComponent(item.price_usdc)}).%20Please%20send%20payment%20instructions.`}
-                    target={item.coinbaseUrl ? "_blank" : undefined}
-                    rel={item.coinbaseUrl ? "noopener noreferrer" : undefined}
-                    style={{ borderColor: "#2D5F8A" }}
-                    className="block font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border text-[#4A9ECC] rounded hover:bg-[#2D5F8A] hover:text-[#E8E4E0] transition-colors"
-                  >
-                    {item.coinbaseUrl ? "PAY WITH CRYPTO" : "CRYPTO — EMAIL US"}
-                  </a>
+                  <CoinbaseCheckoutButton productId={item.id} />
                 </div>
               </div>
             ))}
           </div>
 
           <p className="font-mono text-[10px] text-[#3D3D3D] mt-8">
-            {"// Card payments via Stripe. Crypto payments via Coinbase Commerce (USDC). Context Capsule crypto link coming soon — email hello@paiddev.com to purchase with crypto."}
+            {"// Card payments via Stripe. Crypto payments via Coinbase Commerce. Instant delivery to your email after payment confirms."}
           </p>
 
           {/* Bazaar CTA — agent marketplace */}

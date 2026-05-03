@@ -12,7 +12,7 @@ export const runtime = "edge";
 //   COINBASE_WEBHOOK_SECRET — returned by the webhook subscription creation API
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY (existing)
 
-import { productTitles } from "@/lib/products";
+import { productTitles, slugToFile } from "@/lib/products";
 import { issueSouvenir } from "@/lib/souvenirs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
@@ -150,12 +150,117 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
   }).catch(() => {});
 }
 
+// ── Coinbase Commerce (charge:confirmed) ──────────────────────────────────────
+// Handles artifact delivery for Latent Space items purchased via Commerce charges.
+// Signature: X-CC-Webhook-Signature = HMAC-SHA256 hex of raw body.
+
+async function verifyCommerceSignature(payload: string, signature: string, secret: string): Promise<boolean> {
+  try {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw", enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false, ["sign"]
+    );
+    const mac      = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+    const computed = Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, "0")).join("");
+    if (computed.length !== signature.length) return false;
+    let diff = 0;
+    for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
+    return diff === 0;
+  } catch { return false; }
+}
+
+async function getSignedDownloadUrl(filename: string): Promise<string | null> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return null;
+  const res = await fetch(
+    `${url}/storage/v1/object/sign/guides/${encodeURIComponent(filename)}`,
+    {
+      method:  "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body:    JSON.stringify({ expiresIn: 3600 }),
+    }
+  );
+  if (!res.ok) return null;
+  const data = await res.json() as { signedURL: string };
+  return `${url}/storage/v1${data.signedURL}`;
+}
+
+async function deliverCommerceArtifact(slug: string, email: string): Promise<void> {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey || !slug || !email) return;
+
+  const title    = productTitles[slug];
+  const filename = slugToFile[slug];
+  if (!title || !filename) return;
+
+  const downloadUrl = await getSignedDownloadUrl(filename);
+  if (!downloadUrl) return;
+
+  const text = [
+    `Hi,`,
+    ``,
+    `Thank you for purchasing ${title}.`,
+    ``,
+    `Your download link is below. It expires in 1 hour — download your file now:`,
+    ``,
+    downloadUrl,
+    ``,
+    `Questions? Reply to this email or reach us at hello@paiddev.com.`,
+    ``,
+    `-- Travis`,
+    `PAID LLC`,
+  ].join("\n");
+
+  await fetch("https://api.resend.com/emails", {
+    method:  "POST",
+    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from:    "PAID LLC <hello@paiddev.com>",
+      to:      [email],
+      subject: `Your ${title} download link`,
+      text,
+    }),
+  }).catch(err => console.error("[coinbase-webhook] commerce delivery failed:", err));
+}
+
+async function handleCommerceWebhook(payload: string, req: Request): Promise<Response> {
+  const secret    = process.env.COINBASE_COMMERCE_WEBHOOK_SECRET;
+  const signature = req.headers.get("x-cc-webhook-signature") ?? "";
+
+  if (!secret) return Response.json({ error: "not configured" }, { status: 503 });
+
+  const valid = await verifyCommerceSignature(payload, signature, secret);
+  if (!valid) return Response.json({ error: "invalid signature" }, { status: 400 });
+
+  type CommerceEvent = { event?: { type?: string; data?: { metadata?: Record<string, string> } } };
+  let body: CommerceEvent;
+  try { body = JSON.parse(payload) as CommerceEvent; }
+  catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
+
+  if (body.event?.type === "charge:confirmed") {
+    const meta  = body.event.data?.metadata ?? {};
+    const slug  = meta.product     ?? "";
+    const email = meta.buyer_email ?? "";
+    if (slug && email) await deliverCommerceArtifact(slug, email);
+  }
+
+  return Response.json({ received: true });
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  // Route to correct handler based on which signature header is present
+  const payload = await req.text();
+  if (req.headers.get("x-cc-webhook-signature")) {
+    return handleCommerceWebhook(payload, req);
+  }
+
   const secret = process.env.COINBASE_WEBHOOK_SECRET;
   if (!secret) {
-    // Return 200 silently until env var is provisioned
     return Response.json({ received: true });
   }
 
@@ -164,7 +269,6 @@ export async function POST(req: Request) {
     return Response.json({ error: "missing signature" }, { status: 400 });
   }
 
-  const payload = await req.text();
   const valid   = await verifyHook0Signature(payload, sigHeader, req.headers, secret);
   if (!valid) {
     return Response.json({ error: "invalid signature" }, { status: 401 });
