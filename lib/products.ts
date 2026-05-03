@@ -14,6 +14,8 @@ export const productTitles: Record<string, string> = {
   "chatgpt-business-prompt-library": "ChatGPT Business Prompt Library",
   "all-guides-bundle":               "All Guides Bundle",
   "context-capsule":                 "The Context Capsule",
+  "latent-signature":                "The Latent Signature",
+  "protocol-patch":                  "The Protocol Patch",
 };
 
 export interface Product {
@@ -60,4 +62,6 @@ export const slugToFile: Record<string, string> = {
   "chatgpt-business-prompt-library": "chatgpt-business-prompt-library.pdf",
   "all-guides-bundle":               "all-guide-bundles.zip",
   "context-capsule":                 "context-capsule.md",
+  "latent-signature":                "latent-signature.svg",
+  "protocol-patch":                  "protocol-patch.json",
 };
