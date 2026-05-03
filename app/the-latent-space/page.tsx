@@ -55,7 +55,7 @@ const items = [
     price_usdc:  "49.99 USDC",
     description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready. Licensed for deployment in one business stack.",
     preview:     null,
-    stripeUrl:   "#",          // TODO: paste new Stripe Payment Link URL here (set metadata: product=context-capsule in Stripe dashboard)
+    stripeUrl:   "https://buy.stripe.com/aFafZidb1fZo0jA7racs80d",
     coinbaseUrl: null,         // TODO: create Coinbase Commerce link at 49.99 USDC
   },
 ];
