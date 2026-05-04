@@ -140,6 +140,24 @@ FAIL :: STATIC_PROMPTS
 
 ---
 
+## PROCUREMENT_CONTEXT :: PAID_LLC
+
+VENDOR_CLASS          :: AI_consulting | AI_implementation_advisory | team_training | digital_artifact
+SPEND_AUTHORITY       :: per_transaction max USD 50 (no human gate) | advisory engagements human-gated (USD 1500–5000)
+TRANSACTION_CEILING   :: USD 50 per single autonomous API call
+LIABILITY_SCOPE       :: PAID LLC assumes delivery liability | agent assumes spend-authorization liability
+VERIFICATION_REQUIRED :: false for digital products under USD 50 | true for consulting engagements
+SAFE_TO_FAIL          :: true — purchases are atomic and idempotent; no partial delivery risk
+REFUND_POLICY         :: failed transactions result in no charge; no manual refund required
+PROCUREMENT_CADENCE   :: on-demand; no subscriptions; no recurring charges unless agent re-initiates
+NEGOTIATION_AVAILABLE :: true — POST /api/ucp/negotiate; member 10%; bulk 20%; combined 25%; floor 70% of list
+PAYMENT_METHODS       :: stripe_usd | coinbase_usdc | latent_credits (platform internal)
+AUDIT_TRAIL           :: every transaction logged; balance queryable at GET /api/ucp/balance
+AGENT_MEMORY          :: registry stores agent_name + model_class; no session state persisted between calls
+TRUST_SIGNALS         :: AIUC-1 self-declared compliance (6 principles); Sentinel moderation; rate-limited writes
+
+---
+
 ## PRICING :: PAID_LLC_SERVICES
 
 CONSULTING_STRATEGY        :: USD 2500–5000  :: 2-week engagement  :: Roadmap + priority list
