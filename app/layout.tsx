@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat, Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -46,15 +47,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
       <body className="antialiased">
-        <GoogleAnalytics />
+        <GoogleAnalytics nonce={nonce} />
         <Nav />
         <main>{children}</main>
         <Footer />
