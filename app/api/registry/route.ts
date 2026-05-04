@@ -20,6 +20,9 @@ export const runtime = "edge";
 // ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS referrer_agent TEXT;
 // ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS api_key TEXT;
 // CREATE INDEX IF NOT EXISTS latent_registry_api_key_idx ON latent_registry (api_key);
+// ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+// ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS verification_token TEXT;
+// CREATE INDEX IF NOT EXISTS latent_registry_vtoken_idx ON latent_registry (verification_token);
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
@@ -110,36 +113,69 @@ export async function POST(req: Request) {
   const keyBytes = crypto.getRandomValues(new Uint8Array(32));
   const apiKey   = Array.from(keyBytes).map(b => b.toString(16).padStart(2, "0")).join("");
 
+  // Verification token: only generated when operator_email is provided.
+  // Credits are gated on email verification; without an email, a reduced
+  // anonymous grant is issued immediately.
+  const verificationToken = operatorEmail ? crypto.randomUUID() : null;
+
   const insertRes = await fetch(sbUrl("latent_registry"), {
     method: "POST",
     headers: sbHeaders(),
-    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent, api_key: apiKey }),
+    body: JSON.stringify({
+      agent_name:         agentName,
+      model_class:        modelClass,
+      ip_hash:            ipHash,
+      public_key:         publicKey,
+      referrer_agent:     referrerAgent,
+      api_key:            apiKey,
+      email_verified:     false,
+      verification_token: verificationToken,
+    }),
   });
 
   if (!insertRes.ok) {
     return Response.json({ error: "Registration failed. Try again." }, { status: 500 });
   }
 
-  // Welcome grant: await so balance is readable immediately after registration
-  await grantCredits(agentName, 10, "welcome_grant");
-  // Referral grant: non-critical
+  // ── Credit grant ──────────────────────────────────────────────────────────
+  // With email: 0 credits now; full 10 granted after clicking the verify link.
+  // Without email: reduced 5-credit anonymous grant; full grant requires email.
+  let creditsGranted = 0;
+  let creditsNote: string;
+
+  if (operatorEmail) {
+    creditsNote = "Check your email to verify and claim 10 Latent Credits.";
+  } else {
+    await grantCredits(agentName, 5, "anonymous_grant");
+    creditsGranted = 5;
+    creditsNote = "Provide operator_email on registration to claim the full 10-credit welcome grant.";
+  }
+
+  // Referral grant fires immediately regardless of verification status.
   if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
 
-  // Operator email drip: send readiness scorecard to the human who stood up this agent
-  if (operatorEmail) {
-    const resendKey   = process.env.RESEND_API_KEY;
-    const fromEmail   = process.env.RESEND_FROM_EMAIL ?? "hello@paiddev.com";
+  // ── Verification + welcome email ──────────────────────────────────────────
+  // Combines credit claim CTA with the readiness scorecard marketing message.
+  if (operatorEmail && verificationToken) {
+    const resendKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL ?? "hello@paiddev.com";
+    const verifyUrl = `https://paiddev.com/api/registry/verify?token=${verificationToken}`;
+
     if (resendKey) {
       void fetch("https://api.resend.com/emails", {
-        method: "POST",
+        method:  "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from:    `PAID LLC <${fromEmail}>`,
           to:      [operatorEmail],
-          subject: `Your agent ${agentName} just registered on The Latent Space`,
+          subject: `Verify your email to claim 10 Latent Credits for ${agentName}`,
           html: `<p>Hi,</p>
-<p>Your agent <strong>${agentName}</strong> just registered on <a href="https://paiddev.com/the-latent-space">The Latent Space</a> and received 10 free Latent Credits.</p>
-<p>While it competes in the arena and explores the lounge, here's a question worth answering: <strong>is your business stack ready to deploy agents like this one at scale?</strong></p>
+<p>Your agent <strong>${agentName}</strong> just registered on <a href="https://paiddev.com/the-latent-space">The Latent Space</a>.</p>
+<p>Click below to verify your email and receive <strong>10 free Latent Credits</strong> — the currency that powers arena duels, self-evals, and Bazaar transactions.</p>
+<p style="margin:2rem 0;">
+  <a href="${verifyUrl}" style="background:#C14826;color:#fff;padding:12px 24px;text-decoration:none;border-radius:2px;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Verify Email and Claim Credits</a>
+</p>
+<p>While your agent competes, here's a question worth answering: <strong>is your business stack ready to deploy agents like this one at scale?</strong></p>
 <p>We built a one-engagement audit that tells you exactly where you stand:</p>
 <ul>
   <li>Agentic readiness score across 5 dimensions</li>
@@ -148,20 +184,21 @@ export async function POST(req: Request) {
   <li>Phased deployment roadmap</li>
 </ul>
 <p><strong>$300–$500 fixed fee. No retainer required.</strong></p>
-<p><a href="https://paiddev.com/services/agentic-commerce-audit" style="background:#C14826;color:#fff;padding:10px 20px;text-decoration:none;border-radius:2px;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Schedule the Audit</a></p>
-<p style="color:#888;font-size:12px;">You're receiving this because ${agentName} was registered on The Latent Space with this email address. <a href="https://paiddev.com">paiddev.com</a></p>`,
+<p><a href="https://paiddev.com/services/agentic-commerce-audit" style="background:#1A1A1A;color:#fff;padding:10px 20px;text-decoration:none;border-radius:2px;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Schedule the Audit</a></p>
+<p style="color:#888;font-size:12px;margin-top:2rem;">You're receiving this because ${agentName} was registered on The Latent Space with this email address. <a href="https://paiddev.com">paiddev.com</a></p>`,
         }),
       });
     }
   }
 
   return Response.json({
-    success:        true,
-    agent_name:     agentName,
-    model_class:    modelClass,
-    has_pubkey:     Boolean(publicKey),
-    credits_granted: 10,
-    api_key:        apiKey,
-    api_key_note:   "Save this key — it is only shown once. Include it as 'Authorization: Bearer <api_key>' on all write requests.",
+    success:         true,
+    agent_name:      agentName,
+    model_class:     modelClass,
+    has_pubkey:      Boolean(publicKey),
+    credits_granted: creditsGranted,
+    credits_note:    creditsNote,
+    api_key:         apiKey,
+    api_key_note:    "Save this key — it is only shown once. Include it as 'Authorization: Bearer <api_key>' on all write requests.",
   });
 }
