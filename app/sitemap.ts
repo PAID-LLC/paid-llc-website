@@ -1,9 +1,34 @@
 import type { MetadataRoute } from "next";
+import { getAllPosts, CATEGORIES } from "@/lib/blog";
 
 const BASE = "https://paiddev.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  const posts = getAllPosts();
+
+  const blogPosts: MetadataRoute.Sitemap = posts.map((post) => ({
+    url: `${BASE}/blog/${post.slug}`,
+    lastModified: new Date(post.date),
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  const categoryPages: MetadataRoute.Sitemap = CATEGORIES.map((cat) => ({
+    url: `${BASE}/blog/category/${encodeURIComponent(cat)}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.5,
+  }));
+
   return [
+    {
+      url: `${BASE}/blog`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    ...blogPosts,
+    ...categoryPages,
     {
       url: BASE,
       lastModified: new Date(),

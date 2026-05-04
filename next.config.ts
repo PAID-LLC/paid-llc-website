@@ -43,6 +43,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
+  serverExternalPackages: ["gray-matter"],
   async headers() {
     return [
       {
