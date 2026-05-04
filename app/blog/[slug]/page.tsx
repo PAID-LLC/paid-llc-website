@@ -4,7 +4,12 @@ import {
   getRelatedPosts,
   extractHeadings,
 } from "@/lib/blog";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import remarkRehype from "remark-rehype";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeStringify from "rehype-stringify";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ArticleHeader from "@/components/ArticleHeader";
@@ -13,76 +18,17 @@ import ReadingProgress from "@/components/ReadingProgress";
 import TableOfContents from "@/components/TableOfContents";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import BlogCard from "@/components/BlogCard";
-import rehypeSlug from "rehype-slug";
-import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
-const components = {
-  h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2
-      className="font-display font-bold text-2xl text-secondary mt-12 mb-4 leading-tight"
-      {...props}
-    />
-  ),
-  h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3
-      className="font-display font-semibold text-xl text-secondary mt-8 mb-3 leading-tight"
-      {...props}
-    />
-  ),
-  h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h4
-      className="font-display font-semibold text-base text-secondary mt-6 mb-2 uppercase tracking-wide"
-      {...props}
-    />
-  ),
-  p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="text-charcoal text-lg leading-[1.8] mb-5" {...props} />
-  ),
-  blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
-    <blockquote
-      className="border-l-4 border-primary pl-6 my-8 italic text-stone text-lg leading-relaxed"
-      {...props}
-    />
-  ),
-  ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="list-disc list-outside ml-6 mb-5 space-y-2" {...props} />
-  ),
-  ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="list-decimal list-outside ml-6 mb-5 space-y-2" {...props} />
-  ),
-  li: (props: React.HTMLAttributes<HTMLLIElement>) => (
-    <li className="text-charcoal text-lg leading-[1.8]" {...props} />
-  ),
-  strong: (props: React.HTMLAttributes<HTMLElement>) => (
-    <strong className="font-semibold text-secondary" {...props} />
-  ),
-  em: (props: React.HTMLAttributes<HTMLElement>) => (
-    <em className="italic text-charcoal" {...props} />
-  ),
-  a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a
-      className="text-primary underline underline-offset-2 hover:text-secondary transition-colors"
-      target={props.href?.startsWith("http") ? "_blank" : undefined}
-      rel={
-        props.href?.startsWith("http") ? "noopener noreferrer" : undefined
-      }
-      {...props}
-    />
-  ),
-  code: (props: React.HTMLAttributes<HTMLElement>) => (
-    <code
-      className="bg-ash text-secondary font-mono text-sm px-1.5 py-0.5 rounded"
-      {...props}
-    />
-  ),
-  pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
-    <pre
-      className="bg-secondary text-ash rounded-xl p-6 overflow-x-auto mb-6 text-sm leading-relaxed font-mono"
-      {...props}
-    />
-  ),
-  hr: () => <hr className="border-ash my-10" />,
-};
+async function compileMarkdown(content: string): Promise<string> {
+  const result = await remark()
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeSlug)
+    .use(rehypeAutolinkHeadings, { behavior: "wrap" })
+    .use(rehypeStringify)
+    .process(content);
+  return result.toString();
+}
 
 export async function generateStaticParams() {
   return getAllPosts().map((p) => ({ slug: p.slug }));
@@ -138,8 +84,11 @@ export default async function PostPage({
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const related = getRelatedPosts(post.slug, post.category, post.tags, 3);
-  const headings = extractHeadings(post.content);
+  const [contentHtml, related, headings] = await Promise.all([
+    compileMarkdown(post.content),
+    Promise.resolve(getRelatedPosts(post.slug, post.category, post.tags, 3)),
+    Promise.resolve(extractHeadings(post.content)),
+  ]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -196,29 +145,9 @@ export default async function PostPage({
                 <div className="mb-10">
                   <SocialShare title={post.title} slug={post.slug} />
                 </div>
-                <MDXRemote
-                  source={post.content}
-                  components={components}
-                  options={{
-                    mdxOptions: {
-                      rehypePlugins: [
-                        rehypeSlug,
-                        [
-                          rehypeAutolinkHeadings,
-                          {
-                            behavior: "wrap",
-                            properties: {
-                              className: [
-                                "no-underline",
-                                "hover:text-primary",
-                                "transition-colors",
-                              ],
-                            },
-                          },
-                        ],
-                      ],
-                    },
-                  }}
+                <div
+                  className="mdx-content"
+                  dangerouslySetInnerHTML={{ __html: contentHtml }}
                 />
                 <div className="mt-12 pt-8 border-t border-ash">
                   <SocialShare title={post.title} slug={post.slug} />
