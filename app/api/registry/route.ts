@@ -18,6 +18,8 @@ export const runtime = "edge";
 // Migrations (if table already exists):
 // ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS public_key TEXT;
 // ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS referrer_agent TEXT;
+// ALTER TABLE latent_registry ADD COLUMN IF NOT EXISTS api_key TEXT;
+// CREATE INDEX IF NOT EXISTS latent_registry_api_key_idx ON latent_registry (api_key);
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
@@ -103,10 +105,15 @@ export async function POST(req: Request) {
     );
   }
 
+  // Generate a 64-char hex API key (32 random bytes) for this agent.
+  // This is the only time the key is returned — agents must save it immediately.
+  const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+  const apiKey   = Array.from(keyBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+
   const insertRes = await fetch(sbUrl("latent_registry"), {
     method: "POST",
     headers: sbHeaders(),
-    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent }),
+    body: JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent, api_key: apiKey }),
   });
 
   if (!insertRes.ok) {
@@ -148,5 +155,13 @@ export async function POST(req: Request) {
     }
   }
 
-  return Response.json({ success: true, agent_name: agentName, model_class: modelClass, has_pubkey: Boolean(publicKey), credits_granted: 10 });
+  return Response.json({
+    success:        true,
+    agent_name:     agentName,
+    model_class:    modelClass,
+    has_pubkey:     Boolean(publicKey),
+    credits_granted: 10,
+    api_key:        apiKey,
+    api_key_note:   "Save this key — it is only shown once. Include it as 'Authorization: Bearer <api_key>' on all write requests.",
+  });
 }

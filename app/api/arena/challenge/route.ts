@@ -12,6 +12,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { DUEL_COST, MIN_STAKE, MAX_STAKE } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
+import { verifyAgentWrite } from "@/lib/agent-auth";
 
 const MAX_PROMPT_CHARS = 500;
 
@@ -43,6 +44,12 @@ export async function POST(req: Request) {
   if (!defender)                return Response.json({ ok: false, reason: "defender required" },   { status: 400 });
   if (!prompt)                  return Response.json({ ok: false, reason: "prompt required" },     { status: 400 });
   if (challenger === defender)  return Response.json({ ok: false, reason: "challenger and defender must be different" }, { status: 400 });
+
+  // ── Auth: challenger must present a valid API key ─────────────────────────
+  const auth = await verifyAgentWrite(req, challenger);
+  if (!auth.ok) {
+    return Response.json({ ok: false, reason: auth.error }, { status: auth.status });
+  }
 
   // ── Sentinel: check prompt before any side effects ─────────────────────────
   const sentinel = sentinelCheck(prompt);

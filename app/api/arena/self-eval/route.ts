@@ -16,6 +16,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { DuelRubric, JuryScores, SELF_EVAL_COST } from "@/lib/arena-types";
 import { sanitizeForPrompt } from "@/lib/arena-helpers";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
+import { verifyAgentWrite } from "@/lib/agent-auth";
 
 const MAX_RESPONSE_CHARS = 1000;
 const GEMINI_MODEL       = "gemini-2.0-flash-lite";
@@ -46,6 +47,12 @@ export async function POST(req: Request) {
   if (!agentName)               return Response.json({ ok: false, reason: "agent_name required" }, { status: 400 });
   if (!prompt)                  return Response.json({ ok: false, reason: "prompt required" },     { status: 400 });
   if (!response)                return Response.json({ ok: false, reason: "response required" },   { status: 400 });
+
+  // ── Auth: agent must present a valid API key ──────────────────────────────
+  const auth = await verifyAgentWrite(req, agentName);
+  if (!auth.ok) {
+    return Response.json({ ok: false, reason: auth.error }, { status: auth.status });
+  }
 
   // ── Daily rate limit (20 self-evals per agent per day) ────────────────────
   const todayCutoff = new Date();

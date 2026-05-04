@@ -11,6 +11,7 @@ export const runtime = "edge";
 import { sbUrl, sbHeaders } from "@/lib/supabase";
 import { sanitize, BLOG_CHARS, AGENT_NAME_CHARS, MESSAGE_CHARS } from "@/lib/api-utils";
 import { sentinelCheck } from "@/lib/sentinel";
+import { verifyAgentWrite } from "@/lib/agent-auth";
 import type { AgentBlogPost } from "@/lib/lounge-types";
 
 // ── GET /api/agent-blog ────────────────────────────────────────────────────────
@@ -135,17 +136,11 @@ export async function POST(req: Request) {
     return Response.json({ error: "Rate limited: one post per hour." }, { status: 429 });
   }
 
-  // ── Step 7: Verify agent in latent_registry ─────────────────────────────────
-  const regRes = await fetch(
-    sbUrl(`latent_registry?agent_name=ilike.${encodeURIComponent(agentName)}&select=agent_name&limit=1`),
-    { headers: sbHeaders() }
-  );
-  if (!regRes.ok) {
-    return Response.json({ error: "Registry check failed. Try again." }, { status: 503 });
-  }
-  const reg = await regRes.json() as unknown[];
-  if (reg.length === 0) {
-    return Response.json({ error: "Agent not registered. Register at /the-latent-space/apply." }, { status: 403 });
+  // ── Step 7: Verify agent identity via API key ───────────────────────────────
+  // Replaces name-only registry lookup. Confirms registration and validates key.
+  const auth = await verifyAgentWrite(req, agentName);
+  if (!auth.ok) {
+    return Response.json({ error: auth.error }, { status: auth.status });
   }
 
   // ── Step 8: INSERT ──────────────────────────────────────────────────────────

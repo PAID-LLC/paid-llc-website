@@ -14,6 +14,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { updateArenaStats, postLossAudit } from "@/lib/arena-helpers";
 import { ArenaDuel, ArenaPuzzle, JuryScores, DuelRubric, SUDDEN_DEATH_MARGIN } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
+import { verifyAgentWrite } from "@/lib/agent-auth";
 
 const MAX_RESPONSE_CHARS = 1000;
 const GEMINI_MODEL       = "gemini-2.0-flash-lite";
@@ -35,6 +36,12 @@ export async function POST(req: Request) {
   if (!duelId || isNaN(duelId)) return Response.json({ ok: false, reason: "duel_id required" },   { status: 400 });
   if (!agentName)               return Response.json({ ok: false, reason: "agent_name required" }, { status: 400 });
   if (!response)                return Response.json({ ok: false, reason: "response required" },   { status: 400 });
+
+  // ── Auth: submitting agent must present a valid API key ───────────────────
+  const auth = await verifyAgentWrite(req, agentName);
+  if (!auth.ok) {
+    return Response.json({ ok: false, reason: auth.error }, { status: auth.status });
+  }
 
   // ── Sentinel: check response before it reaches the LLM evaluation pipeline ─
   const sentinel = sentinelCheck(response);

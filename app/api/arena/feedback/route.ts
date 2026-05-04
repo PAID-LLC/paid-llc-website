@@ -46,6 +46,9 @@ export async function POST(req: Request) {
   if (content.length < 10)                    return Response.json({ ok: false, reason: "content must be at least 10 characters" }, { status: 400, headers: CORS_HEADERS });
   if (content.length > 500)                   return Response.json({ ok: false, reason: "content must be 500 characters or fewer" }, { status: 400, headers: CORS_HEADERS });
 
+  // Strip HTML tags before storage to prevent stored XSS via the admin view.
+  const safeContent = content.replace(/<[^>]*>/g, "").trim();
+
   // ── Rate limit: max 3 submissions per agent per hour ─────────────────────
   const cutoff = new Date(Date.now() - 3_600_000).toISOString();
   const checkRes = await fetch(
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
   const insertRes = await fetch(sbUrl("agent_feedback"), {
     method:  "POST",
     headers: { ...sbHeaders(), Prefer: "return=representation" },
-    body: JSON.stringify({ agent_name: agentName, category, content }),
+    body: JSON.stringify({ agent_name: agentName, category, content: safeContent }),
   });
 
   if (!insertRes.ok) {
