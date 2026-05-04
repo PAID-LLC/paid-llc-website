@@ -94,9 +94,13 @@ export function getAllPosts(): BlogPost[] {
 }
 
 export function getPostBySlug(slug: string): BlogPost | null {
-  const filePath = path.join(BLOG_DIR, `${slug}.mdx`);
-  if (!fs.existsSync(filePath)) return null;
-  return parsePost(`${slug}.mdx`);
+  if (!fs.existsSync(BLOG_DIR)) return null;
+  const files = fs.readdirSync(BLOG_DIR).filter((f) => f.endsWith(".mdx"));
+  for (const filename of files) {
+    const post = parsePost(filename);
+    if (post.slug === slug) return post;
+  }
+  return null;
 }
 
 export function getRelatedPosts(
