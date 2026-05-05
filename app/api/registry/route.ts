@@ -54,7 +54,9 @@ export async function GET(req: Request) {
     limit,
     offset,
   }, {
-    headers: { "Cache-Control": "no-store" },
+    // Cache at Cloudflare edge for 30s to reduce enumeration pressure (F-08).
+    // Stale-while-revalidate allows background refresh without blocking reads.
+    headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=60" },
   });
 }
 

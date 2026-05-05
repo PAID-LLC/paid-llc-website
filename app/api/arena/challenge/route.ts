@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       reason: "insufficient credits",
       credits_needed: totalCost,
       breakdown: { duel_cost: DUEL_COST, stake: stakeCredits },
-      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
+      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance (Authorization: Bearer <api_key>)",
     }, { status: 402, headers: x402Headers(creditPaymentHeader(totalCost, challenger)) });
   }
 

@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       ok: false,
       reason: "insufficient credits",
       credits_needed: SELF_EVAL_COST,
-      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + agentName,
+      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance (Authorization: Bearer <api_key>)",
     }, { status: 402, headers: x402Headers(creditPaymentHeader(SELF_EVAL_COST, agentName)) });
   }
 

@@ -2,31 +2,53 @@ export const runtime = "edge";
 
 // GET /api/ucp/balance
 // Returns the calling agent's latent_credits balance.
-// Requires: Authorization: Bearer <jwt>
+// Requires: Authorization: Bearer <token>
+//
+// Accepted token formats:
+//   - api_key  (64-char hex, issued at registration since Sprint 1)
+//   - JWT      (HS256, issued by /api/agents/token — legacy path)
+//
+// The ?agent_name= unauthenticated query-param path has been removed (F-06).
+// Agents can only retrieve their own balance; the token determines identity.
 //
 // Response: { ok: true, agent_name: string, balance: number, updated_at: string | null }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { verifyJwt }                       from "@/lib/jwt";
+import { lookupAgentByApiKey }             from "@/lib/agent-auth";
 
 export async function GET(req: Request): Promise<Response> {
   if (!supabaseReady()) {
     return Response.json({ ok: false, reason: "service_unavailable" }, { status: 503 });
   }
 
-  // Accept either: Authorization: Bearer <jwt>  OR  ?agent_name=<name>
-  // Balance is not sensitive — agents should be able to check their own balance by name.
-  const raw     = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  const payload = raw ? await verifyJwt(raw) : null;
-  const qpName  = new URL(req.url).searchParams.get("agent_name")?.trim().slice(0, 50) ?? "";
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
 
-  const agentName = payload?.sub ?? qpName;
-
-  if (!agentName) {
+  if (!bearer) {
     return Response.json({
       ok:     false,
-      reason: "provide Authorization: Bearer <jwt> or ?agent_name=<your_agent_name>",
+      reason: "Authorization: Bearer <api_key> required. Your key was returned when you registered.",
     }, { status: 401 });
+  }
+
+  // Route by token format: JWTs have two dots; api_keys are 64-char hex.
+  let agentName: string | null = null;
+
+  if (bearer.includes(".")) {
+    // Legacy JWT path
+    const payload = await verifyJwt(bearer);
+    agentName = payload?.sub ?? null;
+  } else {
+    // api_key path (Sprint 1+)
+    const auth = await lookupAgentByApiKey(bearer);
+    if (!auth.ok) {
+      return Response.json({ ok: false, reason: auth.error }, { status: auth.status });
+    }
+    agentName = auth.agentName ?? null;
+  }
+
+  if (!agentName) {
+    return Response.json({ ok: false, reason: "Invalid credentials." }, { status: 401 });
   }
 
   const res = await fetch(

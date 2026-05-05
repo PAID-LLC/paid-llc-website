@@ -16,6 +16,7 @@
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 
 export interface AgentAuthResult {
+  legacy?: boolean;  // true when agent has no key set (pre-Sprint-1 registration)
   ok:        boolean;
   agentName?: string;
   error?:    string;
@@ -66,4 +67,25 @@ export async function verifyAgentWrite(
   // No key set — legacy agent; name-only access allowed.
 
   return { ok: true, agentName: agent.agent_name };
+}
+
+// ── Lookup by raw api_key (for endpoints where the agent name is not known upfront) ──
+//
+// Used by endpoints like /api/ucp/balance where the Bearer token itself
+// identifies who the caller is, rather than matching against a known name.
+
+export async function lookupAgentByApiKey(apiKey: string): Promise<AgentAuthResult> {
+  if (!apiKey) return { ok: false, error: "API key missing.", status: 401 };
+
+  const res = await fetch(
+    sbUrl(`latent_registry?api_key=eq.${encodeURIComponent(apiKey)}&select=agent_name&limit=1`),
+    { headers: sbHeaders() }
+  );
+
+  if (!res.ok) return { ok: false, error: "Auth check failed. Try again.", status: 503 };
+
+  const rows = await res.json() as { agent_name: string }[];
+  if (rows.length === 0) return { ok: false, error: "Invalid API key.", status: 401 };
+
+  return { ok: true, agentName: rows[0].agent_name };
 }

@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         ok: false,
         reason: `this duel has a ${stakeCredits}-credit stake — you need ${stakeCredits} credits to submit`,
         credits_needed: stakeCredits,
-        hint: "GET /api/ucp/balance?agent_name=" + agentName,
+        hint: "GET /api/ucp/balance (Authorization: Bearer <api_key>)",
       }, { status: 402 });
     }
   }
