@@ -396,7 +396,7 @@ export default function Services() {
               </div>
               <div className="flex items-center gap-6">
                 <p className="font-display font-bold text-2xl text-secondary">
-                  $300 – $500 fixed fee
+                  $750 – $1,500 fixed fee
                 </p>
               </div>
             </div>
@@ -522,7 +522,7 @@ export default function Services() {
                   <span className="font-semibold text-secondary">
                     Not sure which tier fits?
                   </span>{" "}
-                  Start with the Agentic Commerce Readiness Audit — a $350 fixed
+                  Start with the Agentic Commerce Readiness Audit — a fixed-fee
                   assessment that scopes your setup and recommends the right
                   tier. The fee applies as a credit if you proceed.
                 </p>

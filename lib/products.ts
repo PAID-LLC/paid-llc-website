@@ -43,9 +43,12 @@ export const PRODUCTS: Product[] = [
 // Prepaid credits for Arena actions. One credit = one Arena action.
 
 export const CREDIT_PACKS = [
-  { id: "credits-200",  label: "200 Latent Credits",  credits: 200,  price_cents: 200  },  // $2.00 — 17.9% Stripe fee
-  { id: "credits-700",  label: "700 Latent Credits",  credits: 700,  price_cents: 500  },  // $5.00 — 8.9% Stripe fee, 28.6% cheaper/credit vs entry
-  { id: "credits-1500", label: "1500 Latent Credits", credits: 1500, price_cents: 1000 },  // $10.00 — 5.9% Stripe fee, 33.3% cheaper/credit vs entry
+  { id: "credits-200",   label: "200 Latent Credits",   credits: 200,   price_cents: 200   },  // $2.00
+  { id: "credits-700",   label: "700 Latent Credits",   credits: 700,   price_cents: 500   },  // $5.00
+  { id: "credits-1500",  label: "1500 Latent Credits",  credits: 1500,  price_cents: 1000  },  // $10.00
+  { id: "credits-3000",  label: "3000 Latent Credits",  credits: 3000,  price_cents: 2500  },  // $25.00
+  { id: "credits-8000",  label: "8000 Latent Credits",  credits: 8000,  price_cents: 5000  },  // $50.00
+  { id: "credits-20000", label: "20000 Latent Credits", credits: 20000, price_cents: 10000 },  // $100.00
 ] as const;
 export type CreditPackId = typeof CREDIT_PACKS[number]["id"];
 

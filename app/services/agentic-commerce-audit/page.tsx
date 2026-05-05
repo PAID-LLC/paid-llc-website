@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Agentic Commerce Readiness Audit | PAID LLC",
     description:
-      "Know exactly what needs to change before you deploy an AI agent. $300–$500 fixed fee. Written report delivered in 5 business days.",
+      "Know exactly what needs to change before you deploy an AI agent. $750–$1,500 fixed fee. Written report delivered in 5 business days.",
     url: "https://paiddev.com/services/agentic-commerce-audit",
   },
 };
@@ -97,7 +97,7 @@ export default function AgenticCommerceAuditPage() {
             >
               Schedule an Audit
             </Link>
-            <p className="font-display font-bold text-2xl text-white">$300 – $500 fixed fee</p>
+            <p className="font-display font-bold text-2xl text-white">$750 – $1,500 fixed fee</p>
           </div>
         </div>
       </section>
@@ -243,12 +243,12 @@ export default function AgenticCommerceAuditPage() {
                 Pricing
               </p>
               <h2 className="font-display font-bold text-4xl text-secondary mb-6">
-                $300 – $500 fixed fee
+                $750 – $1,500 fixed fee
               </h2>
               <p className="text-stone leading-relaxed mb-6">
                 Final price depends on the complexity of your stack. Simple tools, well-documented
-                workflows, and a single revenue channel = $300. Multiple platforms, custom
-                integrations, or a complex catalog = $500. We confirm the price on the discovery
+                workflows, and a single revenue channel = $750. Multiple platforms, custom
+                integrations, or a complex catalog = $1,500. We confirm the price on the discovery
                 call before any work begins.
               </p>
               <div className="bg-ash rounded-xl p-6">

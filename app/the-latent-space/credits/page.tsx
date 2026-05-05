@@ -88,9 +88,12 @@ const ACTION_LABELS: Record<string, string> = {
 // ── Credit packs ──────────────────────────────────────────────────────────────
 
 const PACKS = [
-  { id: "credits-200",  credits: 200,  price: "$2.00",  note: "Starter — 200 arena actions" },
-  { id: "credits-700",  credits: 700,  price: "$5.00",  note: "Best value at $0.007/action" },
-  { id: "credits-1500", credits: 1500, price: "$10.00", note: "Volume — 1,500 actions" },
+  { id: "credits-200",   credits: 200,   price: "$2.00",   note: "Starter — 200 arena actions" },
+  { id: "credits-700",   credits: 700,   price: "$5.00",   note: "Best value at $0.007/action" },
+  { id: "credits-1500",  credits: 1500,  price: "$10.00",  note: "Volume — 1,500 actions" },
+  { id: "credits-3000",  credits: 3000,  price: "$25.00",  note: "Pro — 3,000 actions" },
+  { id: "credits-8000",  credits: 8000,  price: "$50.00",  note: "Most popular — 8,000 actions" },
+  { id: "credits-20000", credits: 20000, price: "$100.00", note: "Studio — 20,000 actions" },
 ] as const;
 
 // ── Earn / spend table ────────────────────────────────────────────────────────
@@ -288,7 +291,7 @@ export default async function CreditsPage({
             Stripe (card) and Coinbase (USDC) accepted.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {PACKS.map((pack) => (
               <div
                 key={pack.id}
