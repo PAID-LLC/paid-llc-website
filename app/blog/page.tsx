@@ -1,3 +1,5 @@
+﻿export const runtime = "edge";
+
 import { getAllPosts, CATEGORIES } from "@/lib/blog";
 import BlogCard from "@/components/BlogCard";
 import Link from "next/link";
