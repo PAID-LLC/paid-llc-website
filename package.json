@@ -6,7 +6,7 @@
     "generate-blog": "node scripts/generate-blog-data.mjs",
     "dev": "node scripts/generate-blog-data.mjs && next dev",
     "build": "node scripts/generate-blog-data.mjs && next build",
-    "build:cf": "npx vercel build && node scripts/patch-vercel-output.mjs && npx @cloudflare/next-on-pages --skip-build",
+    "build:cf": "node scripts/build-cf.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
