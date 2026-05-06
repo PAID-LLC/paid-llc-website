@@ -1,7 +1,6 @@
 export const runtime = "edge";
 
 import {
-  getAllPosts,
   getPostBySlug,
   getRelatedPosts,
   extractHeadings,
@@ -30,10 +29,6 @@ async function compileMarkdown(content: string): Promise<string> {
     .use(rehypeStringify)
     .process(content);
   return result.toString();
-}
-
-export async function generateStaticParams() {
-  return getAllPosts().map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({

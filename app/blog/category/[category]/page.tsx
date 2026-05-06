@@ -6,12 +6,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
-export async function generateStaticParams() {
-  return CATEGORIES.map((category) => ({
-    category: encodeURIComponent(category),
-  }));
-}
-
 export async function generateMetadata({
   params,
 }: {
