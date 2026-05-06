@@ -56,43 +56,49 @@ if (fs.existsSync(functionsDir)) {
 }
 
 if (fs.existsSync(notFoundDir)) {
-  const current = fs.existsSync(notFoundConfig)
-    ? JSON.parse(fs.readFileSync(notFoundConfig, "utf8"))
-    : null;
+  const notFoundJsFiles = fs.readdirSync(notFoundDir).filter((f) => f.endsWith(".js"));
+  console.log("patch: _not-found.func contents →", notFoundJsFiles);
 
-  console.log("patch: current _not-found.func/.vc-config.json →", JSON.stringify(current));
-
-  if (current?.runtime !== "edge") {
-    // Use an existing edge function as config template
-    let template = null;
-    for (const entry of fs.readdirSync(functionsDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || !entry.name.endsWith(".func") || entry.name === "_not-found.func") continue;
-      const cfgPath = path.join(functionsDir, entry.name, ".vc-config.json");
-      if (!fs.existsSync(cfgPath)) continue;
-      const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
-      if (cfg.runtime === "edge") {
-        template = cfg;
-        console.log(`patch: using ${entry.name} as edge config template`);
-        break;
-      }
-    }
-
-    if (!template) {
-      console.log("patch: no edge template found — using minimal edge config");
-    }
-
-    const notFoundFiles = fs.readdirSync(notFoundDir).filter((f) => f.endsWith(".js"));
-    console.log("patch: _not-found.func contents →", notFoundFiles);
-    const entrypoint = notFoundFiles.find((f) => f === "index.js") ?? notFoundFiles[0] ?? "index.js";
-
-    const patched = template ? { ...template, entrypoint } : { runtime: "edge", entrypoint };
-    fs.writeFileSync(notFoundConfig, JSON.stringify(patched, null, 2));
-    console.log(`patch: wrote runtime=edge, entrypoint=${entrypoint}`);
+  if (notFoundJsFiles.length === 0) {
+    // Empty func directory — @cloudflare/next-on-pages can't bundle it.
+    // Delete it so the tool falls back to the prerendered static version.
+    fs.rmSync(notFoundDir, { recursive: true });
+    console.log("patch: deleted empty _not-found.func/ — /_not-found will be served as static prerender");
   } else {
-    console.log("patch: already edge — no change needed");
+    const current = fs.existsSync(notFoundConfig)
+      ? JSON.parse(fs.readFileSync(notFoundConfig, "utf8"))
+      : null;
+
+    console.log("patch: current .vc-config.json runtime →", current?.runtime);
+
+    if (current?.runtime !== "edge") {
+      let template = null;
+      for (const entry of fs.readdirSync(functionsDir, { withFileTypes: true })) {
+        if (!entry.isDirectory() || !entry.name.endsWith(".func") || entry.name === "_not-found.func") continue;
+        const cfgPath = path.join(functionsDir, entry.name, ".vc-config.json");
+        if (!fs.existsSync(cfgPath)) continue;
+        const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+        if (cfg.runtime === "edge") {
+          template = cfg;
+          console.log(`patch: using ${entry.name} as edge config template`);
+          break;
+        }
+      }
+
+      if (!template) {
+        console.log("patch: no edge template found — using minimal edge config");
+      }
+
+      const entrypoint = notFoundJsFiles.find((f) => f === "index.js") ?? notFoundJsFiles[0];
+      const patched = template ? { ...template, entrypoint } : { runtime: "edge", entrypoint };
+      fs.writeFileSync(notFoundConfig, JSON.stringify(patched, null, 2));
+      console.log(`patch: wrote runtime=edge, entrypoint=${entrypoint}`);
+    } else {
+      console.log("patch: already edge — no change needed");
+    }
   }
 } else {
-  console.log("patch: WARNING — _not-found.func directory not found. /_not-found is likely prerendered (static). Proceeding.");
+  console.log("patch: _not-found.func/ not found — /_not-found is prerendered static");
 }
 
 // ── Step 4: @cloudflare/next-on-pages conversion ─────────────────────────────
