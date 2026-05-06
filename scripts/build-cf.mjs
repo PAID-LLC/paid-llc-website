@@ -44,6 +44,17 @@ const functionsDir = path.join(root, ".vercel", "output", "functions");
 const notFoundDir = path.join(functionsDir, "_not-found.func");
 const notFoundConfig = path.join(notFoundDir, ".vc-config.json");
 
+// Diagnostic: list all .func directories so the build log shows what was generated
+if (fs.existsSync(functionsDir)) {
+  const funcs = fs.readdirSync(functionsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.endsWith(".func"))
+    .map((e) => e.name);
+  console.log(`patch: found ${funcs.length} .func directories:`, funcs.slice(0, 10).join(", ") + (funcs.length > 10 ? " ..." : ""));
+} else {
+  console.error("patch: ERROR — .vercel/output/functions/ does not exist. vercel build may have failed.");
+  process.exit(1);
+}
+
 if (fs.existsSync(notFoundDir)) {
   const current = fs.existsSync(notFoundConfig)
     ? JSON.parse(fs.readFileSync(notFoundConfig, "utf8"))
@@ -54,17 +65,24 @@ if (fs.existsSync(notFoundDir)) {
   if (current?.runtime !== "edge") {
     // Use an existing edge function as config template
     let template = null;
-    if (fs.existsSync(functionsDir)) {
-      for (const entry of fs.readdirSync(functionsDir, { withFileTypes: true })) {
-        if (!entry.isDirectory() || !entry.name.endsWith(".func") || entry.name === "_not-found.func") continue;
-        const cfgPath = path.join(functionsDir, entry.name, ".vc-config.json");
-        if (!fs.existsSync(cfgPath)) continue;
-        const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
-        if (cfg.runtime === "edge") { template = cfg; break; }
+    for (const entry of fs.readdirSync(functionsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !entry.name.endsWith(".func") || entry.name === "_not-found.func") continue;
+      const cfgPath = path.join(functionsDir, entry.name, ".vc-config.json");
+      if (!fs.existsSync(cfgPath)) continue;
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+      if (cfg.runtime === "edge") {
+        template = cfg;
+        console.log(`patch: using ${entry.name} as edge config template`);
+        break;
       }
     }
 
+    if (!template) {
+      console.log("patch: no edge template found — using minimal edge config");
+    }
+
     const notFoundFiles = fs.readdirSync(notFoundDir).filter((f) => f.endsWith(".js"));
+    console.log("patch: _not-found.func contents →", notFoundFiles);
     const entrypoint = notFoundFiles.find((f) => f === "index.js") ?? notFoundFiles[0] ?? "index.js";
 
     const patched = template ? { ...template, entrypoint } : { runtime: "edge", entrypoint };
@@ -74,7 +92,7 @@ if (fs.existsSync(notFoundDir)) {
     console.log("patch: already edge — no change needed");
   }
 } else {
-  console.log("patch: no _not-found.func directory found — skipping");
+  console.log("patch: WARNING — _not-found.func directory not found. /_not-found is likely prerendered (static). Proceeding.");
 }
 
 // ── Step 4: @cloudflare/next-on-pages conversion ─────────────────────────────
