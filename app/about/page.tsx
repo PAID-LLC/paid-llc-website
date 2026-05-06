@@ -100,6 +100,72 @@ export default function About() {
         </div>
       </section>
 
+      {/* AI and the Environment */}
+      <section id="sustainability" className="bg-white">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="max-w-2xl mb-16">
+            <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
+              AI and the Environment
+            </p>
+            <h2 className="font-display font-bold text-4xl text-secondary mb-4">
+              What the numbers actually say.
+            </h2>
+            <p className="text-stone text-lg leading-relaxed">
+              The conversation is louder than the data. Here&apos;s what&apos;s real.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-6 mb-16">
+            {[
+              {
+                myth: "AI is an environmental disaster.",
+                fact: "AI represents approximately 0.7% of global electricity consumption in 2026. Real cost, real growth. Not the crisis it's framed as.",
+              },
+              {
+                myth: "More AI use means proportionally more energy consumed.",
+                fact: "Between 2010 and 2018, global compute grew 550% and storage grew 2,500%, while data center electricity use rose only 6%. Efficiency gains consistently outpace demand growth.",
+              },
+              {
+                myth: "AI has no environmental upside.",
+                fact: "AI has the potential to cut more than 5 billion tons of CO2 across agriculture, transportation, and manufacturing. The IEA projects data center electricity to double by 2030. Whether that growth comes from fossil fuels or clean energy depends on how AI gets deployed.",
+              },
+              {
+                myth: "Every AI query has the same footprint.",
+                fact: "A standard query produces roughly 0.03 to 1.14 grams of CO2. A reasoning model chain can be 100 times higher. Model selection and task design are leverage points.",
+              },
+            ].map(({ myth, fact }) => (
+              <div key={myth} className="border border-ash rounded-xl p-8 hover:border-primary transition-colors">
+                <p className="text-primary font-semibold text-xs tracking-widest uppercase mb-2">Myth</p>
+                <p className="font-display font-semibold text-secondary mb-4 leading-snug">{myth}</p>
+                <p className="text-stone leading-relaxed text-sm">{fact}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-ash pt-12">
+            <p className="text-primary font-semibold text-xs tracking-widest uppercase mb-8">By the Numbers</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+              {[
+                { stat: "33x",          label: "Energy reduction per Gemini prompt over 12 months",               source: "Google, 2024 to 2025" },
+                { stat: "25x",          label: "Energy efficiency improvement in current-gen GPUs vs. 2 years ago", source: "" },
+                { stat: "2.5 to 3.7%", label: "AI's current share of global greenhouse gas emissions",             source: "" },
+                { stat: "~60%",         label: "Projected data center energy growth from fossil fuels",             source: "Goldman Sachs Research" },
+              ].map(({ stat, label, source }) => (
+                <div key={stat}>
+                  <p className="font-display font-bold text-4xl text-secondary mb-2">{stat}</p>
+                  <p className="text-stone text-sm leading-relaxed">
+                    {label}{source ? ` (${source})` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-stone leading-relaxed max-w-xl">
+              PAID LLC helps businesses implement AI at the right scale for the right tasks. That&apos;s not just good ROI. It&apos;s how responsible deployment works.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Founder */}
       <section className="bg-ash">
         <div className="max-w-6xl mx-auto px-6 py-24">

@@ -35,6 +35,7 @@ export default function Footer() {
                 { href: "/digital-products", label: "Digital Products" },
                 { href: "/the-latent-space", label: "The Latent Space" },
                 { href: "/about", label: "About" },
+                { href: "/about#sustainability", label: "Responsible AI" },
                 { href: "/contact", label: "Contact" },
               ].map((link) => (
                 <li key={link.href}>
