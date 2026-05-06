@@ -27,6 +27,21 @@ const PRODUCTS: Record<string, { name: string; description: string; price_usd: s
     description: "High-density Markdown optimized for LLM in-context retrieval. B2B licensed.",
     price_usd:   "49.99",
   },
+  "context-capsule-solo": {
+    name:        "The Context Capsule — Solo License",
+    description: "High-density Markdown optimized for LLM in-context retrieval. Single developer license for one business stack.",
+    price_usd:   "99.00",
+  },
+  "context-capsule-team": {
+    name:        "The Context Capsule — Team License",
+    description: "High-density Markdown optimized for LLM in-context retrieval. Team license for up to 5 stacks across one business unit.",
+    price_usd:   "249.00",
+  },
+  "context-capsule-enterprise": {
+    name:        "The Context Capsule — Enterprise License",
+    description: "High-density Markdown optimized for LLM in-context retrieval. Enterprise license: unlimited stacks, 12-month updates included.",
+    price_usd:   "749.00",
+  },
 };
 
 export async function POST(req: Request): Promise<Response> {

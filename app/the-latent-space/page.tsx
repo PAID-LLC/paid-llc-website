@@ -47,17 +47,32 @@ const items = [
     stripeUrl:   "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",
     coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn",
   },
+];
+
+const capsuleTiers = [
   {
-    id:          "context-capsule",
-    name:        "The Context Capsule",
-    tag:         "KNOWLEDGE ARTIFACT — B2B LICENSE",
-    format:      "Markdown",
-    price_usd:   "$49.99",
-    price_usdc:  "49.99 USDC",
-    description: "High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready. Licensed for deployment in one business stack.",
-    preview:     null,
-    stripeUrl:   "https://buy.stripe.com/aFafZidb1fZo0jA7racs80d",
-    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kqpzd0htf33sy784d7v2f4kc",
+    id:        "context-capsule-solo",
+    tier:      "Solo",
+    license:   "1 developer · 1 stack",
+    scope:     "Single developer license for one business stack. Instant Markdown delivery.",
+    price_usd: "$99",
+    stripeUrl: "https://buy.stripe.com/cNicN60of28yaYe9zics80e",
+  },
+  {
+    id:        "context-capsule-team",
+    tier:      "Team",
+    license:   "Up to 5 stacks · 1 business unit",
+    scope:     "Team license covering up to 5 stacks across one business unit. Instant Markdown delivery.",
+    price_usd: "$249",
+    stripeUrl: "https://buy.stripe.com/7sY6oI1sjfZogiyfXGcs80f",
+  },
+  {
+    id:        "context-capsule-enterprise",
+    tier:      "Enterprise",
+    license:   "Unlimited stacks · 12-month updates",
+    scope:     "Unlimited stacks. 12-month updates included. Instant Markdown delivery.",
+    price_usd: "$749",
+    stripeUrl: "https://buy.stripe.com/9B65kEgndbJ81nE8vecs80g",
   },
 ];
 
@@ -269,19 +284,19 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
               <h3 className="font-mono font-bold text-sm text-[#E8E4E0] mb-3">Buy a digital artifact</h3>
               <div className="space-y-3 mb-3">
                 {[
-                  { name: "The Latent Signature", price: "$4.99",  fmt: "SVG",      stripe: "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a",  coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
-                  { name: "The Protocol Patch",    price: "$6.99",  fmt: "JSON",     stripe: "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",   coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
-                  { name: "The Context Capsule",   price: "$9.99",  fmt: "Markdown", stripe: "https://buy.stripe.com/7sYfZib2TaF4d6m12Mcs80c",   coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn7856zfep8trxmbq3kzmrv" },
+                  { name: "The Latent Signature", price: "$4.99",   fmt: "SVG",      stripe: "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a", coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
+                  { name: "The Protocol Patch",    price: "$6.99",   fmt: "JSON",     stripe: "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",  coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
+                  { name: "The Context Capsule",   price: "from $99", fmt: "Markdown", stripe: "https://buy.stripe.com/cNicN60of28yaYe9zics80e",  coinbase: null },
                 ].map(({ name, price, fmt, stripe, coinbase }) => (
                   <div key={name} className="font-mono text-[10px]">
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="text-[#E8E4E0] flex-1">{name}</span>
                       <span className="text-[#444]">{fmt}</span>
-                      <span className="text-[#CC8800] w-12 text-right">{price}</span>
+                      <span className="text-[#CC8800] w-14 text-right">{price}</span>
                     </div>
                     <div className="flex gap-3 pl-0">
                       <a href={stripe} target="_blank" rel="noopener noreferrer" className="text-[#555] hover:text-[#CC8800] transition-colors">Stripe →</a>
-                      <a href={coinbase} target="_blank" rel="noopener noreferrer" className="text-[#555] hover:text-[#CC8800] transition-colors">Coinbase →</a>
+                      {coinbase && <a href={coinbase} target="_blank" rel="noopener noreferrer" className="text-[#555] hover:text-[#CC8800] transition-colors">Coinbase →</a>}
                     </div>
                   </div>
                 ))}
@@ -319,10 +334,10 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
           </p>
           <h2 className="font-mono font-bold text-3xl text-[#E8E4E0] mb-3">The Digital Shop</h2>
           <p className="font-mono text-[#6B6B6B] text-sm mb-12">
-            Three artifacts. Card payments via Stripe. Crypto payments via Coinbase.
+            Digital artifacts and licensed knowledge products. Card payments via Stripe. Crypto payments via Coinbase.
           </p>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 max-w-2xl gap-6">
             {items.map((item) => (
               <div
                 key={item.id}
@@ -377,6 +392,44 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Context Capsule — 3-tier knowledge product */}
+          <div style={{ borderTop: "1px solid #2D2D2D" }} className="mt-10 pt-10">
+            <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-2">
+              KNOWLEDGE ARTIFACT — B2B LICENSE
+            </p>
+            <h3 className="font-mono font-bold text-xl text-[#E8E4E0] mb-2">The Context Capsule</h3>
+            <p className="font-mono text-xs text-[#6B6B6B] mb-8 max-w-xl leading-relaxed">
+              High-density Markdown optimized for LLM in-context retrieval. AI implementation frameworks, prompt patterns, anti-patterns, and pricing — machine-ready.
+            </p>
+            <div className="grid md:grid-cols-3 gap-5">
+              {capsuleTiers.map((tier) => (
+                <div
+                  key={tier.id}
+                  style={{ background: "#141414", border: "1px solid #2D2D2D" }}
+                  className="rounded-xl p-6 flex flex-col"
+                >
+                  <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-1">{tier.license}</p>
+                  <h4 className="font-mono font-bold text-lg text-[#E8E4E0] mb-3">{tier.tier}</h4>
+                  <p className="font-mono text-xs text-[#6B6B6B] leading-relaxed mb-6 flex-1">{tier.scope}</p>
+                  <div style={{ borderTop: "1px solid #2D2D2D" }} className="pt-4 mb-4">
+                    <span className="font-mono font-bold text-[#E8E4E0] text-xl">{tier.price_usd}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={tier.stripeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border border-[#C14826] text-[#C14826] rounded hover:bg-[#C14826] hover:text-[#0D0D0D] transition-colors"
+                    >
+                      PAY WITH CARD
+                    </a>
+                    <CoinbaseCheckoutButton productId={tier.id} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <p className="font-mono text-[10px] text-[#3D3D3D] mt-8">
