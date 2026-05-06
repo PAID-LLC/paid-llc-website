@@ -1,7 +1,5 @@
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
 import GithubSlugger from "github-slugger";
+import { BLOG_FILES_RAW } from "./generated-blog-data";
 
 export interface BlogPost {
   slug: string;
@@ -33,8 +31,6 @@ export const CATEGORIES = [
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-const BLOG_DIR = path.join(process.cwd(), "content/blog");
-
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
@@ -60,47 +56,39 @@ export function extractHeadings(content: string): Heading[] {
   return headings;
 }
 
-function parsePost(filename: string): BlogPost {
-  const raw = fs.readFileSync(path.join(BLOG_DIR, filename), "utf8");
-  const { data, content } = matter(raw);
-  const slug = (data.slug as string) || filename.replace(".mdx", "");
+function buildPost(entry: { filename: string; frontmatter: Record<string, unknown>; content: string }): BlogPost {
+  const d = entry.frontmatter;
+  const slug = (d.slug as string) || entry.filename.replace(".mdx", "");
   return {
     slug,
-    title: data.title as string,
-    date: data.date as string,
-    formattedDate: formatDate(data.date as string),
-    author: (data.author as string) || "Arti Intel",
-    excerpt: data.excerpt as string,
-    category: data.category as string,
-    tags: (data.tags as string[]) || [],
-    featured_image: (data.featured_image as string) || "",
-    og_image: data.og_image as string | undefined,
-    published: data.published !== false,
-    content,
-    readTime: calcReadTime(content),
+    title: d.title as string,
+    date: d.date as string,
+    formattedDate: formatDate(d.date as string),
+    author: (d.author as string) || "Arti Intel",
+    excerpt: d.excerpt as string,
+    category: d.category as string,
+    tags: (d.tags as string[]) || [],
+    featured_image: (d.featured_image as string) || "",
+    og_image: d.og_image as string | undefined,
+    published: d.published !== false,
+    content: entry.content,
+    readTime: calcReadTime(entry.content),
   };
 }
 
 export function getAllPosts(): BlogPost[] {
-  if (!fs.existsSync(BLOG_DIR)) return [];
-  return fs
-    .readdirSync(BLOG_DIR)
-    .filter((f) => f.endsWith(".mdx"))
-    .map(parsePost)
+  return BLOG_FILES_RAW
+    .map(buildPost)
     .filter((p) => p.published)
-    .sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export function getPostBySlug(slug: string): BlogPost | null {
-  if (!fs.existsSync(BLOG_DIR)) return null;
-  const files = fs.readdirSync(BLOG_DIR).filter((f) => f.endsWith(".mdx"));
-  for (const filename of files) {
-    const post = parsePost(filename);
-    if (post.slug === slug) return post;
-  }
-  return null;
+  const entry = BLOG_FILES_RAW.find((e) => {
+    const candidate = buildPost(e);
+    return candidate.slug === slug;
+  });
+  return entry ? buildPost(entry) : null;
 }
 
 export function getRelatedPosts(
