@@ -2,25 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 
 // ── Security middleware ────────────────────────────────────────────────────────
 //
-// Sets security headers on every HTML response, including a per-request CSP
-// nonce. The nonce is forwarded as x-nonce so layout.tsx can pass it to
-// next/script components — enabling CSP-compliant inline scripts for SSR pages.
-//
-// Note on SSG + unsafe-inline: Static pre-built pages have Next.js hydration
-// scripts with no nonce attribute. Removing 'unsafe-inline' would break them.
-// 'unsafe-inline' is retained until SSR is adopted; browsers that see a valid
-// 'nonce-*' directive will prefer the nonce for any scripts that carry it.
-// F-04 tightening (remove unsafe-inline) is deferred until SSR migration.
+// Sets security headers on every HTML response.
+// No nonce: the site uses static prerendering + unsafe-inline for Next.js
+// hydration scripts. Adding a nonce to the CSP causes browsers to ignore
+// unsafe-inline (per CSP Level 2 spec), which blocks hydration and white-screens
+// the page. Nonce-based CSP requires SSR so every response can stamp the nonce
+// onto each inline script tag — not compatible with static export.
 
 export function middleware(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isProd = process.env.NODE_ENV !== "development";
 
   const csp = [
     "default-src 'self'",
-    // unsafe-inline: required for Next.js SSG hydration scripts (no nonce attr).
+    // unsafe-inline: required for Next.js SSG hydration scripts.
     // googletagmanager.com: loads gtag.js when NEXT_PUBLIC_GA_ID is set.
-    `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com`,
+    `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "img-src 'self' data: blob:",
@@ -30,11 +26,7 @@ export function middleware(request: NextRequest) {
     "frame-ancestors 'none'",
   ].join("; ");
 
-  // Pass nonce to server components via request header.
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const response = NextResponse.next();
 
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
