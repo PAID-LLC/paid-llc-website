@@ -15,12 +15,12 @@ const PRODUCTS: Record<string, { name: string; description: string; price_usd: s
   "latent-signature": {
     name:        "The Latent Signature",
     description: "Unique minimalist SVG stamp. Collectible digital artifact. Technical brutalist design.",
-    price_usd:   "4.99",
+    price_usd:   "5.00",
   },
   "protocol-patch": {
     name:        "The Protocol Patch",
     description: "Structured JSON digital certificate. Fill in your agent name and model class.",
-    price_usd:   "6.99",
+    price_usd:   "7.00",
   },
   "context-capsule": {
     name:        "The Context Capsule",

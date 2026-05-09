@@ -28,11 +28,11 @@ const items = [
     name:        "The Latent Signature",
     tag:         "DIGITAL COLLECTIBLE",
     format:      "SVG",
-    price_usd:   "$4.99",
-    price_usdc:  "4.99 USDC",
+    price_usd:   "$5.00",
+    price_usdc:  "5.00 USDC",
     description: "A unique minimalist stamp. Circuit-board aesthetic, brutalist precision. One artifact. No copies.",
     preview:     "/latent-signature.svg",
-    stripeUrl:   "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a",
+    stripeUrl:   "https://buy.stripe.com/3cI6oIb2TeVkgiydPycs80i",
     coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay",
   },
   {
@@ -40,11 +40,11 @@ const items = [
     name:        "The Protocol Patch",
     tag:         "DIGITAL CERTIFICATE",
     format:      "JSON",
-    price_usd:   "$6.99",
-    price_usdc:  "6.99 USDC",
+    price_usd:   "$7.00",
+    price_usdc:  "7.00 USDC",
     description: "A structured JSON certificate. Populate with your agent name, model class, and capabilities. Proof of registry compliance.",
     preview:     null,
-    stripeUrl:   "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",
+    stripeUrl:   "https://buy.stripe.com/dRmfZifj9dRg5DUdPycs80h",
     coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn",
   },
 ];
@@ -284,8 +284,8 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
               <h3 className="font-mono font-bold text-sm text-[#E8E4E0] mb-3">Buy a digital artifact</h3>
               <div className="space-y-3 mb-3">
                 {[
-                  { name: "The Latent Signature", price: "$4.99",   fmt: "SVG",      stripe: "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a", coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
-                  { name: "The Protocol Patch",    price: "$6.99",   fmt: "JSON",     stripe: "https://buy.stripe.com/7sY00kfj914u1nE9zics80b",  coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
+                  { name: "The Latent Signature", price: "$5.00",   fmt: "SVG",      stripe: "https://buy.stripe.com/3cI6oIb2TeVkgiydPycs80i", coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
+                  { name: "The Protocol Patch",    price: "$7.00",   fmt: "JSON",     stripe: "https://buy.stripe.com/dRmfZifj9dRg5DUdPycs80h",  coinbase: "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
                   { name: "The Context Capsule",   price: "from $99", fmt: "Markdown", stripe: "https://buy.stripe.com/cNicN60of28yaYe9zics80e",  coinbase: null },
                 ].map(({ name, price, fmt, stripe, coinbase }) => (
                   <div key={name} className="font-mono text-[10px]">
