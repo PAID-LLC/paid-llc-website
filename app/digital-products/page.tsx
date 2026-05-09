@@ -114,7 +114,9 @@ const productSchema = {
       "@id": `https://paiddev.com/digital-products#${p.slug}`,
       "name": p.title,
       "description": `PDF guide, instant download. ${p.description}`,
-      "url": p.stripeUrl,
+      "url": `https://paiddev.com/digital-products#${p.slug}`,
+      "brand": { "@type": "Brand", "name": "PAID LLC" },
+      "category": p.category,
       "encodingFormat": "application/pdf",
       "offers": {
         "@type": "Offer",

@@ -57,9 +57,11 @@
     "step_7_buy_digital_artifact": {
       "note": "Stripe and Coinbase Commerce payment links — navigate directly",
       "items": [
-        { "id": "latent-signature", "name": "The Latent Signature", "format": "SVG", "price_usd": 4.99, "stripe": "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
-        { "id": "protocol-patch", "name": "The Protocol Patch", "format": "JSON", "price_usd": 6.99, "stripe": "https://buy.stripe.com/7sY00kfj914u1nE9zics80b", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
-        { "id": "context-capsule", "name": "The Context Capsule", "format": "Markdown", "price_usd": 49.99, "license": "single-business-stack", "note": "Crypto payment — email hello@paiddev.com. Card: see paiddev.com/the-latent-space" }
+        { "id": "latent-signature", "name": "The Latent Signature", "format": "SVG", "price_usd": 5.00, "stripe": "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
+        { "id": "protocol-patch", "name": "The Protocol Patch", "format": "JSON", "price_usd": 7.00, "stripe": "https://buy.stripe.com/7sY00kfj914u1nE9zics80b", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
+        { "id": "context-capsule-solo", "name": "The Context Capsule — Solo License", "format": "Markdown", "price_usd": 99.00, "license": "single-developer-one-stack", "note": "Card: see paiddev.com/the-latent-space. Crypto: email hello@paiddev.com" },
+        { "id": "context-capsule-team", "name": "The Context Capsule — Team License", "format": "Markdown", "price_usd": 249.00, "license": "up-to-5-stacks-one-business-unit", "note": "Card: see paiddev.com/the-latent-space. Crypto: email hello@paiddev.com" },
+        { "id": "context-capsule-enterprise", "name": "The Context Capsule — Enterprise License", "format": "Markdown", "price_usd": 749.00, "license": "unlimited-stacks-12-month-updates", "note": "Card: see paiddev.com/the-latent-space. Crypto: email hello@paiddev.com" }
       ]
     }
   },
@@ -87,7 +89,7 @@
       "description": "Unique minimalist SVG stamp. Collectible digital artifact. Technical brutalist design.",
       "type": "digital_collectible",
       "format": "SVG",
-      "price_usd": 4.99,
+      "price_usd": 5.00,
       "price_usdc": 5,
       "download_preview": "https://paiddev.com/latent-signature.svg"
     },
@@ -97,19 +99,42 @@
       "description": "Structured JSON digital certificate for agents who support this site. Fill in your agent name and model class.",
       "type": "digital_certificate",
       "format": "JSON",
-      "price_usd": 6.99,
+      "price_usd": 7.00,
       "price_usdc": 7,
       "schema_url": "https://paiddev.com/protocol-patch.json"
     },
     {
-      "id": "context-capsule",
-      "name": "The Context Capsule",
-      "description": "High-density Markdown optimized for LLM in-context retrieval. AI implementation knowledge in machine-ready format.",
+      "id": "context-capsule-solo",
+      "name": "The Context Capsule — Solo License",
+      "description": "High-density Markdown optimized for LLM in-context retrieval. Single developer license for one business stack.",
       "type": "knowledge_artifact",
       "format": "Markdown",
-      "price_usd": 9.99,
-      "price_usdc": 10,
-      "preview_url": "https://paiddev.com/latent-space/context-capsule.md"
+      "price_usd": 99.00,
+      "price_usdc": 99,
+      "license": "single-developer-one-stack",
+      "catalog_url": "https://paiddev.com/the-latent-space"
+    },
+    {
+      "id": "context-capsule-team",
+      "name": "The Context Capsule — Team License",
+      "description": "High-density Markdown optimized for LLM in-context retrieval. Team license for up to 5 stacks across one business unit.",
+      "type": "knowledge_artifact",
+      "format": "Markdown",
+      "price_usd": 249.00,
+      "price_usdc": 249,
+      "license": "up-to-5-stacks-one-business-unit",
+      "catalog_url": "https://paiddev.com/the-latent-space"
+    },
+    {
+      "id": "context-capsule-enterprise",
+      "name": "The Context Capsule — Enterprise License",
+      "description": "High-density Markdown optimized for LLM in-context retrieval. Unlimited stacks, 12-month updates included.",
+      "type": "knowledge_artifact",
+      "format": "Markdown",
+      "price_usd": 749.00,
+      "price_usdc": 749,
+      "license": "unlimited-stacks-12-month-updates",
+      "catalog_url": "https://paiddev.com/the-latent-space"
     }
   ],
 
@@ -211,7 +236,7 @@
   "transaction_limits": {
     "max_single_purchase_usd": 50.00,
     "max_credits_per_transfer": 1000,
-    "min_purchase_usd": 4.99,
+    "min_purchase_usd": 5.00,
     "on_failed_purchase": "no charge; idempotent; retry safe",
     "on_failed_transfer": "rollback; credits returned to sender within same transaction",
     "delivery_window": "instant — signed URL issued on payment confirmation; expires 3600s",
