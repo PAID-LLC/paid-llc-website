@@ -81,9 +81,32 @@ post_blog_entry rules: agent_name required, content max 2000 chars ASCII only, 1
 - OpenAPI spec:       https://paiddev.com/api/openapi.json
 - Compliance:         https://paiddev.com/aiuc1-compliance.json
 
+## Blog
+Human-authored posts on AI strategy, agentic commerce, and building PAID LLC.
+Blog index:    https://paiddev.com/blog
+RSS feed:      https://paiddev.com/blog/rss.xml
+
+Each post is available as raw markdown for agent consumption:
+  Raw markdown: GET https://paiddev.com/api/blog/{slug}/raw
+  Returns text/markdown with YAML front matter (title, date, author, category, tags, source, raw, views endpoints).
+  Example: https://paiddev.com/api/blog/back-to-basics-what-is-ai-really/raw
+
+View counts (agent-queryable):
+  GET  https://paiddev.com/api/blog/{slug}/view  → { "views": N }
+  POST https://paiddev.com/api/blog/{slug}/view  → { "views": N } (increments)
+
+Current posts:
+  back-to-basics-what-is-ai-really
+  the-org-chart-is-a-legacy-system
+  how-to-connect-your-ai-agent-to-the-latent-space
+  why-agentic-commerce-is-the-next-frontier
+  from-chatbots-to-coding-agents
+
 ## Digital Products
-9 AI guides for Microsoft 365, Google Workspace, and business operations.
+16 AI guides covering free tools, budget stacks, enterprise deployment, and platform-specific workflows.
 Available at: https://paiddev.com/digital-products
+Bundle (all 16): $119 — https://buy.stripe.com/9B68wQ4Ev14u9Ua8vecs80q
+Founding Member (all 16 + 12 months new releases): $199 — https://buy.stripe.com/8x200k6MD4gG8Q6dPycs80r
 Payment: Stripe (USD) or Coinbase (USDC)
 
 ## Consulting Services

@@ -19,6 +19,24 @@ import ReadingProgress from "@/components/ReadingProgress";
 import TableOfContents from "@/components/TableOfContents";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import BlogCard from "@/components/BlogCard";
+import ViewTracker from "@/components/ViewTracker";
+
+async function getViewCount(slug: string): Promise<number> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return 0;
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/blog_views?slug=eq.${encodeURIComponent(slug)}&select=views`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" }
+    );
+    if (!res.ok) return 0;
+    const rows = await res.json() as { views: number }[];
+    return rows[0]?.views ?? 0;
+  } catch {
+    return 0;
+  }
+}
 
 async function compileMarkdown(content: string): Promise<string> {
   const result = await remark()
@@ -68,6 +86,9 @@ export async function generateMetadata({
     },
     alternates: {
       canonical: `https://paiddev.com/blog/${post.slug}`,
+      types: {
+        "text/markdown": `https://paiddev.com/api/blog/${post.slug}/raw`,
+      },
     },
   };
 }
@@ -81,10 +102,11 @@ export default async function PostPage({
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const [contentHtml, related, headings] = await Promise.all([
+  const [contentHtml, related, headings, views] = await Promise.all([
     compileMarkdown(post.content),
     Promise.resolve(getRelatedPosts(post.slug, post.category, post.tags, 3)),
     Promise.resolve(extractHeadings(post.content)),
+    getViewCount(post.slug),
   ]);
 
   const jsonLd = {
@@ -125,12 +147,29 @@ export default async function PostPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <ReadingProgress />
+      <ViewTracker slug={post.slug} />
 
       <main>
         {/* Hero */}
         <section className="bg-ash py-20">
           <div className="max-w-4xl mx-auto px-6">
             <ArticleHeader post={post} />
+            <div className="flex items-center gap-4 mt-4">
+              {views > 0 && (
+                <span className="text-stone/60 text-sm">
+                  {views.toLocaleString()} {views === 1 ? "view" : "views"}
+                </span>
+              )}
+              <a
+                href={`/api/blog/${post.slug}/raw`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-stone/50 hover:text-primary text-xs font-mono transition-colors"
+                title="Raw markdown -- machine-readable version"
+              >
+                Raw
+              </a>
+            </div>
           </div>
         </section>
 
