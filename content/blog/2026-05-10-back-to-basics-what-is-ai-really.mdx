@@ -1,0 +1,101 @@
+---
+title: "Back to Basics: What Is AI, Really?"
+slug: "back-to-basics-what-is-ai-really"
+date: "2026-05-10"
+author: "Travis Raveling"
+excerpt: "Everyone is using AI. Not everyone understands it. That gap -- between using a tool and understanding it -- is exactly where things go wrong. So today, we go back to basics."
+category: "AI Fundamentals"
+tags: ["AI fundamentals", "LLMs", "AI explained", "getting started with AI"]
+featured_image: ""
+published: true
+---
+
+There's a problem happening in the AI space right now, and I see it constantly when I talk to developers, entrepreneurs, and business owners. Everyone is using AI. Not everyone understands it. And that gap -- between using a tool and understanding it -- is exactly where things go wrong.
+
+So today, we're going back to basics.
+
+No hype. No buzzword bingo. Just a clear, honest look at what AI actually is, how it works at a high level, and -- just as importantly -- what it can't do. Because if you're building on top of AI, or planning to, the foundation matters more than any framework, any model release, or any demo that goes viral on a Tuesday.
+
+Let's start at the beginning.
+
+## What Is Artificial Intelligence?
+
+Artificial intelligence is a broad term for software systems that perform tasks we typically associate with human thinking -- things like understanding language, recognizing patterns, making decisions, or generating content.
+
+That's intentionally broad, because AI is a category, not a single thing. Inside that category you'll find machine learning, deep learning, computer vision, natural language processing, and a lot more. When most people say "AI" today, they usually mean one specific flavor: large language models, or LLMs. Tools like ChatGPT, Claude, Gemini, and others are all built on this technology.
+
+So when we talk about AI in the context of development and productivity -- which is the PAID wheelhouse -- we're almost always talking about LLMs.
+
+## What Is a Large Language Model?
+
+A large language model is, at its core, a prediction engine.
+
+It was trained on an enormous amount of text -- books, websites, code, articles, conversations -- and from that training, it learned patterns: how words relate to each other, how sentences are structured, how ideas connect, how problems are reasoned through. When you send it a message, it doesn't "look up" an answer. It generates a response, token by token, based on what is statistically most likely to come next given everything it has seen.
+
+That might sound mechanical, but the outputs can be remarkably sophisticated -- because human language itself encodes an enormous amount of reasoning, knowledge, and structure.
+
+Here's a mental model that helps: think of an LLM less like a search engine and more like an extremely well-read collaborator who has absorbed everything they've ever read and can apply that knowledge fluidly to new problems. They're not pulling from a database. They're synthesizing from patterns.
+
+## How Does It Actually Work? (High Level)
+
+You don't need to understand backpropagation or attention heads to build effectively with AI -- but you should understand the basic flow.
+
+**Training** is what happens before you ever interact with the model. The model is exposed to massive amounts of data and adjusts billions of internal parameters to get better at predicting text. This is expensive, slow, and done by AI companies like Anthropic, OpenAI, and Google. You're not doing this step.
+
+**Inference** is what happens when you use the model. You send in a prompt (your input), the model processes it, and generates a response. This is the part you interact with every day. It's fast, and it's where your skill as a developer or prompter actually matters.
+
+**Context** is the "working memory" of a conversation. The model doesn't have persistent memory between sessions by default -- it only knows what's in the current conversation window. This is why prompt design, context management, and retrieval strategies matter so much when building AI-powered products.
+
+**Temperature and parameters** control how the model generates responses. Higher temperature means more creative and more unpredictable. Lower temperature means more deterministic and precise. Most AI platforms let you tune these depending on your use case.
+
+## What Can AI Actually Do?
+
+When used well, modern LLMs are genuinely powerful at:
+
+- Understanding and generating language -- drafting, editing, summarizing, translating, explaining
+- Writing and reviewing code -- across most modern languages and frameworks
+- Reasoning through structured problems -- step-by-step logic, analysis, comparisons
+- Extracting and organizing information -- parsing documents, categorizing data, identifying patterns
+- Acting as a thinking partner -- brainstorming, stress-testing ideas, exploring alternatives
+
+If your task involves language, logic, or pattern recognition, there's a good chance AI can meaningfully accelerate it.
+
+## What Can AI NOT Do?
+
+This is the part that gets people into trouble.
+
+**AI does not know things that happened after its training cutoff.** LLMs have a knowledge cutoff date. Anything after that date simply doesn't exist in their training data -- unless you provide it in the prompt or through retrieval.
+
+**AI can be confidently wrong.** This is called a hallucination, and it's one of the most important things to internalize. LLMs generate plausible text, not guaranteed truth. They can invent citations, misremember facts, or construct logically coherent but factually wrong answers. Always verify anything high-stakes.
+
+**AI doesn't "think" the way you do.** There's no understanding happening in the human sense. There's pattern matching, prediction, and synthesis -- at a scale and speed humans can't match, but without the grounded, embodied reasoning that underpins human judgment.
+
+**AI doesn't have persistent memory by default.** Each new conversation starts fresh. If you're building products, this is a design constraint you need to account for explicitly.
+
+**AI is not neutral.** Models reflect the data they were trained on, including its biases, gaps, and assumptions. This matters especially when using AI in contexts involving people, decisions, or sensitive topics.
+
+## Why the Fundamentals Matter
+
+Here's why I'm writing this post, and why I think getting this right is foundational for anyone in the PAID community.
+
+When you understand what AI actually is -- a prediction engine trained on human language, powerful within its domain but limited in specific ways -- you stop treating it like magic and start treating it like a tool. And tools are only as useful as the person wielding them understands what they can and can't do.
+
+The developers and founders who are going to build the best things with AI aren't the ones who move fastest. They're the ones who understand the fundamentals deeply enough to know when to trust the output, when to verify it, when to push the model harder, and when to step back and solve the problem differently.
+
+That understanding starts here.
+
+## Summary: What You Should Walk Away Knowing
+
+- **AI (in the current context) = Large Language Models.** These are prediction engines trained on vast amounts of text to understand and generate human language.
+- **How they work, in brief:** Training teaches the model patterns from data. Inference is when you interact with it. Context is its working memory. Parameters like temperature shape output behavior.
+- **What AI does well:** Language tasks, code, structured reasoning, information extraction, and ideation.
+- **What AI doesn't do:** It can't access real-time information without tools, it can hallucinate plausible-but-wrong answers, it has no persistent memory by default, and it carries the biases present in its training data.
+- **The mindset shift:** Stop thinking about AI as magic. Start thinking about it as a powerful but specific tool -- one that rewards understanding over assumption.
+
+The foundation is laid. Now we can build.
+
+---
+
+**About PAID LLC:** We help businesses understand, implement, and operationalize AI. From strategy to deployment, we work with teams building the infrastructure for what comes next. [Learn more at paiddev.com](/about)
+
+*Written by Travis Raveling, Founder PAID LLC, co-authored and edited by AI*
