@@ -91,10 +91,14 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) return;
 
-  const title = productTitles[slug];
-  if (!title) return;
+  const title    = productTitles[slug];
+  const filename = slugToFile[slug];
+  if (!title || !filename) return;
 
-  const link = `${SITE_URL}/download/${slug}?session_id=${checkoutId}`;
+  // Generate the Supabase signed URL directly — a Coinbase checkout ID is not a
+  // Stripe session ID, so the /download page cannot be used here.
+  const downloadUrl = await getSignedDownloadUrl(filename);
+  if (!downloadUrl) return;
 
   // Count purchases for souvenir tier eligibility
   const sbUrl = process.env.SUPABASE_URL;
@@ -127,9 +131,9 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
     ``,
     `Thank you for purchasing ${title}.`,
     ``,
-    `Your download link:`,
+    `Your download link (valid for 1 hour):`,
     ``,
-    link,
+    downloadUrl,
     ...souvenirLine,
     ``,
     `Questions? Reply to this email or reach us at hello@paiddev.com.`,
