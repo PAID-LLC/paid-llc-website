@@ -20,6 +20,8 @@ import TableOfContents from "@/components/TableOfContents";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import BlogCard from "@/components/BlogCard";
 import ViewTracker from "@/components/ViewTracker";
+import RelatedGuideCallout from "@/components/RelatedGuideCallout";
+import { BLOG_GUIDE_MAP } from "@/lib/blog-guide-map";
 
 async function getViewCount(slug: string): Promise<number> {
   const url = process.env.SUPABASE_URL;
@@ -101,6 +103,8 @@ export default async function PostPage({
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) notFound();
+
+  const guideSlug = BLOG_GUIDE_MAP[post.slug] ?? null;
 
   const [contentHtml, related, headings, views] = await Promise.all([
     compileMarkdown(post.content),
@@ -185,6 +189,7 @@ export default async function PostPage({
                   className="mdx-content"
                   dangerouslySetInnerHTML={{ __html: contentHtml }}
                 />
+                {guideSlug && <RelatedGuideCallout guideSlug={guideSlug} />}
                 <div className="mt-12 pt-8 border-t border-ash">
                   <SocialShare title={post.title} slug={post.slug} />
                 </div>
