@@ -3,6 +3,7 @@ export const runtime = "edge";
 import Link from "next/link";
 import type { Metadata } from "next";
 import ProductsGrid, { type ProductItem } from "@/components/ProductsGrid";
+import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
 
 export const metadata: Metadata = {
   title: "Digital Products | PAID LLC",
@@ -253,14 +254,17 @@ export default function DigitalProducts() {
             Get all 16 guides for one flat price -- the complete AI toolkit
             from free-tier setup to enterprise deployment.
           </p>
-          <a
-            href="https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
-          >
-            Get the Full Bundle -- $119
-          </a>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
+            >
+              Get the Full Bundle -- $119
+            </a>
+            <CoinbaseGuideButton productSlug="all-guides-bundle" />
+          </div>
         </div>
       </section>
 
@@ -291,14 +295,17 @@ export default function DigitalProducts() {
               One flat price. No renewals. No subscriptions. Custom guide offer
               available while capacity allows.
             </p>
-            <a
-              href="https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
-            >
-              Become a Founding Member -- $199
-            </a>
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href="https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
+              >
+                Become a Founding Member -- $199
+              </a>
+              <CoinbaseGuideButton productSlug="founding-member" />
+            </div>
           </div>
         </div>
       </section>
