@@ -105,8 +105,8 @@ Current posts:
 ## Digital Products
 16 AI guides covering free tools, budget stacks, enterprise deployment, and platform-specific workflows.
 Available at: https://paiddev.com/digital-products
-Bundle (all 16): $119 — https://buy.stripe.com/9B68wQ4Ev14u9Ua8vecs80q
-Founding Member (all 16 + 12 months new releases): $199 — https://buy.stripe.com/8x200k6MD4gG8Q6dPycs80r
+Bundle (all 16): $119 — https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I
+Founding Member (all 16 + 12 months new releases + 1 custom guide): $199 — https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J
 Payment: Stripe (USD) or Coinbase (USDC)
 
 ## Consulting Services

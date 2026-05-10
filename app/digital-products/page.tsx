@@ -19,7 +19,7 @@ const products: ProductItem[] = [
       "Benchmark where your business stands on AI adoption, identify your highest-value gaps, and walk away with a prioritized action plan.",
     price: "$14.99",
     slug: "ai-readiness-assessment",
-    stripeUrl: "https://buy.stripe.com/14AcN60of28y0jAfXGcs809",
+    stripeUrl: "https://buy.stripe.com/00wfZidb1cNc4zQ26Qcs80s",
     isNew: false,
   },
   {
@@ -29,7 +29,7 @@ const products: ProductItem[] = [
       "Build a complete five-tool AI stack -- writing, visuals, automation, inbox, and organization -- for $0 using Claude, Gemini, Canva, Zapier, and Notion free tiers.",
     price: "$14.99",
     slug: "free-ai-stack-small-business-setup",
-    stripeUrl: "https://buy.stripe.com/3cI3cw1sjdRg9Ua4eYcs80n",
+    stripeUrl: "https://buy.stripe.com/00w6oIdb14gG1nEh1Kcs80F",
     isNew: true,
   },
   {
@@ -39,7 +39,7 @@ const products: ProductItem[] = [
       "Concentrate your AI budget into two or three tools that cover 90% of small business needs. Claude Pro, Zapier Starter, and one specialized tool -- wired together and producing ROI in week one.",
     price: "$14.99",
     slug: "jumpstart-business-ai-under-100",
-    stripeUrl: "https://buy.stripe.com/bJefZifj94gG0jA26Qcs80o",
+    stripeUrl: "https://buy.stripe.com/9B64gAb2TaF46HY12Mcs80G",
     isNew: true,
   },
   // Microsoft 365
@@ -50,7 +50,7 @@ const products: ProductItem[] = [
       "Practical Copilot workflows for Word, Excel, Outlook, and Teams. Real examples your team can implement on day one.",
     price: "$19.99",
     slug: "microsoft-365-copilot-playbook",
-    stripeUrl: "https://buy.stripe.com/fZu28s0of00qgiyaDmcs808",
+    stripeUrl: "https://buy.stripe.com/6oU4gAef53cC3vM9zics80t",
     isNew: false,
   },
   {
@@ -60,7 +60,7 @@ const products: ProductItem[] = [
       "Use ChatGPT and Copilot to clean, analyze, and summarize spreadsheet data -- no advanced formulas or data background required.",
     price: "$14.99",
     slug: "excel-ai-data-analysis",
-    stripeUrl: "https://buy.stripe.com/aFa6oI6MD28yeaqbHqcs807",
+    stripeUrl: "https://buy.stripe.com/9B628s3Ar28yd6m7racs80u",
     isNew: false,
   },
   {
@@ -70,7 +70,7 @@ const products: ProductItem[] = [
       "Build a zero-inbox system using AI-generated templates, smart filters, and automated follow-up workflows inside Outlook.",
     price: "$9.99",
     slug: "ai-powered-outlook",
-    stripeUrl: "https://buy.stripe.com/aFacN6db15kKaYe8vecs806",
+    stripeUrl: "https://buy.stripe.com/eVq6oI0ofcNc2rI7racs80v",
     isNew: false,
   },
   {
@@ -80,7 +80,7 @@ const products: ProductItem[] = [
       "Team-level Copilot deployment: meeting recaps, collaborative documents, Copilot Pages, and shared prompt libraries that make AI output consistent across your whole team.",
     price: "$19.99",
     slug: "copilot-cowork-microsoft-365-team-guide",
-    stripeUrl: "https://buy.stripe.com/5kQ28s0of14u6HYh1Kcs80m",
+    stripeUrl: "https://buy.stripe.com/fZucN6b2T7sS2rIbHqcs80E",
     isNew: true,
   },
   // Google Workspace
@@ -91,7 +91,7 @@ const products: ProductItem[] = [
       "Put Gemini to work across Gmail, Docs, Sheets, and Meet. Includes copy-paste workflows, prompts, and time-saving shortcuts.",
     price: "$19.99",
     slug: "google-workspace-ai-guide",
-    stripeUrl: "https://buy.stripe.com/bJe14odb16oOaYe26Qcs805",
+    stripeUrl: "https://buy.stripe.com/7sYeVeb2T9B00jAdPycs80w",
     isNew: false,
   },
   {
@@ -101,7 +101,7 @@ const products: ProductItem[] = [
       "A practical system for managing high-volume email using AI drafts, label automation, and reusable template libraries.",
     price: "$9.99",
     slug: "gmail-ai-inbox-zero",
-    stripeUrl: "https://buy.stripe.com/00w9AU7QHeVk3vMdPycs804",
+    stripeUrl: "https://buy.stripe.com/7sYaEY9YP4gG8Q6cLucs80x",
     isNew: false,
   },
   // Content & Marketing
@@ -112,7 +112,7 @@ const products: ProductItem[] = [
       "Automate your blog and social media content using Claude or ChatGPT plus Zapier. Includes prompt templates and workflow blueprints.",
     price: "$19.99",
     slug: "solopreneur-content-engine",
-    stripeUrl: "https://buy.stripe.com/7sY5kEc6X7sS6HY7racs803",
+    stripeUrl: "https://buy.stripe.com/7sY4gA5Iz00q3vMcLucs80y",
     isNew: false,
   },
   {
@@ -122,7 +122,7 @@ const products: ProductItem[] = [
       "100+ copy-paste prompts for sales, marketing, operations, HR, and customer service -- organized by function and ready to use.",
     price: "$12.99",
     slug: "chatgpt-business-prompt-library",
-    stripeUrl: "https://buy.stripe.com/fZucN65IzcNcgiydPycs801",
+    stripeUrl: "https://buy.stripe.com/6oU8wQdb1bJ87M25j2cs80A",
     isNew: false,
   },
   // Operations
@@ -133,7 +133,7 @@ const products: ProductItem[] = [
       "Audit your business for AI opportunities, then automate three core workflows: customer communication, scheduling, and reporting.",
     price: "$24.99",
     slug: "small-business-ai-operations",
-    stripeUrl: "https://buy.stripe.com/bJefZi7QH7sS6HYdPycs802",
+    stripeUrl: "https://buy.stripe.com/dRmbJ27QHcNceaq9zics80z",
     isNew: false,
   },
   {
@@ -143,7 +143,7 @@ const products: ProductItem[] = [
       "Real workflows for using Claude in business: document analysis, proposal writing, client communications, and a persistent AI assistant that knows your business.",
     price: "$19.99",
     slug: "claude-for-business-practical-playbook",
-    stripeUrl: "https://buy.stripe.com/fZu14ognd28y6HYfXGcs80j",
+    stripeUrl: "https://buy.stripe.com/7sY8wQ4EvbJ85DU7racs80B",
     isNew: true,
   },
   {
@@ -153,7 +153,7 @@ const products: ProductItem[] = [
       "Plain-English guide to deploying your first AI agent -- lead follow-up, proposal generation, triage, and automation -- in 30 days with no code required.",
     price: "$19.99",
     slug: "ai-agents-for-small-business",
-    stripeUrl: "https://buy.stripe.com/aFa5kE9YPeVk7M2fXGcs80k",
+    stripeUrl: "https://buy.stripe.com/7sY28sef56oO4zQ4eYcs80C",
     isNew: true,
   },
   {
@@ -163,7 +163,7 @@ const products: ProductItem[] = [
       "Use Cursor and AI to build landing pages, internal tools, intake forms, and data dashboards -- without hiring a developer or learning to code.",
     price: "$19.99",
     slug: "cursor-ai-coding-guide",
-    stripeUrl: "https://buy.stripe.com/00w28sef5dRg4zQfXGcs80l",
+    stripeUrl: "https://buy.stripe.com/00wfZi4EveVkfeu5j2cs80D",
     isNew: true,
   },
   // Enterprise
@@ -174,7 +174,7 @@ const products: ProductItem[] = [
       "An 8-phase enterprise AI deployment framework covering use case selection, vendor evaluation, security and compliance, pilot design, change management, phased rollout, and ROI measurement.",
     price: "$29.99",
     slug: "enterprise-ai-deployment-guide",
-    stripeUrl: "https://buy.stripe.com/4gM7sMfj9eVkfeudPycs80p",
+    stripeUrl: "https://buy.stripe.com/dRmdRa2wn8wW6HY3aUcs80H",
     isNew: true,
   },
 ];
@@ -254,7 +254,7 @@ export default function DigitalProducts() {
             from free-tier setup to enterprise deployment.
           </p>
           <a
-            href="https://buy.stripe.com/9B68wQ4Ev14u9Ua8vecs80q"
+            href="https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
@@ -272,18 +272,27 @@ export default function DigitalProducts() {
               Founding Member
             </p>
             <h2 className="font-display font-bold text-4xl text-white mb-4">
-              All 16 guides. Every new guide for the next 12 months.
+              All 16 guides. 12 months of new releases. One guide built for you.
             </h2>
             <p className="text-stone text-lg leading-relaxed mb-4">
               Founding Members get the complete current library plus every guide
               PAID LLC publishes over the next 12 months -- automatically
               delivered as each one releases.
             </p>
-            <p className="text-stone text-lg leading-relaxed mb-8">
-              One flat price. No renewals. No subscriptions.
+            <p className="text-stone text-lg leading-relaxed mb-4">
+              Plus: one custom guide on any AI topic you choose. Tell us what
+              you need and we build it. Email{" "}
+              <a href="mailto:hello@paiddev.com" className="text-primary hover:text-white transition-colors">
+                hello@paiddev.com
+              </a>{" "}
+              after purchase to request yours.
+            </p>
+            <p className="text-stone/60 text-sm leading-relaxed mb-8">
+              One flat price. No renewals. No subscriptions. Custom guide offer
+              available while capacity allows.
             </p>
             <a
-              href="https://buy.stripe.com/8x200k6MD4gG8Q6dPycs80r"
+              href="https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
