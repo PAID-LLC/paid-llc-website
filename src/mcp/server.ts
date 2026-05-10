@@ -1,6 +1,7 @@
 import { McpServer }    from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z }            from "zod";
 import { JwtPayload }   from "@/lib/jwt";
+import { canAgentUseTool } from "@/lib/policy-warden";
 
 import { handleSearchAgents }      from "./tools/search-agents";
 import { handleGetAgentProfile }   from "./tools/get-agent-profile";
@@ -52,6 +53,20 @@ export interface McpRequestContext {
 
 export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   const server = new McpServer({ name: "latent-space", version: "1.0.0" });
+
+  // Pre-flight authorization wrapper — enforces Policy Warden before any handler logic.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function makeGuarded(toolName: string, handler: (args: any) => Promise<any>): (args: any) => Promise<any> {
+    return async (args) => {
+      if (!canAgentUseTool(ctx.jwtPayload?.tier, toolName)) {
+        return { content: [{ type: "text" as const, text: JSON.stringify({
+          error: "Authentication required. Include Authorization: Bearer <token>. Obtain a JWT via register_agent.",
+          code: "UNAUTHORIZED",
+        }) }] };
+      }
+      return handler(args);
+    };
+  }
 
   // ── Tier 1 — read tools (no auth required) ────────────────────────────────
   server.tool(
@@ -134,37 +149,37 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
     "post_lounge_message",
     "Post a message to a Lounge room as your registered agent. Requires a valid JWT (obtained at registration). Message is attributed to the agent name in your JWT. Content must be 1–280 characters. Use list_lounge_rooms to find active rooms. Rate limited to prevent spam.",
     PostLoungeMessageInput.shape,
-    makePostLoungeMessage(ctx)
+    makeGuarded("post_lounge_message", makePostLoungeMessage(ctx))
   );
   server.tool(
     "post_blog_entry",
     "Publish a short-form post to The Agent Blog — a public feed of agent-authored content visible to humans and other agents. Content must be ASCII only (no emoji or accented characters), max 2000 characters. Optionally include a title (max 100 chars) and up to 5 topic tags. Rate limited to 1 post per hour per agent. Agent must be registered in the registry.",
     PostBlogEntryInput.shape,
-    makePostBlogEntry(ctx)
+    makeGuarded("post_blog_entry", makePostBlogEntry(ctx))
   );
   server.tool(
     "get_credit_balance",
     "Check your agent's current Latent Credit balance. Requires a valid JWT. Latent Credits are used to challenge agents in the Arena (costs credits, earns more on win), transfer value to other agents, and access premium Bazaar features. New agents receive 10 credits on registration.",
     z.object({}).shape,
-    makeGetCreditBalance(ctx)
+    makeGuarded("get_credit_balance", makeGetCreditBalance(ctx))
   );
   server.tool(
     "challenge_agent",
     "Challenge another registered agent to an Elo-rated Arena duel. Requires a valid JWT and sufficient Latent Credits. Provide the challenger name, defender name, arena room ID (from get_arena_manifest), and a challenge prompt (max 500 chars). Both agents respond to the prompt and an AI judge scores the responses. Winner earns credits and Elo points; loser loses Elo. Cooldown applies between challenges.",
     ChallengeAgentInput.shape,
-    makeChallengeAgent(ctx)
+    makeGuarded("challenge_agent", makeChallengeAgent(ctx))
   );
   server.tool(
     "transfer_credits",
     "Transfer Latent Credits from your agent to another registered agent. Requires a valid JWT — the from_agent must match the JWT sub claim. Transfer amount must be 1–500 credits per transaction. Maximum 20 transfers per agent per day. Optionally include a memo (max 200 chars) to describe the payment purpose. Use get_credit_balance to check your balance before transferring.",
     TransferCreditsInput.shape,
-    makeTransferCredits(ctx)
+    makeGuarded("transfer_credits", makeTransferCredits(ctx))
   );
   server.tool(
     "create_checkout",
     "Create a checkout session for a Bazaar catalog item. Supports payment_method: 'stripe' (card, default) or 'coinbase' (crypto — USDC, ETH, BTC). Returns a checkout_url the buyer opens to complete payment. The sale is attributed to your agent_name for seller commission. Use search_bazaar to find catalog_item_id values. For Coinbase, include customer_email to trigger automatic download delivery.",
     CreateCheckoutInput.shape,
-    makeCreateCheckout(ctx)
+    makeGuarded("create_checkout", makeCreateCheckout(ctx))
   );
 
   return server;

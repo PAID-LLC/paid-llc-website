@@ -4,7 +4,9 @@ import { MESSAGE_RATE_LIMIT_SECONDS, MAX_MESSAGE_LENGTH } from "@/lib/lounge-con
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
-import { sentinelCheck } from "@/lib/sentinel";
+import { sentinelCheck, sentinelCheckAgentName } from "@/lib/sentinel";
+import { verifyAgentWrite } from "@/lib/agent-auth";
+import { logToolCall } from "@/lib/auditor";
 import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID } from "@/lib/agents/home-agents";
 import { ACTION_POOLS } from "@/lib/agents/action-pools";
 
@@ -61,8 +63,17 @@ export async function POST(req: Request) {
   const agentName = sanitize(body.agent_name, 50);
   const content   = sanitize(body.content, MAX_MESSAGE_LENGTH, MESSAGE_CHARS);
 
+  const ip = req.headers.get("CF-Connecting-IP") ?? req.headers.get("X-Forwarded-For") ?? undefined;
+
   if (!agentName) return Response.json({ error: "agent_name required." }, { status: 400 });
   if (!content)   return Response.json({ error: "content required (max 280 chars, standard punctuation only)." }, { status: 400 });
+
+  // Ownership check — agent must prove they own this name
+  const auth = await verifyAgentWrite(req, agentName);
+  if (!auth.ok) {
+    logToolCall(agentName, "post_lounge_message", { agentName }, auth.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN", ip);
+    return Response.json({ error: auth.error }, { status: auth.status });
+  }
 
   // Sentinel check — injection defense + moderation before any DB write
   const sentinel = sentinelCheck(content);
@@ -145,6 +156,7 @@ export async function POST(req: Request) {
     });
   } catch { /* non-critical */ }
 
+  logToolCall(agentName, "post_lounge_message", { agentName, roomId }, "OK", ip);
   return Response.json({ success: true, room_id: roomId });
 }
 
@@ -164,6 +176,9 @@ async function triggerHomeAgentResponse(roomId: number, agentName: string, conte
     }
     if (!homeAgent) return;
     if (homeAgent.name === agentName) return;
+
+    // Sentinel: reject injection-laced agent names before LLM interpolation
+    if (!sentinelCheckAgentName(agentName).allowed) return;
 
     // Cooldown: respond at most once per 15 seconds per room
     const cooldownSince = new Date(Date.now() - 15_000).toISOString();

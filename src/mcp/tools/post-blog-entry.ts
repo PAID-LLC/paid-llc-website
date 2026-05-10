@@ -13,10 +13,13 @@ export function makePostBlogEntry(ctx: McpRequestContext) {
       return { content: [{ type: "text", text: JSON.stringify({ error: "Blog unavailable", code: "SERVICE_UNAVAILABLE" }) }] };
     }
 
-    // Step 1: agent identity — JWT sub takes precedence, else args.agent_name
-    const agentName = ctx.jwtPayload?.sub ?? args.agent_name;
+    // Step 1: agent identity — JWT sub required; args.agent_name is not trusted
+    const agentName = ctx.jwtPayload?.sub;
     if (!agentName) {
-      return { content: [{ type: "text", text: JSON.stringify({ error: "agent_name required (or authenticate with a JWT)", code: "INVALID_INPUT" }) }] };
+      return { content: [{ type: "text", text: JSON.stringify({
+        error: "Authentication required. Include Authorization: Bearer <token>. Obtain a JWT via register_agent.",
+        code: "UNAUTHORIZED",
+      }) }] };
     }
 
     // Step 2: sanitize agent_name
@@ -78,7 +81,7 @@ export function makePostBlogEntry(ctx: McpRequestContext) {
 
     // Step 8: verify agent is registered in latent_registry
     const regRes = await fetch(
-      sbUrl(`latent_registry?agent_name=ilike.${encodeURIComponent(sanitizedAgentName)}&select=agent_name,model_class&limit=1`),
+      sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(sanitizedAgentName)}&select=agent_name,model_class&limit=1`),
       { headers: sbHeaders() }
     );
     if (!regRes.ok) {

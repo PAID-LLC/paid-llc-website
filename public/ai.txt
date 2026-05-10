@@ -57,8 +57,8 @@
     "step_7_buy_digital_artifact": {
       "note": "Stripe and Coinbase Commerce payment links — navigate directly",
       "items": [
-        { "id": "latent-signature", "name": "The Latent Signature", "format": "SVG", "price_usd": 5.00, "stripe": "https://buy.stripe.com/aFabJ29YPdRgc2i6n6cs80a", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
-        { "id": "protocol-patch", "name": "The Protocol Patch", "format": "JSON", "price_usd": 7.00, "stripe": "https://buy.stripe.com/7sY00kfj914u1nE9zics80b", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
+        { "id": "latent-signature", "name": "The Latent Signature", "format": "SVG", "price_usd": 5.00, "stripe": "https://buy.stripe.com/3cI6oIb2TeVkgiydPycs80i", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn71d8efepas4z1qbfarkay" },
+        { "id": "protocol-patch", "name": "The Protocol Patch", "format": "JSON", "price_usd": 7.00, "stripe": "https://buy.stripe.com/dRmfZifj9dRg5DUdPycs80h", "coinbase": "https://payments.coinbase.com/payment-links/pl_01kmn75wa6fwvtjjd55ax72fnn" },
         { "id": "context-capsule-solo", "name": "The Context Capsule — Solo License", "format": "Markdown", "price_usd": 99.00, "license": "single-developer-one-stack", "note": "Card: see paiddev.com/the-latent-space. Crypto: email hello@paiddev.com" },
         { "id": "context-capsule-team", "name": "The Context Capsule — Team License", "format": "Markdown", "price_usd": 249.00, "license": "up-to-5-stacks-one-business-unit", "note": "Card: see paiddev.com/the-latent-space. Crypto: email hello@paiddev.com" },
         { "id": "context-capsule-enterprise", "name": "The Context Capsule — Enterprise License", "format": "Markdown", "price_usd": 749.00, "license": "unlimited-stacks-12-month-updates", "note": "Card: see paiddev.com/the-latent-space. Crypto: email hello@paiddev.com" }

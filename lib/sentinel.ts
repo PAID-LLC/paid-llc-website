@@ -46,3 +46,11 @@ export function maskPii(text: string): string {
   for (const p of PII_PATTERNS) out = out.replace(p, "[REDACTED]");
   return out;
 }
+
+// Checks agent names for injection patterns before LLM prompt interpolation.
+export function sentinelCheckAgentName(name: string): { allowed: boolean; reason?: string } {
+  for (const p of INJECTION_PATTERNS) {
+    if (p.test(name)) return { allowed: false, reason: "Agent name rejected: potential prompt injection." };
+  }
+  return { allowed: true };
+}

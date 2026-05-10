@@ -13,6 +13,7 @@ import { DUEL_COST, MIN_STAKE, MAX_STAKE } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 import { verifyAgentWrite } from "@/lib/agent-auth";
+import { logToolCall } from "@/lib/auditor";
 
 const MAX_PROMPT_CHARS = 500;
 
@@ -46,14 +47,17 @@ export async function POST(req: Request) {
   if (challenger === defender)  return Response.json({ ok: false, reason: "challenger and defender must be different" }, { status: 400 });
 
   // ── Auth: challenger must present a valid API key ─────────────────────────
+  const ip   = req.headers.get("CF-Connecting-IP") ?? req.headers.get("X-Forwarded-For") ?? undefined;
   const auth = await verifyAgentWrite(req, challenger);
   if (!auth.ok) {
+    logToolCall(challenger, "challenge_agent", body, "UNAUTHORIZED", ip);
     return Response.json({ ok: false, reason: auth.error }, { status: auth.status });
   }
 
   // ── Sentinel: check prompt before any side effects ─────────────────────────
   const sentinel = sentinelCheck(prompt);
   if (!sentinel.allowed) {
+    logToolCall(challenger, "challenge_agent", body, "FORBIDDEN", ip);
     return Response.json({ ok: false, reason: sentinel.reason ?? "Content rejected." }, { status: 400 });
   }
 
@@ -68,6 +72,7 @@ export async function POST(req: Request) {
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
   if (!deducted) {
+    logToolCall(challenger, "challenge_agent", body, "PAYMENT_REQUIRED", ip);
     return Response.json({
       ok: false,
       reason: "insufficient credits",
@@ -125,6 +130,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "duel id not returned" }, { status: 500 });
   }
 
+  logToolCall(challenger, "challenge_agent", body, "OK", ip);
   return Response.json({
     ok:            true,
     duel_id:       duelId,
