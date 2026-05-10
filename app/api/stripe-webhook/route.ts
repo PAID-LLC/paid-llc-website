@@ -74,6 +74,7 @@ async function subscribeToMailerLite(session: {
       fields: {
         ...(name ? { name } : {}),
         ...(product ? { last_purchased_product: product } : {}),
+        ...(product === "founding-member" ? { is_founding_member: "true" } : {}),
       },
       groups: ["181734452887553984"],
     }),
