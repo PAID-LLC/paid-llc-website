@@ -66,7 +66,7 @@ const capsuleTiers = [
     scope:       "Team license covering up to 5 stacks across one business unit. Instant Markdown delivery.",
     price_usd:   "$249",
     stripeUrl:   "https://buy.stripe.com/7sY6oI1sjfZogiyfXGcs80f",
-    coinbaseUrl: null,
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01krbh7patext8k4t3wyx8rjqf",
   },
   {
     id:          "context-capsule-enterprise",
@@ -75,7 +75,7 @@ const capsuleTiers = [
     scope:       "Unlimited stacks. 12-month updates included. Instant Markdown delivery.",
     price_usd:   "$749",
     stripeUrl:   "https://buy.stripe.com/9B65kEgndbJ81nE8vecs80g",
-    coinbaseUrl: null,
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01krbhaf4qf7wr96thc9k7sxr2",
   },
 ];
 
