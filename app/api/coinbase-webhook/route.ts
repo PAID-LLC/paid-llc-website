@@ -239,15 +239,25 @@ async function handleCommerceWebhook(payload: string, req: Request): Promise<Res
   const valid = await verifyCommerceSignature(payload, signature, secret);
   if (!valid) return Response.json({ error: "invalid signature" }, { status: 400 });
 
-  type CommerceEvent = { event?: { type?: string; data?: { metadata?: Record<string, string> } } };
+  type CommerceEvent = {
+    event?: {
+      type?: string;
+      data?: {
+        buyer_email?: string;        // Coinbase-collected at checkout
+        metadata?: Record<string, string>;
+      };
+    };
+  };
   let body: CommerceEvent;
   try { body = JSON.parse(payload) as CommerceEvent; }
   catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
 
   if (body.event?.type === "charge:confirmed") {
     const meta  = body.event.data?.metadata ?? {};
-    const slug  = meta.product     ?? "";
-    const email = meta.buyer_email ?? "";
+    const slug  = meta.product ?? "";
+    // Prefer Coinbase's native buyer_email (collected at checkout); fall back
+    // to metadata field set by dynamic charges (MCP create_checkout tool).
+    const email = body.event.data?.buyer_email ?? meta.buyer_email ?? "";
     if (slug && email) await deliverCommerceArtifact(slug, email);
   }
 

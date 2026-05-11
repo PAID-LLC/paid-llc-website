@@ -11,9 +11,6 @@ export default function CoinbaseGuideButton({ productSlug }: Props) {
   const [error, setError]     = useState<string | null>(null);
 
   async function handleClick() {
-    const email = window.prompt("Enter your email address to receive your download link:");
-    if (!email?.trim()) return;
-
     setLoading(true);
     setError(null);
 
@@ -21,7 +18,7 @@ export default function CoinbaseGuideButton({ productSlug }: Props) {
       const res  = await fetch("/api/coinbase-checkout", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ product_type: "digital_guide", product_slug: productSlug, email: email.trim() }),
+        body:    JSON.stringify({ product_type: "digital_guide", product_slug: productSlug }),
       });
 
       const data = await res.json() as { ok: boolean; hosted_url?: string; reason?: string };

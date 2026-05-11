@@ -186,12 +186,12 @@ export async function POST(req: Request) {
   }
 
   // ── Digital guide (Coinbase Commerce) ───────────────────────────────────────
+  // Email is collected by Coinbase on their hosted checkout page, same as Stripe.
+  // buyer_email is available on the charge:confirmed webhook event.
   if (productType === "digital_guide") {
-    const slug  = String(body.product_slug ?? "").trim();
-    const email = String(body.email        ?? "").trim().toLowerCase();
+    const slug = String(body.product_slug ?? "").trim();
 
-    if (!slug)                          return Response.json({ ok: false, reason: "product_slug required" }, { status: 400 });
-    if (!email || !email.includes("@")) return Response.json({ ok: false, reason: "valid email required" },  { status: 400 });
+    if (!slug) return Response.json({ ok: false, reason: "product_slug required" }, { status: 400 });
 
     const title   = productTitles[slug];
     const product = PRODUCTS.find(p => p.id === slug);
@@ -203,10 +203,7 @@ export async function POST(req: Request) {
       amount_usd:   product.price.toFixed(2),
       redirect_url: `${SITE_URL}/digital-products?purchased=true`,
       cancel_url:   `${SITE_URL}/digital-products`,
-      metadata: {
-        product:     slug,
-        buyer_email: email,
-      },
+      metadata:     { product: slug },
     });
 
     if (!charge) return Response.json({ ok: false, reason: "failed to create checkout — try again" }, { status: 502 });
