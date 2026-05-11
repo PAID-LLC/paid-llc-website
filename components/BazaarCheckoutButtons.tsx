@@ -12,9 +12,6 @@ export default function BazaarCheckoutButtons({ checkoutUrl, productSlug }: Prop
   const [error, setError]     = useState<string | null>(null);
 
   async function handleCrypto() {
-    const email = window.prompt("Enter your email address to receive your download link:");
-    if (!email?.trim()) return;
-
     setLoading(true);
     setError(null);
 
@@ -25,7 +22,6 @@ export default function BazaarCheckoutButtons({ checkoutUrl, productSlug }: Prop
         body:    JSON.stringify({
           product_type: "digital_guide",
           product_slug: productSlug,
-          email:        email.trim(),
         }),
       });
 

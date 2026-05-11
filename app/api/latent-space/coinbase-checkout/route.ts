@@ -50,12 +50,8 @@ export async function POST(req: Request): Promise<Response> {
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
 
   const productId = String(body.product ?? "").trim();
-  const email     = String(body.email    ?? "").trim().toLowerCase();
 
   if (!productId) return Response.json({ ok: false, reason: "product required" }, { status: 400 });
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return Response.json({ ok: false, reason: "valid email required for delivery" }, { status: 400 });
-  }
 
   const product = PRODUCTS[productId];
   if (!product) return Response.json({ ok: false, reason: "unknown product" }, { status: 400 });
@@ -64,11 +60,10 @@ export async function POST(req: Request): Promise<Response> {
     name:         product.name,
     description:  product.description,
     amount_usd:   product.price_usd,
-    redirect_url: `${SITE_URL}/api/latent-space/coinbase-verify?product=${encodeURIComponent(productId)}&email=${encodeURIComponent(email)}`,
+    redirect_url: `${SITE_URL}/the-latent-space?purchased=${encodeURIComponent(productId)}`,
     cancel_url:   `${SITE_URL}/the-latent-space`,
     metadata: {
-      product:     productId,
-      buyer_email: email,
+      product: productId,
     },
   });
 
