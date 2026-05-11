@@ -8,11 +8,21 @@ import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
 export const metadata: Metadata = {
   title: "Digital Products | PAID LLC",
   description:
-    "16 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment. Instant PDF download.",
+    "17 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment. Instant PDF download.",
 };
 
 const products: ProductItem[] = [
   // Getting Started
+  {
+    category: "Getting Started",
+    title: "Accepting Crypto Payments: A Small Business Setup Guide",
+    description:
+      "Step-by-step guide to accepting USDC and stablecoin payments without holding volatile assets. Covers Coinbase Commerce setup, payment links, tax treatment, refund policy, and invoice integration.",
+    price: "$14.99",
+    slug: "crypto-payments-small-business",
+    stripeUrl: "", // TODO: replace with Stripe payment link after creating in dashboard
+    isNew: true,
+  },
   {
     category: "Getting Started",
     title: "AI Readiness Assessment",
@@ -185,7 +195,7 @@ const productSchema = {
   "@type": "ItemList",
   name: "PAID LLC AI Guides",
   description:
-    "16 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment.",
+    "17 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment.",
   url: "https://paiddev.com/digital-products",
   itemListElement: products.map((p, i) => ({
     "@type": "ListItem",
@@ -233,7 +243,7 @@ export default function DigitalProducts() {
             AI guides that get you moving.
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
-            16 practical guides -- from free-tier setup to enterprise deployment.
+            17 practical guides -- from free-tier setup to enterprise deployment.
             No consultant required.
           </p>
         </div>
@@ -251,7 +261,7 @@ export default function DigitalProducts() {
             Need the whole stack?
           </h2>
           <p className="text-stone leading-relaxed mb-8 max-w-lg mx-auto">
-            Get all 16 guides for one flat price -- the complete AI toolkit
+            Get all 17 guides for one flat price -- the complete AI toolkit
             from free-tier setup to enterprise deployment.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -261,7 +271,7 @@ export default function DigitalProducts() {
               rel="noopener noreferrer"
               className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
             >
-              Get the Full Bundle -- $119
+              Get the Full Bundle (17 Guides) -- $119
             </a>
             <CoinbaseGuideButton productSlug="all-guides-bundle" />
           </div>
@@ -276,10 +286,10 @@ export default function DigitalProducts() {
               Founding Member
             </p>
             <h2 className="font-display font-bold text-4xl text-white mb-4">
-              All 16 guides. 12 months of new releases. One guide built for you.
+              All 17 guides. 12 months of new releases. One guide built for you.
             </h2>
             <p className="text-stone text-lg leading-relaxed mb-4">
-              Founding Members get the complete current library plus every guide
+              Founding Members get all 17 current guides plus every guide
               PAID LLC publishes over the next 12 months -- automatically
               delivered as each one releases.
             </p>

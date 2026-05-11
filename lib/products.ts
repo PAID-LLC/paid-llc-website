@@ -3,6 +3,7 @@
 // Used by the download page and the Stripe webhook.
 
 export const productTitles: Record<string, string> = {
+  "crypto-payments-small-business":           "Accepting Crypto Payments: A Small Business Setup Guide",
   "ai-readiness-assessment":                  "AI Readiness Assessment",
   "microsoft-365-copilot-playbook":           "Microsoft 365 Copilot Playbook",
   "excel-ai-data-analysis":                   "Excel + AI: Analyze Data Without a Data Analyst",
@@ -19,8 +20,8 @@ export const productTitles: Record<string, string> = {
   "free-ai-stack-small-business-setup":       "The Free AI Stack: An End-to-End AI Setup for Small Business",
   "jumpstart-business-ai-under-100":          "Jumpstart Your Business with AI for Under $100 a Month",
   "enterprise-ai-deployment-guide":           "Enterprise AI Deployment: The Complete Implementation Guide",
-  "all-guides-bundle":                        "All Guides Bundle -- 16 Guides",
-  "founding-member":                          "Founding Member -- All 16 Guides + 12 Months of New Releases",
+  "all-guides-bundle":                        "All Guides Bundle -- 17 Guides",
+  "founding-member":                          "Founding Member -- All 17 Guides + 12 Months of New Releases",
   "context-capsule":                          "The Context Capsule",
   "context-capsule-solo":                     "The Context Capsule -- Solo License",
   "context-capsule-team":                     "The Context Capsule -- Team License",
@@ -39,6 +40,7 @@ export interface Product {
 
 /** Structured product catalog — used by MCP tools and UCP discovery. */
 export const PRODUCTS: Product[] = [
+  { id: "crypto-payments-small-business",           name: "Accepting Crypto Payments: A Small Business Setup Guide",        price: 14.99, category: "Getting Started",        description: "Step-by-step guide to accepting USDC and stablecoin payments without holding volatile assets. Covers Coinbase Commerce setup, payment links, tax treatment, refund policy, and invoice integration." },
   { id: "ai-readiness-assessment",                 name: "AI Readiness Assessment",                                           price: 14.99, category: "Getting Started",        description: "Benchmark where your business stands on AI adoption, identify your highest-value gaps, and walk away with a prioritized action plan." },
   { id: "free-ai-stack-small-business-setup",      name: "The Free AI Stack: An End-to-End AI Setup for Small Business",    price: 14.99, category: "Getting Started",        description: "Build a complete five-tool AI stack -- writing, visuals, automation, inbox, and organization -- for $0 using Claude, Gemini, Canva, Zapier, and Notion free tiers." },
   { id: "jumpstart-business-ai-under-100",         name: "Jumpstart Your Business with AI for Under $100 a Month",          price: 14.99, category: "Getting Started",        description: "Concentrate your AI budget into two or three tools that cover 90% of small business needs. Claude Pro, Zapier Starter, and one specialized tool -- wired together and producing ROI in week one." },
@@ -55,8 +57,8 @@ export const PRODUCTS: Product[] = [
   { id: "ai-agents-for-small-business",            name: "AI Agents for Small Business",                                     price: 19.99, category: "Operations",             description: "Plain-English guide to deploying your first AI agent -- lead follow-up, proposal generation, triage, and automation -- in 30 days with no code required." },
   { id: "cursor-ai-coding-guide",                  name: "Build It Without Code: A Non-Developer's Guide to Cursor",         price: 19.99, category: "Operations",             description: "Use Cursor and AI to build landing pages, internal tools, intake forms, and data dashboards -- without hiring a developer or learning to code." },
   { id: "enterprise-ai-deployment-guide",          name: "Enterprise AI Deployment: The Complete Implementation Guide",     price: 29.99, category: "Enterprise",             description: "An 8-phase enterprise AI deployment framework covering use case selection, vendor evaluation, security and compliance, pilot design, change management, phased rollout, and ROI measurement." },
-  { id: "all-guides-bundle", name: "All Guides Bundle -- 16 Guides",                                                            price: 119.00, category: "Bundle",   description: "All 16 PAID LLC AI guides in one bundle. Covers free-tier setup, Microsoft 365, Google Workspace, content marketing, operations, and enterprise deployment. ZIP archive, instant download." },
-  { id: "founding-member",   name: "Founding Member -- All 16 Guides + 12 Months of New Releases + 1 Custom Guide",            price: 199.00, category: "Bundle",   description: "All 16 current guides, every new guide PAID LLC publishes for 12 months automatically delivered, plus one custom guide on a topic of your choice." },
+  { id: "all-guides-bundle", name: "All Guides Bundle -- 17 Guides",                                                            price: 119.00, category: "Bundle",   description: "All 17 PAID LLC AI guides in one bundle. Covers free-tier setup, Microsoft 365, Google Workspace, content marketing, operations, and enterprise deployment. ZIP archive, instant download." },
+  { id: "founding-member",   name: "Founding Member -- All 17 Guides + 12 Months of New Releases + 1 Custom Guide",            price: 199.00, category: "Bundle",   description: "All 17 current guides, every new guide PAID LLC publishes for 12 months automatically delivered, plus one custom guide on a topic of your choice." },
 ];
 
 // ── Latent Credit Packs ────────────────────────────────────────────────────────
@@ -74,6 +76,7 @@ export type CreditPackId = typeof CREDIT_PACKS[number]["id"];
 
 /** Maps product slugs to their filenames in Supabase Storage → guides bucket. */
 export const slugToFile: Record<string, string> = {
+  "crypto-payments-small-business":           "crypto-payments-small-business-guide.pdf",
   "ai-readiness-assessment":                  "ai-readiness-assessment.pdf",
   "microsoft-365-copilot-playbook":           "microsoft-365-copilot-playbook.pdf",
   "excel-ai-data-analysis":                   "excel-ai-data-analysis.pdf",
