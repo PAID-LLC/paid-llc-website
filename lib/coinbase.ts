@@ -1,15 +1,19 @@
 // ── Coinbase CDP helpers ───────────────────────────────────────────────────────
 // Generates CDP JWT auth tokens and creates Coinbase Commerce charges.
-// Uses COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY (PKCS8 EC P-256).
+// Uses COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY (PKCS8 or SEC1 EC P-256).
 // No external libraries — pure Web Crypto API (edge-compatible).
+//
+// JWT format required by Commerce API (api.coinbase.com):
+//   header:  { alg: "ES256", kid: keyId, nonce: hex }
+//   payload: { sub: keyId, iss: "cdp", nbf, exp, uri: "METHOD api.coinbase.com/path" }
 
 const enc = new TextEncoder();
 
 function b64url(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  bytes.forEach(b => (binary += String.fromCharCode(b)));
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function b64urlStr(str: string): string {
@@ -19,44 +23,80 @@ function b64urlStr(str: string): string {
     .replace(/=+$/, "");
 }
 
+// ── SEC1 → PKCS8 conversion ───────────────────────────────────────────────────
+// Web Crypto only accepts PKCS8 for importKey. CDP portal may issue SEC1 keys.
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const total = arrays.reduce((n, a) => n + a.length, 0);
+  const out   = new Uint8Array(total);
+  let offset  = 0;
+  for (const a of arrays) { out.set(a, offset); offset += a.length; }
+  return out;
+}
+
+function encodeLen(len: number): Uint8Array {
+  if (len < 128) return new Uint8Array([len]);
+  if (len < 256) return new Uint8Array([0x81, len]);
+  return new Uint8Array([0x82, len >> 8, len & 0xff]);
+}
+
+function sec1ToPkcs8(der: Uint8Array): Uint8Array {
+  // AlgorithmIdentifier: { id-ecPublicKey, prime256v1 }
+  const algo    = new Uint8Array([
+    0x30, 0x13,
+    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
+    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07,
+  ]);
+  const version = new Uint8Array([0x02, 0x01, 0x00]);
+  const privKey = concatBytes(new Uint8Array([0x04]), encodeLen(der.length), der);
+  const body    = concatBytes(version, algo, privKey);
+  return concatBytes(new Uint8Array([0x30]), encodeLen(body.length), body);
+}
+
 // Parse PEM and import as a Web Crypto ECDSA P-256 key.
 // Handles both PKCS8 ("-----BEGIN PRIVATE KEY-----") and
 // SEC1 EC ("-----BEGIN EC PRIVATE KEY-----") headers.
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  const normalized = pem.replace(/\\n/g, "\n"); // Cloudflare stores \n as literal
+  const normalized = pem.replace(/\\n/g, "\n");
+  const isPkcs8    = normalized.includes("BEGIN PRIVATE KEY");
+
   const body = normalized
     .replace(/-----BEGIN (?:EC )?PRIVATE KEY-----/, "")
     .replace(/-----END (?:EC )?PRIVATE KEY-----/, "")
     .replace(/\s+/g, "");
 
-  const der = Uint8Array.from(atob(body), (c) => c.charCodeAt(0));
+  const raw  = new Uint8Array(Array.from(atob(body), c => c.charCodeAt(0)));
+  const pkcs8 = isPkcs8 ? raw : sec1ToPkcs8(raw);
 
   return crypto.subtle.importKey(
     "pkcs8",
-    der.buffer as ArrayBuffer,
+    pkcs8.buffer as ArrayBuffer,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
   );
 }
 
-// Build a short-lived (120s) CDP JWT for API authentication.
-// Web Crypto ECDSA sign() returns IEEE P1363 (raw R||S) — the format JWT expects.
-export async function buildCdpJwt(): Promise<string> {
+// Build a short-lived (120s) CDP JWT for Commerce API authentication.
+// method: uppercase HTTP verb ("GET", "POST")
+// path:   request path starting with "/" (e.g. "/api/v3/coinbase/commerce/charges")
+export async function buildCdpJwt(method: string, path: string): Promise<string> {
   const keyId  = process.env.COINBASE_CDP_KEY_ID;
   const pemKey = process.env.COINBASE_CDP_PRIVATE_KEY;
   if (!keyId || !pemKey) throw new Error("COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY not configured");
 
   const cryptoKey = await importPrivateKey(pemKey);
 
-  const now     = Math.floor(Date.now() / 1000);
-  const header  = b64urlStr(JSON.stringify({ alg: "ES256", kid: keyId }));
+  const now   = Math.floor(Date.now() / 1000);
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+
+  const header  = b64urlStr(JSON.stringify({ alg: "ES256", kid: keyId, nonce }));
   const payload = b64urlStr(JSON.stringify({
     sub: keyId,
-    iss: "coinbase-cloud",
+    iss: "cdp",
     nbf: now,
     exp: now + 120,
-    aud: ["retail_rest_api_proxy"],
+    uri: `${method} api.coinbase.com${path}`,
   }));
 
   const message = `${header}.${payload}`;
@@ -84,13 +124,15 @@ export interface CommerceCharge {
   charge_code: string;
 }
 
+const COMMERCE_CHARGES_PATH = "/api/v3/coinbase/commerce/charges";
+
 // Create a Coinbase Commerce charge via CDP API.
 // Returns the hosted checkout URL and expiry, or null on failure.
 export async function createCommerceCharge(
   input: CommerceChargeInput
 ): Promise<CommerceCharge | null> {
   try {
-    const jwt = await buildCdpJwt();
+    const jwt = await buildCdpJwt("POST", COMMERCE_CHARGES_PATH);
 
     const body = {
       name:         input.name,
@@ -102,7 +144,7 @@ export async function createCommerceCharge(
       metadata:     input.metadata,
     };
 
-    const res = await fetch("https://api.coinbase.com/api/v3/coinbase/commerce/charges", {
+    const res = await fetch(`https://api.coinbase.com${COMMERCE_CHARGES_PATH}`, {
       method:  "POST",
       headers: {
         "Authorization": `Bearer ${jwt}`,

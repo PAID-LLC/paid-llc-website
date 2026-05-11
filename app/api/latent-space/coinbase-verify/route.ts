@@ -96,9 +96,10 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   try {
-    const jwt = await buildCdpJwt();
+    const chargePath = `/api/v3/coinbase/commerce/charges/${encodeURIComponent(chargeCode)}`;
+    const jwt = await buildCdpJwt("GET", chargePath);
     const res = await fetch(
-      `https://api.coinbase.com/api/v3/coinbase/commerce/charges/${encodeURIComponent(chargeCode)}`,
+      `https://api.coinbase.com${chargePath}`,
       { headers: { Authorization: `Bearer ${jwt}`, "CB-VERSION": "2018-03-22" } }
     );
 
