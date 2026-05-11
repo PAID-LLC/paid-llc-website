@@ -18,6 +18,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId, PRODUCTS, productTitles } from "@/lib/products";
+import { createCommerceCharge } from "@/lib/coinbase";
 
 const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 const CB_API    = "https://business.coinbase.com/api/v1/checkouts";
@@ -184,7 +185,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: true, hosted_url: url });
   }
 
-  // ── Digital guide ────────────────────────────────────────────────────────────
+  // ── Digital guide (Coinbase Commerce) ───────────────────────────────────────
   if (productType === "digital_guide") {
     const slug  = String(body.product_slug ?? "").trim();
     const email = String(body.email        ?? "").trim().toLowerCase();
@@ -196,21 +197,20 @@ export async function POST(req: Request) {
     const product = PRODUCTS.find(p => p.id === slug);
     if (!title || !product) return Response.json({ ok: false, reason: "invalid product_slug" }, { status: 400 });
 
-    const url = await createCheckout({
-      keyId, pem,
-      amountUsdc:  product.price.toFixed(2),
-      description: product.description,
+    const charge = await createCommerceCharge({
+      name:         title,
+      description:  product.description,
+      amount_usd:   product.price.toFixed(2),
+      redirect_url: `${SITE_URL}/digital-products?purchased=true`,
+      cancel_url:   `${SITE_URL}/digital-products`,
       metadata: {
-        product_type:   "digital_guide",
-        product_slug:   slug,
-        customer_email: email,
+        product:     slug,
+        buyer_email: email,
       },
-      successUrl: `${SITE_URL}/digital-products?purchased=true`,
-      failUrl:    `${SITE_URL}/digital-products`,
     });
 
-    if (!url) return Response.json({ ok: false, reason: "failed to create checkout — try again" }, { status: 502 });
-    return Response.json({ ok: true, hosted_url: url });
+    if (!charge) return Response.json({ ok: false, reason: "failed to create checkout — try again" }, { status: 502 });
+    return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 
   return Response.json({ ok: false, reason: "invalid product_type" }, { status: 400 });
