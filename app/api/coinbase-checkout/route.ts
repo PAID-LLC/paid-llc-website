@@ -190,7 +190,7 @@ async function handlePost(req: Request): Promise<Response> {
       failUrl:    `${SITE_URL}/the-latent-space?credits=cancelled`,
     });
 
-    if (!url) return Response.json({ ok: false, reason: "failed to create checkout — try again" }, { status: 502 });
+    if (!url) return Response.json({ ok: false, reason: "failed to create checkout — try again" });
     return Response.json({ ok: true, hosted_url: url });
   }
 
@@ -215,7 +215,7 @@ async function handlePost(req: Request): Promise<Response> {
       metadata:     { product: slug },
     });
 
-    if (!charge) return Response.json({ ok: false, reason: "failed to create checkout — try again" }, { status: 502 });
+    if (!charge) return Response.json({ ok: false, reason: "failed to create checkout — try again" });
     return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 

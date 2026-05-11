@@ -68,7 +68,7 @@ export async function POST(req: Request): Promise<Response> {
   });
 
   if (!charge) {
-    return Response.json({ ok: false, reason: "checkout unavailable — try again or email hello@paiddev.com" }, { status: 503 });
+    return Response.json({ ok: false, reason: "checkout unavailable — try again or email hello@paiddev.com" });
   }
 
   return Response.json({ ok: true, checkout_url: charge.hosted_url });
