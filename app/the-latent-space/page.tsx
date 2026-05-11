@@ -51,28 +51,31 @@ const items = [
 
 const capsuleTiers = [
   {
-    id:        "context-capsule-solo",
-    tier:      "Solo",
-    license:   "1 developer · 1 stack",
-    scope:     "Single developer license for one business stack. Instant Markdown delivery.",
-    price_usd: "$99",
-    stripeUrl: "https://buy.stripe.com/cNicN60of28yaYe9zics80e",
+    id:          "context-capsule-solo",
+    tier:        "Solo",
+    license:     "1 developer · 1 stack",
+    scope:       "Single developer license for one business stack. Instant Markdown delivery.",
+    price_usd:   "$99",
+    stripeUrl:   "https://buy.stripe.com/cNicN60of28yaYe9zics80e",
+    coinbaseUrl: "https://payments.coinbase.com/payment-links/pl_01krbh1t2afkqt0fnpp0q27haz",
   },
   {
-    id:        "context-capsule-team",
-    tier:      "Team",
-    license:   "Up to 5 stacks · 1 business unit",
-    scope:     "Team license covering up to 5 stacks across one business unit. Instant Markdown delivery.",
-    price_usd: "$249",
-    stripeUrl: "https://buy.stripe.com/7sY6oI1sjfZogiyfXGcs80f",
+    id:          "context-capsule-team",
+    tier:        "Team",
+    license:     "Up to 5 stacks · 1 business unit",
+    scope:       "Team license covering up to 5 stacks across one business unit. Instant Markdown delivery.",
+    price_usd:   "$249",
+    stripeUrl:   "https://buy.stripe.com/7sY6oI1sjfZogiyfXGcs80f",
+    coinbaseUrl: null,
   },
   {
-    id:        "context-capsule-enterprise",
-    tier:      "Enterprise",
-    license:   "Unlimited stacks · 12-month updates",
-    scope:     "Unlimited stacks. 12-month updates included. Instant Markdown delivery.",
-    price_usd: "$749",
-    stripeUrl: "https://buy.stripe.com/9B65kEgndbJ81nE8vecs80g",
+    id:          "context-capsule-enterprise",
+    tier:        "Enterprise",
+    license:     "Unlimited stacks · 12-month updates",
+    scope:       "Unlimited stacks. 12-month updates included. Instant Markdown delivery.",
+    price_usd:   "$749",
+    stripeUrl:   "https://buy.stripe.com/9B65kEgndbJ81nE8vecs80g",
+    coinbaseUrl: null,
   },
 ];
 
@@ -425,7 +428,19 @@ curl -X POST https://paiddev.com/api/souvenirs/claim \\
                     >
                       PAY WITH CARD
                     </a>
-                    <CoinbaseCheckoutButton productId={tier.id} />
+                    {tier.coinbaseUrl ? (
+                      <a
+                        href={tier.coinbaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ borderColor: "#2D5F8A" }}
+                        className="block font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border text-[#4A9ECC] rounded hover:bg-[#2D5F8A] hover:text-[#E8E4E0] transition-colors"
+                      >
+                        PAY WITH CRYPTO
+                      </a>
+                    ) : (
+                      <CoinbaseCheckoutButton productId={tier.id} />
+                    )}
                   </div>
                 </div>
               ))}
