@@ -130,6 +130,15 @@ async function createCheckout(opts: {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (e) {
+    console.error("[coinbase-checkout] unhandled error:", e);
+    return Response.json({ ok: false, reason: "internal error" }, { status: 500 });
+  }
+}
+
+async function handlePost(req: Request): Promise<Response> {
   const keyId = process.env.COINBASE_CDP_KEY_ID;
   const pem   = process.env.COINBASE_CDP_PRIVATE_KEY?.replace(/\\n/g, "\n");
   if (!keyId || !pem) {

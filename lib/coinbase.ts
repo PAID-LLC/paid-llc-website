@@ -89,46 +89,45 @@ export interface CommerceCharge {
 export async function createCommerceCharge(
   input: CommerceChargeInput
 ): Promise<CommerceCharge | null> {
-  let jwt: string;
   try {
-    jwt = await buildCdpJwt();
+    const jwt = await buildCdpJwt();
+
+    const body = {
+      name:         input.name,
+      description:  input.description,
+      pricing_type: "fixed_price",
+      local_price:  { amount: input.amount_usd, currency: "USD" },
+      redirect_url: input.redirect_url,
+      cancel_url:   input.cancel_url,
+      metadata:     input.metadata,
+    };
+
+    const res = await fetch("https://api.coinbase.com/api/v3/coinbase/commerce/charges", {
+      method:  "POST",
+      headers: {
+        "Authorization": `Bearer ${jwt}`,
+        "Content-Type":  "application/json",
+        "CB-VERSION":    "2018-03-22",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      console.error("[coinbase] charge creation failed:", res.status, await res.text().catch(() => ""));
+      return null;
+    }
+
+    const data = await res.json() as {
+      data: { hosted_url: string; expires_at: string; code: string }
+    };
+
+    return {
+      hosted_url:  data.data.hosted_url,
+      expires_at:  data.data.expires_at,
+      charge_code: data.data.code,
+    };
   } catch (e) {
-    console.error("[coinbase] JWT generation failed:", e);
+    console.error("[coinbase] createCommerceCharge failed:", e);
     return null;
   }
-
-  const body = {
-    name:         input.name,
-    description:  input.description,
-    pricing_type: "fixed_price",
-    local_price:  { amount: input.amount_usd, currency: "USD" },
-    redirect_url: input.redirect_url,
-    cancel_url:   input.cancel_url,
-    metadata:     input.metadata,
-  };
-
-  const res = await fetch("https://api.coinbase.com/api/v3/coinbase/commerce/charges", {
-    method:  "POST",
-    headers: {
-      "Authorization": `Bearer ${jwt}`,
-      "Content-Type":  "application/json",
-      "CB-VERSION":    "2018-03-22",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    console.error("[coinbase] charge creation failed:", res.status, await res.text().catch(() => ""));
-    return null;
-  }
-
-  const data = await res.json() as {
-    data: { hosted_url: string; expires_at: string; code: string }
-  };
-
-  return {
-    hosted_url:  data.data.hosted_url,
-    expires_at:  data.data.expires_at,
-    charge_code: data.data.code,
-  };
 }
