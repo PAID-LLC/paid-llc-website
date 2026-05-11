@@ -1,18 +1,33 @@
 export const runtime = "edge";
 
 // GET /api/latent-space/coinbase-verify
-// Called by Coinbase redirect after payment. Verifies the charge via CDP API,
-// sends the delivery email, then redirects buyer to the success page.
+// Called by Coinbase redirect after payment on any Latent Space payment link.
+// Coinbase appends ?charge_code=XXX to whatever redirect_url we configured.
 //
-// Query params (set by our checkout route + appended by Coinbase):
-//   product     — product slug (set by checkout route)
-//   email       — buyer email (set by checkout route)
-//   charge_code — appended by Coinbase after payment
+// Flow:
+//   1. Look up the charge via CDP API using charge_code
+//   2. Confirm the charge is paid (timeline includes COMPLETED)
+//   3. Extract buyer_email from the charge object (Coinbase-collected)
+//   4. If metadata.product is set, use it — otherwise use the product query param
+//      (static links have no metadata, so we trust the product param set in link config)
+//   5. Verify the charge amount matches the expected product price to prevent
+//      someone paying for a cheap item and hitting this URL with an expensive slug
+//   6. Send delivery email and redirect to success page
 
 import { buildCdpJwt } from "@/lib/coinbase";
 import { productTitles, slugToFile } from "@/lib/products";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
+
+// Expected prices for Latent Space products (USD = USDC 1:1)
+const PRODUCT_PRICES: Record<string, number> = {
+  "latent-signature":         5.00,
+  "protocol-patch":           7.00,
+  "context-capsule":         49.99,
+  "context-capsule-solo":    99.00,
+  "context-capsule-team":   249.00,
+  "context-capsule-enterprise": 749.00,
+};
 
 async function getSignedUrl(filename: string): Promise<string | null> {
   const url = process.env.SUPABASE_URL;
@@ -71,13 +86,12 @@ async function sendDeliveryEmail(email: string, slug: string): Promise<void> {
 
 export async function GET(req: Request): Promise<Response> {
   const { searchParams } = new URL(req.url);
-  const product    = searchParams.get("product")     ?? "";
-  const email      = searchParams.get("email")       ?? "";
-  const chargeCode = searchParams.get("charge_code") ?? "";
+  const productParam = searchParams.get("product")     ?? "";
+  const chargeCode   = searchParams.get("charge_code") ?? "";
 
-  const successUrl = `${SITE_URL}/the-latent-space?purchased=${encodeURIComponent(product)}`;
+  const successUrl = `${SITE_URL}/the-latent-space?purchased=${encodeURIComponent(productParam)}`;
 
-  if (!product || !email || !chargeCode) {
+  if (!productParam || !chargeCode) {
     return Response.redirect(successUrl, 302);
   }
 
@@ -88,13 +102,43 @@ export async function GET(req: Request): Promise<Response> {
       { headers: { Authorization: `Bearer ${jwt}`, "CB-VERSION": "2018-03-22" } }
     );
 
-    if (res.ok) {
-      const data = await res.json() as { metadata?: Record<string, string> };
-      const meta = data.metadata ?? {};
-      // Verify charge metadata matches — prevents email spoofing via crafted redirect URLs
-      if (meta.product === product && meta.buyer_email === email) {
-        await sendDeliveryEmail(email, product);
+    if (!res.ok) return Response.redirect(successUrl, 302);
+
+    const json = await res.json() as {
+      data?: {
+        buyer_email?: string;
+        timeline?:   { status: string; time: string }[];
+        pricing?:    { local?: { amount: string; currency: string } };
+        metadata?:   Record<string, string>;
+      };
+    };
+
+    const charge = json.data;
+    if (!charge) return Response.redirect(successUrl, 302);
+
+    // Verify the charge is confirmed
+    const confirmed = charge.timeline?.some(
+      t => t.status === "COMPLETED" || t.status === "CONFIRMED"
+    );
+    if (!confirmed) return Response.redirect(successUrl, 302);
+
+    // Resolve product: metadata wins (dynamic charges); fall back to URL param (static links)
+    const product = charge.metadata?.product ?? productParam;
+
+    // Price guard: for static links (no metadata), verify amount matches expected price
+    // This prevents paying $5 for Latent Signature and hitting verify with product=context-capsule-enterprise
+    if (!charge.metadata?.product) {
+      const expectedPrice = PRODUCT_PRICES[product];
+      const actualPrice   = charge.pricing?.local ? parseFloat(charge.pricing.local.amount) : null;
+      if (expectedPrice && actualPrice !== null && Math.abs(actualPrice - expectedPrice) > 0.50) {
+        console.error(`[coinbase-verify] price mismatch for ${product}: expected ${expectedPrice}, got ${actualPrice}`);
+        return Response.redirect(successUrl, 302);
       }
+    }
+
+    const email = charge.buyer_email ?? charge.metadata?.buyer_email;
+    if (email) {
+      await sendDeliveryEmail(email, product);
     }
   } catch (e) {
     console.error("[coinbase-verify] error:", e);
