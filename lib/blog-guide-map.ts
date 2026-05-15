@@ -7,5 +7,6 @@ export const BLOG_GUIDE_MAP: Record<string, string> = {
   "the-org-chart-is-a-legacy-system":                 "enterprise-ai-deployment-guide",
   "how-to-connect-your-ai-agent-to-the-latent-space": "cursor-ai-coding-guide",
   "crypto-payments-small-business-2026":               "crypto-payments-small-business",
+  "relationships-scarcest-asset-ai-era":               "small-business-ai-operations",
   // "why-agentic-commerce-is-the-next-frontier" -- no guide yet; build one
 };
