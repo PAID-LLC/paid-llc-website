@@ -23,7 +23,7 @@ export default function Privacy() {
             Information We Collect
           </h2>
           <p>
-            We collect information you provide directly — such as your name,
+            We collect information you provide directly: your name,
             email address, and message when you submit our contact form. We
             also collect standard web analytics data through Google Analytics 4,
             including pages visited, time on site, and device type.

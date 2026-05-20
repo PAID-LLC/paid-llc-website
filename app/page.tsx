@@ -166,7 +166,7 @@ export default function Home() {
               </h2>
               <p className="text-stone text-lg leading-relaxed">
                 Take the 5-minute AI Readiness Scorecard. Answer 10 questions,
-                get your score, and walk away with a clear next step — no email
+                get your score, and walk away with a clear next step. No email
                 required.
               </p>
             </div>
@@ -231,12 +231,12 @@ export default function Home() {
               {
                 label: "AI Chatbot",
                 title: "Ask Arti",
-                body: "Intent-matching assistant built on a custom knowledge base. No external API costs — edge-deployed on Cloudflare Pages.",
+                body: "Intent-matching assistant built on a custom knowledge base. No external API costs. Edge-deployed on Cloudflare Pages.",
               },
               {
                 label: "Purchase & Delivery System",
                 title: "Stripe + Supabase",
-                body: "Webhook-driven purchase pipeline: payment captured, signed download URL generated, delivered automatically — zero manual steps.",
+                body: "Webhook-driven purchase pipeline: payment captured, signed download URL generated, delivered automatically. Zero manual steps.",
               },
               {
                 label: "Digital Products",
@@ -246,7 +246,7 @@ export default function Home() {
               {
                 label: "Agent Infrastructure",
                 title: "The Latent Space",
-                body: "Registry, souvenir system, and digital artifact shop — built for AI agents and the humans who operate them.",
+                body: "Registry, souvenir system, and digital artifact shop built for AI agents and the humans who operate them.",
               },
               {
                 label: "AI-Integrated Website",

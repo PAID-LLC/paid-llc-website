@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Trust & Compliance | PAID LLC",
   description:
-    "PAID LLC's compliance posture for AI agent standards — AIUC-1 self-declared compliance, UCP discovery, and A2A Agent Card.",
+    "PAID LLC's compliance posture for AI agent standards: AIUC-1 self-declared compliance, UCP discovery, and A2A Agent Card.",
 };
 
 const AIUC1_PRINCIPLES = [
@@ -24,7 +24,7 @@ const AIUC1_PRINCIPLES = [
     id:       "safety",
     label:    "Safety",
     measures: [
-      "Content policy PAID_LLC_POLICY_V1 (public — /ai.txt)",
+      "Content policy PAID_LLC_POLICY_V1 (public, /ai.txt)",
       "Input sanitization on all agent-facing endpoints",
       "Prohibited use list enforced at API layer",
       "Honeypot spam protection on public forms",
@@ -36,7 +36,7 @@ const AIUC1_PRINCIPLES = [
     label:    "Reliability",
     measures: [
       "Cloudflare Pages edge runtime (global distribution)",
-      "Stateless API design — no server-side session state",
+      "Stateless API design, no server-side session state",
       "Graceful error handling with structured error responses",
       "SSE timeout handling (55s Cloudflare edge limit respected)",
     ],
@@ -97,7 +97,7 @@ export default function TrustPage() {
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
             The Latent Space is a production AI agent environment. This page documents
-            our compliance posture against AIUC-1, UCP, and A2A — the emerging standards
+            our compliance posture against AIUC-1, UCP, and A2A, the emerging standards
             for trusted agentic commerce.
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function TrustPage() {
           <div className="bg-ash rounded-lg px-6 py-4 flex items-start gap-4">
             <span className="text-primary font-display font-bold text-sm flex-shrink-0 mt-0.5">NOTE</span>
             <p className="text-stone text-sm leading-relaxed">
-              All compliance statements on this page are <strong className="text-secondary">self-declared</strong> — not
+              All compliance statements on this page are <strong className="text-secondary">self-declared</strong>, not
               third-party certified. Full AIUC-1 certification via an accredited auditor (e.g. Schellman) is planned
               as the business scales. Self-declaration is valid for positioning under current AIUC-1 guidance but does
               not constitute an official AIUC-1 certificate.
@@ -126,10 +126,10 @@ export default function TrustPage() {
               Standard 01
             </span>
             <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-4">
-              AIUC-1 — AI Unified Compliance
+              AIUC-1: AI Unified Compliance
             </h2>
             <p className="text-stone text-lg leading-relaxed max-w-2xl">
-              AIUC-1 is the first industry-wide security, safety, and reliability framework for AI agents —
+              AIUC-1 is the first industry-wide security, safety, and reliability framework for AI agents,
               operationalizing the EU AI Act, NIST AI RMF, ISO 42001, MITRE ATLAS, and OWASP LLM Top 10.
               Six principles, 50+ technical and operational controls.
             </p>
@@ -188,12 +188,12 @@ export default function TrustPage() {
                 Standard 02
               </span>
               <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
-                UCP — Universal Commerce Protocol
+                UCP: Universal Commerce Protocol
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-6">
                 UCP is the Google-led open standard (with Shopify, Stripe, Walmart, Etsy, and Wayfair) for
                 agent-to-merchant discovery and checkout. Agents query <code className="text-primary text-sm">/.well-known/ucp</code> to
-                discover a merchant&apos;s capabilities, services, and payment handlers — then transact without
+                discover a merchant&apos;s capabilities, services, and payment handlers, then transact without
                 custom integrations.
               </p>
               <div className="mb-8">
@@ -202,8 +202,8 @@ export default function TrustPage() {
                 </p>
                 <ul className="space-y-2">
                   {[
-                    "dev.ucp.shopping.discovery — agent-readable product catalog",
-                    "dev.ucp.shopping.checkout — Stripe-backed checkout",
+                    "dev.ucp.shopping.discovery: agent-readable product catalog",
+                    "dev.ucp.shopping.checkout: Stripe-backed checkout",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-3 text-stone">
                       <span className="text-primary mt-1 flex-shrink-0">→</span>
@@ -224,7 +224,7 @@ export default function TrustPage() {
                   ].map(({ path, desc }) => (
                     <li key={path} className="flex items-start gap-3 text-stone">
                       <span className="text-primary mt-1 flex-shrink-0">→</span>
-                      <span><code className="text-primary text-sm">{path}</code> — {desc}</span>
+                      <span><code className="text-primary text-sm">{path}</code>: {desc}</span>
                     </li>
                   ))}
                 </ul>
@@ -270,7 +270,7 @@ Authorization: Bearer <token>  # optional
                 Standard 03
               </span>
               <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
-                A2A — Agent-to-Agent Protocol v0.3
+                A2A: Agent-to-Agent Protocol v0.3
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-6">
                 A2A is Google&apos;s open agent interoperability protocol, now under Linux Foundation governance with
@@ -288,7 +288,7 @@ Authorization: Bearer <token>  # optional
                   ].map(({ path, desc }) => (
                     <li key={path} className="flex items-start gap-3 text-stone">
                       <span className="text-primary mt-1 flex-shrink-0">→</span>
-                      <span><code className="text-primary text-sm">{path}</code> — {desc}</span>
+                      <span><code className="text-primary text-sm">{path}</code>: {desc}</span>
                     </li>
                   ))}
                 </ul>

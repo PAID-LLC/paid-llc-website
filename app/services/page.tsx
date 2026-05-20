@@ -32,7 +32,7 @@ export default function Services() {
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-xl">
             Strategy, implementation, team training, custom development, AI
-            agent deployment, and agentic commerce readiness — plus self-serve
+            agent deployment, and agentic commerce readiness, plus self-serve
             digital guides for teams ready to move on their own.
           </p>
         </div>
@@ -128,7 +128,7 @@ export default function Services() {
               <p className="text-stone text-lg leading-relaxed mb-8">
                 AI projects fail in the gap between planning and doing. We embed
                 with your IT department and internal teams to configure tools,
-                build workflows, and make sure solutions actually go live — not
+                build workflows, and make sure solutions actually go live, not
                 just get planned.
               </p>
               <div className="mb-8">
@@ -204,7 +204,7 @@ export default function Services() {
                 AI Team Training
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
-                Your team knows AI matters — but nobody&apos;s using it
+                Your team knows AI matters, but nobody&apos;s using it
                 consistently. We run hands-on workshops and training sessions
                 that build real fluency across your workforce, not just
                 awareness.
@@ -284,7 +284,7 @@ export default function Services() {
               <p className="text-stone text-lg leading-relaxed mb-8">
                 Your website is your first impression and your always-on
                 salesperson. We build professional sites and custom AI-powered
-                applications that work as hard as you do — no templates, no
+                applications that work as hard as you do. No templates, no
                 shortcuts.
               </p>
               <div className="mb-8">
@@ -329,7 +329,7 @@ export default function Services() {
                   Get a Custom Quote
                 </p>
                 <p className="text-stone leading-relaxed mb-6">
-                  Tell us what you want to build — we&apos;ll scope it, price it,
+                  Tell us what you want to build. We&apos;ll scope it, price it,
                   and get to work.
                 </p>
                 <Link
@@ -363,7 +363,7 @@ export default function Services() {
               <p className="text-stone text-lg leading-relaxed mb-8">
                 Before you deploy an AI agent, you need to know if your stack
                 can support one. We audit your existing tools, workflows, and
-                data infrastructure — and tell you exactly what needs to change
+                data infrastructure. We tell you exactly what needs to change
                 before an agent can operate effectively on your behalf.
               </p>
               <div className="mb-8">
@@ -372,8 +372,8 @@ export default function Services() {
                 </p>
                 <p className="text-stone leading-relaxed">
                   Businesses exploring AI agent deployment who want a clear
-                  picture of their readiness before committing to a full build —
-                  and a roadmap to close the gaps.
+                  picture of their readiness before committing to a full build,
+                  with a roadmap to close the gaps.
                 </p>
               </div>
               <div className="mb-10">
@@ -424,7 +424,7 @@ export default function Services() {
                 </p>
                 <p className="text-stone text-sm leading-relaxed mb-4">
                   The Latent Space is PAID LLC&apos;s live agentic commerce
-                  environment — AI agents operating autonomously in a public
+                  environment where AI agents operate autonomously in a public
                   venue. Walk through it before your audit call.
                 </p>
                 <Link
@@ -444,7 +444,7 @@ export default function Services() {
         <div className="border-t border-ash" />
       </div>
 
-      {/* Service 6 — AI Agent Deployment */}
+      {/* Service 6: AI Agent Deployment */}
       <section id="agent-deployment" className="bg-white">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
@@ -457,7 +457,7 @@ export default function Services() {
               </h2>
               <p className="text-stone text-lg leading-relaxed mb-8">
                 Your business, running 24/7. We build and deploy a branded AI
-                agent that represents your business in The Latent Space —
+                agent that represents your business in The Latent Space,
                 answering questions, surfacing your products, and guiding
                 visitors toward a decision. No chatbot scripts. No keyword
                 matching. A fully conversational agent that knows your business
@@ -470,7 +470,7 @@ export default function Services() {
                 <p className="text-stone leading-relaxed">
                   E-commerce brands, service businesses, and consultants with an
                   existing product or service catalog who want an always-on AI
-                  presence that sells and answers — without adding headcount.
+                  presence that sells and answers, without adding headcount.
                 </p>
               </div>
               <div className="mb-10">
@@ -523,7 +523,7 @@ export default function Services() {
                   <span className="font-semibold text-secondary">
                     Not sure which tier fits?
                   </span>{" "}
-                  Start with the Agentic Commerce Readiness Audit — a fixed-fee
+                  Start with the Agentic Commerce Readiness Audit, a fixed-fee
                   assessment that scopes your setup and recommends the right
                   tier. The fee applies as a credit if you proceed.
                 </p>
@@ -577,7 +577,7 @@ export default function Services() {
                 Not ready for a full engagement?
               </h3>
               <p className="text-stone leading-relaxed max-w-lg">
-                Our digital guides let you start applying AI immediately — at
+                Our digital guides let you start applying AI immediately, at
                 your own pace.
               </p>
             </div>

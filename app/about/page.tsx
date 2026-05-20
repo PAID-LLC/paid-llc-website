@@ -19,7 +19,7 @@ export default function About() {
             About
           </p>
           <h1 className="font-display font-bold text-5xl text-secondary mb-6 max-w-2xl">
-            AI should work for your business — not the other way around.
+            AI should work for your business, not the other way around.
           </h1>
         </div>
       </section>
@@ -34,22 +34,22 @@ export default function About() {
               </h2>
               <div className="space-y-5 text-stone leading-relaxed">
                 <p>
-                  PAID LLC — Performance Artificial Intelligence Development —
+                  PAID LLC (Performance Artificial Intelligence Development)
                   was built on a straightforward idea: AI should work for your
                   business, not the other way around.
                 </p>
                 <p>
                   Most businesses know AI is important. Few know how to make it
-                  actually useful. PAID LLC bridges that gap — helping clients
+                  actually useful. PAID LLC bridges that gap, helping clients
                   understand what AI can do, identify where it creates real
                   value, and implement it in ways that stick.
                 </p>
                 <p>
-                  After nearly three decades in corporate America — eight years
+                  After nearly three decades in corporate America (eight years
                   at AT&T spanning sales, collections, contact center
                   leadership, and operations, and more than twenty years at Best
                   Buy moving through accounting, financial analysis, and finance
-                  leadership — I had a clear view of how technology either
+                  leadership), I had a clear view of how technology either
                   accelerates or disrupts businesses depending on how well
                   leaders understand it. When AI shifted from experiment to
                   business reality, I kept seeing the same problem: powerful
@@ -197,7 +197,7 @@ export default function About() {
                 <p>
                   A lifelong Minnesotan with degrees in Business Administration
                   and Accounting, Travis brings a finance-first lens to every AI
-                  engagement — focused on outcomes that show up on the bottom
+                  engagement, focused on outcomes that show up on the bottom
                   line. Outside of work, he&apos;s raising five kids and spending
                   time outdoors whenever Minnesota allows it.
                 </p>
