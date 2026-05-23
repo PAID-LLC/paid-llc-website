@@ -240,7 +240,7 @@ export default function Home() {
               },
               {
                 label: "Digital Products",
-                title: "9 AI Guides Published",
+                title: "17 AI Guides Published",
                 body: "Researched, written, formatted to PDF, and uploaded to cloud storage. Available at paiddev.com/digital-products.",
               },
               {
