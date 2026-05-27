@@ -1,0 +1,72 @@
+---
+title: "Composer 2.5 Matches Opus 4.7 at One-Tenth the Cost"
+slug: "composer-2-5-matches-opus-frontier-cost"
+date: "2026-05-27"
+author: "Travis Raveling"
+excerpt: "Cursor's new Composer 2.5 scores within a point of Claude Opus 4.7 on coding benchmarks and costs $0.07 per task versus $4.14. Here's what that means for how you build."
+category: "AI Tools & Business"
+tags: ["ai tools", "coding", "benchmarks", "cursor", "claude", "openai"]
+featured_image: ""
+published: true
+---
+
+# Composer 2.5 Matches Opus 4.7 at One-Tenth the Cost
+
+*May 27, 2026 | AI Tools & Business*
+
+Cursor released Composer 2.5 on May 18th. It costs $0.07 per coding task. Claude Code running Opus 4.7 costs $4.14 for the same task. On two of three public benchmarks, Composer 2.5 scores within one point of Opus 4.7. That gap is worth paying attention to.
+
+## What the Benchmarks Actually Show
+
+Cursor submitted Composer 2.5 to Artificial Analysis's Coding Agent Index, which composites three benchmarks: SWE-Bench-Pro-Hard, Terminal-Bench v2, and SWE-Atlas-QnA. Composer 2.5 placed third with a score of 63.
+
+First place: Claude Code with Opus 4.7 (Max) at 67. Second place: Codex with GPT-5.5 (XHigh) at 65.
+
+Broken out by benchmark:
+
+- **SWE-Bench Multilingual:** Composer 2.5 scores 79.8%. Opus 4.7 scores 80.5%. GPT-5.5 is not far behind.
+- **CursorBench v3.1:** Composer 2.5 scores 63.2%, edging Opus 4.7 (61.6%) and GPT-5.5 (59.2%).
+- **Terminal-Bench 2.0:** GPT-5.5 wins clearly at 82.7%. Composer 2.5 and Opus 4.7 tie at roughly 69%.
+
+The pattern is consistent: for most coding tasks, Composer 2.5 trades within the same accuracy band as models that cost 10 to 60 times more per token.
+
+## The Cost Gap Is Not Close
+
+Composer 2.5 Standard runs at $0.50 per million input tokens and $2.50 per million output tokens. Claude Opus 4.7 is priced at $5 input and $25 output. GPT-5.5 runs $5 input and $30 output.
+
+At the task level, the numbers look like this:
+
+| Model | Per-Task Cost |
+|---|---|
+| Composer 2.5 Standard | $0.07 |
+| Composer 2.5 Fast | $0.44 |
+| Claude Code Opus 4.7 (Max) | $4.14 |
+| Codex GPT-5.5 (XHigh) | $4.33 |
+
+If you run 1,000 coding tasks a month, the difference between Composer 2.5 Standard and Opus 4.7 Max is roughly $4,070. At scale, that is not a rounding error.
+
+## Where GPT-5.5 Still Wins
+
+GPT-5.5 holds a real lead on Terminal-Bench 2.0, which tests shell-driven autonomous workflows. At 82.7% versus Composer's 69.3%, that is a 13-point gap. If your work involves AI agents running long terminal sessions, executing commands, or operating autonomously in a shell environment, GPT-5.5 earns its price premium there.
+
+Opus 4.7 also has a strong lead on vision tasks (98.5% visual acuity, up from 54.5% on Opus 4.6) and finance agent benchmarks. If your coding workflow is tightly coupled to image processing or financial data, those scores matter.
+
+For standard software engineering tasks: writing code, fixing bugs, handling pull requests, navigating real codebases, Composer 2.5 keeps up.
+
+## What This Means Practically
+
+The frontier model pricing made sense when frontier was the only option for reliable agentic coding. That is no longer the case.
+
+Composer 2.5 is available in Cursor IDE and Cursor CLI. It is not available as a standalone API. That means this cost advantage is specific to teams already in the Cursor ecosystem.
+
+For everyone else, the takeaway is the direction of travel. Capable coding models are getting dramatically cheaper. The question to ask before defaulting to Opus or GPT-5.5 for any coding task is: what specifically does this task require that a cheaper model cannot do? Terminal-heavy autonomous agents: GPT-5.5. Complex visual or financial reasoning: Opus 4.7. Everything else: run the benchmark, check the price.
+
+Paying 60 times more for 6% better performance on two of three benchmarks is a choice, not a requirement.
+
+---
+
+*Sources: [Artificial Analysis: Cursor's Composer 2.5 -- third on the Coding Agent Index](https://artificialanalysis.ai/articles/cursor-composer-2-5-coding-agent-index). [The Decoder: Cursor's Composer 2.5 matches Opus 4.7 and GPT-5.5 benchmarks at a fraction of the cost](https://the-decoder.com/cursors-composer-2-5-matches-opus-4-7-and-gpt-5-5-benchmarks-at-a-fraction-of-the-cost/). [ChatForest: Cursor Composer 2.5 Review -- 79.8% SWE-Bench, Claude Opus 4.7 Parity, 10x Cheaper](https://chatforest.com/reviews/cursor-composer-2-5-coding-model-review/).*
+
+*Written by Travis Raveling, Founder PAID LLC, co-authored and edited by AI.*
+
+**About PAID LLC:** We help businesses understand, implement, and get ROI from AI tools and emerging technology. [Learn more at paiddev.com/about.](/about)
