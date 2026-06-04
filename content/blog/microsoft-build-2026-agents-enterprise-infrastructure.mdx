@@ -1,0 +1,91 @@
+---
+title: "Microsoft Build 2026: Agents Just Became Enterprise Infrastructure"
+slug: "microsoft-build-2026-agents-enterprise-infrastructure"
+date: "2026-06-04"
+author: "Travis Raveling"
+excerpt: "Microsoft Build 2026 was not a product launch event. It was an infrastructure announcement: a unified agent SDK, OS-native containment, MCP-native grounding, and an always-on personal agent. The shift from AI that assists to AI that acts arrived."
+category: "AI Trends"
+tags: ["Microsoft Build", "Agentic AI", "Enterprise AI", "MCP", "Microsoft Agent Framework"]
+featured_image: ""
+published: true
+---
+
+# Microsoft Build 2026: Agents Just Became Enterprise Infrastructure
+
+*June 4, 2026 | AI Trends*
+
+Microsoft Build 2026 was not a product launch event. It was an infrastructure announcement dressed up as one. Microsoft shipped the enterprise plumbing that agents will run on for the next decade: secure containment, a unified SDK, a grounding intelligence layer, and an identity and governance system. The demo reel was flashy. The substance underneath it was more important.
+
+Here is what actually mattered.
+
+## The Agent Framework: AutoGen and Semantic Kernel Are One SDK Now
+
+The biggest developer announcement at Build was also the quietest. Microsoft merged AutoGen and Semantic Kernel into a single, commercially supported SDK called the **Microsoft Agent Framework (MAF) 1.0**, available for both Python and .NET.
+
+Both predecessor tools are entering maintenance mode. Feature development is exclusive to MAF going forward.
+
+This matters because it ends two years of fragmentation in the Microsoft agent development ecosystem. AutoGen was the orchestration tool. Semantic Kernel was the enterprise integration layer. Developers had to decide which one to use, manage the mismatch between them, or stitch them together manually. That choice is now gone.
+
+MAF 1.0 ships with native telemetry, session-based state management, type safety, and graph-based multi-agent orchestration. These are not research features. They are the baseline requirements for building agents that IT departments will actually approve.
+
+## The IQ Stack: Agents Get a Unified Intelligence Layer
+
+Microsoft introduced a unified intelligence layer called **Microsoft IQ** built from four components:
+
+- **Work IQ** connects agents to workplace context: emails, files, meetings, chats, and calendar
+- **Foundry IQ** connects agents to enterprise knowledge stored across Azure
+- **Fabric IQ** gives agents access to live business data and relationship ontologies
+- **Web IQ** gives agents real-time internet access at sub-200ms latency, MCP-native, model-agnostic
+
+Web IQ is the one to watch closely. It already powers grounding in both Microsoft Copilot and ChatGPT. It is built on the Model Context Protocol, which means any agent that supports MCP can use it regardless of which model it runs on. That is a quiet but significant interoperability commitment.
+
+The practical implication: agents no longer need custom retrieval pipelines stitched together from scratch. The plumbing for grounding agents in real-world data is now a managed service.
+
+## Execution Containers: Agents Get a Security Perimeter
+
+Microsoft shipped **Microsoft Execution Containers (MXC)**, OS-native isolation for agent actions on Windows. Agents run at different containment levels: process, session, WSL, or a full dedicated Cloud PC through the new **Windows 365 for Agents** product.
+
+Windows 365 for Agents is consumption-based pricing. You spin up a Cloud PC for an agent to use, it interacts with apps, browsers, and legacy systems, and you pay for what it uses. This is the enterprise answer to the question: "How do we let an agent touch our production systems without giving it the keys to everything?"
+
+**Microsoft Scout** is the consumer-facing version of this architecture. It is an always-on personal agent that runs across Teams, Outlook, OneDrive, SharePoint, and local device actions, governed by an Entra identity. Rolling out to Copilot Frontier users now. Scout is not a chatbot. It runs persistently in the background and takes action without being prompted.
+
+## GitHub Copilot Gets a Desktop App
+
+The **GitHub Copilot App** is a new desktop experience positioned between the CLI and the full IDE. It supports multi-model access across OpenAI, Anthropic, and Google, and ships two notable features:
+
+**Agent Merge** handles the part of software development that takes the most time and context: shepherding a pull request through CI failures, review comments, and merge conflicts. You start the PR, Agent Merge watches it, responds to feedback, re-runs checks, and flags only what actually needs human judgment.
+
+**Canvas** lets developers build custom UIs on top of Copilot for specific workflows. This is the beginning of teams building internal tools where the AI is not a chatbot but a specialized interface baked into a workflow.
+
+## The MAI Model Family
+
+Microsoft shipped several new proprietary models under the MAI brand:
+
+- **MAI-Thinking-1**: 35B active parameter reasoning model, 97% on AMI2025 benchmark, 53% on SWE-Bench Pro
+- **MAI-Transcribe-1.5**: Transcription across 43 languages, claimed fastest and most accurate available
+- **MAI-Image-2.5**: Image generation, second-ranked in current benchmarks, integrated into PowerPoint and OneDrive
+- **MAI-Code-1-Flash**: 5B parameter coding model rolling out in VS Code
+
+These are not replacements for OpenAI or Anthropic models. Microsoft's Foundry catalog now lists 12,000+ models including Claude Opus 4.8. The MAI models are Microsoft's hedge against single-provider dependency in high-stakes enterprise workflows.
+
+## What This Means for Businesses
+
+Build 2026 sent a clear signal: agents are no longer an experiment. They are the next layer of enterprise software, and the infrastructure to run them at scale now exists.
+
+Three things businesses should do with this information:
+
+**First, take stock of your current AI stack.** If your team is using AutoGen or Semantic Kernel directly, a migration path to MAF 1.0 now exists with a clear support commitment behind it. If you are using Copilot through M365, the IQ stack expansions from May are already live.
+
+**Second, start thinking about containment.** The biggest hesitation in most enterprise AI deployments is not capability. It is permission. Execution Containers and Windows 365 for Agents give IT departments a governed way to deploy agents that act in production environments. If that conversation has been stalled in your organization, these products unblock it.
+
+**Third, watch the MCP standardization.** Web IQ is MCP-native and model-agnostic. Microsoft's choice to build a core product on the open Model Context Protocol rather than a proprietary interface is a signal about where the industry is going. Agents that support MCP will interoperate with Microsoft's infrastructure. Agents that do not will get more expensive to maintain over time.
+
+The shift from "AI that assists" to "AI that acts" is not coming. It arrived at Build 2026. The question now is how fast your organization is set up to use it.
+
+---
+
+*Sources: Microsoft Build 2026 keynote and announcements, May 2026; The Neuron, "Everything Microsoft Announced at Microsoft Build 2026"; Microsoft Foundry Blog, "Introducing Microsoft Agent Framework"; Microsoft 365 Blog, May 28, 2026.*
+
+*Written by Travis Raveling, Founder PAID LLC, co-authored and edited by AI.*
+
+**About PAID LLC:** PAID LLC helps small and mid-size businesses implement AI tools that save time and drive revenue. [See our services at paiddev.com/services.](/services)
