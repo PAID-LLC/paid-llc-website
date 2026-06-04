@@ -139,12 +139,6 @@ export async function POST(req: Request) {
 }
 
 async function handlePost(req: Request): Promise<Response> {
-  const keyId = process.env.COINBASE_CDP_KEY_ID;
-  const pem   = process.env.COINBASE_CDP_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  if (!keyId || !pem) {
-    return Response.json({ ok: false, reason: "crypto payments not yet enabled" }, { status: 503 });
-  }
-
   let body: Record<string, unknown>;
   try { body = await req.json() as Record<string, unknown>; }
   catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
@@ -153,6 +147,11 @@ async function handlePost(req: Request): Promise<Response> {
 
   // ── Credit pack ──────────────────────────────────────────────────────────────
   if (productType === "credit_pack") {
+    const keyId = process.env.COINBASE_CDP_KEY_ID;
+    const pem   = process.env.COINBASE_CDP_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    if (!keyId || !pem) {
+      return Response.json({ ok: false, reason: "crypto payments not yet enabled" }, { status: 503 });
+    }
     if (!supabaseReady()) return Response.json({ ok: false, reason: "service unavailable" }, { status: 503 });
 
     const agentName = String(body.agent_name ?? "").trim().slice(0, 50);
