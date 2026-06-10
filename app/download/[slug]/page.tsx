@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-import { productTitles, slugToFile } from "@/lib/products";
+import { productTitles, slugToFile, PRODUCTS, productStripeUrls } from "@/lib/products";
 
 // ── Stripe session verification ───────────────────────────────────────────────
 
@@ -52,6 +52,25 @@ async function getSignedUrl(filename: string): Promise<string | null> {
   return `${url}/storage/v1${data.signedURL}`;
 }
 
+// ── Related product selection ─────────────────────────────────────────────────
+
+type RelatedProduct = { slug: string; title: string; price: string; stripeUrl: string };
+
+function getRelatedProducts(slug: string): RelatedProduct[] {
+  const purchased = PRODUCTS.find(p => p.id === slug);
+  if (!purchased || purchased.category === "Bundle") return [];
+
+  return PRODUCTS
+    .filter(p => p.id !== slug && p.category === purchased.category && productStripeUrls[p.id])
+    .slice(0, 2)
+    .map(p => ({
+      slug: p.id,
+      title: p.name,
+      price: `$${p.price.toFixed(2)}`,
+      stripeUrl: productStripeUrls[p.id],
+    }));
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function DownloadPage({
@@ -81,7 +100,9 @@ export default async function DownloadPage({
     return <FallbackPage title={title} />;
   }
 
-  return <DownloadReadyPage title={title} downloadUrl={downloadUrl} />;
+  const relatedProducts = getRelatedProducts(slug);
+
+  return <DownloadReadyPage title={title} downloadUrl={downloadUrl} relatedProducts={relatedProducts} />;
 }
 
 // ── UI components ─────────────────────────────────────────────────────────────
@@ -89,12 +110,14 @@ export default async function DownloadPage({
 function DownloadReadyPage({
   title,
   downloadUrl,
+  relatedProducts,
 }: {
   title: string;
   downloadUrl: string;
+  relatedProducts: RelatedProduct[];
 }) {
   return (
-    <section className="bg-ash min-h-[70vh] flex items-center">
+    <section className="bg-ash min-h-[70vh]">
       <div className="max-w-2xl mx-auto px-6 py-24 text-center">
         <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
           Purchase Confirmed
@@ -131,11 +154,40 @@ function DownloadReadyPage({
           </p>
         </div>
 
+        {relatedProducts.length > 0 && (
+          <div className="text-left mb-10">
+            <p className="font-display font-semibold text-secondary mb-4">
+              You might also like
+            </p>
+            <div className="grid gap-3">
+              {relatedProducts.map((p) => (
+                <div
+                  key={p.slug}
+                  className="border border-stone/20 rounded-xl p-4 bg-white flex items-center justify-between gap-4"
+                >
+                  <div>
+                    <p className="font-semibold text-secondary text-sm leading-snug">{p.title}</p>
+                    <p className="text-stone text-xs mt-1">{p.price}</p>
+                  </div>
+                  <a
+                    href={p.stripeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors whitespace-nowrap flex-shrink-0"
+                  >
+                    Buy Now
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Link
           href="/digital-products"
           className="inline-block border-2 border-secondary text-secondary px-8 py-3 rounded font-semibold text-sm hover:bg-secondary hover:text-white transition-colors"
         >
-          Browse More Guides
+          Browse All Guides
         </Link>
       </div>
     </section>
@@ -182,7 +234,7 @@ function FallbackPage({ title }: { title: string }) {
           href="/digital-products"
           className="inline-block border-2 border-secondary text-secondary px-8 py-3 rounded font-semibold text-sm hover:bg-secondary hover:text-white transition-colors"
         >
-          Browse More Guides
+          Browse All Guides
         </Link>
       </div>
     </section>

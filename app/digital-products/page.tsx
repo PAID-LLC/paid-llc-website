@@ -249,6 +249,33 @@ export default function DigitalProducts() {
         </div>
       </section>
 
+      {/* Bundle Strip */}
+      <section className="bg-secondary">
+        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+          <p className="text-white font-semibold text-sm">
+            Get all 17 guides for one flat price.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href="https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-primary text-white px-5 py-2 rounded text-sm font-semibold hover:bg-white hover:text-secondary transition-colors"
+            >
+              Full Bundle — $119
+            </a>
+            <a
+              href="https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border border-white/40 text-white px-5 py-2 rounded text-sm font-semibold hover:border-white transition-colors"
+            >
+              Founding Member — $199
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Filtered Product Grid */}
       <section className="bg-white">
         <ProductsGrid products={products} />

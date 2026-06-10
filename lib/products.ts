@@ -74,6 +74,29 @@ export const CREDIT_PACKS = [
 ] as const;
 export type CreditPackId = typeof CREDIT_PACKS[number]["id"];
 
+/** Stripe payment link URLs — single source of truth for checkout links. */
+export const productStripeUrls: Record<string, string> = {
+  "crypto-payments-small-business":          "https://buy.stripe.com/bJe9AUb2T00qgiy3aUcs80K",
+  "ai-readiness-assessment":                 "https://buy.stripe.com/00wfZidb1cNc4zQ26Qcs80s",
+  "free-ai-stack-small-business-setup":      "https://buy.stripe.com/00w6oIdb14gG1nEh1Kcs80F",
+  "jumpstart-business-ai-under-100":         "https://buy.stripe.com/9B64gAb2TaF46HY12Mcs80G",
+  "microsoft-365-copilot-playbook":          "https://buy.stripe.com/6oU4gAef53cC3vM9zics80t",
+  "excel-ai-data-analysis":                  "https://buy.stripe.com/9B628s3Ar28yd6m7racs80u",
+  "ai-powered-outlook":                      "https://buy.stripe.com/eVq6oI0ofcNc2rI7racs80v",
+  "copilot-cowork-microsoft-365-team-guide": "https://buy.stripe.com/fZucN6b2T7sS2rIbHqcs80E",
+  "google-workspace-ai-guide":               "https://buy.stripe.com/7sYeVeb2T9B00jAdPycs80w",
+  "gmail-ai-inbox-zero":                     "https://buy.stripe.com/7sYaEY9YP4gG8Q6cLucs80x",
+  "solopreneur-content-engine":              "https://buy.stripe.com/7sY4gA5Iz00q3vMcLucs80y",
+  "chatgpt-business-prompt-library":         "https://buy.stripe.com/6oU8wQdb1bJ87M25j2cs80A",
+  "small-business-ai-operations":            "https://buy.stripe.com/dRmbJ27QHcNceaq9zics80z",
+  "claude-for-business-practical-playbook":  "https://buy.stripe.com/7sY8wQ4EvbJ85DU7racs80B",
+  "ai-agents-for-small-business":            "https://buy.stripe.com/7sY28sef56oO4zQ4eYcs80C",
+  "cursor-ai-coding-guide":                  "https://buy.stripe.com/00wfZi4EveVkfeu5j2cs80D",
+  "enterprise-ai-deployment-guide":          "https://buy.stripe.com/dRmdRa2wn8wW6HY3aUcs80H",
+  "all-guides-bundle":                       "https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I",
+  "founding-member":                         "https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J",
+};
+
 /** Maps product slugs to their filenames in Supabase Storage → guides bucket. */
 export const slugToFile: Record<string, string> = {
   "crypto-payments-small-business":           "crypto-payments-small-business-guide.pdf",
