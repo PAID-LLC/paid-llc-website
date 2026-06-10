@@ -3,7 +3,20 @@ import { matchIntent } from "@/lib/arti-knowledge";
 
 export const runtime = "edge";
 
+const ALLOWED_ORIGINS = ["https://paiddev.com", "https://www.paiddev.com"];
+
+function isAllowedOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  return ALLOWED_ORIGINS.includes(origin) || (!!siteUrl && origin === siteUrl);
+}
+
 export async function POST(req: NextRequest) {
+  if (!isAllowedOrigin(req)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   let body: { message?: string };
   try {
     body = await req.json();

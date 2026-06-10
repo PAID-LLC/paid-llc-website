@@ -113,14 +113,20 @@ export default function ProductsGrid({ products }: Props) {
                     {product.price}
                   </span>
                   <div className="flex items-center gap-2">
-                    <a
-                      href={product.stripeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
-                    >
-                      Buy Now
-                    </a>
+                    {product.stripeUrl ? (
+                      <a
+                        href={product.stripeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
+                      >
+                        Buy Now
+                      </a>
+                    ) : (
+                      <span className="bg-ash text-stone/40 px-4 py-2 rounded text-sm font-semibold cursor-not-allowed select-none">
+                        Card Soon
+                      </span>
+                    )}
                     <CoinbaseGuideButton productSlug={product.slug} />
                   </div>
                 </div>

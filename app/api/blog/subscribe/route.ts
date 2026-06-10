@@ -1,10 +1,24 @@
 export const runtime = "edge";
 
+const ALLOWED_ORIGINS = ["https://paiddev.com", "https://www.paiddev.com"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function isAllowedOrigin(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  return ALLOWED_ORIGINS.includes(origin) || (!!siteUrl && origin === siteUrl);
+}
+
 export async function POST(req: Request) {
+  if (!isAllowedOrigin(req)) {
+    return Response.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   try {
     const { email } = (await req.json()) as { email: string };
 
-    if (!email || !email.includes("@")) {
+    if (!email || typeof email !== "string" || !EMAIL_RE.test(email.trim()) || email.length > 254) {
       return Response.json({ error: "Invalid email" }, { status: 400 });
     }
 

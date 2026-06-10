@@ -298,6 +298,34 @@ async function recordCatalogSale(session: {
   if (buyerAgent) void markAgentVerified(buyerAgent);
 }
 
+// ── Webhook idempotency ───────────────────────────────────────────────────────
+// Attempts to INSERT the event_id into processed_webhooks.
+// Returns true if the event is new (we should process it).
+// Returns false if the event was already processed (skip it).
+// Requires: CREATE TABLE processed_webhooks (event_id TEXT PRIMARY KEY, processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+
+async function claimWebhookEvent(eventId: string): Promise<boolean> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return true; // fail open — better to double-send than miss
+
+  const res = await fetch(`${url}/rest/v1/processed_webhooks`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ event_id: eventId }),
+  }).catch(() => null);
+
+  if (!res) return true;        // network error — fail open
+  if (res.status === 201) return true;   // inserted — we own this event
+  if (res.status === 409) return false;  // duplicate — already processed
+  return true;                           // unexpected status — fail open
+}
+
 // ── Webhook failure logging ───────────────────────────────────────────────────
 
 async function logWebhookFailure(req: NextRequest, reason: string): Promise<void> {
@@ -335,9 +363,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
-  const event = JSON.parse(payload) as { type: string; data: { object: Parameters<typeof sendPurchaseNotification>[0] } };
+  const event = JSON.parse(payload) as { id: string; type: string; data: { object: Parameters<typeof sendPurchaseNotification>[0] } };
 
   if (event.type === "checkout.session.completed") {
+    if (!(await claimWebhookEvent(event.id))) {
+      return NextResponse.json({ received: true });
+    }
+
     const session = event.data.object;
     const meta    = (session as { metadata?: Record<string, string> }).metadata ?? {};
 

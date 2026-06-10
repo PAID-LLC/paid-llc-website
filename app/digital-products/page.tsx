@@ -20,7 +20,7 @@ const products: ProductItem[] = [
       "Step-by-step guide to accepting USDC and stablecoin payments without holding volatile assets. Covers Coinbase Commerce setup, payment links, tax treatment, refund policy, and invoice integration.",
     price: "$14.99",
     slug: "crypto-payments-small-business",
-    stripeUrl: "", // TODO: replace with Stripe payment link after creating in dashboard
+    stripeUrl: "https://buy.stripe.com/bJe9AUb2T00qgiy3aUcs80K",
     isNew: true,
   },
   {

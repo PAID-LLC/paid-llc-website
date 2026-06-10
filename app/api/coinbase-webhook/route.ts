@@ -73,6 +73,31 @@ async function verifyHook0Signature(
   }
 }
 
+// ── Webhook idempotency ───────────────────────────────────────────────────────
+// Same pattern as stripe-webhook. Requires the processed_webhooks table.
+
+async function claimWebhookEvent(eventId: string): Promise<boolean> {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return true;
+
+  const res = await fetch(`${url}/rest/v1/processed_webhooks`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ event_id: eventId }),
+  }).catch(() => null);
+
+  if (!res) return true;
+  if (res.status === 201) return true;
+  if (res.status === 409) return false;
+  return true;
+}
+
 // ── Fulfillment helpers ────────────────────────────────────────────────────────
 
 async function creditAgent(agentName: string, creditAmount: number): Promise<void> {
@@ -241,6 +266,7 @@ async function handleCommerceWebhook(payload: string, req: Request): Promise<Res
 
   type CommerceEvent = {
     event?: {
+      id?: string;
       type?: string;
       data?: {
         buyer_email?: string;        // Coinbase-collected at checkout
@@ -253,6 +279,10 @@ async function handleCommerceWebhook(payload: string, req: Request): Promise<Res
   catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
 
   if (body.event?.type === "charge:confirmed") {
+    const eventId = body.event?.id ?? "";
+    if (eventId && !(await claimWebhookEvent(`commerce:${eventId}`))) {
+      return Response.json({ received: true });
+    }
     const meta  = body.event.data?.metadata ?? {};
     const slug  = meta.product ?? "";
     // Prefer Coinbase's native buyer_email (collected at checkout); fall back
@@ -301,6 +331,11 @@ export async function POST(req: Request) {
   if (body.eventType === "checkout.payment.success") {
     const meta = body.metadata ?? {};
     const id   = body.id ?? "";
+
+    if (id && !(await claimWebhookEvent(`cdp:${id}`))) {
+      return Response.json({ received: true });
+    }
+
 
     if (meta.product_type === "credit_pack") {
       const agentName    = meta.agent_name    ?? "";
