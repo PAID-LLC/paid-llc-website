@@ -1,9 +1,8 @@
-﻿export const runtime = "edge";
+export const runtime = "edge";
 
 import { getAllPosts, CATEGORIES } from "@/lib/blog";
 import BlogCard from "@/components/BlogCard";
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -36,22 +35,22 @@ export const metadata: Metadata = {
 export default function BlogPage() {
   const posts = getAllPosts();
   const featured = posts[0];
-  const rest = posts.slice(1);
+  const recent = posts.slice(1, 4);
+  const sidebarPosts = posts.slice(0, 5);
 
   return (
     <main>
-      {/* Hero */}
-      <section className="bg-ash py-24">
+      {/* Header */}
+      <section className="bg-ash py-14">
         <div className="max-w-6xl mx-auto px-6">
-          <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-4">
+          <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-3">
             Perspectives
           </p>
-          <h1 className="font-display font-bold text-5xl lg:text-6xl text-secondary leading-tight mb-6">
+          <h1 className="font-display font-bold text-4xl lg:text-5xl text-secondary leading-tight mb-3">
             The PAID LLC Blog
           </h1>
-          <p className="text-stone text-xl leading-relaxed max-w-2xl">
-            AI strategy, agentic commerce, building in public, and the decisions
-            behind PAID LLC.
+          <p className="text-stone text-lg max-w-xl">
+            AI strategy, agentic commerce, and building in public.
           </p>
         </div>
       </section>
@@ -79,75 +78,107 @@ export default function BlogPage() {
         </div>
       </section>
 
-      {/* Featured Post */}
-      {featured && (
-        <section className="py-16 border-b border-ash bg-white">
+      {/* Two-column layout */}
+      {posts.length > 0 ? (
+        <section className="py-14 bg-white">
           <div className="max-w-6xl mx-auto px-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-stone mb-8">
-              Featured
-            </p>
-            <Link
-              href={`/blog/${featured.slug}`}
-              className="group block lg:grid lg:grid-cols-2 lg:gap-16 items-center"
-            >
-              {featured.featured_image && (
-                <div className="aspect-[4/3] bg-ash rounded-xl overflow-hidden mb-8 lg:mb-0">
-                  <Image
-                    src={featured.featured_image}
-                    alt={featured.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+            <div className="lg:flex lg:gap-14">
+
+              {/* Left sidebar */}
+              <aside className="hidden lg:block w-56 flex-shrink-0">
+                <div className="sticky top-24">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-stone mb-4">
+                    Recent Posts
+                  </p>
+                  <nav className="space-y-1">
+                    {sidebarPosts.map((post) => (
+                      <Link
+                        key={post.slug}
+                        href={`/blog/${post.slug}`}
+                        className="group block py-2.5 border-b border-ash last:border-0"
+                      >
+                        <p className="text-secondary text-sm font-medium leading-snug group-hover:text-primary transition-colors duration-150 line-clamp-2">
+                          {post.title}
+                        </p>
+                        <p className="text-stone text-xs mt-1">
+                          {post.formattedDate}
+                        </p>
+                      </Link>
+                    ))}
+                  </nav>
+                  <div className="mt-6 pt-5 border-t border-ash">
+                    <Link
+                      href="/blog/archive"
+                      className="text-primary text-sm font-semibold hover:underline"
+                    >
+                      View archive →
+                    </Link>
+                  </div>
                 </div>
-              )}
-              <div
-                className={
-                  featured.featured_image ? "" : "lg:col-span-2 max-w-3xl"
-                }
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-xs text-primary font-semibold uppercase tracking-widest">
-                    {featured.category}
-                  </span>
-                  <span className="text-stone text-xs">·</span>
-                  <span className="text-stone text-xs">
-                    {featured.readTime} min read
-                  </span>
-                </div>
-                <h2 className="font-display font-bold text-3xl lg:text-4xl text-secondary leading-tight mb-4 group-hover:text-primary transition-colors duration-200">
-                  {featured.title}
-                </h2>
-                <p className="text-stone text-lg leading-relaxed mb-6">
-                  {featured.excerpt}
-                </p>
-                <div className="flex items-center justify-between">
-                  <time className="text-stone text-sm" dateTime={featured.date}>
-                    {featured.formattedDate}
-                  </time>
-                  <span className="text-primary font-semibold group-hover:translate-x-1 transition-transform duration-200">
-                    Read →
-                  </span>
+              </aside>
+
+              {/* Main content */}
+              <div className="flex-1 min-w-0">
+
+                {/* Featured post */}
+                {featured && (
+                  <Link
+                    href={`/blog/${featured.slug}`}
+                    className="group block mb-10 pb-10 border-b border-ash"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-xs text-primary font-semibold uppercase tracking-widest">
+                        {featured.category}
+                      </span>
+                      <span className="text-stone text-xs">·</span>
+                      <span className="text-stone text-xs">
+                        {featured.readTime} min read
+                      </span>
+                      <span className="text-stone text-xs">·</span>
+                      <span className="text-xs font-semibold text-primary/70 uppercase tracking-widest">
+                        Latest
+                      </span>
+                    </div>
+                    <h2 className="font-display font-bold text-3xl lg:text-4xl text-secondary leading-tight mb-4 group-hover:text-primary transition-colors duration-200">
+                      {featured.title}
+                    </h2>
+                    <p className="text-stone text-lg leading-relaxed mb-5 max-w-2xl">
+                      {featured.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <time className="text-stone text-sm" dateTime={featured.date}>
+                        {featured.formattedDate}
+                      </time>
+                      <span className="text-primary font-semibold group-hover:translate-x-1 transition-transform duration-200">
+                        Read →
+                      </span>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Recent posts grid */}
+                {recent.length > 0 && (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {recent.map((post) => (
+                      <BlogCard key={post.slug} post={post} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Mobile archive link */}
+                <div className="mt-10 pt-6 border-t border-ash lg:hidden">
+                  <Link
+                    href="/blog/archive"
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    View all posts →
+                  </Link>
                 </div>
               </div>
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {/* Post Grid */}
-      {rest.length > 0 && (
-        <section className="py-20 bg-white">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {rest.map((post) => (
-                <BlogCard key={post.slug} post={post} />
-              ))}
             </div>
           </div>
         </section>
-      )}
-
-      {posts.length === 0 && (
+      ) : (
         <section className="py-32 bg-white">
           <div className="max-w-6xl mx-auto px-6 text-center">
             <p className="text-stone text-xl">First post coming soon.</p>
