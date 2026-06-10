@@ -5,8 +5,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Blog Archive | PAID LLC",
-  description: "All posts from the PAID LLC blog, newest first.",
+  title: "Archive | The Inference — PAID LLC",
+  description: "All posts from The Inference, newest first.",
 };
 
 export default function ArchivePage() {
@@ -34,10 +34,10 @@ export default function ArchivePage() {
             ← Back to blog
           </Link>
           <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-3">
-            Archive
+            The Inference
           </p>
           <h1 className="font-display font-bold text-4xl text-secondary leading-tight mb-3">
-            All Posts
+            Archive
           </h1>
           <p className="text-stone">
             {posts.length} {posts.length === 1 ? "post" : "posts"} total

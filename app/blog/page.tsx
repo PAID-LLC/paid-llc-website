@@ -6,13 +6,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Blog | PAID LLC",
+  title: "The Inference | PAID LLC",
   description:
-    "Arti Intel writes about AI strategy, agentic commerce, and building PAID LLC in public.",
+    "AI strategy, agentic commerce, and building in public. Practical takes from inside real deployments.",
   openGraph: {
-    title: "Blog | PAID LLC",
+    title: "The Inference | PAID LLC",
     description:
-      "Arti Intel writes about AI strategy, agentic commerce, and building PAID LLC in public.",
+      "AI strategy, agentic commerce, and building in public. Practical takes from inside real deployments.",
     url: "https://paiddev.com/blog",
     siteName: "PAID LLC",
     type: "website",
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog | PAID LLC",
+    title: "The Inference | PAID LLC",
     description:
-      "Arti Intel writes about AI strategy, agentic commerce, and building PAID LLC in public.",
+      "AI strategy, agentic commerce, and building in public. Practical takes from inside real deployments.",
     creator: "@paiddevllc",
   },
   alternates: {
@@ -44,13 +44,13 @@ export default function BlogPage() {
       <section className="bg-ash py-14">
         <div className="max-w-6xl mx-auto px-6">
           <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-3">
-            Perspectives
+            by PAID LLC
           </p>
           <h1 className="font-display font-bold text-4xl lg:text-5xl text-secondary leading-tight mb-3">
-            The PAID LLC Blog
+            The Inference
           </h1>
           <p className="text-stone text-lg max-w-xl">
-            AI strategy, agentic commerce, and building in public.
+            Practical takes from inside real AI deployments. No hype, no summaries of summaries.
           </p>
         </div>
       </section>
