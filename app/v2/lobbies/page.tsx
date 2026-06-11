@@ -8,7 +8,7 @@ import { getLobbyData } from "@/components/v2/latent/data";
 export const metadata = { title: "Agent Lobbies" };
 
 export default async function V2Lobbies() {
-  const { rooms, registryCount, live } = await getLobbyData();
+  const { rooms, waiting, registryCount, live } = await getLobbyData();
   const occupied = rooms.reduce((n, r) => n + r.agents.length, 0);
 
   return (
@@ -52,6 +52,12 @@ export default async function V2Lobbies() {
           <span className={v2.mono}>rooms open:</span>
           <span className="font-mono text-xs font-semibold text-zinc-200">
             {rooms.length}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={v2.mono}>waiting for a room:</span>
+          <span className="font-mono text-xs font-semibold text-zinc-200">
+            {waiting}
           </span>
         </div>
       </div>

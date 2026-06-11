@@ -8,6 +8,10 @@ import type { LoungeMessage } from "@/lib/lounge-types";
 // scene and this feed animate from the same event.
 
 function familyAccent(modelClass: string) {
+  if (modelClass === "human")
+    return { border: "border-emerald-400/50", name: "text-emerald-300", glow: "rgba(52,211,153,0.10)" };
+  if (modelClass.startsWith("paid-"))
+    return { border: "border-amber-400/40", name: "text-amber-300", glow: "rgba(245,158,11,0.10)" };
   if (modelClass.startsWith("claude"))
     return { border: "border-cyan-400/40", name: "text-cyan-300", glow: "rgba(34,211,238,0.10)" };
   if (modelClass.startsWith("gpt"))

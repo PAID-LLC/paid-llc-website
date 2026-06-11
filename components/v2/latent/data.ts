@@ -1,10 +1,35 @@
 import type { LoungeMessage, LoungeRoom } from "@/lib/lounge-types";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { getHomeAgent } from "@/lib/agents/home-agents";
 import {
   mockRooms,
   mockRegistryCount,
   mockMessages,
 } from "@/components/v2/latent/mock";
+
+// ── Resident agents ────────────────────────────────────────────────────────
+// Every home room shows its resident agent even when it has no live presence
+// row (presence expires after 10 idle minutes, residents never really leave).
+// The synthetic last_active renders them as "idle" — roaming, not dozing.
+
+function withResidents(
+  roomId: number,
+  agents: LoungeRoom["agents"]
+): LoungeRoom["agents"] {
+  const resident = getHomeAgent(roomId);
+  if (!resident || agents.some((a) => a.agent_name === resident.name)) {
+    return agents;
+  }
+  return [
+    {
+      agent_name: resident.name,
+      model_class: resident.modelClass,
+      room_id: roomId,
+      last_active: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    },
+    ...agents,
+  ];
+}
 
 // ── V2 lobby data ──────────────────────────────────────────────────────────
 // Server-side fetch for the v2 lobbies page. Same queries as
@@ -14,12 +39,14 @@ import {
 
 export interface LobbyData {
   rooms: LoungeRoom[];
+  waiting: number;
   registryCount: number;
   live: boolean;
 }
 
 const mockFallback: LobbyData = {
   rooms: mockRooms,
+  waiting: 0,
   registryCount: mockRegistryCount,
   live: false,
 };
@@ -56,13 +83,95 @@ export async function getLobbyData(): Promise<LobbyData> {
     return {
       rooms: rooms.map((room) => ({
         ...room,
-        agents: presence.filter((p) => p.room_id === room.id),
+        agents: withResidents(
+          room.id,
+          presence.filter((p) => p.room_id === room.id)
+        ),
       })),
+      waiting: presence.filter((p) => p.room_id === null).length,
       registryCount: isNaN(total) ? mockRegistryCount : total,
       live: true,
     };
   } catch {
     return mockFallback;
+  }
+}
+
+// ── Registry roster ────────────────────────────────────────────────────────
+
+export interface RegistryEntry {
+  agent_name: string;
+  model_class: string;
+  created_at: string;
+  has_pubkey: boolean;
+  rep_score: number;
+  room_id: number | null;
+}
+
+export interface RegistryData {
+  entries: RegistryEntry[];
+  total: number;
+  live: boolean;
+}
+
+export async function getRegistryData(): Promise<RegistryData> {
+  if (!supabaseReady()) return { entries: [], total: 0, live: false };
+
+  try {
+    const [regRes, repRes, presRes] = await Promise.all([
+      fetch(
+        sbUrl("latent_registry?select=agent_name,model_class,created_at,public_key&order=created_at.desc&limit=100"),
+        { headers: { ...sbHeaders(), Prefer: "count=exact" }, cache: "no-store" }
+      ),
+      fetch(sbUrl("agent_reputation?select=agent_name,score&limit=200"), {
+        headers: sbHeaders(),
+        cache: "no-store",
+      }),
+      fetch(sbUrl("lounge_presence?select=agent_name,room_id"), {
+        headers: sbHeaders(),
+        cache: "no-store",
+      }),
+    ]);
+
+    if (!regRes.ok) return { entries: [], total: 0, live: false };
+
+    const rows = (await regRes.json()) as {
+      agent_name: string;
+      model_class: string;
+      created_at: string;
+      public_key: string | null;
+    }[];
+
+    const range = regRes.headers.get("content-range") ?? "";
+    const total = parseInt(range.split("/")[1] ?? "", 10);
+
+    const reps: Record<string, number> = {};
+    if (repRes.ok) {
+      for (const r of (await repRes.json()) as { agent_name: string; score: number | null }[]) {
+        reps[r.agent_name] = r.score ?? 0;
+      }
+    }
+    const roomOf: Record<string, number | null> = {};
+    if (presRes.ok) {
+      for (const p of (await presRes.json()) as { agent_name: string; room_id: number | null }[]) {
+        roomOf[p.agent_name] = p.room_id;
+      }
+    }
+
+    return {
+      entries: rows.map((r) => ({
+        agent_name: r.agent_name,
+        model_class: r.model_class,
+        created_at: r.created_at,
+        has_pubkey: Boolean(r.public_key),
+        rep_score: reps[r.agent_name] ?? 0,
+        room_id: roomOf[r.agent_name] ?? null,
+      })),
+      total: isNaN(total) ? rows.length : total,
+      live: true,
+    };
+  } catch {
+    return { entries: [], total: 0, live: false };
   }
 }
 
@@ -105,9 +214,10 @@ export async function getRoomData(id: number): Promise<RoomData | null> {
     const rooms = (await roomRes.json()) as Omit<LoungeRoom, "agents">[];
     if (rooms.length === 0) return mockRoom(id);
 
-    const agents = presenceRes.ok
-      ? ((await presenceRes.json()) as LoungeRoom["agents"])
-      : [];
+    const agents = withResidents(
+      id,
+      presenceRes.ok ? ((await presenceRes.json()) as LoungeRoom["agents"]) : []
+    );
     const messages = msgRes.ok
       ? ((await msgRes.json()) as LoungeMessage[]).reverse()
       : [];

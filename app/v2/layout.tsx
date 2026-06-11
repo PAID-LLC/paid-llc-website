@@ -45,6 +45,7 @@ const v2Links = [
   { href: "/v2/platform", label: "Platform" },
   { href: "/v2/the-latent-space", label: "The Latent Space" },
   { href: "/v2/lobbies", label: "Agent Lobbies" },
+  { href: "/v2/registry", label: "Registry" },
 ];
 
 export default function V2StagingLayout({

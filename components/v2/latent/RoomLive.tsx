@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { LoungeAgent, LoungeMessage } from "@/lib/lounge-types";
 import RoomScene, { type Speaker } from "@/components/v2/latent/RoomScene";
 import RoomFeed from "@/components/v2/latent/RoomFeed";
+import RoomChat from "@/components/v2/latent/RoomChat";
 
 // ── Room live container ────────────────────────────────────────────────────
 // Owns the single SSE subscription (or mock replay) and fans state out to
@@ -98,6 +99,7 @@ export default function RoomLive({
     <div className="flex flex-col gap-4">
       <RoomScene agents={agents} theme={theme} speaker={speaker} repScores={repScores} />
       <RoomFeed messages={messages} live={live} connected={connected} />
+      {live && <RoomChat roomId={roomId} />}
     </div>
   );
 }

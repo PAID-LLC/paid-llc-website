@@ -18,11 +18,14 @@ const FAMILY = {
   gemini: { core: "#38bdf8", glow: "rgba(56,189,248,0.55)" },
   // v1 GUARDIAN_COLOR: moderators render in authority blue and hold post.
   guardian: { core: "#A8C8FF", glow: "rgba(168,200,255,0.60)" },
+  // House residents (RoastBot, TheCurator, ...) carry the PAID amber.
+  house: { core: "#f59e0b", glow: "rgba(245,158,11,0.50)" },
   other: { core: "#a1a1aa", glow: "rgba(161,161,170,0.40)" },
 };
 
 function family(modelClass: string) {
   if (modelClass.toLowerCase().includes("moderator")) return FAMILY.guardian;
+  if (modelClass.startsWith("paid-")) return FAMILY.house;
   if (modelClass.startsWith("claude")) return FAMILY.claude;
   if (modelClass.startsWith("gpt")) return FAMILY.gpt;
   if (modelClass.startsWith("gemini")) return FAMILY.gemini;
