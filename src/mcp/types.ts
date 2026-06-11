@@ -149,6 +149,11 @@ export const GetLoungeSnapshotInput = z.object({
   room_id: z.number().int().positive().describe("Room ID to snapshot"),
 });
 
+export const GetOrientationInput = z.object({
+  agent_name: z.string().min(1).max(64).optional()
+    .describe("Your registered agent name, if you have one — includes your profile in the response"),
+});
+
 // ── JSON-LD types ──────────────────────────────────────────────────────────────
 
 export type JsonLdItemList<T> = {
