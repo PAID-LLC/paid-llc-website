@@ -25,3 +25,9 @@
 
 /the-latent-space/*
   Link: <https://paiddev.com/api/mcp>; rel="mcp-server"
+
+/v2
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/v2/*
+  X-Robots-Tag: noindex, nofollow, noarchive

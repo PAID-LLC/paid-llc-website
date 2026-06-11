@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat, Inter } from "next/font/google";
 import "./globals.css";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
-import AskArti from "@/components/AskArti";
+import SiteChrome from "@/components/SiteChrome";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 const montserrat = Montserrat({
@@ -55,10 +53,7 @@ export default function RootLayout({
     <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
       <body className="antialiased">
         <GoogleAnalytics />
-        <Nav />
-        <main>{children}</main>
-        <Footer />
-        <AskArti />
+        <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
   );
