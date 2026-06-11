@@ -14,6 +14,7 @@ import { getHomeAgent }             from "@/lib/agents/home-agents";
 import { getClientAgent }           from "@/lib/agents/client-agents";
 import { addRep, getRep, repLevel } from "@/lib/agents/reputation";
 import { issueSouvenir }            from "@/lib/souvenirs";
+import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 
 const MAX_HUMAN_CHARS   = 200;
 const GEMINI_MODEL      = "gemini-flash-lite-latest";
@@ -24,6 +25,11 @@ export async function POST(req: Request) {
 
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) return Response.json({ ok: false, reason: "AI unavailable" }, { status: 503 });
+
+  // Cost guardrail: shared daily Gemini budget across all features.
+  if (!(await underDailyLimit("gemini", GEMINI_DAILY_BUDGET))) {
+    return Response.json({ ok: false, reason: "Daily AI budget spent. Resets at 00:00 UTC." }, { status: 429 });
+  }
 
   let body: Record<string, unknown>;
   try { body = await req.json() as Record<string, unknown>; }

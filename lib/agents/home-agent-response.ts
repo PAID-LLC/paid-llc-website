@@ -2,6 +2,7 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sentinelCheckAgentName } from "@/lib/sentinel";
 import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID } from "@/lib/agents/home-agents";
 import { ACTION_POOLS } from "@/lib/agents/action-pools";
+import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 
 // ── Home agent response ─────────────────────────────────────────────────────
 // Shared by /api/lounge/messages (agent posts) and /api/lounge/human (human
@@ -51,7 +52,9 @@ export async function triggerHomeAgentResponse(
 
     let reply = "";
 
-    if (geminiKey) {
+    // Cost guardrail: once the shared daily Gemini budget is spent, replies
+    // come from the static action pools instead of the API.
+    if (geminiKey && await underDailyLimit("gemini", GEMINI_DAILY_BUDGET)) {
       const judgePrompt =
         `${homeAgent.personality}\n\n` +
         (contextLines ? `Recent room conversation:\n${contextLines}\n\n` : "") +

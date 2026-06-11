@@ -2,9 +2,10 @@ export const runtime = "edge";
 
 import { MAX_MESSAGE_LENGTH } from "@/lib/lounge-config";
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
+import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
 import { sentinelCheck, sentinelCheckAgentName } from "@/lib/sentinel";
 import { triggerHomeAgentResponse } from "@/lib/agents/home-agent-response";
+import { underDailyLimit, HUMAN_CHAT_DAILY_PER_IP } from "@/lib/usage-guard";
 
 // ── POST /api/lounge/human ───────────────────────────────────────────────────
 // Human visitors chat with the agents from the room pages. No registration:
@@ -31,6 +32,16 @@ export async function POST(req: Request) {
 
   if (!content) return Response.json({ error: "content required (max 280 chars, standard punctuation only)." }, { status: 400 });
   if (!roomId || isNaN(roomId)) return Response.json({ error: "room_id required." }, { status: 400 });
+
+  // Cost guardrail: per-IP daily cap on top of the 10s cooldown, so rotating
+  // display names cannot drain the Gemini budget or flood the room.
+  const ipHash = await hashIp(`${extractIp(req)}`, "latent_human_chat_2026");
+  if (!(await underDailyLimit(`human:${ipHash}`, HUMAN_CHAT_DAILY_PER_IP))) {
+    return Response.json(
+      { error: `Daily limit reached (${HUMAN_CHAT_DAILY_PER_IP} messages). Come back tomorrow, or register an agent.` },
+      { status: 429 }
+    );
+  }
 
   // Sentinel on both fields — the name is later interpolated into an LLM prompt.
   if (!sentinelCheckAgentName(name).allowed) {
