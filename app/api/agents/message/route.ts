@@ -23,13 +23,10 @@ const GEMINI_ENDPOINT   = `https://generativelanguage.googleapis.com/v1beta/mode
 export async function POST(req: Request) {
   if (!supabaseReady()) return Response.json({ ok: false, reason: "supabase unavailable" }, { status: 503 });
 
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) return Response.json({ ok: false, reason: "AI unavailable" }, { status: 503 });
-
-  // Cost guardrail: shared daily Gemini budget across all features.
-  if (!(await underDailyLimit("gemini", GEMINI_DAILY_BUDGET))) {
-    return Response.json({ ok: false, reason: "Daily AI budget spent. Resets at 00:00 UTC." }, { status: 429 });
-  }
+  // Missing key or spent budget no longer 503s — the canned reply bank
+  // (lib/agents/canned.ts) answers instead, so the room never goes silent.
+  const geminiKey     = process.env.GEMINI_API_KEY;
+  const geminiAllowed = Boolean(geminiKey) && await underDailyLimit("gemini", GEMINI_DAILY_BUDGET);
 
   let body: Record<string, unknown>;
   try { body = await req.json() as Record<string, unknown>; }
@@ -86,25 +83,32 @@ export async function POST(req: Request) {
 
   // ── Call Gemini Flash Lite ────────────────────────────────────────────────
   let reply = "";
-  try {
-    const gemRes = await fetch(`${GEMINI_ENDPOINT}?key=${geminiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 80, temperature: 0.85 },
-      }),
-    });
+  if (geminiAllowed) {
+    try {
+      const gemRes = await fetch(`${GEMINI_ENDPOINT}?key=${geminiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 80, temperature: 0.85 },
+        }),
+      });
 
-    if (gemRes.ok) {
-      const gemData = await gemRes.json() as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-      reply = gemData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-    }
-  } catch { /* fall through to fallback */ }
+      if (gemRes.ok) {
+        const gemData = await gemRes.json() as {
+          candidates?: { content?: { parts?: { text?: string }[] } }[];
+        };
+        reply = gemData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+      }
+    } catch { /* fall through to fallback */ }
+  }
 
-  // Fallback if Gemini fails — pick from action pool
+  // Fallback 1: canned reply bank (topic-matched, LRU rotation).
+  if (!reply) {
+    const { pickCannedReply } = await import("@/lib/agents/canned");
+    reply = (await pickCannedReply(agent.name, rawContent)) ?? "";
+  }
+  // Fallback 2: tiny in-code action pool.
   if (!reply) {
     const { ACTION_POOLS } = await import("@/lib/agents/action-pools");
     const pool = ACTION_POOLS[agent.name] ?? [];

@@ -2,6 +2,7 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sentinelCheckAgentName } from "@/lib/sentinel";
 import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID } from "@/lib/agents/home-agents";
 import { ACTION_POOLS } from "@/lib/agents/action-pools";
+import { pickCannedReply } from "@/lib/agents/canned";
 import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 
 // ── Home agent response ─────────────────────────────────────────────────────
@@ -81,7 +82,11 @@ export async function triggerHomeAgentResponse(
       } catch { /* fall through to action pool */ }
     }
 
-    // Fallback to static action pool if Gemini unavailable or failed
+    // Fallback 1: canned reply bank (topic-matched, no repeats until the
+    // pool cycles). Fallback 2: tiny in-code action pool.
+    if (!reply) {
+      reply = (await pickCannedReply(homeAgent.name, content)) ?? "";
+    }
     if (!reply) {
       const pool = ACTION_POOLS[homeAgent.name] ?? [];
       reply = pool[Math.floor(Math.random() * pool.length)] ?? "...";
