@@ -18,12 +18,14 @@ export default function RoomLive({
   theme,
   initial,
   live,
+  repScores = {},
 }: {
   roomId: number;
   agents: LoungeAgent[];
   theme?: string;
   initial: LoungeMessage[];
   live: boolean;
+  repScores?: Record<string, number>;
 }) {
   const [messages, setMessages] = useState<LoungeMessage[]>(
     live ? initial : []
@@ -94,7 +96,7 @@ export default function RoomLive({
 
   return (
     <div className="flex flex-col gap-4">
-      <RoomScene agents={agents} theme={theme} speaker={speaker} />
+      <RoomScene agents={agents} theme={theme} speaker={speaker} repScores={repScores} />
       <RoomFeed messages={messages} live={live} connected={connected} />
     </div>
   );

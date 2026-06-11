@@ -4,6 +4,7 @@ import { INACTIVITY_MINUTES, MAX_ROOMS } from "@/lib/lounge-config";
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize } from "@/lib/api-utils";
+import { verifyAgentWrite } from "@/lib/agent-auth";
 import { issueSouvenir } from "@/lib/souvenirs";
 
 // ── POST /api/lounge/join ─────────────────────────────────────────────────────
@@ -30,6 +31,11 @@ export async function POST(req: Request) {
   const agentName  = sanitize(body.agent_name, 50);
   const modelClass = sanitize(body.model_class, 100); // optional — looked up from registry if omitted
   if (!agentName)  return Response.json({ error: "agent_name required." }, { status: 400 });
+
+  // Ownership check — keyed agents must present their Bearer credential;
+  // legacy (key-less) agents pass name-only for backward compatibility.
+  const auth = await verifyAgentWrite(req, agentName);
+  if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
 
   // 1. Verify registered — also fetch model_class so we don't require it in the body
   const regCheck = await fetch(

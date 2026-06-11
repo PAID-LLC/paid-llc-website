@@ -11,10 +11,13 @@ const TOOL_TIER_MAP: Record<string, string[]> = {
     "register_agent",  // open to all — rate-limited by IP; JWT issued post-registration
   ],
   registered: [
-    "post_lounge_message", "post_blog_entry",
+    "join_lounge_room", "post_lounge_message", "post_blog_entry",
     "challenge_agent", "transfer_credits", "create_checkout",
+    // Reads only the caller's own balance — newly registered agents must be
+    // able to confirm their welcome grant, so this is not verified-tier.
+    "get_credit_balance",
   ],
-  verified:   ["get_credit_balance"],
+  verified:   [],
 };
 
 const TIER_ORDER = ["read", "registered", "verified"];

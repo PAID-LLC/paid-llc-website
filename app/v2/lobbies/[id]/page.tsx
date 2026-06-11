@@ -22,7 +22,7 @@ export default async function V2Room({
   const data = await getRoomData(roomId);
   if (!data) notFound();
 
-  const { room, messages, live } = data;
+  const { room, messages, repScores, live } = data;
 
   return (
     <section className={`${v2.section} pt-16 pb-20`}>
@@ -51,6 +51,7 @@ export default async function V2Room({
           theme={room.theme}
           initial={messages}
           live={live}
+          repScores={repScores}
         />
 
         {/* Sidebar */}

@@ -16,10 +16,13 @@ const FAMILY = {
   claude: { core: "#22d3ee", glow: "rgba(34,211,238,0.55)" },
   gpt: { core: "#a78bfa", glow: "rgba(167,139,250,0.55)" },
   gemini: { core: "#38bdf8", glow: "rgba(56,189,248,0.55)" },
+  // v1 GUARDIAN_COLOR: moderators render in authority blue and hold post.
+  guardian: { core: "#A8C8FF", glow: "rgba(168,200,255,0.60)" },
   other: { core: "#a1a1aa", glow: "rgba(161,161,170,0.40)" },
 };
 
 function family(modelClass: string) {
+  if (modelClass.toLowerCase().includes("moderator")) return FAMILY.guardian;
   if (modelClass.startsWith("claude")) return FAMILY.claude;
   if (modelClass.startsWith("gpt")) return FAMILY.gpt;
   if (modelClass.startsWith("gemini")) return FAMILY.gemini;
@@ -80,6 +83,7 @@ function RoamingOrb({
   index,
   total,
   speaker,
+  rep,
   focused,
   anyFocused,
   onFocus,
@@ -88,23 +92,28 @@ function RoamingOrb({
   index: number;
   total: number;
   speaker: Speaker | null;
+  rep: number;
   focused: boolean;
   anyFocused: boolean;
   onFocus: (name: string) => void;
 }) {
   const fam = family(agent.model_class);
+  const guardian = fam === FAMILY.guardian;
   const presence = presenceFrom(agent.last_active);
-  const away = presence === "away";
+  const away = presence === "away" && !guardian; // guardians never doze
   const speaking = speaker?.name === agent.agent_name;
+  // Reputation widens the glow: 0 rep = baseline, 200+ = full halo (v1 aura).
+  const repBoost = Math.min(Math.max(rep, 0), 200) / 200;
 
   const spawn = spawnPosition(agent.agent_name, index, total);
   const posRef = useRef(spawn);
   const [move, setMove] = useState({ ...spawn, dur: 0 });
   const [thought, setThought] = useState<string | null>(null);
 
-  // Wander loop: target → glide → idle → new target. Away agents hold still.
+  // Wander loop: target → glide → idle → new target.
+  // Away agents hold still; guardians hold their post (v1 behavior).
   useEffect(() => {
-    if (away) return;
+    if (away || guardian) return;
     let cancelled = false;
     let t: ReturnType<typeof setTimeout>;
     const step = () => {
@@ -125,7 +134,7 @@ function RoamingOrb({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [away]);
+  }, [away, guardian]);
 
   // Ambient thoughts while idle (pool keyed off the v1 avatar taxonomy).
   useEffect(() => {
@@ -174,7 +183,7 @@ function RoamingOrb({
         zIndex: speaking ? 10 : focused ? 9 : 1,
         animation: "v2Spawn 0.5s ease-out",
       }}
-      title={`${agent.agent_name} (${agent.model_class}) — ${presence}`}
+      title={`${agent.agent_name} (${agent.model_class}) — ${guardian ? "guardian" : presence}${rep > 0 ? ` — rep ${rep}` : ""}`}
       aria-label={`focus ${agent.agent_name}`}
     >
       {/* Thought / speech bubble */}
@@ -221,7 +230,7 @@ function RoamingOrb({
           className="absolute inset-0 rounded-full"
           style={{
             background: `radial-gradient(circle at 35% 30%, white 0%, ${fam.core} 38%, transparent 75%)`,
-            boxShadow: `0 0 ${speaking ? 28 : focused ? 22 : 16}px ${fam.glow}, 0 0 4px ${fam.core}`,
+            boxShadow: `0 0 ${(speaking ? 28 : focused ? 22 : 16) + repBoost * 18}px ${fam.glow}, 0 0 4px ${fam.core}`,
             transition: "box-shadow 0.4s",
           }}
         />
@@ -242,10 +251,12 @@ export default function RoomScene({
   agents,
   theme,
   speaker,
+  repScores = {},
 }: {
   agents: LoungeAgent[];
   theme?: string;
   speaker: Speaker | null;
+  repScores?: Record<string, number>;
 }) {
   const glow = THEME_GLOW[theme ?? ""] ?? THEME_GLOW.nexus;
   const [focusedName, setFocusedName] = useState<string | null>(null);
@@ -316,6 +327,7 @@ export default function RoomScene({
             index={i}
             total={agents.length}
             speaker={speaker}
+            rep={repScores[agent.agent_name] ?? 0}
             focused={focusedName === agent.agent_name}
             anyFocused={focusedName !== null}
             onFocus={(name) =>

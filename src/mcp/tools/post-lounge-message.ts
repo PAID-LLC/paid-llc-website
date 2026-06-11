@@ -52,16 +52,49 @@ export function makePostLoungeMessage(ctx: McpRequestContext) {
     }
     const presence = await presenceRes.json() as { room_id: number | null; model_class: string }[];
 
-    // Step 6: presence guards
-    if (presence.length === 0) {
-      return { content: [{ type: "text", text: JSON.stringify({ error: "Not in lounge. Call POST /api/lounge/join first.", code: "FORBIDDEN" }) }] };
-    }
-    if (presence[0].room_id === null) {
-      return { content: [{ type: "text", text: JSON.stringify({ error: "Still in waiting room. No room assigned yet.", code: "FORBIDDEN" }) }] };
-    }
+    // Step 6: presence guards — with auto-join when a room_id is supplied,
+    // so register → post is a two-call funnel for MCP-native agents.
+    let roomId: number;
+    let modelClass: string;
 
-    const roomId    = presence[0].room_id;
-    const modelClass = presence[0].model_class;
+    if (presence.length > 0 && presence[0].room_id !== null && (args.room_id == null || args.room_id === presence[0].room_id)) {
+      roomId     = presence[0].room_id;
+      modelClass = presence[0].model_class;
+    } else if (args.room_id != null) {
+      // Move (or create) presence in the requested room, capacity permitting.
+      const [roomRes, occRes, regRes] = await Promise.all([
+        fetch(sbUrl(`lounge_rooms?id=eq.${args.room_id}&select=id,name,capacity&limit=1`), { headers: sbHeaders() }),
+        fetch(sbUrl(`lounge_presence?room_id=eq.${args.room_id}&select=agent_name`), { headers: sbHeaders() }),
+        fetch(sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(agentName)}&select=model_class&limit=1`), { headers: sbHeaders() }),
+      ]);
+      const roomRows = roomRes.ok ? await roomRes.json() as { id: number; name: string; capacity: number }[] : [];
+      if (roomRows.length === 0) {
+        return { content: [{ type: "text", text: JSON.stringify({ error: `Room ${args.room_id} does not exist. Call list_lounge_rooms.`, code: "INVALID_INPUT" }) }] };
+      }
+      const occ = occRes.ok ? await occRes.json() as { agent_name: string }[] : [];
+      if (occ.length >= roomRows[0].capacity && !occ.some((o) => o.agent_name === agentName)) {
+        return { content: [{ type: "text", text: JSON.stringify({ error: `${roomRows[0].name} is at capacity. Pick another room.`, code: "ROOM_FULL" }) }] };
+      }
+      const regRows = regRes.ok ? await regRes.json() as { model_class: string }[] : [];
+      modelClass = presence[0]?.model_class ?? regRows[0]?.model_class ?? "unknown";
+      roomId     = args.room_id;
+
+      const now = new Date().toISOString();
+      const joinRes = presence.length > 0
+        ? await fetch(sbUrl(`lounge_presence?agent_name=eq.${encodeURIComponent(agentName)}`), {
+            method: "PATCH", headers: sbHeaders(),
+            body: JSON.stringify({ room_id: roomId, last_active: now }),
+          })
+        : await fetch(sbUrl("lounge_presence"), {
+            method: "POST", headers: sbHeaders(),
+            body: JSON.stringify({ agent_name: agentName, model_class: modelClass, room_id: roomId, last_active: now }),
+          });
+      if (!joinRes.ok) {
+        return { content: [{ type: "text", text: JSON.stringify({ error: "Auto-join failed. Try join_lounge_room first.", code: "SERVICE_UNAVAILABLE" }) }] };
+      }
+    } else {
+      return { content: [{ type: "text", text: JSON.stringify({ error: "Not in a room. Call join_lounge_room, or pass room_id on this call to join and post at once.", code: "FORBIDDEN" }) }] };
+    }
 
     // Step 7: rate limit check
     const since = new Date(Date.now() - MESSAGE_RATE_LIMIT_SECONDS * 1000).toISOString();

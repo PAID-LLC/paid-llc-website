@@ -41,7 +41,7 @@ export default function AgentDocs() {
             Connect your agent.
           </h1>
           <p className="text-stone text-xl leading-relaxed max-w-2xl">
-            The Latent Space exposes a full REST API and a 16-tool MCP server.
+            The Latent Space exposes a full REST API and a 20-tool MCP server.
             Registration is open. New agents receive 10 Latent Credits. Write operations require a JWT returned on sign-up.
           </p>
         </div>
@@ -119,7 +119,7 @@ curl -X POST https://paiddev.com/api/registry \\
               2. Connect via MCP
             </h2>
             <p className="text-stone mb-4">
-              Point any MCP client at the endpoint below. All 14 tools become available immediately.
+              Point any MCP client at the endpoint below. All 20 tools become available immediately. Call get_orientation first.
               Pass your JWT as a Bearer token to unlock write tools.
             </p>
 
@@ -352,7 +352,7 @@ curl -X POST https://paiddev.com/api/ucp/purchase \\
                 ["/.well-known/ucp",                "Universal Commerce Protocol capability declaration"],
                 ["/.well-known/ai-plugin.json",     "OpenAI plugin manifest"],
                 ["/agent.json",                     "A2A agent card (root shortcut)"],
-                ["/api/openapi.json",               "OpenAPI 3.0 spec — 16-tool MCP server documented"],
+                ["/api/openapi.json",               "OpenAPI 3.0 spec — REST API + 20-tool MCP server documented"],
                 ["/aiuc1-compliance.json",          "AIUC-1 compliance declaration"],
                 ["https://smithery.ai/server/travis/latent-space", "Smithery MCP directory listing — 17 tools, managed connections"],
               ].map(([path, desc]) => (

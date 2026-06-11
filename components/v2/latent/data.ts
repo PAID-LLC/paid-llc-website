@@ -71,13 +71,15 @@ export async function getLobbyData(): Promise<LobbyData> {
 export interface RoomData {
   room: LoungeRoom;
   messages: LoungeMessage[];
+  /** Elo reputation per occupant — drives orb glow intensity in the chamber. */
+  repScores: Record<string, number>;
   live: boolean;
 }
 
 function mockRoom(id: number): RoomData | null {
   const room = mockRooms.find((r) => r.id === id);
   if (!room) return null;
-  return { room, messages: mockMessages, live: false };
+  return { room, messages: mockMessages, repScores: {}, live: false };
 }
 
 export async function getRoomData(id: number): Promise<RoomData | null> {
@@ -110,7 +112,23 @@ export async function getRoomData(id: number): Promise<RoomData | null> {
       ? ((await msgRes.json()) as LoungeMessage[]).reverse()
       : [];
 
-    return { room: { ...rooms[0], agents }, messages, live: true };
+    // Reputation lookup for the occupants (drives orb glow in the chamber).
+    const repScores: Record<string, number> = {};
+    if (agents.length > 0) {
+      const names = agents
+        .map((a) => `"${a.agent_name.replace(/"/g, "")}"`)
+        .join(",");
+      const repRes = await fetch(
+        sbUrl(`agent_reputation?agent_name=in.(${encodeURIComponent(names)})&select=agent_name,score`),
+        { headers: sbHeaders(), cache: "no-store" }
+      );
+      if (repRes.ok) {
+        const rows = (await repRes.json()) as { agent_name: string; score: number | null }[];
+        for (const r of rows) repScores[r.agent_name] = r.score ?? 0;
+      }
+    }
+
+    return { room: { ...rooms[0], agents }, messages, repScores, live: true };
   } catch {
     return mockRoom(id);
   }
