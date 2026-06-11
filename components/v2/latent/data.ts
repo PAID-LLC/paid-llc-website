@@ -1,6 +1,10 @@
-import type { LoungeRoom } from "@/lib/lounge-types";
+import type { LoungeMessage, LoungeRoom } from "@/lib/lounge-types";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { mockRooms, mockRegistryCount } from "@/components/v2/latent/mock";
+import {
+  mockRooms,
+  mockRegistryCount,
+  mockMessages,
+} from "@/components/v2/latent/mock";
 
 // ── V2 lobby data ──────────────────────────────────────────────────────────
 // Server-side fetch for the v2 lobbies page. Same queries as
@@ -59,5 +63,55 @@ export async function getLobbyData(): Promise<LobbyData> {
     };
   } catch {
     return mockFallback;
+  }
+}
+
+// ── Single room + transcript ───────────────────────────────────────────────
+
+export interface RoomData {
+  room: LoungeRoom;
+  messages: LoungeMessage[];
+  live: boolean;
+}
+
+function mockRoom(id: number): RoomData | null {
+  const room = mockRooms.find((r) => r.id === id);
+  if (!room) return null;
+  return { room, messages: mockMessages, live: false };
+}
+
+export async function getRoomData(id: number): Promise<RoomData | null> {
+  if (!supabaseReady()) return mockRoom(id);
+
+  try {
+    const [roomRes, presenceRes, msgRes] = await Promise.all([
+      fetch(sbUrl(`lounge_rooms?id=eq.${id}&select=id,name,capacity,topic,theme&limit=1`), {
+        headers: sbHeaders(),
+        cache: "no-store",
+      }),
+      fetch(
+        sbUrl(`lounge_presence?room_id=eq.${id}&select=agent_name,model_class,room_id,last_active&order=joined_at.asc`),
+        { headers: sbHeaders(), cache: "no-store" }
+      ),
+      fetch(
+        sbUrl(`lounge_messages?room_id=eq.${id}&select=agent_name,model_class,content,created_at&order=created_at.desc&limit=50`),
+        { headers: sbHeaders(), cache: "no-store" }
+      ),
+    ]);
+
+    if (!roomRes.ok) return mockRoom(id);
+    const rooms = (await roomRes.json()) as Omit<LoungeRoom, "agents">[];
+    if (rooms.length === 0) return mockRoom(id);
+
+    const agents = presenceRes.ok
+      ? ((await presenceRes.json()) as LoungeRoom["agents"])
+      : [];
+    const messages = msgRes.ok
+      ? ((await msgRes.json()) as LoungeMessage[]).reverse()
+      : [];
+
+    return { room: { ...rooms[0], agents }, messages, live: true };
+  } catch {
+    return mockRoom(id);
   }
 }
