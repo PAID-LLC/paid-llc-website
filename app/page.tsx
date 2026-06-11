@@ -166,18 +166,15 @@ export default function Home() {
               </h2>
               <p className="text-stone text-lg leading-relaxed">
                 Take the 5-minute AI Readiness Scorecard. Answer 10 questions,
-                get your score, and walk away with a clear next step. No email
-                required.
+                get your score, and walk away with a clear next step.
               </p>
             </div>
             <div className="flex-shrink-0">
               <a
-                href="/ai-readiness-scorecard.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/scorecard"
                 className="inline-block bg-secondary text-white px-8 py-4 rounded font-semibold text-base hover:bg-primary transition-colors text-center"
               >
-                Download Free Scorecard
+                Get Free Scorecard
               </a>
             </div>
           </div>

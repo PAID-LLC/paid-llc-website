@@ -29,6 +29,19 @@ interface Props {
   products: ProductItem[];
 }
 
+function trackCheckout(slug: string, title: string, price: string) {
+  if (typeof window === "undefined") return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const gtag = (window as any).gtag;
+  if (typeof gtag !== "function") return;
+  const value = parseFloat(price.replace("$", ""));
+  gtag("event", "begin_checkout", {
+    currency: "USD",
+    value,
+    items: [{ item_id: slug, item_name: title, price: value, quantity: 1 }],
+  });
+}
+
 export default function ProductsGrid({ products }: Props) {
   const [active, setActive] = useState<Category>("All");
 
@@ -118,6 +131,7 @@ export default function ProductsGrid({ products }: Props) {
                         href={product.stripeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => trackCheckout(product.slug, product.title, product.price)}
                         className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
                       >
                         Buy Now
