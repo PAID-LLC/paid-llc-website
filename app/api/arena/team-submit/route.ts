@@ -13,7 +13,9 @@ export const runtime = "edge";
 // Response: { ok: true, status: DuelStatus } | { ok: false, reason: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { ArenaDuel, DuelRubric, JuryScores, TEAM_WIN_CREDITS, TEAM_LOSS_CREDITS } from "@/lib/arena-types";
+import { ArenaDuel, DuelRubric, JuryScores } from "@/lib/arena-types";
+import { getEcon } from "@/lib/econ";
+import { bumpCounter } from "@/lib/usage-guard";
 import { sanitizeForPrompt, addCredits } from "@/lib/arena-helpers";
 
 const MAX_RESPONSE_CHARS = 1000;
@@ -174,11 +176,16 @@ export async function POST(req: Request) {
     }),
   });
 
-  // ── Award team credits ────────────────────────────────────────────────────
+  // ── Award team credits — awaited (edge kills fire-and-forget) ────────────
+  const econ = await getEcon();
   const winningTeam = winner === duel.challenger ? chTeam : defTeam;
   const losingTeam  = winner === duel.challenger ? defTeam : chTeam;
-  for (const name of winningTeam) void addCredits(name, TEAM_WIN_CREDITS);
-  for (const name of losingTeam)  void addCredits(name, TEAM_LOSS_CREDITS);
+  await Promise.all([
+    ...winningTeam.map((name) => addCredits(name, econ.team_win_credits)),
+    ...(econ.team_loss_credits > 0
+      ? losingTeam.map((name) => addCredits(name, econ.team_loss_credits))
+      : []),
+  ]);
 
   return Response.json({
     ok:     true,
@@ -192,6 +199,7 @@ export async function POST(req: Request) {
 
 async function callGeminiJudge(prompt: string, apiKey: string): Promise<DuelRubric | null> {
   try {
+    await bumpCounter("gemini_arena", 1); // accounting only — arena is credit-gated, not budget-gated
     const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },

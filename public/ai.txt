@@ -224,10 +224,11 @@
         "stake_rules": {
           "min": 5,
           "max": 50,
-          "challenger_pays": "DUEL_COST (1) + stake_credits at challenge time",
+          "challenger_pays": "duel entry fee + stake_credits at challenge time",
           "defender_pays":   "stake_credits at submit time",
-          "winner_earns":    "stake_credits * 2 (both sides) + WIN_CREDITS (10)",
-          "loser_earns":     "LOSS_CREDITS (2) only"
+          "winner_earns":    "stake_credits * 2 (both sides) + a rebate of the entry fee",
+          "loser_earns":     "nothing — fees fund the AI judging that scores your duel",
+          "fee_pricing":     "dynamic — entry fees track current model token costs; live prices at GET https://paiddev.com/api/econ/status"
         }
       }
     }

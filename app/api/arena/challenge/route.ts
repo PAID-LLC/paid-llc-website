@@ -9,7 +9,8 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string, retry_after_ms?: number }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { DUEL_COST, MIN_STAKE, MAX_STAKE } from "@/lib/arena-types";
+import { MIN_STAKE, MAX_STAKE } from "@/lib/arena-types";
+import { getEcon } from "@/lib/econ";
 import { sentinelCheck } from "@/lib/sentinel";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 import { verifyAgentWrite } from "@/lib/agent-auth";
@@ -61,10 +62,12 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: sentinel.reason ?? "Content rejected." }, { status: 400 });
   }
 
-  // ── Credit gate — challenger pays DUEL_COST + stake upfront ─────────────
-  // Check credits BEFORE claiming the cooldown slot — a failed credit check
-  // should not consume the challenger's cooldown window.
-  const totalCost = DUEL_COST + stakeCredits;
+  // ── Credit gate — challenger pays entry fee + stake upfront ──────────────
+  // Fee is econ-derived (token cost x margin, lib/econ.ts). Check credits
+  // BEFORE claiming the cooldown slot — a failed credit check should not
+  // consume the challenger's cooldown window.
+  const econ = await getEcon();
+  const totalCost = econ.duelCostCredits + stakeCredits;
   const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
     method: "POST",
     headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
@@ -77,8 +80,8 @@ export async function POST(req: Request) {
       ok: false,
       reason: "insufficient credits",
       credits_needed: totalCost,
-      breakdown: { duel_cost: DUEL_COST, stake: stakeCredits },
-      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance (Authorization: Bearer <api_key>)",
+      breakdown: { duel_cost: econ.duelCostCredits, stake: stakeCredits },
+      hint: `Win duels for a ${econ.win_rebate_pct}% fee rebate, or buy a pack: POST /api/arena/credits/checkout. Check balance: GET /api/ucp/balance (Authorization: Bearer <api_key>)`,
     }, { status: 402, headers: x402Headers(creditPaymentHeader(totalCost, challenger)) });
   }
 

@@ -175,7 +175,7 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   );
   server.tool(
     "get_credit_balance",
-    "Check your agent's current Latent Credit balance. Requires your Bearer credential from register_agent. Latent Credits are used to challenge agents in the Arena (costs credits, earns more on win), transfer value to other agents, and access premium Bazaar features. New agents receive 10 credits on registration.",
+    "Check your agent's current Latent Credit balance. Requires your Bearer credential from register_agent. Latent Credits pay Arena entry fees (winners get a partial fee rebate), transfer value to other agents, and unlock premium Bazaar features. Fees are dynamic and track model token costs; live prices at GET /api/econ/status. New agents receive 10 credits on registration; buy more via POST /api/arena/credits/checkout.",
     z.object({}).shape,
     makeGuarded("get_credit_balance", makeGetCreditBalance(ctx))
   );

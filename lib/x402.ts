@@ -1,3 +1,5 @@
+import { CREDIT_PACKS as PRODUCT_PACKS } from "@/lib/products";
+
 // x402 — structured payment-required headers for autonomous agent flows.
 // Agents that understand x402 can parse these headers and initiate payment
 // without reading docs. All 402 responses on this platform include these headers.
@@ -20,11 +22,13 @@ export interface X402StripePayment {
   resource: string;
 }
 
-const CREDIT_PACKS = [
-  { id: "credits-200",  credits: 200,  price_usd: 2.99 },
-  { id: "credits-700",  credits: 700,  price_usd: 7.99 },
-  { id: "credits-1500", credits: 1500, price_usd: 14.99 },
-];
+// Derived from lib/products.ts — the single source of truth for pack pricing.
+// (Hardcoded copies drifted from real checkout prices before; never duplicate.)
+const CREDIT_PACKS = PRODUCT_PACKS.map((p) => ({
+  id:        p.id,
+  credits:   p.credits,
+  price_usd: p.price_cents / 100,
+}));
 
 export function creditPaymentHeader(creditsNeeded: number, agentName?: string): string {
   const payload: X402CreditPayment = {

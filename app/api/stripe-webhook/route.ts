@@ -83,6 +83,7 @@ async function subscribeToMailerLite(session: {
 
 import { productTitles } from "@/lib/products";
 import { issueSouvenir } from "@/lib/souvenirs";
+import { bumpCounter }   from "@/lib/usage-guard";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -293,9 +294,10 @@ async function recordCatalogSale(session: {
     }).catch((err) => console.error("[webhook] credit_seller failed:", err));
   }
 
-  // Mark the buyer agent as transaction-verified (Sybil defense)
+  // Mark the buyer agent as transaction-verified (Sybil defense).
+  // Awaited — Cloudflare edge kills fire-and-forget promises.
   const buyerAgent = session.metadata?.agent_name;
-  if (buyerAgent) void markAgentVerified(buyerAgent);
+  if (buyerAgent) await markAgentVerified(buyerAgent);
 }
 
 // ── Webhook idempotency ───────────────────────────────────────────────────────
@@ -387,7 +389,13 @@ export async function POST(req: NextRequest) {
             body:    JSON.stringify({ p_agent_name: agentName, p_amount: creditAmt }),
           }).catch((err) => console.error("[webhook] credit_seller (pack) failed:", err));
         }
-        void markAgentVerified(agentName);
+        // Revenue accounting for /api/econ/status — revenue vs token expense.
+        const amountCents = (session as { amount_total?: number }).amount_total ?? 0;
+        await Promise.all([
+          amountCents > 0 ? bumpCounter("credit_revenue_cents", amountCents) : Promise.resolve(),
+          bumpCounter("credits_sold", creditAmt),
+          markAgentVerified(agentName),
+        ]);
       }
       return NextResponse.json({ received: true });
     }

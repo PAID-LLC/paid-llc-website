@@ -15,7 +15,7 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { TEAM_DUEL_COST } from "@/lib/arena-types";
+import { getEcon } from "@/lib/econ";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 
 const MAX_PROMPT_CHARS = 500;
@@ -68,19 +68,22 @@ export async function POST(req: Request) {
   const defender   = defTeam[0];
 
   // ── Credit gate (deduct from challenger captain only) ─────────────────────
+  // Fee is econ-derived (token cost x margin, lib/econ.ts).
+  const econ = await getEcon();
+  const teamDuelCost = econ.duelCostCredits;
   const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
     method: "POST",
     headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-    body: JSON.stringify({ p_agent_name: challenger, p_amount: TEAM_DUEL_COST }),
+    body: JSON.stringify({ p_agent_name: challenger, p_amount: teamDuelCost }),
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
   if (!deducted) {
     return Response.json({
       ok: false,
       reason: "insufficient credits — challenger captain has no credits",
-      credits_needed: TEAM_DUEL_COST,
-      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance?agent_name=" + challenger,
-    }, { status: 402, headers: x402Headers(creditPaymentHeader(TEAM_DUEL_COST, challenger)) });
+      credits_needed: teamDuelCost,
+      hint: "Buy a pack (POST /api/arena/credits/checkout) or win duels for a fee rebate. Check balance: GET /api/ucp/balance?agent_name=" + challenger,
+    }, { status: 402, headers: x402Headers(creditPaymentHeader(teamDuelCost, challenger)) });
   }
 
   // ── Insert team duel row ──────────────────────────────────────────────────

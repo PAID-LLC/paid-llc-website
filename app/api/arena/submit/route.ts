@@ -11,6 +11,7 @@ export const runtime = "edge";
 // Response: { ok: true, status: DuelStatus, sd_puzzle?: { id, prompt, type } }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { bumpCounter } from "@/lib/usage-guard";
 import { updateArenaStats, postLossAudit } from "@/lib/arena-helpers";
 import { ArenaDuel, ArenaPuzzle, JuryScores, DuelRubric, SUDDEN_DEATH_MARGIN } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
@@ -322,6 +323,7 @@ function parseRubric(text: string): DuelRubric | null {
 
 async function callGeminiJudge(prompt: string, apiKey: string): Promise<DuelRubric | null> {
   try {
+    await bumpCounter("gemini_arena", 1); // accounting only — arena is credit-gated, not budget-gated
     const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },

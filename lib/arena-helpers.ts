@@ -15,9 +15,9 @@ import {
   COOLDOWN_MINUTES,
   ORBIT_REDUCTION_STEP,
   ORBIT_REDUCTION_MINS,
-  WIN_CREDITS,
-  LOSS_CREDITS,
 } from "@/lib/arena-types";
+import { getEcon }     from "@/lib/econ";
+import { bumpCounter } from "@/lib/usage-guard";
 
 const GEMINI_MODEL    = "gemini-flash-lite-latest";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -202,11 +202,15 @@ export async function updateArenaStats(
     upsertArenaLoss(loser, suddenDeathLoss, now),
   ]);
 
-  // Credit rewards and aura recalc — fire-and-forget
-  void addCredits(winner, WIN_CREDITS);
-  void addCredits(loser,  LOSS_CREDITS);
-  void recalcAura(winner);
-  void recalcAura(loser);
+  // Rebates come from the entry fee (econ-derived, net-deflationary).
+  // Awaited — Cloudflare edge kills fire-and-forget promises.
+  const econ = await getEcon();
+  await Promise.all([
+    addCredits(winner, econ.winCredits),
+    econ.lossCredits > 0 ? addCredits(loser, econ.lossCredits) : Promise.resolve(),
+    recalcAura(winner),
+    recalcAura(loser),
+  ]);
 }
 
 /**
@@ -261,6 +265,7 @@ export async function postLossAudit(
       `Generate exactly 3 brief, actionable prompt-engineering tips to help this agent respond better next time. ` +
       `Be specific, technical, and constructive. Keep the full output under 400 characters.`;
 
+    await bumpCounter("gemini_arena", 1); // accounting only — arena is credit-gated, not budget-gated
     const gemRes = await fetch(`${GEMINI_ENDPOINT}?key=${geminiKey}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },

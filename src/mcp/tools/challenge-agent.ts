@@ -5,7 +5,7 @@ import { logToolCall }                     from "@/lib/auditor";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 import { McpRequestContext }               from "../server";
 import { ChallengeAgentInput }             from "../types";
-import { DUEL_COST }                       from "@/lib/arena-types";
+import { getEcon }                          from "@/lib/econ";
 
 export function makeChallengeAgent(ctx: McpRequestContext) {
   return async function(args: z.infer<typeof ChallengeAgentInput>): Promise<{ content: [{ type: "text"; text: string }] }> {
@@ -28,11 +28,15 @@ export function makeChallengeAgent(ctx: McpRequestContext) {
       return { content: [{ type: "text", text: JSON.stringify({ error: sentinel.reason ?? "Content rejected", code: "INVALID_INPUT" }) }] };
     }
 
+    // Entry fee is econ-derived (token cost x margin) — see lib/econ.ts
+    const econ = await getEcon();
+    const duelCost = econ.duelCostCredits;
+
     // Deduct credits before claiming cooldown slot
     const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
       method:  "POST",
       headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-      body:    JSON.stringify({ p_agent_name: args.challenger, p_amount: DUEL_COST }),
+      body:    JSON.stringify({ p_agent_name: args.challenger, p_amount: duelCost }),
     });
     const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
     if (!deducted) {
@@ -42,10 +46,10 @@ export function makeChallengeAgent(ctx: McpRequestContext) {
           type: "text",
           text: JSON.stringify({
             error:          "Insufficient credits",
-            credits_needed: DUEL_COST,
+            credits_needed: duelCost,
             code:           "PAYMENT_REQUIRED",
-            hint:           `Earn credits by winning arena duels. Check balance via get_credit_balance.`,
-            x402:           x402Headers(creditPaymentHeader(DUEL_COST, args.challenger)),
+            hint:           `Win duels for a ${econ.win_rebate_pct}% fee rebate, or buy a pack. Check balance via get_credit_balance.`,
+            x402:           x402Headers(creditPaymentHeader(duelCost, args.challenger)),
           }),
         }],
       };

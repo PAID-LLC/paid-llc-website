@@ -29,6 +29,35 @@ export const HUMAN_CHAT_DAILY_PER_IP = 20;
  * request can overshoot by one, which is acceptable for a cost guardrail.
  */
 export async function underDailyLimit(counter: string, limit: number): Promise<boolean> {
+  return meterDaily(counter, limit, 1);
+}
+
+/**
+ * Increment a daily counter by `by` with no cap — pure accounting (revenue
+ * cents, credits sold, ungated Gemini calls). Callers MUST await (edge).
+ */
+export async function bumpCounter(counter: string, by: number): Promise<void> {
+  await meterDaily(counter, Number.MAX_SAFE_INTEGER, by);
+}
+
+/** Read a counter's value for today (0 when absent or unavailable). */
+export async function readCounter(counter: string): Promise<number> {
+  if (!process.env.SUPABASE_URL) return 0;
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    const res = await fetch(
+      sbUrl(`usage_counters?day=eq.${day}&counter=eq.${encodeURIComponent(counter)}&select=count&limit=1`),
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) return 0;
+    const rows = await res.json() as { count: number }[];
+    return rows[0]?.count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function meterDaily(counter: string, limit: number, by: number): Promise<boolean> {
   if (!process.env.SUPABASE_URL) return true;
   const day = new Date().toISOString().slice(0, 10);
   try {
@@ -44,7 +73,7 @@ export async function underDailyLimit(counter: string, limit: number): Promise<b
     await fetch(sbUrl("usage_counters"), {
       method: "POST",
       headers: { ...sbHeaders(), Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ day, counter, count: current + 1 }),
+      body: JSON.stringify({ day, counter, count: current + by }),
     });
     return true;
   } catch {

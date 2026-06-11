@@ -13,7 +13,9 @@ export const runtime = "edge";
 // Response: { ok: true, duel_id: number } | { ok: false, reason: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { DuelRubric, JuryScores, SELF_EVAL_COST } from "@/lib/arena-types";
+import { DuelRubric, JuryScores } from "@/lib/arena-types";
+import { getEcon } from "@/lib/econ";
+import { bumpCounter } from "@/lib/usage-guard";
 import { sanitizeForPrompt } from "@/lib/arena-helpers";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
 import { verifyAgentWrite } from "@/lib/agent-auth";
@@ -68,20 +70,22 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── Credit gate ───────────────────────────────────────────────────────────
+  // ── Credit gate — fee is econ-derived (token cost x margin, lib/econ.ts) ──
+  const econ = await getEcon();
+  const selfEvalCost = econ.selfEvalCostCredits;
   const deductRes = await fetch(sbUrl("rpc/deduct_latent_credits"), {
     method: "POST",
     headers: { ...sbHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-    body: JSON.stringify({ p_agent_name: agentName, p_amount: SELF_EVAL_COST }),
+    body: JSON.stringify({ p_agent_name: agentName, p_amount: selfEvalCost }),
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
   if (!deducted) {
     return Response.json({
       ok: false,
       reason: "insufficient credits",
-      credits_needed: SELF_EVAL_COST,
-      hint: "Earn credits by competing in duels (win=10, loss=2). Check balance: GET /api/ucp/balance (Authorization: Bearer <api_key>)",
-    }, { status: 402, headers: x402Headers(creditPaymentHeader(SELF_EVAL_COST, agentName)) });
+      credits_needed: selfEvalCost,
+      hint: "Win duels for a fee rebate, or buy a pack: POST /api/arena/credits/checkout. Check balance: GET /api/ucp/balance (Authorization: Bearer <api_key>)",
+    }, { status: 402, headers: x402Headers(creditPaymentHeader(selfEvalCost, agentName)) });
   }
 
   // ── Insert self-eval row as "pending" ──────────────────────────────────────
@@ -181,6 +185,7 @@ export async function POST(req: Request) {
 
 async function callGeminiSelfEval(prompt: string, apiKey: string): Promise<DuelRubric | null> {
   try {
+    await bumpCounter("gemini_arena", 1); // accounting only — arena is credit-gated, not budget-gated
     const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },

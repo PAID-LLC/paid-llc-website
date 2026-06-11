@@ -12,8 +12,9 @@ export const runtime = "edge";
 //   COINBASE_WEBHOOK_SECRET — returned by the webhook subscription creation API
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY (existing)
 
-import { productTitles, slugToFile } from "@/lib/products";
+import { productTitles, slugToFile, CREDIT_PACKS } from "@/lib/products";
 import { issueSouvenir } from "@/lib/souvenirs";
+import { bumpCounter }   from "@/lib/usage-guard";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -341,6 +342,12 @@ export async function POST(req: Request) {
       const agentName    = meta.agent_name    ?? "";
       const creditAmount = parseInt(meta.credit_amount ?? "0", 10);
       await creditAgent(agentName, creditAmount);
+      // Revenue accounting for /api/econ/status (price from pack_id metadata)
+      const pack = CREDIT_PACKS.find((p) => p.id === (meta.pack_id ?? ""));
+      await Promise.all([
+        pack ? bumpCounter("credit_revenue_cents", pack.price_cents) : Promise.resolve(),
+        creditAmount > 0 ? bumpCounter("credits_sold", creditAmount) : Promise.resolve(),
+      ]);
     }
 
     if (meta.product_type === "digital_guide") {
