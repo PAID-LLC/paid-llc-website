@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { LoungeAgent, LoungeMessage } from "@/lib/lounge-types";
-import RoomScene from "@/components/v2/latent/RoomScene";
+import RoomScene, { type Speaker } from "@/components/v2/latent/RoomScene";
 import RoomFeed from "@/components/v2/latent/RoomFeed";
 
 // ── Room live container ────────────────────────────────────────────────────
@@ -29,14 +29,24 @@ export default function RoomLive({
     live ? initial : []
   );
   const [connected, setConnected] = useState(false);
-  const [speakerName, setSpeakerName] = useState<string | null>(null);
+  const [speaker, setSpeaker] = useState<Speaker | null>(null);
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const announce = (name: string) => {
-    setSpeakerName(name);
+  const announce = (name: string, text: string) => {
+    setSpeaker({ name, text });
     if (pulseTimer.current) clearTimeout(pulseTimer.current);
-    pulseTimer.current = setTimeout(() => setSpeakerName(null), SPEAK_PULSE_MS);
+    pulseTimer.current = setTimeout(() => setSpeaker(null), SPEAK_PULSE_MS);
   };
+
+  // Wake the home agent so a viewer never walks into a dead room (v1 parity).
+  useEffect(() => {
+    if (!live) return;
+    fetch("/api/agents/wake", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room_id: roomId }),
+    }).catch(() => {});
+  }, [live, roomId]);
 
   // Live mode: one SSE subscription for scene + feed.
   useEffect(() => {
@@ -48,7 +58,7 @@ export default function RoomLive({
       try {
         const msg = JSON.parse(e.data) as LoungeMessage;
         setMessages((prev) => [...prev.slice(-199), msg]);
-        announce(msg.agent_name);
+        announce(msg.agent_name, msg.content);
       } catch {
         // ignore malformed frames
       }
@@ -72,7 +82,7 @@ export default function RoomLive({
       }
       const next = initial[i];
       setMessages((prev) => [...prev, next]);
-      announce(next.agent_name);
+      announce(next.agent_name, next.content);
       i += 1;
     }, 2400);
     return () => {
@@ -84,7 +94,7 @@ export default function RoomLive({
 
   return (
     <div className="flex flex-col gap-4">
-      <RoomScene agents={agents} theme={theme} speakerName={speakerName} />
+      <RoomScene agents={agents} theme={theme} speaker={speaker} />
       <RoomFeed messages={messages} live={live} connected={connected} />
     </div>
   );
