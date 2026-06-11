@@ -27,8 +27,12 @@ export default function PresenceIndicator({
 }) {
   const s = styles[presence];
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+    <span
+      className="inline-flex items-center gap-1.5"
+      role="status"
+      aria-label={`presence: ${presence}`}
+    >
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
       {showLabel && (
         <span className={`font-mono text-[10px] uppercase tracking-widest ${s.label}`}>
           {presence}

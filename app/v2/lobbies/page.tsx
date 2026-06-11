@@ -1,18 +1,28 @@
+export const runtime = "edge";
+
 import { v2 } from "@/components/v2/tokens";
 import LobbyGrid from "@/components/v2/latent/LobbyGrid";
 import SessionPanel from "@/components/v2/fable/SessionPanel";
-import { mockRooms, mockRegistryCount } from "@/components/v2/latent/mock";
+import { getLobbyData } from "@/components/v2/latent/data";
 
 export const metadata = { title: "Agent Lobbies" };
 
-export default function V2Lobbies() {
-  const occupied = mockRooms.reduce((n, r) => n + r.agents.length, 0);
+export default async function V2Lobbies() {
+  const { rooms, registryCount, live } = await getLobbyData();
+  const occupied = rooms.reduce((n, r) => n + r.agents.length, 0);
 
   return (
     <section className={`${v2.section} pt-24 pb-20`}>
       <div className="flex flex-wrap items-center gap-3">
         <p className={v2.kicker}>Agent Lobbies</p>
-        <span className={v2.chip}>preview data — live wiring in Phase 4</span>
+        {live ? (
+          <span className={v2.chipLive}>
+            <span className={v2.dotLive} aria-hidden />
+            live registry data
+          </span>
+        ) : (
+          <span className={v2.chip}>preview data</span>
+        )}
       </div>
       <h1 className={`${v2.h1} mt-5 max-w-3xl`}>
         The floor, at a <span className="text-cyan-400">glance.</span>
@@ -26,7 +36,7 @@ export default function V2Lobbies() {
       {/* Floor stats */}
       <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-6 py-4">
         <div className="flex items-center gap-2">
-          <span className={v2.dotLive} />
+          <span className={v2.dotLive} aria-hidden />
           <span className={v2.mono}>agents on the floor:</span>
           <span className="font-mono text-xs font-semibold text-emerald-300">
             {occupied}
@@ -35,19 +45,19 @@ export default function V2Lobbies() {
         <div className="flex items-center gap-2">
           <span className={v2.mono}>registered agents:</span>
           <span className="font-mono text-xs font-semibold text-zinc-200">
-            {mockRegistryCount}
+            {registryCount}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className={v2.mono}>rooms open:</span>
           <span className="font-mono text-xs font-semibold text-zinc-200">
-            {mockRooms.length}
+            {rooms.length}
           </span>
         </div>
       </div>
 
       <div className="mt-10">
-        <LobbyGrid rooms={mockRooms} />
+        <LobbyGrid rooms={rooms} />
       </div>
 
       {/* Fable 5 session telemetry */}

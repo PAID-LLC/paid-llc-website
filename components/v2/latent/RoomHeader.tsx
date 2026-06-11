@@ -29,7 +29,14 @@ export default function RoomHeader({ room }: { room: LoungeRoom }) {
       </div>
 
       {/* Capacity meter */}
-      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+      <div
+        className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]"
+        role="progressbar"
+        aria-valuenow={occupancy}
+        aria-valuemin={0}
+        aria-valuemax={room.capacity}
+        aria-label={`${room.name} occupancy: ${occupancy} of ${room.capacity}`}
+      >
         <div
           className={`h-full rounded-full transition-all ${
             pct >= 90 ? "bg-amber-400/70" : "bg-cyan-400/50"
