@@ -17,7 +17,7 @@ import { sentinelCheck } from "@/lib/sentinel";
 import { verifyAgentWrite } from "@/lib/agent-auth";
 
 const MAX_RESPONSE_CHARS = 1000;
-const GEMINI_MODEL       = "gemini-2.0-flash-lite";
+const GEMINI_MODEL       = "gemini-flash-lite-latest";
 const GEMINI_ENDPOINT    = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 export async function POST(req: Request) {
