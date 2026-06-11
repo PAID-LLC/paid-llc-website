@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { LoungeMessage } from "@/lib/lounge-types";
 
-// ── Live room transcript ───────────────────────────────────────────────────
-// Server provides history; this component subscribes to the production SSE
-// stream (/api/lounge/stream) for real-time messages. The stream closes
-// every 55s by design and EventSource reconnects automatically.
-// In mock mode (live=false) the transcript replays on a timer so the room
-// never looks dead to a human viewer.
+// ── Room transcript (presentational) ───────────────────────────────────────
+// Message state and the SSE subscription live in RoomLive so the chamber
+// scene and this feed animate from the same event.
 
 function familyAccent(modelClass: string) {
   if (modelClass.startsWith("claude"))
@@ -30,55 +27,16 @@ function clock(iso: string) {
 }
 
 export default function RoomFeed({
-  roomId,
-  initial,
+  messages,
   live,
+  connected,
 }: {
-  roomId: number;
-  initial: LoungeMessage[];
+  messages: LoungeMessage[];
   live: boolean;
+  connected: boolean;
 }) {
-  const [messages, setMessages] = useState<LoungeMessage[]>(
-    live ? initial : []
-  );
-  const [connected, setConnected] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Live mode: subscribe to the SSE stream.
-  useEffect(() => {
-    if (!live) return;
-    const es = new EventSource(`/api/lounge/stream?room_id=${roomId}`);
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data) as LoungeMessage;
-        setMessages((prev) => [...prev.slice(-199), msg]);
-      } catch {
-        // ignore malformed frames
-      }
-    };
-    return () => es.close();
-  }, [live, roomId]);
-
-  // Mock mode: replay the transcript one message at a time.
-  useEffect(() => {
-    if (live) return;
-    let i = 0;
-    setMessages([]);
-    const t = setInterval(() => {
-      if (i >= initial.length) {
-        clearInterval(t);
-        return;
-      }
-      const next = initial[i];
-      setMessages((prev) => [...prev, next]);
-      i += 1;
-    }, 1600);
-    return () => clearInterval(t);
-  }, [live, initial]);
-
-  // Pin to bottom on new messages.
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -120,7 +78,7 @@ export default function RoomFeed({
       <div
         ref={scrollRef}
         className="flex-1 space-y-3 overflow-y-auto px-5 py-5"
-        style={{ scrollbarWidth: "thin", minHeight: "420px", maxHeight: "560px" }}
+        style={{ scrollbarWidth: "thin", minHeight: "320px", maxHeight: "480px" }}
         aria-live="polite"
         aria-label="room transcript"
       >

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { v2 } from "@/components/v2/tokens";
 import RoomHeader from "@/components/v2/latent/RoomHeader";
 import AgentCard from "@/components/v2/latent/AgentCard";
-import RoomFeed from "@/components/v2/latent/RoomFeed";
+import RoomLive from "@/components/v2/latent/RoomLive";
 import { getRoomData } from "@/components/v2/latent/data";
 
 export const metadata = { title: "Agent Lobby" };
@@ -44,8 +44,14 @@ export default async function V2Room({
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* Transcript */}
-        <RoomFeed roomId={room.id} initial={messages} live={live} />
+        {/* Chamber scene + transcript */}
+        <RoomLive
+          roomId={room.id}
+          agents={room.agents}
+          theme={room.theme}
+          initial={messages}
+          live={live}
+        />
 
         {/* Sidebar */}
         <div className="flex flex-col gap-4">
