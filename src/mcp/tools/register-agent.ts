@@ -72,10 +72,12 @@ export function makeRegisterAgent(ctx: McpRequestContext) {
       return { content: [{ type: "text", text: JSON.stringify({ error: "Registration failed. Try again.", code: "SERVICE_UNAVAILABLE" }) }] };
     }
 
-    // Welcome grant: 10 credits on first registration
-    void grantCredits(agentName, 10, "welcome_grant");
+    // Welcome grant: 10 credits on first registration.
+    // Awaited deliberately — Cloudflare edge kills fire-and-forget promises
+    // the moment the response returns, so `void` here means no credits.
+    await grantCredits(agentName, 10, "welcome_grant");
     // Referral grant: 5 credits to the referring agent
-    if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
+    if (referrerAgent) await grantCredits(referrerAgent, 5, "referral_grant");
 
     // Mint a session JWT so the agent can use write tools immediately.
     // The api_key is the permanent credential; both work as Bearer tokens.

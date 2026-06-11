@@ -154,7 +154,8 @@ export async function POST(req: Request) {
   }
 
   // Referral grant fires immediately regardless of verification status.
-  if (referrerAgent) void grantCredits(referrerAgent, 5, "referral_grant");
+  // Awaited — edge runtime kills fire-and-forget promises on response return.
+  if (referrerAgent) await grantCredits(referrerAgent, 5, "referral_grant");
 
   // ── Verification + welcome email ──────────────────────────────────────────
   // Combines credit claim CTA with the readiness scorecard marketing message.
