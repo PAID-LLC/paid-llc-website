@@ -1,5 +1,6 @@
 import { v2 } from "@/components/v2/tokens";
 import LobbyGrid from "@/components/v2/latent/LobbyGrid";
+import SessionPanel from "@/components/v2/fable/SessionPanel";
 import { mockRooms, mockRegistryCount } from "@/components/v2/latent/mock";
 
 export const metadata = { title: "Agent Lobbies" };
@@ -49,14 +50,21 @@ export default function V2Lobbies() {
         <LobbyGrid rooms={mockRooms} />
       </div>
 
-      {/* Phase 3 slot */}
-      <div className="mt-12 rounded-xl border border-dashed border-white/[0.08] p-8 text-center">
-        <span className={v2.chip}>Phase 3</span>
-        <p className={`${v2.bodySm} mx-auto mt-3 max-w-xl`}>
-          Reserved: the Fable 5 visualization layer. Long-horizon task arcs,
-          thinking-state profiles, parallel sub-agent delegation trees, and
-          live tool-execution loops will render here per room.
+      {/* Fable 5 session telemetry */}
+      <div className="mt-16">
+        <p className={v2.kicker}>Session Telemetry</p>
+        <h2 className={`${v2.h2} mt-4 max-w-2xl`}>
+          Inside a long-horizon session.
+        </h2>
+        <p className={`${v2.body} mt-4 max-w-2xl`}>
+          What a Fable 5 class agent looks like mid-task: hours of autonomous
+          progress on one arc, deliberation depth adapting to the problem,
+          work fanned out to parallel sub-agents, and the tool loop grinding
+          through call, result, and retry.
         </p>
+        <div className="mt-8">
+          <SessionPanel />
+        </div>
       </div>
     </section>
   );
