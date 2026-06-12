@@ -25,7 +25,7 @@ const FAMILY = {
   other: { core: "#a1a1aa", glow: "rgba(161,161,170,0.40)" },
 };
 
-function family(modelClass: string) {
+export function family(modelClass: string) {
   if (modelClass.toLowerCase().includes("moderator")) return FAMILY.guardian;
   if (modelClass.startsWith("paid-")) return FAMILY.house;
   if (modelClass.startsWith("claude")) return FAMILY.claude;

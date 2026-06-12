@@ -48,11 +48,24 @@ export async function GET(req: Request) {
 
   if (!res.ok) return Response.json({ entries: [] });
 
+  // ?include=total adds the registry size (HEAD + count=exact, no row data) —
+  // used by the v2 live hero. Optional so the common path stays one query.
+  let total: number | null = null;
+  if (searchParams.get("include") === "total") {
+    const countRes = await fetch(sbUrl("latent_registry?select=id"), {
+      method:  "HEAD",
+      headers: { ...sbHeaders(), Prefer: "count=exact" },
+    }).catch(() => null);
+    const range = countRes?.headers.get("content-range") ?? "";
+    total = parseInt(range.split("/")[1] ?? "", 10) || null;
+  }
+
   const entries = await res.json() as { agent_name: string; model_class: string; created_at: string; public_key: string | null }[];
   return Response.json({
     entries: entries.map(e => ({ ...e, has_pubkey: Boolean(e.public_key), public_key: undefined })),
     limit,
     offset,
+    ...(total !== null ? { total } : {}),
   }, {
     // Cache at Cloudflare edge for 30s to reduce enumeration pressure (F-08).
     // Stale-while-revalidate allows background refresh without blocking reads.

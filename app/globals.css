@@ -142,3 +142,17 @@ h1, h2, h3, h4, h5, h6 {
 .mdx-content h4 a:hover {
   color: #C14826;
 }
+
+/* Cross-document View Transitions (wow audit Tier 1.4): browsers that support
+   it get a smooth crossfade on full-page navigations; others ignore the rule.
+   SPA route changes are handled by app/v2/template.tsx instead. */
+@view-transition {
+  navigation: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
