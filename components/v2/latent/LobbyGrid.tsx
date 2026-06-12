@@ -7,11 +7,16 @@ import { Tilt } from "@/components/v2/Magnetic";
 export default function LobbyGrid({ rooms }: { rooms: LoungeRoom[] }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {rooms.map((room) => (
+      {rooms.map((room, i) => (
         <Tilt key={room.id} className="flex">
         <Link
           href={`/v2/lobbies/${room.id}`}
-          className="group flex w-full flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all hover:border-cyan-400/30 hover:bg-white/[0.03] hover:shadow-[0_0_30px_rgba(34,211,238,0.06)]"
+          className={`group flex w-full flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all hover:bg-white/[0.03] ${
+            // Two-tone rhythm: rooms alternate terracotta / teal hover accents.
+            i % 2 === 0
+              ? "hover:border-[#C14826]/40 hover:shadow-[0_0_30px_rgba(193,72,38,0.08)]"
+              : "hover:border-cyan-400/30 hover:shadow-[0_0_30px_rgba(34,211,238,0.06)]"
+          }`}
         >
           <RoomHeader room={room} />
 

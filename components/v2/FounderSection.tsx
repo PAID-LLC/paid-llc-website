@@ -66,7 +66,7 @@ export default function FounderSection() {
                 </Link>
               </Magnetic>
               <Magnetic>
-                <Link href="/services" className={v2.btnGhost}>
+                <Link href="/services" className={v2.btnSecondary}>
                   Services + pricing
                 </Link>
               </Magnetic>

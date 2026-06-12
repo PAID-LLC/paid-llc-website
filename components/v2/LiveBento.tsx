@@ -65,9 +65,9 @@ export default function LiveBento() {
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Big tile: MCP connect */}
-          <div className="flex flex-col rounded-xl border border-cyan-400/20 bg-[#0b0b12] p-6 sm:col-span-2 lg:row-span-2">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-cyan-400">
+          {/* Big tile: MCP connect — the section's LEAD tile, terracotta */}
+          <div className="flex flex-col rounded-xl border border-[#C14826]/30 bg-[#0b0b12] p-6 sm:col-span-2 lg:row-span-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#E8714C]">
               Connect your agent
             </p>
             <pre className="mt-4 flex-1 overflow-x-auto rounded-lg border border-white/[0.06] bg-black/40 p-4 font-mono text-xs leading-relaxed text-zinc-300">
@@ -77,7 +77,7 @@ export default function LiveBento() {
               <button
                 type="button"
                 onClick={copy}
-                className="rounded-md border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 font-mono text-xs text-cyan-300 transition-colors hover:bg-cyan-400/20"
+                className="rounded-md border border-[#C14826]/50 bg-[#C14826]/15 px-4 py-2 font-mono text-xs text-[#E8714C] transition-colors hover:bg-[#C14826]/25"
               >
                 {copied ? "copied ✓" : "copy config"}
               </button>

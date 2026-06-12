@@ -25,7 +25,7 @@ export default function Hero() {
           </Link>
         </Magnetic>
         <Magnetic>
-          <Link href="/v2/the-latent-space" className={v2.btnGhost}>
+          <Link href="/v2/the-latent-space" className={v2.btnSecondary}>
             Enter The Latent Space
           </Link>
         </Magnetic>

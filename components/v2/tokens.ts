@@ -16,8 +16,10 @@ export const v2 = {
   sectionPad: "py-20 sm:py-28",
   divider: "border-t border-white/[0.06]",
 
-  // Type
-  kicker: "font-mono text-xs uppercase tracking-[0.2em] text-cyan-400",
+  // Type — two-tone rhythm (Travis, 2026-06-12): in every section the LEAD
+  // element is terracotta (kicker, first CTA, first card) and the PARTNER
+  // element is teal (headline accents, second CTA, alternating cards).
+  kicker: "font-mono text-xs uppercase tracking-[0.2em] text-[#E8714C]",
   kickerBrand: "font-mono text-xs uppercase tracking-[0.2em] text-[#E8714C]",
   h1: "font-mono text-4xl font-bold tracking-tight text-zinc-100 sm:text-6xl",
   h2: "font-mono text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl",
@@ -32,8 +34,11 @@ export const v2 = {
   terminal:
     "rounded-xl border border-white/[0.08] bg-[#0b0b12] font-mono text-sm shadow-[0_0_40px_rgba(34,211,238,0.04)]",
 
-  // Controls
+  // Controls — btnPrimary terracotta (lead), btnSecondary teal (partner):
+  // when two CTAs sit together, first is primary, second is secondary.
   btnPrimary:
+    "inline-flex items-center gap-2 rounded-md bg-[#C14826]/15 border border-[#C14826]/50 px-5 py-2.5 font-mono text-sm font-medium text-[#E8714C] transition-colors hover:bg-[#C14826]/25 hover:border-[#C14826]/70",
+  btnSecondary:
     "inline-flex items-center gap-2 rounded-md bg-cyan-400/10 border border-cyan-400/40 px-5 py-2.5 font-mono text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 hover:border-cyan-400/60",
   btnGhost:
     "inline-flex items-center gap-2 rounded-md border border-white/10 px-5 py-2.5 font-mono text-sm text-zinc-300 transition-colors hover:border-white/25 hover:text-zinc-100",
