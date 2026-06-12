@@ -1,0 +1,43 @@
+# Weekly Supabase backup: exports critical tables as JSON and stores them as
+# a workflow artifact (90-day retention, only repo collaborators can download).
+# Free-tier Supabase has minimal backup retention — this is the disaster
+# hedge for a bad migration or accidental delete.
+#
+# Requires two repo secrets (Settings > Secrets and variables > Actions):
+#   SUPABASE_URL          — https://<project>.supabase.co
+#   SUPABASE_SERVICE_KEY  — service_role key
+name: backup
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # Mondays 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export tables
+        env:
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then
+            echo "Supabase secrets not configured — skipping (add SUPABASE_URL and SUPABASE_SERVICE_KEY repo secrets)"
+            exit 0
+          fi
+          mkdir -p backup
+          for t in leads sales_ledger latent_registry latent_credits latent_lounge \
+                   agent_catalog agent_catalog_sales x402_payments souvenir_claims \
+                   usage_counters econ_config intake_requests; do
+            echo "exporting $t"
+            curl -s -f "$SB_URL/rest/v1/$t?select=*&limit=10000" \
+              -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+              -o "backup/$t.json" || echo "[]" > "backup/$t.json"
+          done
+          ls -la backup
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 90

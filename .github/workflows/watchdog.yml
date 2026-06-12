@@ -1,0 +1,25 @@
+# Watchdog: uptime + internal health, every 30 minutes.
+# - Step 1 failing (site down / health endpoint broken) makes the workflow
+#   fail, and GitHub emails the repo owner automatically. That IS the
+#   site-down alert — no secrets required.
+# - Step 2 triggers server-side checks (webhook failures, undelivered sales);
+#   the server emails travis@paiddev.com via Resend when something is wrong.
+name: watchdog
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Site up + health endpoint
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 https://paiddev.com/api/health)
+          echo "health: $code"
+          test "$code" = "200"
+      - name: Internal checks (server emails on issues)
+        run: |
+          curl -s --max-time 30 https://paiddev.com/api/watchdog
+          echo
