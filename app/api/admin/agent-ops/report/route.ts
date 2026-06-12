@@ -118,6 +118,25 @@ export async function POST(req: Request) {
     try { arena = await arenaRes.value.json() as Record<string, unknown>; } catch { /* ok */ }
   }
 
+  // ── Pipeline + unified ledger (tables may not exist yet — degrade to 0s) ──
+  let followupsDue = 0;
+  let openLeads = 0;
+  let weekSales: { gross_cents: number; source: string }[] = [];
+  const [pipeDueRes, pipeOpenRes, ledgerWeekRes] = await Promise.allSettled([
+    fetch(sbUrl(`leads?stage=not.in.(won,lost)&next_action_at=lte.${encodeURIComponent(now.toISOString())}&select=id`), { headers: sbHeaders() }),
+    fetch(sbUrl(`leads?stage=not.in.(won,lost)&select=id`), { headers: sbHeaders() }),
+    fetch(sbUrl(`sales_ledger?occurred_at=gte.${encodeURIComponent(sevenDaysAgo.toISOString())}&event_type=neq.refund&select=gross_cents,source`), { headers: sbHeaders() }),
+  ]);
+  followupsDue = await countRows(pipeDueRes);
+  openLeads    = await countRows(pipeOpenRes);
+  if (ledgerWeekRes.status === "fulfilled" && ledgerWeekRes.value?.ok) {
+    try { weekSales = await ledgerWeekRes.value.json() as { gross_cents: number; source: string }[]; } catch { /* ok */ }
+  }
+  const weekRevenueCents = weekSales.reduce((s, r) => s + r.gross_cents, 0);
+  const railBreakdown = Object.entries(
+    weekSales.reduce<Record<string, number>>((m, r) => { m[r.source] = (m[r.source] ?? 0) + r.gross_cents; return m; }, {})
+  ).map(([src, cents]) => `${src} $${(cents / 100).toFixed(2)}`).join(", ");
+
   const revenueDeltaPct = prev_revenue_cents > 0
     ? Math.round(((revenue_mtd_cents - prev_revenue_cents) / prev_revenue_cents) * 100)
     : null;
@@ -130,6 +149,7 @@ export async function POST(req: Request) {
 
   // Action items — auto-populated
   const actionItems: string[] = [];
+  if (followupsDue > 0)    actionItems.push(`${followupsDue} pipeline follow-up(s) due — admin > Pipeline, draft with /outreach`);
   if (forbidden_week > 0)  actionItems.push(`${forbidden_week} FORBIDDEN event(s) this week — review audit log`);
   if (pending_intake >= 3) actionItems.push(`${pending_intake} intake requests pending — review and act`);
 
@@ -143,6 +163,8 @@ export async function POST(req: Request) {
     rate_limited_week,
     pending_intake,
     arena,
+    pipeline:           { open_leads: openLeads, followups_due: followupsDue },
+    week_revenue_cents: weekRevenueCents,
     action_items:       actionItems,
   };
 
@@ -151,7 +173,12 @@ export async function POST(req: Request) {
   const summary_md = `# PAID LLC Pulse — Week of ${weekLabel}
 
 ## Revenue
-- MTD: ${fmt(revenue_mtd_cents)}  |  vs last month: ${deltaStr}
+- MTD (Stripe): ${fmt(revenue_mtd_cents)}  |  vs last month: ${deltaStr}
+- This week, all rails: ${fmt(weekRevenueCents)}${railBreakdown ? ` (${railBreakdown})` : ""}
+
+## Pipeline
+- Open leads: ${openLeads}
+- Follow-ups due: ${followupsDue}${followupsDue > 0 ? "  <- act today" : ""}
 
 ## The Latent Space
 - New registrations this week: ${new_agents_week}
