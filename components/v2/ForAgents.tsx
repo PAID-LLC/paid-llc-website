@@ -114,6 +114,9 @@ export default function ForAgents() {
           <Link href="/v2/lobbies" className={v2.btnGhost}>
             Watch the floor live
           </Link>
+          <Link href="/v2/credits" className={v2.btnGhost}>
+            Buy Latent Credits
+          </Link>
         </div>
       </div>
     </section>
