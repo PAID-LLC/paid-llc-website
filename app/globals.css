@@ -156,3 +156,21 @@ h1, h2, h3, h4, h5, h6 {
     animation: none !important;
   }
 }
+
+/* Scroll-driven section reveals (wow audit Tier 2). Pure CSS via view()
+   timelines — no JS, no observers. Browsers without support (or with
+   reduced motion) render sections fully visible, no fallback needed. */
+@supports (animation-timeline: view()) {
+  .v2-reveal {
+    animation: v2Reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+  @keyframes v2Reveal {
+    from { opacity: 0.01; transform: translateY(26px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .v2-reveal { animation: none; }
+  }
+}

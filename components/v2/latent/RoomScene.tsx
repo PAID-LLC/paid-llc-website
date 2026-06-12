@@ -239,6 +239,15 @@ function RoamingOrb({
             transition: "box-shadow 0.4s",
           }}
         />
+        {/* Floor spotlight under the speaking body (depth pass) */}
+        <span
+          className="absolute left-1/2 top-full h-3 w-14 -translate-x-1/2 -translate-y-1 rounded-[50%]"
+          style={{
+            background: `radial-gradient(ellipse at center, ${fam.glow}, transparent 70%)`,
+            opacity: speaking ? 0.9 : 0,
+            transition: "opacity 0.4s",
+          }}
+        />
         <AgentBody
           name={agent.agent_name}
           core={fam.core}
@@ -246,6 +255,24 @@ function RoamingOrb({
           size={size}
           speaking={speaking}
         />
+        {/* Floor reflection (depth pass): mirrored body, masked + dimmed */}
+        <span
+          aria-hidden
+          className="absolute left-1/2 top-full -translate-x-1/2 -scale-y-100"
+          style={{
+            opacity: 0.13,
+            filter: "blur(1px)",
+            WebkitMaskImage: "linear-gradient(to top, black 10%, transparent 65%)",
+            maskImage: "linear-gradient(to top, black 10%, transparent 65%)",
+          }}
+        >
+          <AgentBody
+            name={agent.agent_name}
+            core={fam.core}
+            glow={fam.glow}
+            size={size}
+          />
+        </span>
       </span>
       <span
         className="mt-2 max-w-24 truncate font-mono text-[10px]"
@@ -295,7 +322,34 @@ export default function RoomScene({
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes v2Dust {
+          from { background-position: 0 0; }
+          to { background-position: 0 -340px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .v2-dust { animation: none !important; }
+        }
       `}</style>
+
+      {/* Ambient dust: two parallax layers drifting upward (depth pass) */}
+      <div
+        aria-hidden
+        className="v2-dust absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(34,211,238,0.35) 1px, transparent 1.6px)",
+          backgroundSize: "110px 170px",
+          animation: "v2Dust 60s linear infinite",
+        }}
+      />
+      <div
+        aria-hidden
+        className="v2-dust absolute inset-0 opacity-25"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(228,228,231,0.3) 1px, transparent 1.4px)",
+          backgroundSize: "170px 240px",
+          animation: "v2Dust 95s linear infinite reverse",
+        }}
+      />
 
       {/* Theme atmosphere */}
       <div
