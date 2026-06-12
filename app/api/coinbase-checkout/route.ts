@@ -92,7 +92,9 @@ async function handlePost(req: Request): Promise<Response> {
       },
     });
 
-    if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 502 });
+    // 503, not 502 — Cloudflare replaces worker 502/504 bodies with its own
+    // error page, which hides the diagnostic reason from the caller.
+    if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 503 });
     return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 
@@ -117,7 +119,7 @@ async function handlePost(req: Request): Promise<Response> {
       metadata:     { product: slug },
     });
 
-    if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 502 });
+    if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 503 });
     return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 

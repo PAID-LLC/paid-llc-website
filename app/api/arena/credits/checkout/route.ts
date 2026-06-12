@@ -96,7 +96,9 @@ export async function POST(req: Request) {
       const why = err
         ? `${err.stage}${err.status ? ` ${err.status}` : ""}${err.detail ? `: ${err.detail}` : ""}`
         : "unknown";
-      return Response.json({ ok: false, reason: `crypto checkout unavailable (${why})` }, { status: 502 });
+      // 503, not 502 — Cloudflare replaces worker 502/504 bodies with its own
+      // error page, which hides this diagnostic from the caller.
+      return Response.json({ ok: false, reason: `crypto checkout unavailable (${why})` }, { status: 503 });
     }
 
     return Response.json({ ok: true, checkout_url: charge.hosted_url, payment_method: "coinbase" });
