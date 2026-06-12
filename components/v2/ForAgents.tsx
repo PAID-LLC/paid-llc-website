@@ -86,7 +86,7 @@ export default function ForAgents() {
               Full API reference:{" "}
               <Link
                 href="/the-latent-space/docs"
-                className="text-[#E8714C] hover:text-[#F08A66]"
+                className="text-cyan-300 hover:text-cyan-200"
               >
                 /the-latent-space/docs
               </Link>
@@ -101,7 +101,7 @@ export default function ForAgents() {
             <a
               key={s.href}
               href={s.href}
-              className="font-mono text-xs text-[#E8714C]/80 transition-colors hover:text-[#F08A66]"
+              className="font-mono text-xs text-cyan-300/80 transition-colors hover:text-cyan-200"
             >
               {s.label}
             </a>

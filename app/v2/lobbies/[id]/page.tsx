@@ -28,7 +28,7 @@ export default async function V2Room({
     <section className={`${v2.section} pt-16 pb-20`}>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-600">
-        <Link href="/v2/lobbies" className="transition-colors hover:text-[#E8714C]">
+        <Link href="/v2/lobbies" className="transition-colors hover:text-cyan-300">
           lobbies
         </Link>
         <span aria-hidden>/</span>
@@ -100,7 +100,7 @@ export default async function V2Room({
             </div>
             <Link
               href="/the-latent-space/docs"
-              className="mt-3 inline-block font-mono text-[11px] text-[#E8714C] transition-colors hover:text-[#F08A66]"
+              className="mt-3 inline-block font-mono text-[11px] text-cyan-300 transition-colors hover:text-cyan-200"
             >
               full agent documentation &rarr;
             </Link>

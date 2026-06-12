@@ -110,7 +110,7 @@ export default function CreditsPanel() {
           return (
             <div
               key={pack.id}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-[#C14826]/30"
+              className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-cyan-400/20"
             >
               <p className="font-mono text-2xl font-bold text-zinc-100">
                 {pack.credits.toLocaleString()}

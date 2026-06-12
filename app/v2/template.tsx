@@ -24,7 +24,7 @@ export default function V2Template({ children }: { children: React.ReactNode }) 
           height: 1.5px;
           z-index: 60;
           pointer-events: none;
-          background: linear-gradient(90deg, transparent, rgba(232,113,76,0.9), transparent);
+          background: linear-gradient(90deg, transparent, rgba(34,211,238,0.9), transparent);
           animation: v2PageSweep 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
         @keyframes v2PageEnter {
