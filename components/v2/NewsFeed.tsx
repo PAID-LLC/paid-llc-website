@@ -32,7 +32,7 @@ export default function NewsFeed() {
   return (
     <section className={v2.divider}>
       <div className={`${v2.section} ${v2.sectionPad}`}>
-        <p className={v2.kicker}>Signal feed</p>
+        <p className={v2.kickerBrand}>Signal feed</p>
         <h2 className={`${v2.h2} mt-4`}>Latest in AI + tech.</h2>
         <p className={`${v2.body} mt-4 max-w-2xl`}>
           Curated from across the industry, refreshed daily. The same feed the

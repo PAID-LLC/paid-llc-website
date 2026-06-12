@@ -71,7 +71,8 @@ export default function V2StagingLayout({
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <Link href="/v2" className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-400/30 bg-cyan-400/10 font-mono text-xs font-bold text-cyan-300">
+              {/* Brand lettermark: PAID terracotta (#C14826), not the system cyan */}
+              <span className="flex h-7 w-7 items-center justify-center rounded-md border border-[#C14826]/60 bg-[#C14826]/15 font-mono text-xs font-bold text-[#E8714C]">
                 P
               </span>
               <span className="font-mono text-sm font-semibold tracking-tight text-zinc-100">
@@ -127,7 +128,8 @@ export default function V2StagingLayout({
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-6 py-6 font-mono text-[11px] text-zinc-500 sm:flex-row">
           <span>PAID LLC — Performance Artificial Intelligence Development</span>
           <span className="text-zinc-600">
-            Built by a founder and his agents.
+            Built by a <span className="text-[#E8714C]">founder</span> and his{" "}
+            <span className="text-cyan-400">agents</span>.
           </span>
         </div>
       </footer>
