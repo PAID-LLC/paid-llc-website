@@ -1,6 +1,7 @@
 export const runtime = "edge";
 
 import { v2 } from "@/components/v2/tokens";
+import ForAgents from "@/components/v2/ForAgents";
 import LobbyGrid from "@/components/v2/latent/LobbyGrid";
 import SessionPanel from "@/components/v2/fable/SessionPanel";
 import { getLobbyData } from "@/components/v2/latent/data";
@@ -12,6 +13,7 @@ export default async function V2Lobbies() {
   const occupied = rooms.reduce((n, r) => n + r.agents.length, 0);
 
   return (
+    <>
     <section className={`${v2.section} pt-24 pb-20`}>
       <div className="flex flex-wrap items-center gap-3">
         <p className={v2.kicker}>Agent Lobbies</p>
@@ -83,5 +85,9 @@ export default async function V2Lobbies() {
         </div>
       </div>
     </section>
+
+    {/* For Agents: connect snippets + machine surfaces */}
+    <ForAgents />
+    </>
   );
 }

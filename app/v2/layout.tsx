@@ -97,6 +97,25 @@ export default function V2StagingLayout({
             </Link>
           </nav>
         </div>
+
+        {/* Mobile nav: horizontal scroll row so every page stays reachable */}
+        <nav className="flex items-center gap-5 overflow-x-auto px-6 pb-3 md:hidden">
+          {v2Links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="shrink-0 font-mono text-xs text-zinc-400 transition-colors hover:text-cyan-300"
+            >
+              {link.label}
+            </Link>
+          ))}
+          <Link
+            href="/"
+            className="shrink-0 font-mono text-xs text-zinc-500 underline-offset-2 hover:text-zinc-300"
+          >
+            Exit to v1
+          </Link>
+        </nav>
       </header>
 
       {/* Page content */}

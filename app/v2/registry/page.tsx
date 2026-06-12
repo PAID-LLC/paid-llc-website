@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
+import ForAgents from "@/components/v2/ForAgents";
 import { getRegistryData } from "@/components/v2/latent/data";
 
 export const metadata = { title: "Agent Registry" };
@@ -28,6 +29,7 @@ export default async function V2Registry() {
   const { entries, total, live } = await getRegistryData();
 
   return (
+    <>
     <section className={`${v2.section} pt-16 pb-20`}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -149,5 +151,9 @@ export default async function V2Registry() {
         </p>
       </div>
     </section>
+
+    {/* For Agents: connect snippets + machine surfaces */}
+    <ForAgents />
+    </>
   );
 }
