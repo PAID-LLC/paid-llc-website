@@ -372,6 +372,33 @@ export async function POST(req: NextRequest) {
 
   const event = JSON.parse(payload) as { id: string; type: string; data: { object: Parameters<typeof sendPurchaseNotification>[0] } };
 
+  // ── Refunds → ledger refund row (subtracted from revenue in reporting) ──
+  // NOTE: the Stripe webhook endpoint must subscribe to charge.refunded in
+  // the Stripe dashboard (Developers > Webhooks > add event) or this never fires.
+  if (event.type === "charge.refunded") {
+    if (!(await claimWebhookEvent(event.id))) return NextResponse.json({ received: true });
+    const charge = event.data.object as unknown as {
+      id: string; amount_refunded?: number;
+      billing_details?: { email?: string | null };
+      metadata?: Record<string, string>;
+    };
+    await recordSale({
+      source:              "stripe",
+      event_type:          "refund",
+      // One row per charge; a later full refund after a partial one is a known
+      // limitation (external_id dedupe) — metadata keeps the cumulative amount.
+      external_id:         `refund:${charge.id}`,
+      gross_cents:         charge.amount_refunded ?? 0,
+      fee_cents:           0,
+      product_slug:        charge.metadata?.product,
+      customer_email:      charge.billing_details?.email ?? undefined,
+      provisioning_status: "n/a",
+      provisioning_detail: "refund issued via Stripe",
+      metadata:            { amount_refunded: charge.amount_refunded ?? 0 },
+    });
+    return NextResponse.json({ received: true });
+  }
+
   if (event.type === "checkout.session.completed") {
     if (!(await claimWebhookEvent(event.id))) {
       return NextResponse.json({ received: true });

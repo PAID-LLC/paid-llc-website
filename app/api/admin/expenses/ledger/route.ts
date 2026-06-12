@@ -54,7 +54,7 @@ export async function GET(req: Request) {
   const [expRes, revRes] = await Promise.all([
     fetch(sbUrl("expenses?select=*&order=occurred_at.desc&limit=500"), { headers: sbHeaders() }).catch(() => null),
     fetch(
-      sbUrl(`sales_ledger?occurred_at=gte.${yStart}&event_type=neq.refund&select=gross_cents,fee_cents`),
+      sbUrl(`sales_ledger?occurred_at=gte.${yStart}&select=gross_cents,fee_cents,event_type`),
       { headers: sbHeaders() }
     ).catch(() => null),
   ]);
@@ -67,7 +67,9 @@ export async function GET(req: Request) {
   }
 
   const rows = await expRes.json() as ExpenseRow[];
-  const sales = revRes?.ok ? await revRes.json() as { gross_cents: number; fee_cents: number }[] : [];
+  const sales = revRes?.ok
+    ? await revRes.json() as { gross_cents: number; fee_cents: number; event_type: string }[]
+    : [];
 
   // ── YTD expenses ──
   let ytd = 0;
@@ -85,8 +87,8 @@ export async function GET(req: Request) {
     }
   }
 
-  // ── YTD income (gross minus processor fees = what actually lands) ──
-  const revenue   = sales.reduce((s, r) => s + r.gross_cents, 0);
+  // ── YTD income (refunds subtract; gross minus processor fees = what lands) ──
+  const revenue   = sales.reduce((s, r) => s + (r.event_type === "refund" ? -r.gross_cents : r.gross_cents), 0);
   const procFees  = sales.reduce((s, r) => s + r.fee_cents, 0);
   // Processor fees are deductible too — count them with expenses.
   const totalExpenses = ytd + procFees;

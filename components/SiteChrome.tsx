@@ -1,14 +1,21 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
-import AskArti from "@/components/AskArti";
+import V2Frame from "@/components/v2/V2Frame";
 
-// Route prefixes that render without the v1 site chrome (nav, footer, chatbot).
-// These ship their own V2Frame chrome instead. /blog migrated 2026-06-12
-// (first v1 segment in the v2 look — see app/blog/layout.tsx).
-const BARE_PREFIXES = ["/v2", "/blog", "/digital-products", "/contact", "/free"];
+// ── Site chrome: v2 everywhere (promoted 2026-06-12) ─────────────────────────
+// The v1 Nav/Footer are retired (v1 home archived in the cowork repo).
+//
+// OWN_LAYOUT segments already wrap themselves in V2Frame via their layout
+// files — render bare here to avoid a double frame.
+//
+// V2_NATIVE paths render v2-designed components: frame, no legacy skin.
+//
+// Everything else is a legacy v1 page (services, about, the-latent-space deep
+// pages, privacy, terms...) — wrapped in the frame plus the .v2-blog dark
+// remap until each gets a proper v2 rebuild.
+const OWN_LAYOUT = ["/v2", "/blog", "/digital-products", "/contact", "/free"];
+const V2_NATIVE  = ["/"];
 
 export default function SiteChrome({
   children,
@@ -16,20 +23,24 @@ export default function SiteChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const bare = BARE_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
-  );
 
-  if (bare) {
+  if (OWN_LAYOUT.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return <main>{children}</main>;
   }
 
+  if (V2_NATIVE.includes(pathname)) {
+    return (
+      <V2Frame>
+        <main>{children}</main>
+      </V2Frame>
+    );
+  }
+
   return (
-    <>
-      <Nav />
-      <main>{children}</main>
-      <Footer />
-      <AskArti />
-    </>
+    <V2Frame>
+      <div className="v2-blog">
+        <main>{children}</main>
+      </div>
+    </V2Frame>
   );
 }

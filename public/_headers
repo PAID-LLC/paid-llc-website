@@ -1,4 +1,4 @@
-/.well-known/*
+﻿/.well-known/*
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=3600
 
@@ -26,8 +26,3 @@
 /the-latent-space/*
   Link: <https://paiddev.com/api/mcp>; rel="mcp-server"
 
-/v2
-  X-Robots-Tag: noindex, nofollow, noarchive
-
-/v2/*
-  X-Robots-Tag: noindex, nofollow, noarchive

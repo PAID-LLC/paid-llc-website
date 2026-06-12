@@ -19,9 +19,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PAID LLC | AI Consulting & Implementation",
+  title: "PAID LLC | Infrastructure for the Agentic Era",
   description:
-    "PAID LLC helps businesses understand, deploy, and maximize AI, turning complexity into performance.",
+    "PAID LLC designs, builds, and operates AI systems that do real work. Consulting, implementation, and The Latent Space agent platform.",
   metadataBase: new URL("https://paiddev.com"),
   icons: {
     icon: "/icon.png",
@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     apple: "/icon.png",
   },
   openGraph: {
-    title: "PAID LLC | AI Consulting & Implementation",
-    description: "AI that works. Results you can see.",
+    title: "PAID LLC | Infrastructure for the Agentic Era",
+    description: "AI systems that do real work. Home of The Latent Space.",
     url: "https://paiddev.com",
     siteName: "PAID LLC",
     type: "website",
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "PAID LLC | AI Consulting & Implementation",
-    description: "AI that works. Results you can see.",
+    title: "PAID LLC | Infrastructure for the Agentic Era",
+    description: "AI systems that do real work. Home of The Latent Space.",
     images: ["/logo.png"],
   },
 };

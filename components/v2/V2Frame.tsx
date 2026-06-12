@@ -9,15 +9,13 @@ import AskArti from "@/components/AskArti";
 // globals.css). SiteChrome must list any adopting segment in BARE_PREFIXES so
 // the v1 chrome stays out.
 
-// Guides/Blog/Contact link to the v1 pages until their v2 rebuilds land in
-// the promotion pass — revenue and contact must stay reachable from v2.
+// Promoted nav (2026-06-12): v2 is the site. Root home, legacy pages skinned.
 const v2Links = [
-  { href: "/v2", label: "Overview" },
+  { href: "/", label: "Overview" },
+  { href: "/services", label: "Services" },
   { href: "/v2/platform", label: "Platform" },
-  { href: "/v2/the-latent-space", label: "The Latent Space" },
+  { href: "/the-latent-space", label: "The Latent Space" },
   { href: "/v2/lobbies", label: "Agent Lobbies" },
-  { href: "/v2/registry", label: "Registry" },
-  { href: "/v2/credits", label: "Credits" },
   { href: "/digital-products", label: "Guides" },
   { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
@@ -38,7 +36,7 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#07070b]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/v2" className="flex items-center gap-2.5">
+            <Link href="/" className="flex items-center gap-2.5">
               {/* Brand lettermark: PAID terracotta (#C14826), not the system cyan */}
               <span className="flex h-7 w-7 items-center justify-center rounded-md border border-[#C14826]/60 bg-[#C14826]/15 font-mono text-xs font-bold text-[#E8714C]">
                 P
@@ -59,12 +57,6 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/"
-              className="rounded-md border border-white/10 px-3 py-1.5 font-mono text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200"
-            >
-              Exit to v1
-            </Link>
           </nav>
         </div>
 
@@ -79,12 +71,6 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/"
-            className="shrink-0 font-mono text-xs text-zinc-500 underline-offset-2 hover:text-zinc-300"
-          >
-            Exit to v1
-          </Link>
         </nav>
       </header>
 

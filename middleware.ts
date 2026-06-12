@@ -28,12 +28,8 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
-  // /v2 staging: never indexed. Backstops the metadata noindex in
-  // app/v2/layout.tsx and the CDN rule in public/_headers.
-  const { pathname } = request.nextUrl;
-  if (pathname === "/v2" || pathname.startsWith("/v2/")) {
-    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-  }
+  // /v2 noindex lifted 2026-06-12 — v2 promoted to the site root; /v2
+  // subpages (platform, lobbies) are canonical, linked content now.
 
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");

@@ -11,6 +11,7 @@ export const runtime = "edge";
 
 import { parseAdminCookie, verifyAdminToken } from "@/lib/admin-auth";
 import { sbUrl, sbHeaders, supabaseReady }    from "@/lib/supabase";
+import { recordSale, type LedgerEventType }   from "@/lib/ledger";
 
 async function checkAuth(req: Request): Promise<boolean> {
   const secret = process.env.ADMIN_SECRET;
@@ -107,18 +108,23 @@ async function getLedgerReport() {
   const byType:    Record<string, Bucket> = {};
 
   for (const r of rows) {
-    if (r.event_type === "refund") continue; // refunds excluded from revenue buckets
+    // Refunds SUBTRACT from revenue (a refunded sale is not revenue)
+    const sign  = r.event_type === "refund" ? -1 : 1;
+    const gross = sign * r.gross_cents;
+    const net   = sign * (r.event_type === "refund" ? r.gross_cents : r.net_cents);
     const t = new Date(r.occurred_at).getTime();
-    if (t >= todayStart)      { periods.today.gross_cents += r.gross_cents;   periods.today.net_cents += r.net_cents;   periods.today.count++; }
-    if (t >= now - 7 * dayMs) { periods.last_7d.gross_cents += r.gross_cents; periods.last_7d.net_cents += r.net_cents; periods.last_7d.count++; }
-    if (t >= monthStart)      { periods.mtd.gross_cents += r.gross_cents;     periods.mtd.net_cents += r.net_cents;     periods.mtd.count++; }
-    periods.last_90d.gross_cents += r.gross_cents;
-    periods.last_90d.net_cents   += r.net_cents;
+    if (t >= todayStart)      { periods.today.gross_cents += gross;   periods.today.net_cents += net;   periods.today.count++; }
+    if (t >= now - 7 * dayMs) { periods.last_7d.gross_cents += gross; periods.last_7d.net_cents += net; periods.last_7d.count++; }
+    if (t >= monthStart)      { periods.mtd.gross_cents += gross;     periods.mtd.net_cents += net;     periods.mtd.count++; }
+    periods.last_90d.gross_cents += gross;
+    periods.last_90d.net_cents   += net;
     periods.last_90d.count++;
 
-    add(bySource,  r.source, r);
-    add(byType,    r.event_type, r);
-    add(byProduct, r.product_name ?? r.product_slug ?? "(unknown)", r);
+    if (sign > 0) {
+      add(bySource,  r.source, r);
+      add(byProduct, r.product_name ?? r.product_slug ?? "(unknown)", r);
+    }
+    add(byType, r.event_type, r); // refunds visible as their own line
   }
 
   // Provisioning issues: paid but delivery pending >10 min or failed.
@@ -242,4 +248,52 @@ export async function GET(req: Request) {
     // Unified ledger plane (null until db/sales-ledger.sql has been run)
     ledger,
   });
+}
+
+// ── POST — record a manual sale (consulting invoice paid, cash, etc.) ───────
+// The door into the books for revenue that no processor webhook sees.
+
+const MANUAL_TYPES: LedgerEventType[] = ["consulting", "guide_sale", "other", "refund"];
+
+export async function POST(req: Request) {
+  if (!(await checkAuth(req))) {
+    return Response.json({ ok: false, reason: "unauthorized" }, { status: 401 });
+  }
+  const origin = req.headers.get("origin");
+  if (origin) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
+    try { if (new URL(origin).origin !== new URL(siteUrl).origin) return Response.json({ ok: false, reason: "forbidden" }, { status: 403 }); }
+    catch { return Response.json({ ok: false, reason: "forbidden" }, { status: 403 }); }
+  }
+
+  let body: Record<string, unknown>;
+  try { body = await req.json() as Record<string, unknown>; }
+  catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
+
+  const cents = body.amount_cents !== undefined
+    ? Math.round(Number(body.amount_cents))
+    : Math.round(Number(body.amount_usd) * 100);
+  if (!Number.isFinite(cents) || cents <= 0) {
+    return Response.json({ ok: false, reason: "valid amount required" }, { status: 400 });
+  }
+  const eventType = MANUAL_TYPES.includes(body.event_type as LedgerEventType)
+    ? body.event_type as LedgerEventType : "consulting";
+  const description = String(body.description ?? "").trim().slice(0, 200);
+  if (!description) return Response.json({ ok: false, reason: "description required (e.g. invoice number + client)" }, { status: 400 });
+
+  const ok = await recordSale({
+    source:              "manual",
+    event_type:          eventType,
+    external_id:         `manual:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`,
+    gross_cents:         cents,
+    fee_cents:           Number.isFinite(Number(body.fee_cents)) ? Math.round(Number(body.fee_cents)) : 0,
+    product_name:        description,
+    customer_email:      body.customer_email ? String(body.customer_email).slice(0, 200) : undefined,
+    provisioning_status: "n/a",
+    provisioning_detail: "manual entry from admin",
+    ...(body.occurred_at ? { occurred_at: String(body.occurred_at) } : {}),
+  });
+
+  if (!ok) return Response.json({ ok: false, reason: "insert failed — has db/sales-ledger.sql been run?" }, { status: 502 });
+  return Response.json({ ok: true }, { status: 201 });
 }

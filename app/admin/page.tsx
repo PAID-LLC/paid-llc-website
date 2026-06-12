@@ -454,6 +454,53 @@ function IntakeTab() {
   );
 }
 
+// ── Manual sale entry (Sales tab) ───────────────────────────────────────────
+
+function ManualSaleForm({ onSaved }: { onSaved: () => void }) {
+  const [form, setForm] = useState({ description: "", amount: "", type: "consulting", email: "" });
+  const [busy, setBusy] = useState(false);
+  const [msg,  setMsg]  = useState<string | null>(null);
+
+  async function save() {
+    if (!form.description || !form.amount) return;
+    setBusy(true);
+    const res = await fetch("/api/admin/sales", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description: form.description,
+        amount_usd:  parseFloat(form.amount),
+        event_type:  form.type,
+        customer_email: form.email || undefined,
+      }),
+    });
+    const d = await res.json().catch(() => ({ ok: false, reason: "request failed" }));
+    setMsg(d.ok ? "Recorded." : d.reason ?? "failed");
+    if (d.ok) { setForm({ description: "", amount: "", type: "consulting", email: "" }); onSaved(); }
+    setBusy(false);
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={S.sectionHd}>RECORD MANUAL SALE</div>
+      <div style={S.card}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 0.8fr 1fr 1.5fr auto", gap: 8 }}>
+          <input style={S.input} placeholder="Description (invoice # + client) *" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input style={S.input} placeholder="$ *" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <select style={S.select} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            {["consulting", "guide_sale", "other", "refund"].map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+          </select>
+          <input style={S.input} placeholder="Customer email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <button style={{ ...S.btn, opacity: busy || !form.description || !form.amount ? 0.5 : 1 }} disabled={busy || !form.description || !form.amount} onClick={save}>
+            {busy ? "Saving…" : "Record"}
+          </button>
+        </div>
+        {msg && <div style={{ fontSize: 11, color: msg === "Recorded." ? "#44AA44" : "#C14826", marginTop: 8 }}>{msg}</div>}
+      </div>
+    </div>
+  );
+}
+
 // ── Pipeline Tab ──────────────────────────────────────────────────────────
 
 interface Lead {
@@ -795,6 +842,9 @@ function SalesTab() {
           then click Backfill below to import history from Stripe.
         </div>
       )}
+
+      {/* Manual sale entry — consulting invoices, cash, anything webhook-less */}
+      <ManualSaleForm onSaved={() => fetch("/api/admin/sales").then((r) => r.json()).then((d) => { if (d.ok) setData(d); })} />
 
       {/* Reconciliation */}
       <div style={S.sectionHd}>RECONCILIATION</div>
