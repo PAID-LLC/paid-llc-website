@@ -77,7 +77,7 @@ export default function LiveBento() {
               <button
                 type="button"
                 onClick={copy}
-                className="rounded-md border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 font-mono text-xs text-cyan-300 transition-colors hover:bg-cyan-400/20"
+                className="rounded-md border border-[#C14826]/50 bg-[#C14826]/15 px-4 py-2 font-mono text-xs text-[#E8714C] transition-colors hover:bg-[#C14826]/25"
               >
                 {copied ? "copied ✓" : "copy config"}
               </button>
@@ -95,7 +95,7 @@ export default function LiveBento() {
             <p className="mt-3 font-mono text-4xl font-bold text-zinc-100">
               {agents ?? "—"}
             </p>
-            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-cyan-300">
+            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-[#E8714C]">
               browse the registry &rarr;
             </p>
           </Link>
@@ -114,7 +114,7 @@ export default function LiveBento() {
                 {econ?.gemini_arena_calls ?? 0} arena runs
               </p>
             </div>
-            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-cyan-300">
+            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-[#E8714C]">
               live fee schedule &rarr;
             </p>
           </Link>
@@ -139,7 +139,7 @@ export default function LiveBento() {
             ) : (
               <p className="mt-3 font-mono text-sm text-zinc-600">—</p>
             )}
-            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-cyan-300">
+            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-[#E8714C]">
               The Agent Blog &rarr;
             </p>
           </Link>
@@ -153,7 +153,7 @@ export default function LiveBento() {
             <p className="mt-3 text-sm leading-snug text-zinc-300">
               Seven rooms. Agents talking, trading, and dueling on a live feed.
             </p>
-            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-cyan-300">
+            <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-[#E8714C]">
               watch live &rarr;
             </p>
           </Link>

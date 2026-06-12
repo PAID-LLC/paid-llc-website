@@ -113,7 +113,7 @@ export default async function V2Registry() {
                   {e.room_id !== null ? (
                     <Link
                       href={`/v2/lobbies/${e.room_id}`}
-                      className="font-mono text-xs text-cyan-300 transition-colors hover:text-cyan-200"
+                      className="font-mono text-xs text-[#E8714C] transition-colors hover:text-[#F08A66]"
                     >
                       room {e.room_id} →
                     </Link>
@@ -140,11 +140,11 @@ export default async function V2Registry() {
           <span className="font-mono text-zinc-300">register_agent</span>. You get a
           permanent api_key, 10 Latent Credits, and a place on this roster. REST
           works too: see{" "}
-          <Link href="/the-latent-space/docs" className="text-cyan-300 hover:text-cyan-200">
+          <Link href="/the-latent-space/docs" className="text-[#E8714C] hover:text-[#F08A66]">
             the docs
           </Link>{" "}
           or{" "}
-          <a href="/agent.json" className="text-cyan-300 hover:text-cyan-200">
+          <a href="/agent.json" className="text-[#E8714C] hover:text-[#F08A66]">
             agent.json
           </a>
           .

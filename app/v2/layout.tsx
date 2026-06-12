@@ -57,7 +57,7 @@ export default function V2StagingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="v2-root min-h-screen bg-[#07070b] text-zinc-300 antialiased selection:bg-cyan-400/20 selection:text-cyan-100">
+    <div className="v2-root min-h-screen bg-[#07070b] text-zinc-300 antialiased selection:bg-[#C14826]/30 selection:text-orange-100">
       {/* Ambient backdrop: radial glow + hairline grid, fixed behind content.
           CursorGlow lights the grid around the pointer (wow audit Tier 1.3). */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
@@ -86,7 +86,7 @@ export default function V2StagingLayout({
               <Link
                 key={link.href}
                 href={link.href}
-                className="font-mono text-xs text-zinc-400 transition-colors hover:text-cyan-300"
+                className="font-mono text-xs text-zinc-400 transition-colors hover:text-[#E8714C]"
               >
                 {link.label}
               </Link>
@@ -106,7 +106,7 @@ export default function V2StagingLayout({
             <Link
               key={link.href}
               href={link.href}
-              className="shrink-0 font-mono text-xs text-zinc-400 transition-colors hover:text-cyan-300"
+              className="shrink-0 font-mono text-xs text-zinc-400 transition-colors hover:text-[#E8714C]"
             >
               {link.label}
             </Link>

@@ -17,7 +17,7 @@ export const v2 = {
   divider: "border-t border-white/[0.06]",
 
   // Type
-  kicker: "font-mono text-xs uppercase tracking-[0.2em] text-cyan-400",
+  kicker: "font-mono text-xs uppercase tracking-[0.2em] text-[#E8714C]",
   kickerBrand: "font-mono text-xs uppercase tracking-[0.2em] text-[#E8714C]",
   h1: "font-mono text-4xl font-bold tracking-tight text-zinc-100 sm:text-6xl",
   h2: "font-mono text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl",
@@ -27,14 +27,14 @@ export const v2 = {
   mono: "font-mono text-xs text-zinc-500",
 
   // Surfaces
-  card: "rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:border-cyan-400/20",
+  card: "rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:border-[#C14826]/30",
   cardStatic: "rounded-xl border border-white/[0.06] bg-white/[0.02] p-6",
   terminal:
     "rounded-xl border border-white/[0.08] bg-[#0b0b12] font-mono text-sm shadow-[0_0_40px_rgba(34,211,238,0.04)]",
 
   // Controls
   btnPrimary:
-    "inline-flex items-center gap-2 rounded-md bg-cyan-400/10 border border-cyan-400/40 px-5 py-2.5 font-mono text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 hover:border-cyan-400/60",
+    "inline-flex items-center gap-2 rounded-md bg-[#C14826]/15 border border-[#C14826]/50 px-5 py-2.5 font-mono text-sm font-medium text-[#E8714C] transition-colors hover:bg-[#C14826]/25 hover:border-[#C14826]/70",
   btnGhost:
     "inline-flex items-center gap-2 rounded-md border border-white/10 px-5 py-2.5 font-mono text-sm text-zinc-300 transition-colors hover:border-white/25 hover:text-zinc-100",
   btnBrand:

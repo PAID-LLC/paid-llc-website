@@ -46,13 +46,13 @@ export default function NewsFeed() {
               href={a.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all hover:border-cyan-400/30 hover:bg-white/[0.03]"
+              className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all hover:border-[#C14826]/40 hover:bg-white/[0.03]"
             >
               <p className="mb-3 flex items-baseline gap-2 font-mono text-[10px] uppercase tracking-widest">
-                <span className="text-cyan-400">{a.source}</span>
+                <span className="text-[#E8714C]">{a.source}</span>
                 {a.age && <span className="text-zinc-600">{a.age}</span>}
               </p>
-              <h3 className="text-sm font-semibold leading-snug text-zinc-200 transition-colors group-hover:text-cyan-300">
+              <h3 className="text-sm font-semibold leading-snug text-zinc-200 transition-colors group-hover:text-[#E8714C]">
                 {a.title}
               </h3>
               {a.description && (
@@ -60,7 +60,7 @@ export default function NewsFeed() {
                   {a.description}
                 </p>
               )}
-              <span className="mt-3 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-cyan-300">
+              <span className="mt-3 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-[#E8714C]">
                 read &rarr;
               </span>
             </a>
