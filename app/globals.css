@@ -220,3 +220,22 @@ h1, h2, h3, h4, h5, h6 {
 .v2-blog .mdx-content h2 a:hover,
 .v2-blog .mdx-content h3 a:hover,
 .v2-blog .mdx-content h4 a:hover { color: #E8714C; }
+
+/* ── .v2-blog form controls — dark-skinned inputs (contact, lead magnet) ── */
+.v2-blog input[type="text"],
+.v2-blog input[type="email"],
+.v2-blog input[type="tel"],
+.v2-blog textarea,
+.v2-blog select {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f4f4f5;
+}
+.v2-blog input::placeholder,
+.v2-blog textarea::placeholder { color: #71717a; }
+.v2-blog input:focus,
+.v2-blog textarea:focus,
+.v2-blog select:focus { border-color: #E8714C; }
+/* Form/checkout buttons keep brand terracotta with readable text */
+.v2-blog button.bg-primary,
+.v2-blog a.bg-primary { color: #ffffff; }
