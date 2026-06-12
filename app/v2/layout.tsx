@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import CursorGlow from "@/components/v2/CursorGlow";
+import AskArti from "@/components/AskArti";
 
 // ── V2 Layout ────────────────────────────────────────────────────────────────
 //
@@ -42,6 +43,8 @@ export const metadata: Metadata = {
   },
 };
 
+// Guides/Blog/Contact link to the v1 pages until their v2 rebuilds land in
+// the promotion pass — revenue and contact must stay reachable from v2.
 const v2Links = [
   { href: "/v2", label: "Overview" },
   { href: "/v2/platform", label: "Platform" },
@@ -49,6 +52,9 @@ const v2Links = [
   { href: "/v2/lobbies", label: "Agent Lobbies" },
   { href: "/v2/registry", label: "Registry" },
   { href: "/v2/credits", label: "Credits" },
+  { href: "/digital-products", label: "Guides" },
+  { href: "/blog", label: "Blog" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export default function V2StagingLayout({
@@ -122,6 +128,9 @@ export default function V2StagingLayout({
 
       {/* Page content */}
       <div className="relative z-10">{children}</div>
+
+      {/* Ask Arti chat — same widget as v1 (Travis: must exist on v2 too) */}
+      <AskArti />
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/[0.06]">
