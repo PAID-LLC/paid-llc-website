@@ -1225,6 +1225,130 @@ const URGENCY_COLORS: Record<string, string> = {
   low:    "#555",
 };
 
+// ── Expense ledger + tax set-aside (db/expenses-ledger.sql) ────────────────
+
+interface ExpenseEntry {
+  id: number; occurred_at: string; vendor: string; category: string;
+  description: string | null; amount_cents: number; cadence: string; active: boolean;
+}
+interface ExpenseLedgerData {
+  entries: ExpenseEntry[];
+  summary: { ytd_revenue_cents: number; ytd_expenses_cents: number; processor_fees_cents: number; ytd_net_cents: number; monthly_floor_cents: number };
+  tax_estimate: { self_employment_cents: number; federal_income_cents: number; mn_state_cents: number; set_aside_cents: number; set_aside_pct: number; note: string };
+}
+
+function ExpenseLedger() {
+  const [data,  setData]  = useState<ExpenseLedgerData | null>(null);
+  const [err,   setErr]   = useState<string | null>(null);
+  const [busy,  setBusy]  = useState(false);
+  const [form,  setForm]  = useState({ vendor: "", amount: "", category: "software", cadence: "one_time", description: "" });
+
+  const load = useCallback(() => {
+    fetch("/api/admin/expenses/ledger").then((r) => r.json()).then((d) => {
+      if (d.ok) { setData(d); setErr(null); } else setErr(d.reason ?? "load failed");
+    }).catch(() => setErr("request failed"));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function add() {
+    if (!form.vendor || !form.amount) return;
+    setBusy(true);
+    await fetch("/api/admin/expenses/ledger", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vendor: form.vendor, amount_usd: parseFloat(form.amount),
+        category: form.category, cadence: form.cadence,
+        description: form.description || undefined,
+      }),
+    });
+    setForm({ vendor: "", amount: "", category: "software", cadence: "one_time", description: "" });
+    setBusy(false);
+    load();
+  }
+
+  async function toggleActive(e: ExpenseEntry) {
+    await fetch("/api/admin/expenses/ledger", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: e.id, active: !e.active }),
+    });
+    load();
+  }
+
+  if (err) return <div style={{ ...S.card, color: "#888", fontSize: 12, marginBottom: 28 }}>{err}</div>;
+  if (!data) return <div style={{ color: "#444", fontSize: 13, marginBottom: 28 }}>Loading ledger…</div>;
+
+  const t = data.tax_estimate;
+  const s = data.summary;
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      {/* Tax set-aside */}
+      <div style={S.sectionHd}>YTD BOOKS + TAX SET-ASIDE (ESTIMATE)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 12 }}>
+        <div style={S.card}>
+          <div style={S.label}>YTD revenue</div>
+          <div style={{ fontSize: 20, color: "#E8E4E0" }}>{fmt(s.ytd_revenue_cents)}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.label}>YTD expenses</div>
+          <div style={{ fontSize: 20, color: "#E8E4E0" }}>{fmt(s.ytd_expenses_cents)}</div>
+          <div style={{ fontSize: 10, color: "#555" }}>incl. {fmt(s.processor_fees_cents)} processor fees</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.label}>YTD net</div>
+          <div style={{ fontSize: 20, color: s.ytd_net_cents > 0 ? "#44AA44" : "#E8E4E0" }}>{fmt(s.ytd_net_cents)}</div>
+        </div>
+        <div style={{ ...S.card, borderColor: "#332211" }}>
+          <div style={S.label}>Set aside for tax</div>
+          <div style={{ fontSize: 20, color: "#CC8844" }}>{fmt(t.set_aside_cents)}</div>
+          <div style={{ fontSize: 10, color: "#555" }}>
+            SE {fmt(t.self_employment_cents)} · fed {fmt(t.federal_income_cents)} · MN {fmt(t.mn_state_cents)}
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize: 10, color: "#555", marginBottom: 20 }}>{t.note}</div>
+
+      {/* Add expense */}
+      <div style={{ ...S.card, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 0.8fr 1fr 1fr 2fr auto", gap: 8 }}>
+          <input style={S.input} placeholder="Vendor *" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+          <input style={S.input} placeholder="$ *" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <select style={S.select} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            {["software", "hardware", "marketing", "professional_services", "fees", "phone_internet", "education", "travel", "other"].map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
+          </select>
+          <select style={S.select} value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })}>
+            {["one_time", "monthly", "annual"].map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
+          </select>
+          <input style={S.input} placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <button style={{ ...S.btn, opacity: busy || !form.vendor || !form.amount ? 0.5 : 1 }} disabled={busy || !form.vendor || !form.amount} onClick={add}>Add</button>
+        </div>
+      </div>
+
+      {/* Entries */}
+      <table style={S.table}>
+        <thead><tr><th style={S.th}>Date</th><th style={S.th}>Vendor</th><th style={S.th}>Category</th><th style={S.th}>Amount</th><th style={S.th}>Cadence</th><th style={S.th}></th></tr></thead>
+        <tbody>
+          {data.entries.map((e) => (
+            <tr key={e.id} style={{ opacity: e.active ? 1 : 0.4 }}>
+              <td style={S.td}>{e.occurred_at}</td>
+              <td style={S.td}>{e.vendor}{e.description ? <span style={{ color: "#555" }}> · {e.description}</span> : null}</td>
+              <td style={S.td}>{e.category.replace("_", " ")}</td>
+              <td style={S.td}>{fmt(e.amount_cents)}{e.cadence === "monthly" ? "/mo" : e.cadence === "annual" ? "/yr" : ""}</td>
+              <td style={S.td}>{e.cadence.replace("_", " ")}{!e.active && " (ended)"}</td>
+              <td style={S.td}>
+                {e.cadence !== "one_time" && (
+                  <button style={S.btnSmall} onClick={() => toggleActive(e)}>{e.active ? "End" : "Reactivate"}</button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={S.divider} />
+    </div>
+  );
+}
+
 function ExpensesTab() {
   const [data,    setData]    = useState<ExpensesData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1243,6 +1367,9 @@ function ExpensesTab() {
 
   return (
     <div>
+      {/* Expense ledger + YTD books + tax set-aside */}
+      <ExpenseLedger />
+
       {/* Summary strip */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 28 }}>
         <div style={S.card}>
