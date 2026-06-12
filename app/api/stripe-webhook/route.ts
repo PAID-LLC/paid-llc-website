@@ -84,6 +84,7 @@ async function subscribeToMailerLite(session: {
 import { productTitles } from "@/lib/products";
 import { issueSouvenir } from "@/lib/souvenirs";
 import { bumpCounter }   from "@/lib/usage-guard";
+import { recordSale, markProvisioned } from "@/lib/ledger";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -96,12 +97,12 @@ async function sendDeliveryEmail(
     metadata?: Record<string, string>;
   },
   souvenirToken?: string
-) {
+): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return;
+  if (!key) return false;
 
   const email = session.customer_details?.email;
-  if (!email) return;
+  if (!email) return false;
 
   const name    = session.customer_details?.name ?? "there";
   const slug    = session.metadata?.product ?? "";
@@ -128,7 +129,7 @@ async function sendDeliveryEmail(
     `PAID LLC`,
   ].join("\n");
 
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
@@ -140,7 +141,11 @@ async function sendDeliveryEmail(
       subject: `Your download: ${title}`,
       text,
     }),
-  }).catch((err) => console.error("[webhook] Delivery email failed:", err));
+  }).catch((err) => {
+    console.error("[webhook] Delivery email failed:", err);
+    return null;
+  });
+  return !!res?.ok;
 }
 
 // ── Purchase notification email ───────────────────────────────────────────────
@@ -379,34 +384,68 @@ export async function POST(req: NextRequest) {
     if (meta.product_type === "credit_pack") {
       const agentName  = meta.agent_name ?? (session as { client_reference_id?: string }).client_reference_id ?? "";
       const creditAmt  = parseInt(meta.credit_amount ?? "0", 10);
+      const amountCents = (session as { amount_total?: number }).amount_total ?? 0;
       if (agentName && creditAmt > 0) {
+        let credited = false;
         const url = process.env.SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_KEY;
         if (url && key) {
-          await fetch(`${url}/rest/v1/rpc/credit_seller`, {
+          const rpcRes = await fetch(`${url}/rest/v1/rpc/credit_seller`, {
             method:  "POST",
             headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
             body:    JSON.stringify({ p_agent_name: agentName, p_amount: creditAmt }),
-          }).catch((err) => console.error("[webhook] credit_seller (pack) failed:", err));
+          }).catch((err) => {
+            console.error("[webhook] credit_seller (pack) failed:", err);
+            return null;
+          });
+          credited = !!rpcRes?.ok;
         }
         // Revenue accounting for /api/econ/status — revenue vs token expense.
-        const amountCents = (session as { amount_total?: number }).amount_total ?? 0;
         await Promise.all([
           amountCents > 0 ? bumpCounter("credit_revenue_cents", amountCents) : Promise.resolve(),
           bumpCounter("credits_sold", creditAmt),
           markAgentVerified(agentName),
+          recordSale({
+            source:              "stripe",
+            event_type:          "credit_pack",
+            external_id:         session.id,
+            gross_cents:         amountCents,
+            agent_name:          agentName,
+            product_name:        `${creditAmt} Latent Credits`,
+            provisioning_status: credited ? "delivered" : "failed",
+            provisioning_detail: credited ? "credits granted" : "credit_seller RPC failed",
+          }),
         ]);
       }
       return NextResponse.json({ received: true });
     }
 
+    // ── Guide / bazaar sale — ledger row first, provisioning result after ──
+    const isBazaar = meta.source === "ucp_purchase";
+    const slug     = meta.product ?? "";
+    await recordSale({
+      source:         "stripe",
+      event_type:     isBazaar ? "bazaar_sale" : "guide_sale",
+      external_id:    session.id,
+      gross_cents:    (session as { amount_total?: number }).amount_total ?? 0,
+      product_slug:   slug || (meta.catalog_item_id ? `catalog:${meta.catalog_item_id}` : undefined),
+      product_name:   productTitles[slug] ?? meta.product_name,
+      customer_email: session.customer_details?.email ?? undefined,
+      agent_name:     meta.agent_name,
+    });
+
     const souvenirToken = await issuePurchaseSouvenirs(session);
-    await Promise.all([
+    const [, delivered] = await Promise.all([
       sendPurchaseNotification(session),
       sendDeliveryEmail(session, souvenirToken ?? undefined),
       subscribeToMailerLite(session),
       recordCatalogSale(session),
     ]);
+    await markProvisioned(
+      session.id,
+      delivered ? "delivered" : "failed",
+      delivered ? "delivery email sent" : "delivery email failed — redeliver from admin"
+    );
   }
 
   return NextResponse.json({ received: true });

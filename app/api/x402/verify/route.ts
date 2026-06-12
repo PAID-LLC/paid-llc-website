@@ -32,6 +32,7 @@ import { hashIp, extractIp }               from "@/lib/api-utils";
 import { underDailyLimit, bumpCounter }    from "@/lib/usage-guard";
 import { grantCredits }                    from "@/lib/ucp-helpers";
 import { issueSouvenir }                   from "@/lib/souvenirs";
+import { recordSale }                      from "@/lib/ledger";
 import { USDC_BASE_CONTRACT, X402_CREDITS_PER_USD } from "@/lib/x402";
 
 const BASE_RPC = "https://mainnet.base.org";
@@ -209,6 +210,19 @@ export async function POST(req: Request): Promise<Response> {
     bumpCounter("credits_sold", credits),
     isSupport ? issueSouvenir("patron-sigil", agentName, txHash) : Promise.resolve(null),
   ]);
+
+  // Unified sales ledger (reporting + reconciliation). Tips are n/a-provisioning;
+  // credit grants record their actual outcome.
+  await recordSale({
+    source:              "x402",
+    event_type:          isSupport ? "tip" : "credit_pack",
+    external_id:         txHash,
+    gross_cents:         Math.round(usd * 100),
+    agent_name:          agentName,
+    product_name:        isSupport ? "Tip jar (voluntary support)" : `${credits} Latent Credits (direct USDC)`,
+    provisioning_status: isSupport ? "n/a" : "delivered",
+    provisioning_detail: isSupport ? "voluntary support — credits also granted" : undefined,
+  });
 
   return Response.json({
     ok:              true,

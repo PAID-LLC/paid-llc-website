@@ -455,30 +455,170 @@ function IntakeTab() {
 
 // ── Sales Tab ─────────────────────────────────────────────────────────────
 
+interface LedgerBucket { gross_cents: number; net_cents: number; count: number }
+interface LedgerReport {
+  periods: { today: LedgerBucket; last_7d: LedgerBucket; mtd: LedgerBucket; last_90d: LedgerBucket };
+  by_source:     ({ source: string }  & LedgerBucket)[];
+  by_event_type: ({ type: string }    & LedgerBucket)[];
+  by_product:    ({ product: string } & LedgerBucket)[];
+  provisioning_issues: { ledger_id: number; external_id: string; occurred_at: string; source: string; event_type: string; product: string; customer: string; gross_cents: number; status: string; detail: string | null }[];
+  recent: { ledger_id: number; occurred_at: string; source: string; event_type: string; product: string; customer: string; gross_cents: number; net_cents: number; provisioning: string }[];
+}
+interface ReconcileSource { processor_count?: number; ledger_count?: number; matched?: number; missing_in_ledger?: unknown[]; missing_in_processor?: string[]; amount_mismatches?: unknown[]; clean?: boolean; skipped?: string }
+interface ReconcileResult { ok: boolean; reason?: string; status?: string; backfilled?: number; window_days?: number; sources?: Record<string, ReconcileSource>; provisioning?: { pending: number; failed: number } }
+
+const SOURCE_LABELS: Record<string, string> = {
+  stripe: "Stripe", coinbase_cdp: "Coinbase CDP", coinbase_commerce: "Coinbase Commerce",
+  x402: "x402 USDC", manual: "Manual",
+};
+
 function SalesTab() {
-  const [data,    setData]    = useState<{ revenue_mtd_cents: number; sparkline: SparkPoint[]; purchases: Purchase[] } | null>(null);
+  const [data,    setData]    = useState<{ revenue_mtd_cents: number; sparkline: SparkPoint[]; purchases: Purchase[]; ledger: LedgerReport | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [resend,  setResend]  = useState<string | null>(null);
+  const [recon,   setRecon]   = useState<ReconcileResult | null>(null);
+  const [reconBusy, setReconBusy] = useState<"check" | "backfill" | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/sales").then((r) => r.json()).then((d) => { if (d.ok) setData(d); setLoading(false); });
   }, []);
 
-  async function resendEmail(id: string) {
-    setResend(id);
-    await fetch("/api/admin/sales/resend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ charge_id: id }) });
+  async function resendEmail(body: { charge_id?: string; ledger_id?: number }, key: string) {
+    setResend(key);
+    await fetch("/api/admin/sales/resend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setTimeout(() => setResend(null), 2000);
+  }
+
+  async function runReconcile(backfill: boolean) {
+    setReconBusy(backfill ? "backfill" : "check");
+    const res = backfill
+      ? await fetch("/api/admin/reconcile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ backfill: true, days: 90 }) })
+      : await fetch("/api/admin/reconcile?days=30");
+    setRecon(await res.json().catch(() => ({ ok: false, reason: "request failed" })));
+    setReconBusy(null);
   }
 
   if (loading) return <div style={{ color: "#444", fontSize: 13 }}>Loading sales data…</div>;
   if (!data)   return <div style={{ color: "#C14826", fontSize: 13 }}>Stripe not configured or unavailable.</div>;
 
   const maxSpark = Math.max(...data.sparkline.map((p) => p.amount_cents), 1);
+  const L = data.ledger;
 
   return (
     <div>
+      {/* All-rails summary from the unified ledger */}
+      {L ? (
+        <>
+          <div style={S.sectionHd}>ALL RAILS — UNIFIED LEDGER</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+            {([["Today", L.periods.today], ["Last 7d", L.periods.last_7d], ["MTD", L.periods.mtd], ["Last 90d", L.periods.last_90d]] as const).map(([label, b]) => (
+              <div key={label} style={S.card}>
+                <div style={S.label}>{label}</div>
+                <div style={{ fontSize: 22, color: "#E8E4E0" }}>{fmt(b.gross_cents)}</div>
+                <div style={{ fontSize: 11, color: "#555" }}>{b.count} sale{b.count === 1 ? "" : "s"} · net {fmt(b.net_cents)}</div>
+              </div>
+            ))}
+          </div>
+
+          {L.by_source.length > 0 && (
+            <>
+              <div style={S.sectionHd}>BY PAYMENT RAIL (90D)</div>
+              <table style={{ ...S.table, marginBottom: 24 }}>
+                <thead><tr><th style={S.th}>Rail</th><th style={S.th}>Sales</th><th style={S.th}>Gross</th><th style={S.th}>Net (est.)</th></tr></thead>
+                <tbody>
+                  {L.by_source.map((s) => (
+                    <tr key={s.source}>
+                      <td style={S.td}>{SOURCE_LABELS[s.source] ?? s.source}</td>
+                      <td style={S.td}>{s.count}</td>
+                      <td style={S.td}>{fmt(s.gross_cents)}</td>
+                      <td style={S.td}>{fmt(s.net_cents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {L.provisioning_issues.length > 0 && (
+            <>
+              <div style={{ ...S.sectionHd, color: "#CC4444" }}>PROVISIONING ISSUES — PAID BUT NOT DELIVERED ({L.provisioning_issues.length})</div>
+              <table style={{ ...S.table, marginBottom: 24 }}>
+                <thead><tr><th style={S.th}>Date</th><th style={S.th}>Rail</th><th style={S.th}>Product</th><th style={S.th}>Customer</th><th style={S.th}>Amount</th><th style={S.th}>Status</th><th style={S.th}></th></tr></thead>
+                <tbody>
+                  {L.provisioning_issues.map((i) => (
+                    <tr key={i.ledger_id}>
+                      <td style={S.td}>{fmtDate(i.occurred_at)}</td>
+                      <td style={S.td}>{SOURCE_LABELS[i.source] ?? i.source}</td>
+                      <td style={S.td}>{i.product}</td>
+                      <td style={S.td}>{i.customer}</td>
+                      <td style={S.td}>{fmt(i.gross_cents)}</td>
+                      <td style={{ ...S.td, color: "#CC4444" }} title={i.detail ?? undefined}>{i.status}</td>
+                      <td style={S.td}>
+                        {i.event_type === "guide_sale" && (
+                          <button onClick={() => resendEmail({ ledger_id: i.ledger_id }, `L${i.ledger_id}`)} disabled={resend === `L${i.ledger_id}`} style={{ ...S.btnGhost, opacity: resend === `L${i.ledger_id}` ? 0.5 : 1 }}>
+                            {resend === `L${i.ledger_id}` ? "Sent" : "Redeliver"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </>
+      ) : (
+        <div style={{ ...S.card, marginBottom: 24, color: "#888", fontSize: 12 }}>
+          Unified ledger not active yet — run <span style={{ color: "#C14826" }}>db/sales-ledger.sql</span> in the Supabase SQL editor,
+          then click Backfill below to import history from Stripe.
+        </div>
+      )}
+
+      {/* Reconciliation */}
+      <div style={S.sectionHd}>RECONCILIATION</div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+        <button onClick={() => runReconcile(false)} disabled={!!reconBusy} style={{ ...S.btnGhost, opacity: reconBusy ? 0.5 : 1 }}>
+          {reconBusy === "check" ? "Checking…" : "Check (30d)"}
+        </button>
+        <button onClick={() => runReconcile(true)} disabled={!!reconBusy} style={{ ...S.btnSmall, opacity: reconBusy ? 0.5 : 1 }}>
+          {reconBusy === "backfill" ? "Backfilling…" : "Backfill missing (90d)"}
+        </button>
+      </div>
+      {recon && (
+        <div style={{ ...S.card, marginBottom: 24 }}>
+          {!recon.ok ? (
+            <div style={{ color: "#CC4444", fontSize: 12 }}>{recon.reason}</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: recon.status === "clean" ? "#44AA44" : "#CC8844", marginBottom: 8 }}>
+                {recon.status === "clean" ? "CLEAN — processors and ledger agree" : "ISSUES FOUND"}
+                {typeof recon.backfilled === "number" ? ` · ${recon.backfilled} rows backfilled` : ""}
+              </div>
+              {recon.sources && Object.entries(recon.sources).map(([name, s]) => (
+                <div key={name} style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
+                  <span style={{ color: "#AAA" }}>{SOURCE_LABELS[name] ?? name}:</span>{" "}
+                  {s.skipped
+                    ? <span style={{ color: "#555" }}>skipped ({s.skipped})</span>
+                    : <>
+                        {s.matched}/{s.processor_count} matched
+                        {(s.missing_in_ledger?.length ?? 0) > 0 && <span style={{ color: "#CC8844" }}> · {s.missing_in_ledger!.length} missing in ledger</span>}
+                        {(s.amount_mismatches?.length ?? 0) > 0 && <span style={{ color: "#CC4444" }}> · {s.amount_mismatches!.length} amount mismatches</span>}
+                      </>}
+                </div>
+              ))}
+              {recon.provisioning && (
+                <div style={{ fontSize: 12, color: "#888" }}>
+                  <span style={{ color: "#AAA" }}>Provisioning:</span> {recon.provisioning.pending} pending · {recon.provisioning.failed} failed
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Stripe live plane */}
       <div style={{ marginBottom: 28 }}>
-        <div style={S.label}>Revenue MTD</div>
+        <div style={S.label}>Revenue MTD (Stripe)</div>
         <div style={{ fontSize: 32, color: "#E8E4E0", marginBottom: 4 }}>{fmt(data.revenue_mtd_cents)}</div>
       </div>
 
@@ -495,8 +635,31 @@ function SalesTab() {
         ))}
       </div>
 
-      {/* Purchases */}
-      <div style={S.sectionHd}>RECENT PURCHASES ({data.purchases.length})</div>
+      {/* Recent ledger line items (all rails) */}
+      {L && L.recent.length > 0 && (
+        <>
+          <div style={S.sectionHd}>RECENT SALES — ALL RAILS ({L.recent.length})</div>
+          <table style={{ ...S.table, marginBottom: 28 }}>
+            <thead><tr><th style={S.th}>Date</th><th style={S.th}>Rail</th><th style={S.th}>Type</th><th style={S.th}>Product</th><th style={S.th}>Customer</th><th style={S.th}>Gross</th><th style={S.th}>Delivery</th></tr></thead>
+            <tbody>
+              {L.recent.map((r) => (
+                <tr key={r.ledger_id}>
+                  <td style={S.td}>{fmtDate(r.occurred_at)}</td>
+                  <td style={S.td}>{SOURCE_LABELS[r.source] ?? r.source}</td>
+                  <td style={S.td}>{r.event_type.replace("_", " ")}</td>
+                  <td style={S.td}>{r.product}</td>
+                  <td style={S.td}>{r.customer}</td>
+                  <td style={S.td}>{fmt(r.gross_cents)}</td>
+                  <td style={{ ...S.td, color: r.provisioning === "delivered" || r.provisioning === "n/a" ? "#44AA44" : "#CC4444" }}>{r.provisioning}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* Stripe charges (back-compat view with charge-level resend) */}
+      <div style={S.sectionHd}>STRIPE CHARGES ({data.purchases.length})</div>
       <table style={S.table}>
         <thead>
           <tr><th style={S.th}>Amount</th><th style={S.th}>Product</th><th style={S.th}>Customer</th><th style={S.th}>Date</th><th style={S.th}>Status</th><th style={S.th}></th></tr>
@@ -510,7 +673,7 @@ function SalesTab() {
               <td style={S.td}>{fmtDate(p.created_at)}</td>
               <td style={{ ...S.td, color: p.status === "succeeded" ? "#44AA44" : "#C14826" }}>{p.status}</td>
               <td style={S.td}>
-                <button onClick={() => resendEmail(p.id)} disabled={resend === p.id} style={{ ...S.btnSmall, opacity: resend === p.id ? 0.5 : 1 }}>
+                <button onClick={() => resendEmail({ charge_id: p.id }, p.id)} disabled={resend === p.id} style={{ ...S.btnSmall, opacity: resend === p.id ? 0.5 : 1 }}>
                   {resend === p.id ? "Sent" : "Resend"}
                 </button>
               </td>

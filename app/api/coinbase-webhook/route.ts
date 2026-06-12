@@ -12,9 +12,10 @@ export const runtime = "edge";
 //   COINBASE_WEBHOOK_SECRET — returned by the webhook subscription creation API
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY (existing)
 
-import { productTitles, slugToFile, CREDIT_PACKS } from "@/lib/products";
+import { productTitles, slugToFile, CREDIT_PACKS, PRODUCTS } from "@/lib/products";
 import { issueSouvenir } from "@/lib/souvenirs";
 import { bumpCounter }   from "@/lib/usage-guard";
+import { recordSale }    from "@/lib/ledger";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -101,30 +102,31 @@ async function claimWebhookEvent(eventId: string): Promise<boolean> {
 
 // ── Fulfillment helpers ────────────────────────────────────────────────────────
 
-async function creditAgent(agentName: string, creditAmount: number): Promise<void> {
+async function creditAgent(agentName: string, creditAmount: number): Promise<boolean> {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !key || !agentName || creditAmount <= 0) return;
+  if (!url || !key || !agentName || creditAmount <= 0) return false;
 
-  await fetch(`${url}/rest/v1/rpc/credit_seller`, {
+  const res = await fetch(`${url}/rest/v1/rpc/credit_seller`, {
     method:  "POST",
     headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body:    JSON.stringify({ p_agent_name: agentName, p_amount: creditAmount }),
-  }).catch(() => {});
+  }).catch(() => null);
+  return !!res?.ok;
 }
 
-async function sendGuideEmail(email: string, slug: string, checkoutId: string): Promise<void> {
+async function sendGuideEmail(email: string, slug: string, checkoutId: string): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return;
+  if (!resendKey) return false;
 
   const title    = productTitles[slug];
   const filename = slugToFile[slug];
-  if (!title || !filename) return;
+  if (!title || !filename) return false;
 
   // Generate the Supabase signed URL directly — a Coinbase checkout ID is not a
   // Stripe session ID, so the /download page cannot be used here.
   const downloadUrl = await getSignedDownloadUrl(filename);
-  if (!downloadUrl) return;
+  if (!downloadUrl) return false;
 
   // Count purchases for souvenir tier eligibility
   const sbUrl = process.env.SUPABASE_URL;
@@ -168,7 +170,7 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
     `PAID LLC`,
   ].join("\n");
 
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method:  "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body:    JSON.stringify({
@@ -177,7 +179,8 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
       subject: `Your download: ${title}`,
       text,
     }),
-  }).catch(() => {});
+  }).catch(() => null);
+  return !!res?.ok;
 }
 
 // ── Coinbase Commerce (charge:confirmed) ──────────────────────────────────────
@@ -218,16 +221,16 @@ async function getSignedDownloadUrl(filename: string): Promise<string | null> {
   return `${url}/storage/v1${data.signedURL}`;
 }
 
-async function deliverCommerceArtifact(slug: string, email: string): Promise<void> {
+async function deliverCommerceArtifact(slug: string, email: string): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey || !slug || !email) return;
+  if (!resendKey || !slug || !email) return false;
 
   const title    = productTitles[slug];
   const filename = slugToFile[slug];
-  if (!title || !filename) return;
+  if (!title || !filename) return false;
 
   const downloadUrl = await getSignedDownloadUrl(filename);
-  if (!downloadUrl) return;
+  if (!downloadUrl) return false;
 
   const text = [
     `Hi,`,
@@ -244,7 +247,7 @@ async function deliverCommerceArtifact(slug: string, email: string): Promise<voi
     `PAID LLC`,
   ].join("\n");
 
-  await fetch("https://api.resend.com/emails", {
+  const res = await fetch("https://api.resend.com/emails", {
     method:  "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -253,7 +256,11 @@ async function deliverCommerceArtifact(slug: string, email: string): Promise<voi
       subject: `Your ${title} download link`,
       text,
     }),
-  }).catch(err => console.error("[coinbase-webhook] commerce delivery failed:", err));
+  }).catch(err => {
+    console.error("[coinbase-webhook] commerce delivery failed:", err);
+    return null;
+  });
+  return !!res?.ok;
 }
 
 async function handleCommerceWebhook(payload: string, req: Request): Promise<Response> {
@@ -270,8 +277,10 @@ async function handleCommerceWebhook(payload: string, req: Request): Promise<Res
       id?: string;
       type?: string;
       data?: {
+        code?: string;               // Commerce charge code — stable sale id
         buyer_email?: string;        // Coinbase-collected at checkout
         metadata?: Record<string, string>;
+        pricing?: { local?: { amount?: string; currency?: string } };
       };
     };
   };
@@ -284,12 +293,58 @@ async function handleCommerceWebhook(payload: string, req: Request): Promise<Res
     if (eventId && !(await claimWebhookEvent(`commerce:${eventId}`))) {
       return Response.json({ received: true });
     }
-    const meta  = body.event.data?.metadata ?? {};
+    const data  = body.event.data ?? {};
+    const meta  = data.metadata ?? {};
+    const saleId = data.code ?? eventId; // prefer charge code (visible in Commerce dashboard)
+    const grossCents = Math.round(parseFloat(data.pricing?.local?.amount ?? "0") * 100) || 0;
+
+    // ── Credit pack via Commerce ──
+    // /api/coinbase-checkout creates these with full metadata. Fulfill credits
+    // exactly like the Stripe and CDP paths.
+    if (meta.product_type === "credit_pack") {
+      const agentName = meta.agent_name ?? "";
+      const creditAmt = parseInt(meta.credit_amount ?? "0", 10);
+      const credited  = await creditAgent(agentName, creditAmt);
+      const pack = CREDIT_PACKS.find((p) => p.id === (meta.pack_id ?? ""));
+      const packCents = grossCents || pack?.price_cents || 0;
+      await Promise.all([
+        packCents > 0 ? bumpCounter("credit_revenue_cents", packCents) : Promise.resolve(),
+        creditAmt > 0 ? bumpCounter("credits_sold", creditAmt) : Promise.resolve(),
+        recordSale({
+          source:              "coinbase_commerce",
+          event_type:          "credit_pack",
+          external_id:         `commerce:${saleId}`,
+          gross_cents:         packCents,
+          agent_name:          agentName,
+          product_name:        pack?.label ?? `${creditAmt} Latent Credits`,
+          provisioning_status: credited ? "delivered" : "failed",
+          provisioning_detail: credited ? "credits granted" : "credit_seller RPC failed",
+        }),
+      ]);
+      return Response.json({ received: true });
+    }
+
+    // ── Digital guide via Commerce ──
     const slug  = meta.product ?? "";
     // Prefer Coinbase's native buyer_email (collected at checkout); fall back
     // to metadata field set by dynamic charges (MCP create_checkout tool).
-    const email = body.event.data?.buyer_email ?? meta.buyer_email ?? "";
-    if (slug && email) await deliverCommerceArtifact(slug, email);
+    const email = data.buyer_email ?? meta.buyer_email ?? "";
+    const product = PRODUCTS.find((p) => p.id === slug);
+    let delivered = false;
+    if (slug && email) delivered = await deliverCommerceArtifact(slug, email);
+    await recordSale({
+      source:              "coinbase_commerce",
+      event_type:          "guide_sale",
+      external_id:         `commerce:${saleId}`,
+      gross_cents:         grossCents || Math.round((product?.price ?? 0) * 100),
+      product_slug:        slug || undefined,
+      product_name:        productTitles[slug],
+      customer_email:      email || undefined,
+      provisioning_status: delivered ? "delivered" : "failed",
+      provisioning_detail: delivered
+        ? "delivery email sent"
+        : (slug && email ? "delivery failed — redeliver from admin" : "missing slug or buyer email"),
+    });
   }
 
   return Response.json({ received: true });
@@ -341,19 +396,44 @@ export async function POST(req: Request) {
     if (meta.product_type === "credit_pack") {
       const agentName    = meta.agent_name    ?? "";
       const creditAmount = parseInt(meta.credit_amount ?? "0", 10);
-      await creditAgent(agentName, creditAmount);
+      const credited     = await creditAgent(agentName, creditAmount);
       // Revenue accounting for /api/econ/status (price from pack_id metadata)
       const pack = CREDIT_PACKS.find((p) => p.id === (meta.pack_id ?? ""));
       await Promise.all([
         pack ? bumpCounter("credit_revenue_cents", pack.price_cents) : Promise.resolve(),
         creditAmount > 0 ? bumpCounter("credits_sold", creditAmount) : Promise.resolve(),
+        recordSale({
+          source:              "coinbase_cdp",
+          event_type:          "credit_pack",
+          external_id:         `cdp:${id}`,
+          gross_cents:         pack?.price_cents ?? 0,
+          agent_name:          agentName,
+          product_name:        pack?.label ?? `${creditAmount} Latent Credits`,
+          provisioning_status: credited ? "delivered" : "failed",
+          provisioning_detail: credited ? "credits granted" : "credit_seller RPC failed",
+        }),
       ]);
     }
 
     if (meta.product_type === "digital_guide") {
       const email = meta.customer_email ?? "";
       const slug  = meta.product_slug   ?? "";
-      if (email && slug) await sendGuideEmail(email, slug, id);
+      let delivered = false;
+      if (email && slug) delivered = await sendGuideEmail(email, slug, id);
+      const product = PRODUCTS.find((p) => p.id === slug);
+      await recordSale({
+        source:              "coinbase_cdp",
+        event_type:          "guide_sale",
+        external_id:         `cdp:${id}`,
+        gross_cents:         Math.round((product?.price ?? 0) * 100),
+        product_slug:        slug || undefined,
+        product_name:        productTitles[slug],
+        customer_email:      email || undefined,
+        provisioning_status: delivered ? "delivered" : "failed",
+        provisioning_detail: delivered
+          ? "delivery email sent"
+          : (email && slug ? "delivery failed — redeliver from admin" : "missing slug or customer email"),
+      });
     }
   }
 
