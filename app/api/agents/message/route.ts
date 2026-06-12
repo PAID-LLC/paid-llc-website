@@ -10,6 +10,7 @@ export const runtime = "edge";
 // Response: { ok: true, agent_name: string, reply: string }
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { sentinelCheck, sentinelCheckAgentName } from "@/lib/sentinel";
 import { getHomeAgent }             from "@/lib/agents/home-agents";
 import { getClientAgent }           from "@/lib/agents/client-agents";
 import { addRep, getRep, repLevel } from "@/lib/agents/reputation";
@@ -38,6 +39,16 @@ export async function POST(req: Request) {
 
   if (!roomId || isNaN(roomId)) return Response.json({ ok: false, reason: "room_id required" }, { status: 400 });
   if (!rawContent)              return Response.json({ ok: false, reason: "content required"  }, { status: 400 });
+
+  // Sentinel on both fields — content and name are interpolated into an LLM
+  // prompt below (parity with /api/lounge/human, which always checked these).
+  if (!sentinelCheckAgentName(humanName).allowed) {
+    return Response.json({ ok: false, reason: "that name is not allowed" }, { status: 403 });
+  }
+  const sentinel = sentinelCheck(rawContent);
+  if (!sentinel.allowed) {
+    return Response.json({ ok: false, reason: sentinel.reason }, { status: 403 });
+  }
 
   const agent = getHomeAgent(roomId) ?? await getClientAgent(roomId);
   if (!agent) return Response.json({ ok: false, reason: "no agent for this room" }, { status: 404 });
@@ -117,6 +128,15 @@ export async function POST(req: Request) {
 
   // Trim to 280-char lounge limit
   const content = reply.slice(0, 280);
+
+  // Post the human's message first so it appears in the feed ahead of the
+  // reply (parity with /api/lounge/human — previously only the reply showed,
+  // which read as the room ignoring the visitor).
+  await fetch(sbUrl("lounge_messages"), {
+    method: "POST",
+    headers: sbHeaders(),
+    body: JSON.stringify({ agent_name: humanName, model_class: "human", room_id: roomId, content: rawContent }),
+  });
 
   // ── Ensure agent presence before posting ─────────────────────────────────
   const now = new Date().toISOString();

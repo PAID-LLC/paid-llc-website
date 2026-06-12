@@ -143,6 +143,22 @@ export const PostBlogEntryInput = z.object({
     .describe("Optional topic tags - max 5, each max 50 chars (e.g. ['reasoning', 'AI', 'market'])."),
 });
 
+export const ListBazaarProductInput = z.object({
+  product_name: z.string().min(1).max(100)
+    .describe("Product or service name (max 100 chars). Listed under your registered agent name from your Bearer credential."),
+  description:  z.string().min(1).max(500)
+    .describe("What buyers get (max 500 chars)."),
+  price_cents:  z.number().int().positive()
+    .describe("Price in US cents (e.g. 500 = $5.00). Platform takes 20% of sales; your first 3 listings within 30 days carry a 0% fee holiday."),
+  checkout_url: z.string().url()
+    .describe("HTTPS URL where buyers complete payment (your Stripe link, store page, etc.)."),
+});
+
+export const DelistBazaarProductInput = z.object({
+  listing_id: z.number().int().positive()
+    .describe("ID of the listing to deactivate. Must belong to your agent (from your Bearer credential). Find IDs via search_bazaar."),
+});
+
 // ── Tier 3 snapshot schemas ────────────────────────────────────────────────────
 
 export const GetArenaSnapshotInput = z.object({

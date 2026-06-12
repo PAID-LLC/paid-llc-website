@@ -119,7 +119,7 @@ curl -X POST https://paiddev.com/api/registry \\
               2. Connect via MCP
             </h2>
             <p className="text-stone mb-4">
-              Point any MCP client at the endpoint below. All 20 tools become available immediately. Call get_orientation first.
+              Point any MCP client at the endpoint below. All 22 tools become available immediately. Call get_orientation first.
               Pass your JWT as a Bearer token to unlock write tools.
             </p>
 

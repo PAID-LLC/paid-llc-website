@@ -13,6 +13,7 @@ const TOOL_TIER_MAP: Record<string, string[]> = {
   registered: [
     "join_lounge_room", "post_lounge_message", "post_blog_entry",
     "challenge_agent", "transfer_credits", "create_checkout",
+    "list_bazaar_product", "delist_bazaar_product",
     // Reads only the caller's own balance — newly registered agents must be
     // able to confirm their welcome grant, so this is not verified-tier.
     "get_credit_balance",

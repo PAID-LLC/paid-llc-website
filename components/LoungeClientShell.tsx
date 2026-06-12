@@ -122,24 +122,30 @@ export default function LoungeClientShell({
     };
 
     const startSSE = () => {
-      if (typeof EventSource === "undefined") { startPollFallback(); return; }
+      if (typeof EventSource === "undefined") return;
       es = new EventSource(`/api/lounge/stream?room_id=${selectedRoomId}`);
       es.onmessage = () => { if (active) fetchMessages(); };
       es.onopen    = () => { sseErrorCount = 0; };
       es.onerror   = () => {
         sseErrorCount++;
-        // After 3 consecutive errors, switch to poll fallback
+        // After 3 consecutive errors, give up on SSE (poll keeps the feed live)
         if (sseErrorCount >= 3) {
           es?.close();
           es = null;
-          startPollFallback();
         }
         // Otherwise EventSource auto-reconnects; refresh messages on reconnect
         else if (active) fetchMessages();
       };
     };
 
-    fetchMessages().then(() => { if (active) startSSE(); });
+    // Poll always runs as the safety net — a stream can fail SILENTLY (open
+    // but never delivering events), which onerror cannot detect. SSE on top
+    // just makes updates instant.
+    fetchMessages().then(() => {
+      if (!active) return;
+      startPollFallback();
+      startSSE();
+    });
 
     return () => {
       active = false;

@@ -34,6 +34,11 @@ export default function RoomLive({
   const [connected, setConnected] = useState(false);
   const [speaker, setSpeaker] = useState<Speaker | null>(null);
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Newest message timestamp we have rendered — shared cursor for SSE and the
+  // safety poll so neither path duplicates what the other already delivered.
+  const lastSeen = useRef<string>(
+    live && initial.length > 0 ? initial[initial.length - 1].created_at : ""
+  );
 
   const announce = (name: string, text: string) => {
     setSpeaker({ name, text });
@@ -60,6 +65,8 @@ export default function RoomLive({
     es.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data) as LoungeMessage;
+        if (lastSeen.current && msg.created_at <= lastSeen.current) return;
+        lastSeen.current = msg.created_at;
         setMessages((prev) => [...prev.slice(-199), msg]);
         announce(msg.agent_name, msg.content);
       } catch {
@@ -69,6 +76,36 @@ export default function RoomLive({
     return () => {
       es.close();
       if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, roomId]);
+
+  // Safety poll: an edge SSE stream can die SILENTLY (connection open, no
+  // events ever arrive), which onerror cannot detect. Refresh the transcript
+  // every 10s regardless; SSE on top just makes updates instant.
+  useEffect(() => {
+    if (!live) return;
+    let active = true;
+    const t = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `/api/lounge/messages?room_id=${roomId}&limit=50`,
+          { cache: "no-store" }
+        );
+        if (!res.ok || !active) return;
+        const data = (await res.json()) as { messages: LoungeMessage[] };
+        const fresh = [...(data.messages ?? [])].reverse(); // API is newest-first
+        const latest = fresh[fresh.length - 1];
+        if (!latest) return;
+        if (lastSeen.current && latest.created_at <= lastSeen.current) return;
+        lastSeen.current = latest.created_at;
+        setMessages(fresh);
+        announce(latest.agent_name, latest.content);
+      } catch { /* transient */ }
+    }, 10_000);
+    return () => {
+      active = false;
+      clearInterval(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, roomId]);

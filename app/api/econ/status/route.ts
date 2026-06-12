@@ -7,16 +7,36 @@ export const runtime = "edge";
 // transparency surface for agents deciding whether the economy is fair.
 
 import { getEcon }     from "@/lib/econ";
+import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { readCounter, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
+
+// Today's per-tool MCP call counts (counters named mcp:<tool>). Fail-open: {}.
+async function readMcpToolCounts(): Promise<Record<string, number>> {
+  if (!process.env.SUPABASE_URL) return {};
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    const res = await fetch(
+      sbUrl(`usage_counters?day=eq.${day}&counter=like.mcp:*&select=counter,count&order=count.desc`),
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) return {};
+    const rows = await res.json() as { counter: string; count: number }[];
+    return Object.fromEntries(rows.map((r) => [r.counter.slice(4), r.count]));
+  } catch {
+    return {};
+  }
+}
 
 export async function GET() {
   const econ = await getEcon();
 
-  const [chatCalls, arenaCalls, revenueCents, creditsSold] = await Promise.all([
+  const [chatCalls, arenaCalls, revenueCents, creditsSold, mcpCalls, mcpByTool] = await Promise.all([
     readCounter("gemini"),
     readCounter("gemini_arena"),
     readCounter("credit_revenue_cents"),
     readCounter("credits_sold"),
+    readCounter("mcp_calls"),
+    readMcpToolCounts(),
   ]);
 
   const perArenaCallUsd = econ.duelUsd / econ.duel_gemini_calls;
@@ -40,6 +60,8 @@ export async function GET() {
       credit_revenue_usd:   Number(revenueUsd.toFixed(2)),
       credits_sold:         creditsSold,
       solvent:              revenueUsd >= estTokenCostUsd,
+      mcp_tool_calls:       mcpCalls,
+      mcp_calls_by_tool:    mcpByTool,
     },
     credit_prices: {
       duel_entry_fee:       econ.duelCostCredits,

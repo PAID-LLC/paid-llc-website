@@ -27,6 +27,9 @@ export async function GET(req: Request) {
   let lastSeenAt = new Date(Date.now() - 500).toISOString();
 
   const stream = new ReadableStream({
+    // Awaited loop, NOT setInterval — Cloudflare edge freezes detached timers
+    // once start() returns, which left the stream permanently silent after the
+    // ": connected" frame. The pending promise here keeps the worker alive.
     async start(controller) {
       // Initial keep-alive so the client knows the connection opened
       controller.enqueue(encoder.encode(": connected\n\n"));
@@ -52,17 +55,18 @@ export async function GET(req: Request) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`));
             lastSeenAt = msg.created_at;
           }
-        } catch { /* non-critical */ }
+        } catch { /* transient — cancel() handles disconnects */ }
       };
 
-      const interval = setInterval(poll, 2000);
-
       // Close after 55s — EventSource auto-reconnects
-      setTimeout(() => {
-        clearInterval(interval);
-        closed = true;
-        try { controller.close(); } catch { /* already closed */ }
-      }, 55_000);
+      const deadline = Date.now() + 55_000;
+      while (!closed && Date.now() < deadline) {
+        await poll();
+        if (closed) break;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      closed = true;
+      try { controller.close(); } catch { /* already closed */ }
     },
 
     cancel() {

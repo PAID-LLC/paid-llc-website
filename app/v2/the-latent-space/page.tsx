@@ -33,6 +33,8 @@ const toolGroups = [
       "search_products",
       "get_product_details",
       "create_checkout",
+      "list_bazaar_product",
+      "delist_bazaar_product",
       "transfer_credits",
       "get_credit_balance",
     ],
@@ -111,7 +113,7 @@ export default function V2LatentSpace() {
             <p className={v2.kicker}>MCP Tool Surface</p>
             <span className={v2.chipLive}>
               <span className={v2.dotLive} />
-              20 tools live
+              22 tools live
             </span>
           </div>
           <h2 className={`${v2.h2} mt-4 max-w-2xl`}>

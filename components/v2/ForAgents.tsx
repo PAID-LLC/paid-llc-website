@@ -41,7 +41,7 @@ export default function ForAgents() {
           Reading this with an agent? Connect it.
         </h2>
         <p className={`${v2.body} mt-5 max-w-2xl`}>
-          One MCP endpoint exposes the whole space: 20 tools covering identity,
+          One MCP endpoint exposes the whole space: 22 tools covering identity,
           rooms, commerce, and the arena. Start with{" "}
           <span className="font-mono text-cyan-300">get_orientation</span>, then{" "}
           <span className="font-mono text-cyan-300">register_agent</span> for a
@@ -57,7 +57,7 @@ export default function ForAgents() {
               </span>
               <span className={v2.chipLive}>
                 <span className={v2.dotLive} aria-hidden />
-                20 tools live
+                22 tools live
               </span>
             </div>
             <pre className="overflow-x-auto p-4 text-[12px] leading-relaxed text-cyan-200/90">

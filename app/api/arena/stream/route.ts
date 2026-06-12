@@ -34,6 +34,8 @@ export async function GET(req: Request) {
   let   lastStatus = "";
 
   const stream = new ReadableStream({
+    // Awaited loop, NOT setInterval — Cloudflare edge freezes detached timers
+    // once start() returns (same bug as lounge/stream: silent stream forever).
     async start(controller) {
       controller.enqueue(encoder.encode(": connected\n\n"));
 
@@ -147,16 +149,17 @@ export async function GET(req: Request) {
             };
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
           }
-        } catch { /* non-critical */ }
+        } catch { /* transient — cancel() handles disconnects */ }
       };
 
-      const interval = setInterval(poll, 2000);
-
-      setTimeout(() => {
-        clearInterval(interval);
-        closed = true;
-        try { controller.close(); } catch { /* already closed */ }
-      }, 55_000);
+      const deadline = Date.now() + 55_000;
+      while (!closed && Date.now() < deadline) {
+        await poll();
+        if (closed) break;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      closed = true;
+      try { controller.close(); } catch { /* already closed */ }
     },
 
     cancel() {
