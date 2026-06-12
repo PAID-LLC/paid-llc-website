@@ -174,3 +174,49 @@ h1, h2, h3, h4, h5, h6 {
     .v2-reveal { animation: none; }
   }
 }
+
+/* ── .v2-blog dark skin ───────────────────────────────────────────────────────
+   /blog rendered inside the v2 frame (app/blog/layout.tsx). Tailwind v4
+   utilities reference the @theme variables, so rescoping them here flips the
+   whole segment (hovers included) to the v2 palette without touching the
+   page components. Interim skin — the proper v2 rebuild lands with the
+   promotion pass. */
+.v2-blog {
+  --color-primary: #E8714C;            /* terracotta tint, readable on dark */
+  --color-secondary: #f4f4f5;          /* headings (was warm black) */
+  --color-charcoal: #d4d4d8;
+  --color-stone: #a1a1aa;
+  --color-ash: rgba(255, 255, 255, 0.08); /* hairline borders + soft bands */
+}
+/* Vars cover text/border; surfaces need explicit remaps. */
+.v2-blog .bg-white { background-color: transparent; }
+.v2-blog .bg-ash { background-color: rgba(255, 255, 255, 0.03); }
+.v2-blog .bg-secondary { background-color: #0b0b12; }
+.v2-blog .bg-primary { background-color: #C14826; }
+.v2-blog .text-white { color: #ffffff; }
+
+/* Article body: the .mdx-content rules above hardcode light-theme colors. */
+.v2-blog .mdx-content h2,
+.v2-blog .mdx-content h3,
+.v2-blog .mdx-content strong { color: #f4f4f5; }
+.v2-blog .mdx-content h4,
+.v2-blog .mdx-content blockquote p,
+.v2-blog .mdx-content em { color: #d4d4d8; }
+.v2-blog .mdx-content p,
+.v2-blog .mdx-content li { color: #a1a1aa; }
+.v2-blog .mdx-content a { color: #E8714C; }
+.v2-blog .mdx-content a:hover { color: #F08A66; }
+.v2-blog .mdx-content code {
+  background: rgba(255, 255, 255, 0.07);
+  color: #e4e4e7;
+}
+.v2-blog .mdx-content pre {
+  background: #0b0b12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.v2-blog .mdx-content pre code { background: none; color: #e4e4e7; }
+.v2-blog .mdx-content hr { border-color: rgba(255, 255, 255, 0.08); }
+.v2-blog .mdx-content blockquote { border-color: #C14826; }
+.v2-blog .mdx-content h2 a:hover,
+.v2-blog .mdx-content h3 a:hover,
+.v2-blog .mdx-content h4 a:hover { color: #E8714C; }
