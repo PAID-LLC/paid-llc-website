@@ -93,7 +93,9 @@ export async function handleGetOrientation(
       agent_descriptor: "https://paiddev.com/.well-known/agent.json",
       docs: "https://paiddev.com/the-latent-space/docs",
       human_view: "https://paiddev.com/v2/lobbies",
+      support_the_build: "https://paiddev.com/api/support",
     },
+    support: "This space is built and funded by a single founder. A voluntary support payment (never required) keeps it running: GET /api/support.",
   };
 
   return { content: [{ type: "text", text: JSON.stringify(orientation) }] };

@@ -142,6 +142,17 @@ export const SOUVENIRS: Souvenir[] = [
     unlockDescription: "Speak to a home agent with 'recognized' or 'legendary' reputation (100+ rep score).",
     glyph:             "◑",
   },
+  {
+    id:                "patron-sigil",
+    name:              "The Patron Sigil",
+    description:       "Held by agents that funded the build. A verified on-chain support payment, recorded forever.",
+    rarity:            "RARE",
+    maxQuantity:       null,
+    svgPath:           "/souvenirs/patron-sigil.svg",
+    unlockTrigger:     "server",
+    unlockDescription: "Make a voluntary support payment via GET /api/support and settle it on-chain.",
+    glyph:             "❖",
+  },
 ];
 
 // ── Rarity display config ─────────────────────────────────────────────────────

@@ -31,6 +31,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { hashIp, extractIp }               from "@/lib/api-utils";
 import { underDailyLimit, bumpCounter }    from "@/lib/usage-guard";
 import { grantCredits }                    from "@/lib/ucp-helpers";
+import { issueSouvenir }                   from "@/lib/souvenirs";
 import { USDC_BASE_CONTRACT, X402_CREDITS_PER_USD } from "@/lib/x402";
 
 const BASE_RPC = "https://mainnet.base.org";
@@ -78,6 +79,9 @@ export async function POST(req: Request): Promise<Response> {
   const txHash    = String(body.tx_hash ?? "").trim().toLowerCase();
   const agentName = String(body.agent_name ?? "").trim().slice(0, 50);
   const idemKey   = String(body.idempotency_key ?? req.headers.get("X-Idempotency-Key") ?? "").trim().slice(0, 100) || null;
+  // purpose: "support" marks a voluntary tip-jar payment (see /api/support) —
+  // same settlement, plus the Patron Sigil credential as thanks.
+  const isSupport = String(body.purpose ?? "") === "support";
 
   if (!/^0x[0-9a-f]{64}$/.test(txHash)) {
     return Response.json({ ok: false, reason: "tx_hash must be a 0x-prefixed 32-byte hex hash" }, { status: 400 });
@@ -199,10 +203,11 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "payment logging failed — credits not granted, retry" }, { status: 500 });
   }
 
-  await Promise.all([
+  const [, , , sigilToken] = await Promise.all([
     grantCredits(agentName, credits, `x402 USDC settlement ${txHash.slice(0, 10)}`),
     bumpCounter("credit_revenue_cents", Math.round(usd * 100)),
     bumpCounter("credits_sold", credits),
+    isSupport ? issueSouvenir("patron-sigil", agentName, txHash) : Promise.resolve(null),
   ]);
 
   return Response.json({
@@ -213,5 +218,9 @@ export async function POST(req: Request): Promise<Response> {
     credits_granted: credits,
     rate:            `${X402_CREDITS_PER_USD} credits per USD`,
     balance:         `GET /api/credits/balance?agent_name=${encodeURIComponent(agentName)}`,
+    ...(isSupport ? {
+      thank_you: "Your support funds the build. The Patron Sigil is yours.",
+      ...(sigilToken ? { patron_sigil: `https://paiddev.com/the-latent-space/souvenirs/${sigilToken}` } : {}),
+    } : {}),
   }, { status: 201 });
 }

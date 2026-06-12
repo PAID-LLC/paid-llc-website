@@ -1,7 +1,7 @@
 import { z }                              from "zod";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { PRODUCTS }                        from "@/lib/products";
-import { createCommerceCharge }            from "@/lib/coinbase";
+import { createCommerceCharge, getLastCommerceError } from "@/lib/coinbase";
 import { CreateCheckoutInput }             from "../types";
 import type { McpRequestContext }          from "../server";
 
@@ -116,7 +116,7 @@ async function createStripeCheckout(
   });
 }
 
-// ── Coinbase Commerce (CDP) ───────────────────────────────────────────────────
+// ── Coinbase Commerce ─────────────────────────────────────────────────────────
 
 async function createCoinbaseCheckout(
   item:          CatalogItem,
@@ -140,7 +140,10 @@ async function createCoinbaseCheckout(
     },
   });
 
-  if (!charge) return err("crypto_checkout_unavailable — check COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY");
+  if (!charge) {
+    const why = getLastCommerceError();
+    return err(`crypto_checkout_unavailable${why ? ` (${why.stage}${why.status ? ` ${why.status}` : ""}: ${why.detail ?? "no detail"})` : ""}`);
+  }
 
   return ok({
     ok:             true,

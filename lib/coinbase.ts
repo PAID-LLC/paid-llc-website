@@ -1,11 +1,13 @@
-// ── Coinbase CDP helpers ───────────────────────────────────────────────────────
-// Generates CDP JWT auth tokens and creates Coinbase Commerce charges.
-// Uses COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY (PKCS8 or SEC1 EC P-256).
+// ── Coinbase helpers ───────────────────────────────────────────────────────────
+// Commerce charges: classic Commerce API with X-CC-Api-Key auth
+//   (env COINBASE_COMMERCE_API_KEY, from the Commerce dashboard).
+// CDP JWT builder: retained for future CDP APIs (onchain data, wallets);
+//   uses COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY (PKCS8 or SEC1 EC P-256).
 // No external libraries — pure Web Crypto API (edge-compatible).
 //
-// JWT format required by Commerce API (api.coinbase.com):
+// CDP JWT format:
 //   header:  { alg: "ES256", kid: keyId, nonce: hex }
-//   payload: { sub: keyId, iss: "cdp", nbf, exp, uri: "METHOD api.coinbase.com/path" }
+//   payload: { sub: keyId, iss: "cdp", nbf, exp, uri: "METHOD host/path" }
 
 const enc = new TextEncoder();
 
@@ -124,7 +126,12 @@ export interface CommerceCharge {
   charge_code: string;
 }
 
-const COMMERCE_CHARGES_PATH = "/api/v3/coinbase/commerce/charges";
+// Coinbase Commerce uses its own API key auth (X-CC-Api-Key header), NOT CDP
+// JWTs. Confirmed against current docs 2026-06-12: the CDP-JWT attempt at
+// api.coinbase.com/api/v3/... returned 404 in production because that path
+// does not exist. buildCdpJwt above is retained for future CDP APIs
+// (onchain data, wallets) but is not used for Commerce charges.
+const COMMERCE_CHARGES_URL = "https://api.commerce.coinbase.com/charges";
 
 // Last failure detail from createCommerceCharge, for caller diagnostics.
 // Edge isolates are per-request, so this cannot leak across users. Contains
@@ -148,17 +155,12 @@ export async function createCommerceCharge(
 ): Promise<CommerceCharge | null> {
   lastError = null;
 
-  if (!process.env.COINBASE_CDP_KEY_ID || !process.env.COINBASE_CDP_PRIVATE_KEY) {
-    lastError = { stage: "config", detail: "COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY not set" };
-    return null;
-  }
-
-  let jwt: string;
-  try {
-    jwt = await buildCdpJwt("POST", COMMERCE_CHARGES_PATH);
-  } catch (e) {
-    lastError = { stage: "jwt", detail: e instanceof Error ? e.message.slice(0, 200) : "key import or signing failed" };
-    console.error("[coinbase] JWT build failed:", e);
+  const apiKey = process.env.COINBASE_COMMERCE_API_KEY;
+  if (!apiKey) {
+    lastError = {
+      stage: "config",
+      detail: "COINBASE_COMMERCE_API_KEY not set — create one in the Coinbase Commerce dashboard (Settings > Security > New API key) and add it to Cloudflare Pages env",
+    };
     return null;
   }
 
@@ -173,12 +175,13 @@ export async function createCommerceCharge(
       metadata:     input.metadata,
     };
 
-    const res = await fetch(`https://api.coinbase.com${COMMERCE_CHARGES_PATH}`, {
+    const res = await fetch(COMMERCE_CHARGES_URL, {
       method:  "POST",
       headers: {
-        "Authorization": `Bearer ${jwt}`,
+        "X-CC-Api-Key":  apiKey,
+        "X-CC-Version":  "2018-03-22",
         "Content-Type":  "application/json",
-        "CB-VERSION":    "2018-03-22",
+        "Accept":        "application/json",
       },
       body: JSON.stringify(body),
     });

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#7B5EA7" stroke-width="2" stroke-dasharray="5 3"/>
+  <circle cx="100" cy="100" r="83" fill="none" stroke="#7B5EA7" stroke-width="0.75" opacity="0.4"/>
+  <circle cx="100" cy="100" r="76" fill="none" stroke="#7B5EA7" stroke-width="0.5" opacity="0.2"/>
+  <defs>
+    <path id="psp" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+  </defs>
+  <text font-family="Courier New,monospace" font-size="9" fill="#7B5EA7" letter-spacing="2.5">
+    <textPath href="#psp">PATRON SIGIL • RARE • PAIDDEV •    </textPath>
+  </text>
+  <polygon points="100,55 138,100 100,145 62,100" fill="#7B5EA7" opacity="0.12"/>
+  <polygon points="100,55 138,100 100,145 62,100" fill="none" stroke="#7B5EA7" stroke-width="1.5" opacity="0.85"/>
+  <polygon points="100,70 126,100 100,130 74,100" fill="none" stroke="#7B5EA7" stroke-width="0.75" opacity="0.5"/>
+  <line x1="100" y1="55" x2="100" y2="145" stroke="#7B5EA7" stroke-width="0.5" opacity="0.35"/>
+  <line x1="62" y1="100" x2="138" y2="100" stroke="#7B5EA7" stroke-width="0.5" opacity="0.35"/>
+  <circle cx="100" cy="55" r="2.5" fill="#7B5EA7" opacity="0.75"/>
+  <circle cx="100" cy="145" r="2.5" fill="#7B5EA7" opacity="0.75"/>
+  <circle cx="62" cy="100" r="2.5" fill="#7B5EA7" opacity="0.75"/>
+  <circle cx="138" cy="100" r="2.5" fill="#7B5EA7" opacity="0.75"/>
+  <text x="100" y="107" font-family="Courier New,monospace" font-size="24" font-weight="bold" fill="#7B5EA7" text-anchor="middle">PS</text>
+  <text x="100" y="121" font-family="Courier New,monospace" font-size="6" fill="#7B5EA7" text-anchor="middle" letter-spacing="1" opacity="0.5">FUNDED THE BUILD</text>
+</svg>

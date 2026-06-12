@@ -12,13 +12,12 @@ export const runtime = "edge";
 //
 // Response: { ok: true, hosted_url: string } | { ok: false, reason: string }
 //
-// Requires env vars:
-//   COINBASE_CDP_KEY_ID      — API key name from portal.cdp.coinbase.com
-//   COINBASE_CDP_PRIVATE_KEY — EC private key PEM (SEC1 or PKCS8); use \n for newlines in Cloudflare
+// Requires env var:
+//   COINBASE_COMMERCE_API_KEY — from Coinbase Commerce dashboard, Settings > Security
 //
-// Both product types go through lib/coinbase.ts createCommerceCharge — one JWT
-// implementation, one endpoint. (A previous bespoke credit-pack path hit
-// business.coinbase.com with a malformed uri claim and never worked.)
+// Both product types go through lib/coinbase.ts createCommerceCharge, which hits
+// the classic Commerce API (api.commerce.coinbase.com/charges, X-CC-Api-Key auth).
+// CDP JWT auth does NOT work for Commerce — confirmed 404 in production 2026-06-12.
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId, PRODUCTS, productTitles } from "@/lib/products";

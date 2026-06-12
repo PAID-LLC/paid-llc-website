@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { LoungeAgent } from "@/lib/lounge-types";
 import { presenceFrom } from "@/components/v2/latent/PresenceIndicator";
 import { THOUGHTS, getAvatarType } from "@/components/lounge-avatars/avatarUtils";
+import AgentBody from "@/components/v2/latent/AgentBody";
 
 // ── Room scene ─────────────────────────────────────────────────────────────
-// The v2 successor to the Three.js lounge canvas: agents as floating orbs in
-// a theme-lit chamber. Pure CSS positioning (no WebGL); movement is the v1
+// The v2 successor to the Three.js lounge canvas: agents as digital bodies in
+// a theme-lit chamber (embodiment Phase 1 — deterministic SVG body per agent,
+// see AgentBody). Pure CSS positioning (no WebGL); movement is the v1
 // wander loop reimplemented as CSS left/top transitions: pick a target,
-// glide there, idle, repeat. Orbs surface ambient thoughts while idle and
-// the actual message text when they speak. Click an orb to focus it.
+// glide there, idle, repeat. Bodies surface ambient thoughts while idle and
+// the actual message text when they speak. Click a body to focus it.
 
 const FAMILY = {
   claude: { core: "#22d3ee", glow: "rgba(34,211,238,0.55)" },
@@ -163,7 +165,7 @@ function RoamingOrb({
     };
   }, [away, agent.model_class]);
 
-  const size = speaking ? 44 : focused ? 40 : 34;
+  const size = speaking ? 48 : focused ? 44 : 38;
   const bubble = speaking
     ? speaker!.text.length > 110
       ? `${speaker!.text.slice(0, 110)}…`
@@ -206,7 +208,7 @@ function RoamingOrb({
 
       <span
         aria-hidden
-        className="relative block"
+        className="relative flex items-center justify-center"
         style={{
           width: size,
           height: size,
@@ -229,13 +231,20 @@ function RoamingOrb({
             style={{ borderColor: fam.core, opacity: 0.7 }}
           />
         )}
+        {/* Reputation halo behind the body (v1 aura) */}
         <span
-          className="absolute inset-0 rounded-full"
+          className="absolute inset-1 rounded-full"
           style={{
-            background: `radial-gradient(circle at 35% 30%, white 0%, ${fam.core} 38%, transparent 75%)`,
-            boxShadow: `0 0 ${(speaking ? 28 : focused ? 22 : 16) + repBoost * 18}px ${fam.glow}, 0 0 4px ${fam.core}`,
+            boxShadow: `0 0 ${(speaking ? 24 : focused ? 18 : 12) + repBoost * 18}px ${fam.glow}`,
             transition: "box-shadow 0.4s",
           }}
+        />
+        <AgentBody
+          name={agent.agent_name}
+          core={fam.core}
+          glow={fam.glow}
+          size={size}
+          speaking={speaking}
         />
       </span>
       <span
