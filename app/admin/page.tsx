@@ -118,7 +118,7 @@ const S = {
 };
 
 const THEMES = ["client","bazaar","intellectual-hub","roast-pit","macro-vault","iteration-forge","simulation-sandbox"];
-type Tab = "intake" | "sales" | "latent-space" | "health" | "agent-ops" | "expenses";
+type Tab = "pipeline" | "intake" | "sales" | "latent-space" | "health" | "agent-ops" | "expenses";
 
 const RESULT_CODE_COLORS: Record<string, string> = {
   OK:                  "#44AA44",
@@ -210,6 +210,7 @@ function KpiStrip() {
 
 function TabNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   const tabs: { id: Tab; label: string }[] = [
+    { id: "pipeline",     label: "Pipeline" },
     { id: "intake",       label: "Intake" },
     { id: "sales",        label: "Sales" },
     { id: "latent-space", label: "Latent Space" },
@@ -449,6 +450,227 @@ function IntakeTab() {
           <button onClick={() => setResult(null)} style={{ ...S.btnSmall, marginTop: 12 }}>Dismiss</button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Pipeline Tab ──────────────────────────────────────────────────────────
+
+interface Lead {
+  id: number; created_at: string; updated_at: string;
+  name: string; email: string; phone: string | null; company: string | null;
+  message: string | null; guide_interest: string | null;
+  stage: string; source: string;
+  next_action_at: string | null; next_action: string | null;
+  notes: string | null; value_cents: number | null; last_contacted_at: string | null;
+}
+interface PipelineData {
+  leads: Lead[]; due: Lead[]; no_next_action: Lead[];
+  counts: Record<string, number>;
+  pipeline_value_cents: number; won_value_cents: number;
+}
+
+const PIPELINE_STAGES = ["new", "contacted", "call_booked", "proposal_sent", "nurture", "won", "lost"];
+const STAGE_LABELS: Record<string, string> = {
+  new: "New", contacted: "Contacted", call_booked: "Call booked",
+  proposal_sent: "Proposal sent", nurture: "Nurture", won: "Won", lost: "Lost",
+};
+const STAGE_COLORS: Record<string, string> = {
+  new: "#888", contacted: "#CC8844", call_booked: "#44AAAA",
+  proposal_sent: "#C14826", nurture: "#886688", won: "#44AA44", lost: "#553333",
+};
+
+function daysFromNow(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function PipelineTab() {
+  const [data,    setData]    = useState<PipelineData | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy,    setBusy]    = useState<number | null>(null);
+  const [open,    setOpen]    = useState<number | null>(null);  // expanded lead id
+  const [adding,  setAdding]  = useState(false);
+  const [form,    setForm]    = useState({ name: "", email: "", company: "", source: "outreach", notes: "", value: "" });
+
+  const load = useCallback(() => {
+    fetch("/api/admin/pipeline").then((r) => r.json()).then((d) => {
+      if (d.ok) { setData(d); setError(null); } else { setError(d.reason ?? "load failed"); }
+      setLoading(false);
+    }).catch(() => { setError("request failed"); setLoading(false); });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function patch(id: number, body: Record<string, unknown>) {
+    setBusy(id);
+    await fetch("/api/admin/pipeline", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...body }),
+    });
+    setBusy(null);
+    load();
+  }
+
+  async function addLead() {
+    if (!form.name || !form.email) return;
+    setAdding(true);
+    await fetch("/api/admin/pipeline", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.name, email: form.email, company: form.company || undefined,
+        source: form.source, notes: form.notes || undefined,
+        value_cents: form.value ? Math.round(parseFloat(form.value) * 100) : undefined,
+        next_action: "First outreach", next_action_at: daysFromNow(0),
+      }),
+    });
+    setForm({ name: "", email: "", company: "", source: "outreach", notes: "", value: "" });
+    setAdding(false);
+    load();
+  }
+
+  if (loading) return <div style={{ color: "#444", fontSize: 13 }}>Loading pipeline…</div>;
+  if (error)   return <div style={{ color: "#C14826", fontSize: 13 }}>{error}</div>;
+  if (!data)   return null;
+
+  const renderLeadRow = (l: Lead, highlight?: boolean) => (
+    <div key={l.id} style={{ ...S.card, borderColor: highlight ? "#663322" : "#1A1A1A" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ cursor: "pointer", flex: 1, minWidth: 200 }} onClick={() => setOpen(open === l.id ? null : l.id)}>
+          <span style={{ color: "#E8E4E0", fontSize: 13 }}>{l.name}</span>
+          {l.company && <span style={{ color: "#666", fontSize: 12 }}> · {l.company}</span>}
+          <span style={{ color: "#555", fontSize: 11 }}> · {l.email}</span>
+          {typeof l.value_cents === "number" && l.value_cents > 0 && (
+            <span style={{ color: "#44AA44", fontSize: 11 }}> · {fmt(l.value_cents)}</span>
+          )}
+          <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+            <span style={{ color: STAGE_COLORS[l.stage] }}>{STAGE_LABELS[l.stage]}</span>
+            {" · "}{l.source.replace("_", " ")}
+            {l.next_action && <> · next: <span style={{ color: highlight ? "#CC8844" : "#888" }}>{l.next_action}</span></>}
+            {l.next_action_at && <span style={{ color: highlight ? "#CC8844" : "#555" }}> ({fmtDate(l.next_action_at)})</span>}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <select
+            value={l.stage}
+            disabled={busy === l.id}
+            onChange={(e) => patch(l.id, { stage: e.target.value, ...(e.target.value === "contacted" ? { last_contacted_at: new Date().toISOString() } : {}) })}
+            style={{ ...S.select, width: "auto", padding: "4px 8px", fontSize: 11 }}
+          >
+            {PIPELINE_STAGES.map((s) => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+          </select>
+          {[3, 7, 14].map((d) => (
+            <button key={d} disabled={busy === l.id} style={S.btnSmall} title={`Set follow-up in ${d} days`}
+              onClick={() => patch(l.id, { next_action_at: daysFromNow(d), next_action: l.next_action ?? "Follow up" })}>
+              +{d}d
+            </button>
+          ))}
+        </div>
+      </div>
+      {open === l.id && (
+        <div style={{ marginTop: 12, borderTop: "1px solid #1A1A1A", paddingTop: 12 }}>
+          {l.message && <div style={{ fontSize: 12, color: "#888", marginBottom: 8, whiteSpace: "pre-wrap" }}>{l.message}</div>}
+          <LeadEditor lead={l} onSave={(fields) => patch(l.id, fields)} busy={busy === l.id} />
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Headline numbers */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
+        <div style={S.card}>
+          <div style={S.label}>Open leads</div>
+          <div style={{ fontSize: 22, color: "#E8E4E0" }}>
+            {data.leads.filter((l) => l.stage !== "won" && l.stage !== "lost").length}
+          </div>
+        </div>
+        <div style={S.card}>
+          <div style={S.label}>Pipeline value</div>
+          <div style={{ fontSize: 22, color: "#E8E4E0" }}>{fmt(data.pipeline_value_cents)}</div>
+        </div>
+        <div style={S.card}>
+          <div style={S.label}>Won (90d)</div>
+          <div style={{ fontSize: 22, color: "#44AA44" }}>{fmt(data.won_value_cents)}</div>
+        </div>
+      </div>
+
+      {/* Follow-ups due — the reason this tab exists */}
+      {data.due.length > 0 && (
+        <>
+          <div style={{ ...S.sectionHd, color: "#CC8844" }}>FOLLOW-UPS DUE ({data.due.length})</div>
+          {data.due.map((l) => renderLeadRow(l, true))}
+          <div style={S.divider} />
+        </>
+      )}
+      {data.no_next_action.length > 0 && (
+        <>
+          <div style={{ ...S.sectionHd, color: "#886688" }}>NO NEXT ACTION SET — SILENT STALLS ({data.no_next_action.length})</div>
+          {data.no_next_action.map((l) => renderLeadRow(l))}
+          <div style={S.divider} />
+        </>
+      )}
+
+      {/* Add lead */}
+      <div style={S.sectionHd}>ADD LEAD</div>
+      <div style={{ ...S.card, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+          <input style={S.input} placeholder="Name *"    value={form.name}    onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input style={S.input} placeholder="Email *"   value={form.email}   onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input style={S.input} placeholder="Company"   value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 8 }}>
+          <select style={S.select} value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}>
+            {["outreach", "referral", "social", "event", "other"].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <input style={S.input} placeholder="Est. value $" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+          <input style={S.input} placeholder="Notes"        value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          <button style={{ ...S.btn, opacity: adding || !form.name || !form.email ? 0.5 : 1 }} disabled={adding || !form.name || !form.email} onClick={addLead}>
+            {adding ? "Adding…" : "Add"}
+          </button>
+        </div>
+      </div>
+
+      {/* Board, grouped by stage */}
+      {PIPELINE_STAGES.map((stage) => {
+        const rows = data.leads.filter((l) => l.stage === stage);
+        if (rows.length === 0) return null;
+        return (
+          <div key={stage} style={{ marginBottom: 20 }}>
+            <div style={{ ...S.sectionHd, color: STAGE_COLORS[stage] }}>
+              {STAGE_LABELS[stage].toUpperCase()} ({rows.length})
+            </div>
+            {rows.map((l) => renderLeadRow(l))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LeadEditor({ lead, onSave, busy }: { lead: Lead; onSave: (fields: Record<string, unknown>) => void; busy: boolean }) {
+  const [notes,  setNotes]  = useState(lead.notes ?? "");
+  const [action, setAction] = useState(lead.next_action ?? "");
+  const [value,  setValue]  = useState(lead.value_cents != null ? String(lead.value_cents / 100) : "");
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8, marginBottom: 8 }}>
+        <input style={S.input} placeholder="Next action (e.g. Send follow-up email)" value={action} onChange={(e) => setAction(e.target.value)} />
+        <input style={S.input} placeholder="Est. value $" value={value} onChange={(e) => setValue(e.target.value)} />
+      </div>
+      <textarea style={{ ...S.textarea, minHeight: 60 }} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <button
+        style={{ ...S.btnGhost, marginTop: 8, opacity: busy ? 0.5 : 1 }}
+        disabled={busy}
+        onClick={() => onSave({
+          notes: notes || null,
+          next_action: action || null,
+          value_cents: value ? Math.round(parseFloat(value) * 100) : null,
+        })}
+      >
+        {busy ? "Saving…" : "Save"}
+      </button>
     </div>
   );
 }
@@ -1127,7 +1349,8 @@ function ExpensesTab() {
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [tab,    setTab]    = useState<Tab>("intake");
+  // Pipeline first — follow-ups due is the highest-value thing to see on login
+  const [tab,    setTab]    = useState<Tab>("pipeline");
 
   useEffect(() => {
     fetch("/api/admin/verify")
@@ -1163,6 +1386,7 @@ export default function AdminPage() {
         <TabNav active={tab} onChange={setTab} />
 
         {/* Tab content */}
+        {tab === "pipeline"     && <PipelineTab />}
         {tab === "intake"       && <IntakeTab />}
         {tab === "sales"        && <SalesTab />}
         {tab === "latent-space" && <LatentSpaceTab />}
