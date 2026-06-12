@@ -18,7 +18,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId }       from "@/lib/products";
-import { createCommerceCharge }             from "@/lib/coinbase";
+import { createCommerceCharge, getLastCommerceError } from "@/lib/coinbase";
 
 export async function POST(req: Request) {
   if (!supabaseReady()) {
@@ -92,7 +92,11 @@ export async function POST(req: Request) {
     });
 
     if (!charge) {
-      return Response.json({ ok: false, reason: "crypto checkout unavailable — check CDP credentials" }, { status: 502 });
+      const err = getLastCommerceError();
+      const why = err
+        ? `${err.stage}${err.status ? ` ${err.status}` : ""}${err.detail ? `: ${err.detail}` : ""}`
+        : "unknown";
+      return Response.json({ ok: false, reason: `crypto checkout unavailable (${why})` }, { status: 502 });
     }
 
     return Response.json({ ok: true, checkout_url: charge.hosted_url, payment_method: "coinbase" });

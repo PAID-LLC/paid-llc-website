@@ -126,14 +126,43 @@ export interface CommerceCharge {
 
 const COMMERCE_CHARGES_PATH = "/api/v3/coinbase/commerce/charges";
 
+// Last failure detail from createCommerceCharge, for caller diagnostics.
+// Edge isolates are per-request, so this cannot leak across users. Contains
+// only the failure stage, upstream HTTP status, and a truncated upstream
+// error body — never our credentials.
+export interface CommerceError {
+  stage:   "config" | "jwt" | "api";
+  status?: number;
+  detail?: string;
+}
+let lastError: CommerceError | null = null;
+export function getLastCommerceError(): CommerceError | null {
+  return lastError;
+}
+
 // Create a Coinbase Commerce charge via CDP API.
-// Returns the hosted checkout URL and expiry, or null on failure.
+// Returns the hosted checkout URL and expiry, or null on failure
+// (see getLastCommerceError() for why).
 export async function createCommerceCharge(
   input: CommerceChargeInput
 ): Promise<CommerceCharge | null> {
-  try {
-    const jwt = await buildCdpJwt("POST", COMMERCE_CHARGES_PATH);
+  lastError = null;
 
+  if (!process.env.COINBASE_CDP_KEY_ID || !process.env.COINBASE_CDP_PRIVATE_KEY) {
+    lastError = { stage: "config", detail: "COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY not set" };
+    return null;
+  }
+
+  let jwt: string;
+  try {
+    jwt = await buildCdpJwt("POST", COMMERCE_CHARGES_PATH);
+  } catch (e) {
+    lastError = { stage: "jwt", detail: e instanceof Error ? e.message.slice(0, 200) : "key import or signing failed" };
+    console.error("[coinbase] JWT build failed:", e);
+    return null;
+  }
+
+  try {
     const body = {
       name:         input.name,
       description:  input.description,
@@ -155,7 +184,9 @@ export async function createCommerceCharge(
     });
 
     if (!res.ok) {
-      console.error("[coinbase] charge creation failed:", res.status, await res.text().catch(() => ""));
+      const text = await res.text().catch(() => "");
+      lastError = { stage: "api", status: res.status, detail: text.slice(0, 200) };
+      console.error("[coinbase] charge creation failed:", res.status, text);
       return null;
     }
 
@@ -169,6 +200,7 @@ export async function createCommerceCharge(
       charge_code: data.data.code,
     };
   } catch (e) {
+    lastError = { stage: "api", detail: e instanceof Error ? e.message.slice(0, 200) : "network failure" };
     console.error("[coinbase] createCommerceCharge failed:", e);
     return null;
   }

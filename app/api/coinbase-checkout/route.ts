@@ -1,7 +1,7 @@
 export const runtime = "edge";
 
 // ── POST /api/coinbase-checkout ────────────────────────────────────────────────
-// Creates a Coinbase CDP Business checkout with metadata attached.
+// Creates a Coinbase Commerce charge (CDP-authenticated) with metadata attached.
 // Returns a url to redirect the user to Coinbase's payment page.
 //
 // Body (credit pack):
@@ -15,119 +15,27 @@ export const runtime = "edge";
 // Requires env vars:
 //   COINBASE_CDP_KEY_ID      — API key name from portal.cdp.coinbase.com
 //   COINBASE_CDP_PRIVATE_KEY — EC private key PEM (SEC1 or PKCS8); use \n for newlines in Cloudflare
+//
+// Both product types go through lib/coinbase.ts createCommerceCharge — one JWT
+// implementation, one endpoint. (A previous bespoke credit-pack path hit
+// business.coinbase.com with a malformed uri claim and never worked.)
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId, PRODUCTS, productTitles } from "@/lib/products";
-import { createCommerceCharge } from "@/lib/coinbase";
+import { createCommerceCharge, getLastCommerceError } from "@/lib/coinbase";
 
-const SITE_URL  = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
-const CB_API    = "https://business.coinbase.com/api/v1/checkouts";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
-// ── Crypto helpers ─────────────────────────────────────────────────────────────
-
-function b64url(data: Uint8Array): string {
-  let binary = "";
-  data.forEach(b => (binary += String.fromCharCode(b)));
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+// Human-readable failure reason including the upstream diagnostic, so a broken
+// CDP key or endpoint change is visible from the API response instead of
+// requiring Cloudflare log access.
+function chargeFailureReason(): string {
+  const err = getLastCommerceError();
+  if (!err) return "failed to create checkout — try again";
+  if (err.stage === "config") return "crypto payments not yet enabled";
+  if (err.stage === "jwt")    return `crypto checkout failed (key error: ${err.detail ?? "unknown"})`;
+  return `crypto checkout failed (coinbase api ${err.status ?? "error"}: ${err.detail ?? "no detail"})`;
 }
-
-function concat(...arrays: Uint8Array[]): Uint8Array {
-  const total = arrays.reduce((n, a) => n + a.length, 0);
-  const out   = new Uint8Array(total);
-  let offset  = 0;
-  for (const a of arrays) { out.set(a, offset); offset += a.length; }
-  return out;
-}
-
-function encodeLen(len: number): Uint8Array {
-  if (len < 128) return new Uint8Array([len]);
-  if (len < 256) return new Uint8Array([0x81, len]);
-  return new Uint8Array([0x82, len >> 8, len & 0xff]);
-}
-
-// Wrap a SEC1 EC private key in a PKCS8 envelope so Web Crypto can import it.
-// Handles both "BEGIN EC PRIVATE KEY" (SEC1) and "BEGIN PRIVATE KEY" (PKCS8).
-function ensurePkcs8(pem: string): Uint8Array {
-  const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
-  const der  = new Uint8Array(Array.from(atob(b64), c => c.charCodeAt(0)));
-
-  if (pem.includes("BEGIN PRIVATE KEY")) return der; // already PKCS8
-
-  // AlgorithmIdentifier: { id-ecPublicKey, prime256v1 }
-  const algo = new Uint8Array([
-    0x30, 0x13,
-    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
-    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07,
-  ]);
-  const version = new Uint8Array([0x02, 0x01, 0x00]);
-  const privKey = concat(new Uint8Array([0x04]), encodeLen(der.length), der);
-  const body    = concat(version, algo, privKey);
-  return concat(new Uint8Array([0x30]), encodeLen(body.length), body);
-}
-
-async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  const pkcs8 = ensurePkcs8(pem);
-  return crypto.subtle.importKey(
-    "pkcs8", pkcs8.buffer as ArrayBuffer,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false, ["sign"]
-  );
-}
-
-async function makeJWT(keyId: string, pem: string): Promise<string> {
-  const key   = await importPrivateKey(pem);
-  const now   = Math.floor(Date.now() / 1000);
-  const nonce = crypto.randomUUID().replace(/-/g, "");
-
-  const header  = b64url(new TextEncoder().encode(JSON.stringify({ alg: "ES256", kid: keyId })));
-  const payload = b64url(new TextEncoder().encode(JSON.stringify({
-    iss: "cdp", sub: keyId, nbf: now, exp: now + 120,
-    uri: `POST ${CB_API}`, nonce,
-  })));
-
-  const input = `${header}.${payload}`;
-  const sig   = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    key,
-    new TextEncoder().encode(input)
-  );
-  return `${input}.${b64url(new Uint8Array(sig))}`;
-}
-
-// ── Checkout creation ──────────────────────────────────────────────────────────
-
-async function createCheckout(opts: {
-  keyId:       string;
-  pem:         string;
-  amountUsdc:  string;
-  description: string;
-  metadata:    Record<string, string>;
-  successUrl:  string;
-  failUrl:     string;
-}): Promise<string | null> {
-  try {
-    const jwt = await makeJWT(opts.keyId, opts.pem);
-    const res = await fetch(CB_API, {
-      method:  "POST",
-      headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
-      body:    JSON.stringify({
-        amount:             opts.amountUsdc,
-        currency:           "USDC",
-        description:        opts.description,
-        metadata:           opts.metadata,
-        successRedirectUrl: opts.successUrl,
-        failRedirectUrl:    opts.failUrl,
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { url?: string };
-    return data.url ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   try {
@@ -147,11 +55,6 @@ async function handlePost(req: Request): Promise<Response> {
 
   // ── Credit pack ──────────────────────────────────────────────────────────────
   if (productType === "credit_pack") {
-    const keyId = process.env.COINBASE_CDP_KEY_ID;
-    const pem   = process.env.COINBASE_CDP_PRIVATE_KEY?.replace(/\\n/g, "\n");
-    if (!keyId || !pem) {
-      return Response.json({ ok: false, reason: "crypto payments not yet enabled" }, { status: 503 });
-    }
     if (!supabaseReady()) return Response.json({ ok: false, reason: "service unavailable" }, { status: 503 });
 
     const agentName = String(body.agent_name ?? "").trim().slice(0, 50);
@@ -175,22 +78,22 @@ async function handlePost(req: Request): Promise<Response> {
       ok: false, reason: "agent not registered. Register first: POST /api/registry",
     }, { status: 404 });
 
-    const url = await createCheckout({
-      keyId, pem,
-      amountUsdc:  (pack.price_cents / 100).toFixed(2),
-      description: `${pack.credits} Latent Credits for ${agentName} — used in The Latent Space Arena on paiddev.com`,
+    const charge = await createCommerceCharge({
+      name:         pack.label,
+      description:  `${pack.credits} Latent Credits for ${agentName} — used in The Latent Space Arena on paiddev.com`,
+      amount_usd:   (pack.price_cents / 100).toFixed(2),
+      redirect_url: `${SITE_URL}/the-latent-space?credits=purchased`,
+      cancel_url:   `${SITE_URL}/the-latent-space?credits=cancelled`,
       metadata: {
         product_type:  "credit_pack",
         agent_name:    agentName,
         pack_id:       packId,
         credit_amount: String(pack.credits),
       },
-      successUrl: `${SITE_URL}/the-latent-space?credits=purchased`,
-      failUrl:    `${SITE_URL}/the-latent-space?credits=cancelled`,
     });
 
-    if (!url) return Response.json({ ok: false, reason: "failed to create checkout — try again" });
-    return Response.json({ ok: true, hosted_url: url });
+    if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 502 });
+    return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 
   // ── Digital guide (Coinbase Commerce) ───────────────────────────────────────
@@ -214,7 +117,7 @@ async function handlePost(req: Request): Promise<Response> {
       metadata:     { product: slug },
     });
 
-    if (!charge) return Response.json({ ok: false, reason: "failed to create checkout — try again" });
+    if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 502 });
     return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 
