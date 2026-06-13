@@ -1,13 +1,16 @@
 // ── Coinbase helpers ───────────────────────────────────────────────────────────
-// Commerce charges: classic Commerce API with X-CC-Api-Key auth
-//   (env COINBASE_COMMERCE_API_KEY, from the Commerce dashboard).
-// CDP JWT builder: retained for future CDP APIs (onchain data, wallets);
-//   uses COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY (PKCS8 or SEC1 EC P-256).
-// No external libraries — pure Web Crypto API (edge-compatible).
+// ACTIVE: Coinbase Business payment links (createPaymentLink), CDP-JWT auth.
+//   The classic Commerce charges API (api.commerce.coinbase.com, X-CC-Api-Key)
+//   was shut down 2026-03-31; createCommerceCharge below is dead and kept only
+//   for reference until the verify/webhook paths finish migrating.
+// CDP JWT builder: now the live auth path. Uses COINBASE_CDP_KEY_ID +
+//   COINBASE_CDP_PRIVATE_KEY. Supports Ed25519 (base64, current default) and
+//   EC P-256 (PEM, legacy). No external libraries — pure Web Crypto (edge).
 //
-// CDP JWT format:
-//   header:  { alg: "ES256", kid: keyId, nonce: hex }
-//   payload: { sub: keyId, iss: "cdp", nbf, exp, uri: "METHOD host/path" }
+// CDP JWT format (per CDP docs):
+//   header:  { alg: "EdDSA"|"ES256", typ: "JWT", kid: keyId, nonce: hex }
+//   payload: { sub: keyId, iss: "cdp", aud: ["cdp_service"], nbf, exp,
+//              uri: "METHOD host/path" }  // host must match the request host
 
 const enc = new TextEncoder();
 
@@ -79,34 +82,64 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
   );
 }
 
-// Build a short-lived (120s) CDP JWT for Commerce API authentication.
-// method: uppercase HTTP verb ("GET", "POST")
-// path:   request path starting with "/" (e.g. "/api/v3/coinbase/commerce/charges")
-export async function buildCdpJwt(method: string, path: string): Promise<string> {
+// ── Ed25519 import ────────────────────────────────────────────────────────────
+// CDP's current default key type is Ed25519 (a base64 string of 64 bytes:
+// 32-byte seed + 32-byte public key). Web Crypto importKey wants PKCS8, so we
+// wrap the 32-byte seed in the fixed Ed25519 PKCS8 DER prefix.
+const ED25519_PKCS8_PREFIX = new Uint8Array([
+  0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70,
+  0x04, 0x22, 0x04, 0x20,
+]);
+
+function looksLikePem(key: string): boolean {
+  return key.includes("BEGIN");
+}
+
+async function importEd25519Key(b64: string): Promise<CryptoKey> {
+  const normalized = b64.replace(/\\n/g, "").replace(/\s+/g, "");
+  const raw  = new Uint8Array(Array.from(atob(normalized), (c) => c.charCodeAt(0)));
+  const seed = raw.length >= 32 ? raw.slice(0, 32) : raw;   // first 32 bytes = seed
+  const pkcs8 = concatBytes(ED25519_PKCS8_PREFIX, seed);
+  return crypto.subtle.importKey(
+    "pkcs8",
+    pkcs8.buffer as ArrayBuffer,
+    { name: "Ed25519" } as unknown as AlgorithmIdentifier,
+    false,
+    ["sign"]
+  );
+}
+
+// Build a short-lived (120s) CDP JWT bearer token. Supports both key types the
+// CDP portal issues: EdDSA (Ed25519, current default) and ES256 (legacy EC P-256).
+// The uri claim host MUST match the request host, so callers pass it explicitly.
+// method: uppercase HTTP verb. host: e.g. "business.coinbase.com". path: "/...".
+export async function buildCdpJwt(method: string, host: string, path: string): Promise<string> {
   const keyId  = process.env.COINBASE_CDP_KEY_ID;
   const pemKey = process.env.COINBASE_CDP_PRIVATE_KEY;
   if (!keyId || !pemKey) throw new Error("COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY not configured");
 
-  const cryptoKey = await importPrivateKey(pemKey);
+  const isEd25519 = !looksLikePem(pemKey);
+  const alg       = isEd25519 ? "EdDSA" : "ES256";
+  const cryptoKey = isEd25519 ? await importEd25519Key(pemKey) : await importPrivateKey(pemKey);
 
   const now   = Math.floor(Date.now() / 1000);
   const nonce = crypto.randomUUID().replace(/-/g, "");
 
-  const header  = b64urlStr(JSON.stringify({ alg: "ES256", kid: keyId, nonce }));
+  const header  = b64urlStr(JSON.stringify({ alg, typ: "JWT", kid: keyId, nonce }));
   const payload = b64urlStr(JSON.stringify({
     sub: keyId,
     iss: "cdp",
+    aud: ["cdp_service"],
     nbf: now,
     exp: now + 120,
-    uri: `${method} api.coinbase.com${path}`,
+    uri: `${method} ${host}${path}`,
   }));
 
-  const message = `${header}.${payload}`;
-  const sig     = await crypto.subtle.sign(
-    { name: "ECDSA", hash: { name: "SHA-256" } },
-    cryptoKey,
-    enc.encode(message)
-  );
+  const message   = `${header}.${payload}`;
+  const signParams: AlgorithmIdentifier | EcdsaParams = isEd25519
+    ? ({ name: "Ed25519" } as unknown as AlgorithmIdentifier)
+    : { name: "ECDSA", hash: { name: "SHA-256" } };
+  const sig = await crypto.subtle.sign(signParams, cryptoKey, enc.encode(message));
 
   return `${message}.${b64url(sig)}`;
 }
@@ -205,6 +238,92 @@ export async function createCommerceCharge(
   } catch (e) {
     lastError = { stage: "api", detail: e instanceof Error ? e.message.slice(0, 200) : "network failure" };
     console.error("[coinbase] createCommerceCharge failed:", e);
+    return null;
+  }
+}
+
+// ── Coinbase Business payment links (replaces dead Commerce charges) ──────────
+// The classic Commerce charges API (api.commerce.coinbase.com) was shut down
+// 2026-03-31. The replacement is the Coinbase Business payment-link API, CDP-JWT
+// authenticated. createPaymentLink is a drop-in for createCommerceCharge: same
+// input/output shape, so call sites only swap the function name.
+//
+// Prereqs (Travis): a Coinbase Business account + a CDP API key, with
+//   COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY set in Cloudflare.
+// Field names/auth are per the migration docs and pending a live-credential test.
+
+const BUSINESS_HOST        = "business.coinbase.com";
+const PAYMENT_LINKS_PATH   = "/api/v1/payment_links";
+
+export interface PaymentLink {
+  hosted_url: string;
+  id:         string;
+  status:     string;
+}
+
+export async function createPaymentLink(input: CommerceChargeInput): Promise<PaymentLink | null> {
+  lastError = null;
+
+  const keyId  = process.env.COINBASE_CDP_KEY_ID;
+  const pemKey = process.env.COINBASE_CDP_PRIVATE_KEY;
+  if (!keyId || !pemKey) {
+    lastError = {
+      stage: "config",
+      detail: "COINBASE_CDP_KEY_ID / COINBASE_CDP_PRIVATE_KEY not set — create a CDP API key in the Coinbase Business / CDP portal and add both to Cloudflare Pages env",
+    };
+    return null;
+  }
+
+  let jwt: string;
+  try {
+    jwt = await buildCdpJwt("POST", BUSINESS_HOST, PAYMENT_LINKS_PATH);
+  } catch (e) {
+    lastError = { stage: "jwt", detail: e instanceof Error ? e.message.slice(0, 200) : "jwt build failed" };
+    return null;
+  }
+
+  try {
+    const body = {
+      name:               input.name,
+      description:        input.description,
+      amount:             input.amount_usd,    // flat amount (not nested local_price)
+      currency:           "USD",
+      network:            "base",              // explicit network (no auto-select)
+      successRedirectUrl: input.redirect_url,
+      failRedirectUrl:    input.cancel_url,
+      metadata:           input.metadata,
+    };
+
+    const res = await fetch(`https://${BUSINESS_HOST}${PAYMENT_LINKS_PATH}`, {
+      method: "POST",
+      headers: {
+        Authorization:     `Bearer ${jwt}`,
+        "Content-Type":    "application/json",
+        "Accept":          "application/json",
+        "X-Idempotency-Key": crypto.randomUUID(),
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      lastError = { stage: "api", status: res.status, detail: text.slice(0, 200) };
+      console.error("[coinbase] payment_links creation failed:", res.status, text);
+      return null;
+    }
+
+    // Response may be flat or wrapped in { data: ... }; the hosted link is `url`.
+    const json = await res.json() as
+      { url?: string; id?: string; status?: string; data?: { url?: string; id?: string; status?: string } };
+    const d = json.data ?? json;
+    if (!d.url) {
+      lastError = { stage: "api", detail: "payment_links response missing url" };
+      return null;
+    }
+    return { hosted_url: d.url, id: d.id ?? "", status: d.status ?? "ACTIVE" };
+  } catch (e) {
+    lastError = { stage: "api", detail: e instanceof Error ? e.message.slice(0, 200) : "network failure" };
+    console.error("[coinbase] createPaymentLink failed:", e);
     return null;
   }
 }

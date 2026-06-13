@@ -97,7 +97,9 @@ export async function GET(req: Request): Promise<Response> {
 
   try {
     const chargePath = `/api/v3/coinbase/commerce/charges/${encodeURIComponent(chargeCode)}`;
-    const jwt = await buildCdpJwt("GET", chargePath);
+    // NOTE: this still targets the legacy charges path (phase-2 migration to
+    // business.coinbase.com/api/v1/payment_links/{id} pending). 3-arg signature.
+    const jwt = await buildCdpJwt("GET", "api.coinbase.com", chargePath);
     const res = await fetch(
       `https://api.coinbase.com${chargePath}`,
       { headers: { Authorization: `Bearer ${jwt}`, "CB-VERSION": "2018-03-22" } }

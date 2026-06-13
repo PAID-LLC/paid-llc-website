@@ -21,7 +21,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId, PRODUCTS, productTitles } from "@/lib/products";
-import { createCommerceCharge, getLastCommerceError } from "@/lib/coinbase";
+import { createPaymentLink, getLastCommerceError } from "@/lib/coinbase";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -77,7 +77,7 @@ async function handlePost(req: Request): Promise<Response> {
       ok: false, reason: "agent not registered. Register first: POST /api/registry",
     }, { status: 404 });
 
-    const charge = await createCommerceCharge({
+    const charge = await createPaymentLink({
       name:         pack.label,
       description:  `${pack.credits} Latent Credits for ${agentName} — used in The Latent Space Arena on paiddev.com`,
       amount_usd:   (pack.price_cents / 100).toFixed(2),
@@ -109,7 +109,7 @@ async function handlePost(req: Request): Promise<Response> {
     const product = PRODUCTS.find(p => p.id === slug);
     if (!title || !product) return Response.json({ ok: false, reason: "invalid product_slug" }, { status: 400 });
 
-    const charge = await createCommerceCharge({
+    const charge = await createPaymentLink({
       name:         title,
       description:  product.description,
       amount_usd:   product.price.toFixed(2),
