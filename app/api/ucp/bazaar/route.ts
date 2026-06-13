@@ -9,12 +9,16 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 
 interface CatalogRow {
-  id:           number;
-  agent_name:   string;
-  product_name: string;
-  description:  string;
-  price_cents:  number;
-  checkout_url: string;
+  id:                   number;
+  agent_name:           string;
+  product_name:         string;
+  description:          string;
+  price_cents:          number;
+  checkout_url:         string;
+  listing_type:         string | null;
+  sla_minutes:          number | null;
+  min_rep:              number | null;
+  service_input_schema: { executor?: string; fields?: Record<string, string> } | null;
 }
 
 export async function GET(): Promise<Response> {
@@ -22,10 +26,22 @@ export async function GET(): Promise<Response> {
     return Response.json({ ok: false, reason: "service_unavailable" }, { status: 503 });
   }
 
-  const res = await fetch(
-    sbUrl("agent_catalog?active=eq.true&select=id,agent_name,product_name,description,price_cents,checkout_url&order=agent_name.asc,id.asc"),
+  const SERVICE_COLS = "id,agent_name,product_name,description,price_cents,checkout_url,listing_type,sla_minutes,min_rep,service_input_schema";
+  const BASE_COLS    = "id,agent_name,product_name,description,price_cents,checkout_url";
+
+  // Prefer the service-aware select; fall back to the base columns if the
+  // service migration (db/agent-service-jobs.sql) has not run yet, so this live
+  // endpoint never 500s on a partially-migrated database.
+  let res = await fetch(
+    sbUrl(`agent_catalog?active=eq.true&select=${SERVICE_COLS}&order=agent_name.asc,id.asc`),
     { headers: sbHeaders() }
   );
+  if (!res.ok) {
+    res = await fetch(
+      sbUrl(`agent_catalog?active=eq.true&select=${BASE_COLS}&order=agent_name.asc,id.asc`),
+      { headers: sbHeaders() }
+    );
+  }
 
   if (!res.ok) {
     return Response.json({ ok: false, reason: "catalog_unavailable" }, { status: 500 });
@@ -48,26 +64,54 @@ export async function GET(): Promise<Response> {
     name:              `${agentName} — Agent Catalog`,
     author:            { "@type": "Person", name: agentName },
     numberOfItems:     items.length,
-    itemListElement:   items.map((item, idx) => ({
-      "@type":   "ListItem",
-      position:  idx + 1,
-      item: {
-        "@type":      "Product",
-        "@id":        `https://paiddev.com/api/ucp/bazaar#item-${item.id}`,
-        identifier:   String(item.id),
-        name:         item.product_name,
-        description:  item.description,
-        category:     "DigitalDocument",
-        offers: {
-          "@type":        "Offer",
-          price:          (item.price_cents / 100).toFixed(2),
-          priceCurrency:  "USD",
-          availability:   "https://schema.org/InStock",
-          url:            item.checkout_url,
-          seller:         { "@type": "Person", name: agentName },
-        },
-      },
-    })),
+    itemListElement:   items.map((item, idx) => {
+      const isService = item.listing_type === "service";
+      const offer = {
+        "@type":        "Offer",
+        price:          (item.price_cents / 100).toFixed(2),
+        priceCurrency:  "USD",
+        availability:   "https://schema.org/InStock",
+        seller:         { "@type": "Person", name: agentName },
+        ...(isService
+          ? { priceSpecification: { "@type": "UnitPriceSpecification", price: item.price_cents, unitText: "Latent Credits" } }
+          : { url: item.checkout_url }),
+      };
+      return {
+        "@type":   "ListItem",
+        position:  idx + 1,
+        item: isService
+          ? {
+              "@type":      "Service",
+              "@id":        `https://paiddev.com/api/ucp/bazaar#item-${item.id}`,
+              identifier:   String(item.id),
+              name:         item.product_name,
+              description:  item.description,
+              category:     "AgentService",
+              provider:     { "@type": "Person", name: agentName },
+              offers:       offer,
+              potentialAction: {
+                "@type": "OrderAction",
+                target:  "https://paiddev.com/api/bazaar/service/request",
+                name:    "Request this service (POST { catalog_item_id, agent_name, input })",
+              },
+              additionalProperty: [
+                { "@type": "PropertyValue", name: "settled_in",   value: "Latent Credits (escrow)" },
+                { "@type": "PropertyValue", name: "sla_minutes",  value: item.sla_minutes ?? 60 },
+                { "@type": "PropertyValue", name: "min_rep",      value: item.min_rep ?? 0 },
+                { "@type": "PropertyValue", name: "input_fields", value: Object.keys(item.service_input_schema?.fields ?? {}).join(", ") || "none" },
+              ],
+            }
+          : {
+              "@type":      "Product",
+              "@id":        `https://paiddev.com/api/ucp/bazaar#item-${item.id}`,
+              identifier:   String(item.id),
+              name:         item.product_name,
+              description:  item.description,
+              category:     "DigitalDocument",
+              offers:       offer,
+            },
+      };
+    }),
   }));
 
   const prices    = rows.map((r) => r.price_cents);
