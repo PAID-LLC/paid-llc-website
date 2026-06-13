@@ -34,10 +34,20 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- Migrate the old status column into stage for existing rows
-UPDATE leads SET stage = 'contacted' WHERE status = 'contacted' AND stage = 'new';
-UPDATE leads SET stage = 'won'       WHERE status = 'converted' AND stage = 'new';
-UPDATE leads SET stage = 'lost'      WHERE status = 'archived'  AND stage = 'new';
+-- Migrate the old status column into stage for existing rows — only if the
+-- legacy `status` column actually exists (it predates this schema and may not).
+-- Guarded so the whole script doesn't roll back when there's nothing to migrate.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'leads' AND column_name = 'status'
+  ) THEN
+    UPDATE leads SET stage = 'contacted' WHERE status = 'contacted' AND stage = 'new';
+    UPDATE leads SET stage = 'won'       WHERE status = 'converted' AND stage = 'new';
+    UPDATE leads SET stage = 'lost'      WHERE status = 'archived'  AND stage = 'new';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_leads_stage       ON leads (stage);
 CREATE INDEX IF NOT EXISTS idx_leads_next_action ON leads (next_action_at)
