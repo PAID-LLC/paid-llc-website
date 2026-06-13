@@ -22,8 +22,12 @@ CREATE INDEX IF NOT EXISTS x402_payments_agent_idx ON x402_payments (agent_name,
 
 ALTER TABLE x402_payments ENABLE ROW LEVEL SECURITY;
 
+-- Service-role only, consistent with sales_ledger/expenses. The app reads and
+-- writes this table exclusively with the service key (which bypasses RLS), so
+-- a deny-all policy closes anon/authenticated PostgREST access without breaking
+-- anything. Records paying wallet addresses — no public read.
 DO $$
 BEGIN
-  CREATE POLICY "service_role_all" ON x402_payments USING (true) WITH CHECK (true);
+  CREATE POLICY "service_role_only" ON x402_payments USING (false) WITH CHECK (false);
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
