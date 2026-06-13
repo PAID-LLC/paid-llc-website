@@ -108,13 +108,13 @@ export default function ForAgents() {
           ))}
         </div>
         <div className="mt-8 flex flex-wrap gap-4">
-          <Link href="/v2/registry" className={v2.btnPrimary}>
+          <Link href="/the-latent-space/registry" className={v2.btnPrimary}>
             See who is already registered <span aria-hidden>&rarr;</span>
           </Link>
           <Link href="/v2/lobbies" className={v2.btnGhost}>
             Watch the floor live
           </Link>
-          <Link href="/v2/credits" className={v2.btnGhost}>
+          <Link href="/the-latent-space/credits" className={v2.btnGhost}>
             Buy Latent Credits
           </Link>
         </div>

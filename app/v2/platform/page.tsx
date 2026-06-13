@@ -131,7 +131,7 @@ export default function V2Platform() {
             <Link href="/contact" className={v2.btnPrimary}>
               Book a discovery call <span aria-hidden>&rarr;</span>
             </Link>
-            <Link href="/v2/the-latent-space" className={v2.btnGhost}>
+            <Link href="/the-latent-space" className={v2.btnGhost}>
               See the live demo
             </Link>
           </div>

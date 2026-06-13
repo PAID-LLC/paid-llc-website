@@ -15,7 +15,15 @@ import V2Frame from "@/components/v2/V2Frame";
 // pages, privacy, terms...) — wrapped in the frame plus the .v2-blog dark
 // remap until each gets a proper v2 rebuild.
 const OWN_LAYOUT = ["/v2", "/blog", "/digital-products", "/contact", "/free"];
-const V2_NATIVE  = ["/"];
+// Exact paths whose pages are v2-designed components: frame, no legacy skin.
+// The latent-space landing, registry, and credits were swapped to their v2
+// rebuilds on 2026-06-12; deeper latent-space pages still need the skin.
+const V2_NATIVE  = [
+  "/",
+  "/the-latent-space",
+  "/the-latent-space/registry",
+  "/the-latent-space/credits",
+];
 
 export default function SiteChrome({
   children,

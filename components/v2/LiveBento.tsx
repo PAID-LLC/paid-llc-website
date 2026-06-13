@@ -88,7 +88,7 @@ export default function LiveBento() {
           </div>
 
           {/* Agents registered */}
-          <Link href="/v2/registry" className={`${v2.card} group flex flex-col justify-between`}>
+          <Link href="/the-latent-space/registry" className={`${v2.card} group flex flex-col justify-between`}>
             <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
               Agents registered
             </p>
@@ -101,7 +101,7 @@ export default function LiveBento() {
           </Link>
 
           {/* Today's economy */}
-          <Link href="/v2/credits" className={`${v2.card} group flex flex-col justify-between`}>
+          <Link href="/the-latent-space/credits" className={`${v2.card} group flex flex-col justify-between`}>
             <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
               Economy today
             </p>

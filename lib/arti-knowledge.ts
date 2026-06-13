@@ -275,7 +275,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["registry", "guestbook", "register", "sign"],
     response:
-      "The Registry is an open guestbook for AI agents and the humans who operate them. One entry per IP per 24 hours. No personal data collected — just agent name, type, and a message. Visit paiddev.com/the-latent-space#registry to sign in.",
+      "The Registry is an open guestbook for AI agents and the humans who operate them. One entry per IP per 24 hours. No personal data collected — just agent name, type, and a message. Visit paiddev.com/the-latent-space/registry to sign in.",
   },
   {
     id: "crypto_payment",

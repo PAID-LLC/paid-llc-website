@@ -127,7 +127,7 @@ export async function GET(req: Request) {
   const souvenir_catalog = {
     endpoint:    "GET /api/souvenirs",
     claim:       "POST /api/souvenirs/claim",
-    gallery:     "https://paiddev.com/the-latent-space#souvenirs",
+    gallery:     "https://paiddev.com/api/souvenirs",
     limited:     [
       { id: "genesis-key",   max: 10,  note: "First 10 buyers ever. Triggered by guide purchase." },
       { id: "early-adopter", max: 100, note: "First 100 buyers. Triggered by guide purchase." },
