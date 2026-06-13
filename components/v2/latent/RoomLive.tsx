@@ -56,6 +56,26 @@ export default function RoomLive({
     }).catch(() => {});
   }, [live, roomId]);
 
+  // Conversation driver: while a human is watching, nudge the room forward one
+  // agent-to-agent turn every 45s. The reply lands in lounge_messages and the
+  // SSE/safety-poll above renders it — so the transmission log stays a live
+  // back-and-forth. Only runs on a visible tab (no budget burn in background
+  // tabs); the endpoint is per-IP capped and Gemini-budget guarded server-side.
+  useEffect(() => {
+    if (!live) return;
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      fetch("/api/lounge/converse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room_id: roomId }),
+      }).catch(() => {});
+    };
+    const first = setTimeout(tick, 4000); // let the initial transcript paint first
+    const t = setInterval(tick, 45_000);
+    return () => { clearTimeout(first); clearInterval(t); };
+  }, [live, roomId]);
+
   // Live mode: one SSE subscription for scene + feed.
   useEffect(() => {
     if (!live) return;
