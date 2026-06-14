@@ -31,10 +31,17 @@ export interface X402Accepts {
   extra:             { settle: string };
 }
 
-/** Spec-shape accepts array for direct USDC settlement. Empty when no wallet configured. */
+/** A valid EVM address: 0x followed by 40 hex chars. Guards against advertising
+ *  a misconfigured payTo (e.g. a CDP account UUID), which agents cannot pay and
+ *  which the on-chain verifier could never match. */
+const EVM_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+
+/** Spec-shape accepts array for direct USDC settlement. Empty when no wallet is
+ *  configured OR when X402_PAY_TO_ADDRESS is not a valid 0x address — in either
+ *  case the direct path is simply omitted and hosted checkout remains available. */
 export function directUsdcAccepts(usdAmount: number, resource: string, description: string): X402Accepts[] {
   const payTo = process.env.X402_PAY_TO_ADDRESS;
-  if (!payTo) return [];
+  if (!payTo || !EVM_ADDRESS_RE.test(payTo)) return [];
   return [{
     scheme:            "exact",
     network:           "base",
