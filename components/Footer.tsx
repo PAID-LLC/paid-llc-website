@@ -37,6 +37,7 @@ export default function Footer() {
                 { href: "/about", label: "About" },
                 { href: "/about#sustainability", label: "Responsible AI" },
                 { href: "/contact", label: "Contact" },
+                { href: "/support", label: "Back the Build" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link

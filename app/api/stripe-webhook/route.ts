@@ -305,6 +305,48 @@ async function recordCatalogSale(session: {
   if (buyerAgent) await markAgentVerified(buyerAgent);
 }
 
+// ── Support tip (Stripe "Back the Build" Payment Link) ────────────────────────
+// The support Payment Link carries no guide/credit metadata, so we identify it
+// by its Stripe product id via the line-items API (a metadata fast-path avoids
+// the extra call for normal guide/credit sales). Recorded as a tip in the sales
+// ledger with nothing to provision.
+const SUPPORT_PRODUCT_ID = process.env.STRIPE_SUPPORT_PRODUCT_ID || "prod_UhdhemJXnrujsU";
+
+async function sessionIsSupport(sessionId: string): Promise<boolean> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return false;
+  const res = await fetch(
+    `https://api.stripe.com/v1/checkout/sessions/${sessionId}/line_items?limit=10`,
+    { headers: { Authorization: `Bearer ${key}` } }
+  ).catch(() => null);
+  if (!res?.ok) return false;
+  const data = await res.json() as { data?: { price?: { product?: string } }[] };
+  return (data.data ?? []).some((li) => li.price?.product === SUPPORT_PRODUCT_ID);
+}
+
+async function sendTipNotification(session: {
+  id: string;
+  amount_total: number | null;
+  customer_details?: { name?: string | null; email?: string | null };
+}): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  const amount = session.amount_total != null ? `$${(session.amount_total / 100).toFixed(2)}` : "Unknown";
+  const name   = session.customer_details?.name  ?? "Anonymous";
+  const email  = session.customer_details?.email ?? "n/a";
+  const text = [`New support tip on PAID LLC.`, ``, `From:    ${name} (${email})`, `Amount:  ${amount}`, `Session: ${session.id}`].join("\n");
+  await fetch("https://api.resend.com/emails", {
+    method:  "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body:    JSON.stringify({
+      from:    "PAID LLC <notifications@paiddev.com>",
+      to:      ["travis@paiddev.com"],
+      subject: `New support tip: ${amount}`,
+      text,
+    }),
+  }).catch((err) => console.error("[webhook] tip notification failed:", err));
+}
+
 // ── Webhook idempotency ───────────────────────────────────────────────────────
 // Attempts to INSERT the event_id into processed_webhooks.
 // Returns true if the event is new (we should process it).
@@ -444,6 +486,30 @@ export async function POST(req: NextRequest) {
           }),
         ]);
       }
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Support tip (Back the Build) — record, notify, no delivery ──
+    // Guide/bazaar sales carry meta.product or source=ucp_purchase, so they skip
+    // the line-items lookup. Only unrecognized sessions get checked for support.
+    const hasKnownProduct = !!meta.product || meta.source === "ucp_purchase";
+    if (!hasKnownProduct &&
+        (meta.type === "support" || meta.purpose === "support" || await sessionIsSupport(session.id))) {
+      const amountCents = (session as { amount_total?: number }).amount_total ?? 0;
+      await Promise.all([
+        recordSale({
+          source:              "stripe",
+          event_type:          "tip",
+          external_id:         session.id,
+          gross_cents:         amountCents,
+          customer_email:      session.customer_details?.email ?? undefined,
+          product_name:        "Support (Back the Build)",
+          provisioning_status: "n/a",
+          provisioning_detail: "voluntary support payment",
+        }),
+        sendTipNotification(session as Parameters<typeof sendTipNotification>[0]),
+        subscribeToMailerLite(session),
+      ]);
       return NextResponse.json({ received: true });
     }
 
