@@ -387,9 +387,15 @@ export async function POST(req: Request) {
   try { body = JSON.parse(payload) as CdpEvent; }
   catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
 
-  // payment_link.payment.success is the paid event for Business payment links.
-  // (The status field on the payload reads "COMPLETED" on this event.)
-  if (body.eventType === "payment_link.payment.success") {
+  // Detect a finalized payment robustly. The Business webhook UI subscribes to a
+  // "completed" event whose payload carries status "COMPLETED"; the API docs also
+  // name a "payment_link.payment.success" eventType. Match either signal, and
+  // never match in-flight states (quoted/processing) so we deliver exactly once
+  // (idempotency by payment id is the second guard).
+  const evt    = (body.eventType ?? "").toLowerCase();
+  const status = (body.status ?? "").toUpperCase();
+  const isPaid = status === "COMPLETED" || /(^|[._])(completed|success)$/.test(evt);
+  if (isPaid) {
     const meta = body.metadata ?? {};
     const id   = body.id ?? "";
 
