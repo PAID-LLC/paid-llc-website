@@ -1,8 +1,9 @@
 export const runtime = "edge";
 
 // ── POST /api/coinbase-webhook ─────────────────────────────────────────────────
-// Handles Coinbase CDP Business checkout.payment.success events.
+// Handles Coinbase Business payment-link "payment_link.payment.success" events.
 // Signature verified via X-Hook0-Signature (Hook0 HMAC-SHA256 format).
+// Payload is flat: eventType, id, status, amount, metadata all at top level.
 //
 // Handles:
 //   product_type = "credit_pack"   → credits agent via credit_seller RPC
@@ -377,6 +378,8 @@ export async function POST(req: Request) {
   type CdpEvent = {
     id?:        string;
     eventType?: string;
+    status?:    string;
+    amount?:    string;
     metadata?:  Record<string, string>;
   };
 
@@ -384,7 +387,9 @@ export async function POST(req: Request) {
   try { body = JSON.parse(payload) as CdpEvent; }
   catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
 
-  if (body.eventType === "checkout.payment.success") {
+  // payment_link.payment.success is the paid event for Business payment links.
+  // (The status field on the payload reads "COMPLETED" on this event.)
+  if (body.eventType === "payment_link.payment.success") {
     const meta = body.metadata ?? {};
     const id   = body.id ?? "";
 

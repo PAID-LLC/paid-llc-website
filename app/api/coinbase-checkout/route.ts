@@ -1,23 +1,26 @@
 export const runtime = "edge";
 
 // ── POST /api/coinbase-checkout ────────────────────────────────────────────────
-// Creates a Coinbase Commerce charge (CDP-authenticated) with metadata attached.
-// Returns a url to redirect the user to Coinbase's payment page.
+// Creates a Coinbase Business payment link (CDP-JWT authenticated) with metadata
+// attached. Returns a url to redirect the user to Coinbase's hosted payment page.
 //
 // Body (credit pack):
 //   { product_type: "credit_pack", agent_name: string, pack_id: string }
 //
 // Body (digital guide):
 //   { product_type: "digital_guide", product_slug: string, email: string }
+//   email is REQUIRED — Coinbase payment links do not collect a buyer email, so
+//   it is carried through metadata and the webhook delivers to it.
 //
 // Response: { ok: true, hosted_url: string } | { ok: false, reason: string }
 //
-// Requires env var:
-//   COINBASE_COMMERCE_API_KEY — from Coinbase Commerce dashboard, Settings > Security
+// Requires env vars:
+//   COINBASE_CDP_KEY_ID + COINBASE_CDP_PRIVATE_KEY — a CDP API key whose entity
+//   owns the Coinbase Business account (view + receive scope).
 //
-// Both product types go through lib/coinbase.ts createCommerceCharge, which hits
-// the classic Commerce API (api.commerce.coinbase.com/charges, X-CC-Api-Key auth).
-// CDP JWT auth does NOT work for Commerce — confirmed 404 in production 2026-06-12.
+// Both product types go through lib/coinbase.ts createPaymentLink, which POSTs to
+// business.coinbase.com/api/v1/payment-links. Delivery happens on the
+// payment_link.payment.success webhook (see /api/coinbase-webhook).
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { CREDIT_PACKS, CreditPackId, PRODUCTS, productTitles } from "@/lib/products";
@@ -97,13 +100,20 @@ async function handlePost(req: Request): Promise<Response> {
     return Response.json({ ok: true, hosted_url: charge.hosted_url });
   }
 
-  // ── Digital guide (Coinbase Commerce) ───────────────────────────────────────
-  // Email is collected by Coinbase on their hosted checkout page, same as Stripe.
-  // buyer_email is available on the charge:confirmed webhook event.
+  // ── Digital guide (Coinbase Business payment link) ──────────────────────────
+  // Unlike Stripe, Coinbase payment links do NOT collect or return a buyer
+  // email, and the webhook payload has no email field. So we must collect the
+  // email up front and carry it through metadata; the webhook delivers to
+  // metadata.customer_email. product_slug + customer_email are the exact keys
+  // the coinbase-webhook digital_guide branch reads.
   if (productType === "digital_guide") {
-    const slug = String(body.product_slug ?? "").trim();
+    const slug  = String(body.product_slug ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase().slice(0, 120);
 
-    if (!slug) return Response.json({ ok: false, reason: "product_slug required" }, { status: 400 });
+    if (!slug)  return Response.json({ ok: false, reason: "product_slug required" }, { status: 400 });
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return Response.json({ ok: false, reason: "a valid email is required — Coinbase does not collect it, so we deliver to this address" }, { status: 400 });
+    }
 
     const title   = productTitles[slug];
     const product = PRODUCTS.find(p => p.id === slug);
@@ -115,7 +125,7 @@ async function handlePost(req: Request): Promise<Response> {
       amount_usd:   product.price.toFixed(2),
       redirect_url: `${SITE_URL}/digital-products?purchased=true`,
       cancel_url:   `${SITE_URL}/digital-products`,
-      metadata:     { product: slug },
+      metadata:     { product_type: "digital_guide", product_slug: slug, customer_email: email },
     });
 
     if (!charge) return Response.json({ ok: false, reason: chargeFailureReason() }, { status: 503 });
