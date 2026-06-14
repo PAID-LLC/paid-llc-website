@@ -53,7 +53,7 @@ export function directUsdcAccepts(usdAmount: number, resource: string, descripti
     maxTimeoutSeconds: 600,
     asset:             USDC_BASE_CONTRACT,
     extra: {
-      settle: "After paying, POST https://paiddev.com/api/x402/verify { tx_hash, agent_name, idempotency_key } — credits granted on on-chain confirmation at " +
+      settle: "After paying, POST https://paiddev.com/api/x402/verify { tx_hash, agent_name, idempotency_key }. Credits granted on on-chain confirmation at " +
               `${X402_CREDITS_PER_USD} credits per USD.`,
     },
   }];

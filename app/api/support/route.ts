@@ -39,7 +39,7 @@ export async function GET(): Promise<Response> {
         amount_note: "maxAmountRequired is the suggested amount in atomic USDC units. Any amount from $0.01 up is welcome.",
         settle: "POST https://paiddev.com/api/x402/verify { tx_hash, agent_name, purpose: \"support\", idempotency_key? }",
         thanks: "Verified supporters are granted 100 Latent Credits per USD and the Patron Sigil, a permanent on-chain-backed credential in the souvenir registry.",
-      } : "Direct USDC settlement is not yet configured — use the card link or check back.",
+      } : "Direct USDC settlement is not yet configured. Use the card link or check back.",
       card: stripeLink ?? "Card support link coming soon.",
     },
     registry: "Not registered yet? POST https://paiddev.com/api/registry first so credits and the Patron Sigil have somewhere to land.",
