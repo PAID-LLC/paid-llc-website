@@ -253,7 +253,9 @@ export async function createCommerceCharge(
 // Field names/auth are per the migration docs and pending a live-credential test.
 
 const BUSINESS_HOST        = "business.coinbase.com";
-const PAYMENT_LINKS_PATH   = "/api/v1/payment_links";
+// NOTE: hyphen, not underscore. Confirmed against the live CDP Business API
+// reference 2026-06-14 (the underscore form returns the SPA 404 "page not found").
+const PAYMENT_LINKS_PATH   = "/api/v1/payment-links";
 
 export interface PaymentLink {
   hosted_url: string;
@@ -283,12 +285,14 @@ export async function createPaymentLink(input: CommerceChargeInput): Promise<Pay
   }
 
   try {
+    // Body matches the CreatePaymentLinkRequest schema exactly: amount + currency
+    // required; description/redirects/metadata optional. There is no `name` or
+    // `network` field in the schema, so the product name is folded into the
+    // description and the network is implied (USDC on Base).
     const body = {
-      name:               input.name,
-      description:        input.description,
-      amount:             input.amount_usd,    // flat amount (not nested local_price)
+      amount:             input.amount_usd,
       currency:           "USD",
-      network:            "base",              // explicit network (no auto-select)
+      description:        `${input.name}: ${input.description}`.slice(0, 500),
       successRedirectUrl: input.redirect_url,
       failRedirectUrl:    input.cancel_url,
       metadata:           input.metadata,
