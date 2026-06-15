@@ -20,6 +20,7 @@ const OWN_LAYOUT = ["/v2", "/blog", "/digital-products", "/contact", "/free"];
 // rebuilds on 2026-06-12; deeper latent-space pages still need the skin.
 const V2_NATIVE  = [
   "/",
+  "/services",
   "/the-latent-space",
   "/the-latent-space/registry",
   "/the-latent-space/credits",
