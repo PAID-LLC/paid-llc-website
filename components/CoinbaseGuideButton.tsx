@@ -51,7 +51,7 @@ export default function CoinbaseGuideButton({ productSlug, block = false }: Prop
       <span className={block ? "flex w-full" : "inline-flex flex-col items-end gap-1"}>
         <button
           onClick={() => setOpen(true)}
-          className={`border border-stone/40 text-stone px-4 py-2 rounded text-sm font-semibold hover:border-primary hover:text-primary transition-colors ${block ? "w-full" : ""}`}
+          className={`border border-cyan-400/40 text-cyan-300 px-4 py-2 rounded text-sm font-semibold hover:border-cyan-400/70 hover:text-cyan-100 transition-colors ${block ? "w-full" : ""}`}
         >
           Pay with USDC
         </button>
@@ -75,12 +75,12 @@ export default function CoinbaseGuideButton({ productSlug, block = false }: Prop
           onKeyDown={(e) => { if (e.key === "Enter") startCheckout(); }}
           placeholder="your email"
           autoFocus
-          className={`border border-stone/40 bg-transparent text-stone px-2 py-2 rounded text-sm focus:border-primary outline-none ${block ? "flex-1 min-w-0" : "w-[150px]"}`}
+          className={`border border-stone/40 bg-transparent text-stone px-2 py-2 rounded text-sm focus:border-cyan-400 outline-none ${block ? "flex-1 min-w-0" : "w-[150px]"}`}
         />
         <button
           onClick={startCheckout}
           disabled={loading}
-          className="border border-primary bg-primary text-white px-3 py-2 rounded text-sm font-semibold hover:bg-secondary hover:border-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
+          className="border border-cyan-400 bg-cyan-400 text-[#0b0b12] px-3 py-2 rounded text-sm font-semibold hover:bg-cyan-300 hover:border-cyan-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
         >
           {loading ? "Opening..." : "Continue to Coinbase"}
         </button>

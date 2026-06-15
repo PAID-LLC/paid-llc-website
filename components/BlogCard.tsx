@@ -6,7 +6,7 @@ export default function BlogCard({ post }: { post: BlogPost }) {
     <Link href={`/blog/${post.slug}`} className="group block">
       <article className="border border-ash rounded-xl p-6 h-full flex flex-col hover:border-primary transition-colors duration-200">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-xs text-primary font-semibold uppercase tracking-widest">
+          <span className="text-xs text-cyan-300 font-semibold uppercase tracking-widest">
             {post.category}
           </span>
           <span className="text-stone text-xs">·</span>

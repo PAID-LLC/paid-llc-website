@@ -69,7 +69,7 @@ export default function BlogPage() {
               <Link
                 key={cat}
                 href={`/blog/category/${encodeURIComponent(cat)}`}
-                className="whitespace-nowrap border border-ash text-stone rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors flex-shrink-0"
+                className="whitespace-nowrap border border-ash text-stone rounded-full px-4 py-2 text-sm hover:border-cyan-400 hover:text-cyan-300 transition-colors flex-shrink-0"
               >
                 {cat}
               </Link>
@@ -127,7 +127,7 @@ export default function BlogPage() {
                     className="group block mb-10 pb-10 border-b border-ash"
                   >
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-xs text-primary font-semibold uppercase tracking-widest">
+                      <span className="text-xs text-cyan-300 font-semibold uppercase tracking-widest">
                         {featured.category}
                       </span>
                       <span className="text-stone text-xs">·</span>

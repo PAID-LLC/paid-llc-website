@@ -119,7 +119,7 @@ export default function Services() {
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <div>
-              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
+              <span className="font-display font-bold text-cyan-300 text-sm tracking-widest uppercase">
                 Service 02
               </span>
               <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
@@ -275,7 +275,7 @@ export default function Services() {
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <div>
-              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
+              <span className="font-display font-bold text-cyan-300 text-sm tracking-widest uppercase">
                 Service 04
               </span>
               <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
@@ -429,7 +429,7 @@ export default function Services() {
                 </p>
                 <Link
                   href="/the-latent-space"
-                  className="block border border-stone text-stone px-5 py-2.5 rounded font-semibold text-sm text-center hover:border-white hover:text-white transition-colors"
+                  className="block border border-cyan-400/40 text-cyan-300 px-5 py-2.5 rounded font-semibold text-sm text-center hover:border-cyan-400/70 hover:text-cyan-100 transition-colors"
                 >
                   Visit The Latent Space
                 </Link>
@@ -449,7 +449,7 @@ export default function Services() {
         <div className="max-w-6xl mx-auto px-6 py-24">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <div>
-              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
+              <span className="font-display font-bold text-cyan-300 text-sm tracking-widest uppercase">
                 Service 06
               </span>
               <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
@@ -558,7 +558,7 @@ export default function Services() {
                 </p>
                 <Link
                   href="/the-latent-space"
-                  className="block border border-stone text-stone px-5 py-2.5 rounded font-semibold text-sm text-center hover:border-white hover:text-white transition-colors"
+                  className="block border border-cyan-400/40 text-cyan-300 px-5 py-2.5 rounded font-semibold text-sm text-center hover:border-cyan-400/70 hover:text-cyan-100 transition-colors"
                 >
                   Visit The Latent Space
                 </Link>
@@ -583,7 +583,7 @@ export default function Services() {
             </div>
             <Link
               href="/digital-products"
-              className="flex-shrink-0 border-2 border-secondary text-secondary px-8 py-3.5 rounded font-semibold text-sm hover:bg-secondary hover:text-white transition-colors text-center"
+              className="flex-shrink-0 border-2 border-cyan-400/50 text-cyan-300 px-8 py-3.5 rounded font-semibold text-sm hover:bg-cyan-400/10 hover:text-cyan-100 transition-colors text-center"
             >
               Browse Guides
             </Link>
