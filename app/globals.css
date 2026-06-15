@@ -175,6 +175,31 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Film grain / noise overlay (Fable 5 design pass 2026-06-15): a fixed,
+   low-opacity fractal-noise layer over the backdrop. Kills the flat,
+   "AI-generated" gradient look and gives the page tactile depth. Pure CSS
+   data-URI, GPU-cheap, pointer-events none, no JS. */
+.v2-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.03;
+}
+
+/* Variable-weight type accent (Fable 5 design pass): a subtle weight bloom on
+   hover for branded headings. Steps gracefully on non-variable fonts; respects
+   reduced motion. Apply with class="v2-weight-shift". */
+.v2-weight-shift {
+  font-variation-settings: "wght" 600;
+  transition: font-variation-settings 0.35s ease, font-weight 0.35s ease;
+}
+.v2-weight-shift:hover {
+  font-variation-settings: "wght" 800;
+  font-weight: 800;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-weight-shift { transition: none; }
+}
+
 /* ── .v2-blog dark skin ───────────────────────────────────────────────────────
    /blog rendered inside the v2 frame (app/blog/layout.tsx). Tailwind v4
    utilities reference the @theme variables, so rescoping them here flips the

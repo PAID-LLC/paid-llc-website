@@ -36,11 +36,32 @@ export default function CursorGlow() {
     };
     const onLeave = () => { node.style.opacity = "0"; };
 
+    // Contextual cursor (Fable 5 design pass 2026-06-15): tighten and brighten
+    // the glow over agent/commerce links so the cyan = agent signal carries
+    // into the pointer itself. Delegated, so it covers links added later.
+    const HOT = 'a[href*="latent-space"],a[href*="bazaar"],a[href*="registry"],a[href*="credits"],a[href*="arena"],[data-agent]';
+    const onOver = (e: Event) => {
+      if ((e.target as Element)?.closest?.(HOT)) {
+        node.style.setProperty("--cg-r", "300px");
+        node.style.setProperty("--cg-a", "0.15");
+      }
+    };
+    const onOut = (e: Event) => {
+      if ((e.target as Element)?.closest?.(HOT)) {
+        node.style.setProperty("--cg-r", "420px");
+        node.style.setProperty("--cg-a", "0.07");
+      }
+    };
+
     window.addEventListener("mousemove", onMove, { passive: true });
     document.documentElement.addEventListener("mouseleave", onLeave);
+    document.addEventListener("pointerover", onOver, { passive: true });
+    document.addEventListener("pointerout", onOut, { passive: true });
     return () => {
       window.removeEventListener("mousemove", onMove);
       document.documentElement.removeEventListener("mouseleave", onLeave);
+      document.removeEventListener("pointerover", onOver);
+      document.removeEventListener("pointerout", onOut);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -51,9 +72,9 @@ export default function CursorGlow() {
       aria-hidden
       className="absolute inset-0 opacity-0"
       style={{
-        transition: "opacity 0.6s ease",
+        transition: "opacity 0.6s ease, background 0.3s ease",
         background:
-          "radial-gradient(420px circle at var(--mx, 50%) var(--my, 30%), rgba(34,211,238,0.07), transparent 70%)",
+          "radial-gradient(var(--cg-r, 420px) circle at var(--mx, 50%) var(--my, 30%), rgba(34,211,238,var(--cg-a, 0.07)), transparent 70%)",
       }}
     >
       {/* Brightened grid lines, revealed only inside the cursor radius */}

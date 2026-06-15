@@ -29,6 +29,8 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(34,211,238,0.08),transparent)]" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:48px_48px]" />
+        {/* Film grain: tactile depth over the gradient (Fable 5 design pass) */}
+        <div className="v2-grain absolute inset-0" />
         <CursorGlow />
       </div>
 
@@ -41,7 +43,7 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
               <span className="flex h-7 w-7 items-center justify-center rounded-md border border-[#C14826]/60 bg-[#C14826]/15 font-mono text-xs font-bold text-[#E8714C]">
                 P
               </span>
-              <span className="font-mono text-sm font-semibold tracking-tight text-zinc-100">
+              <span className="v2-weight-shift font-mono text-sm font-semibold tracking-tight text-zinc-100">
                 paiddev
               </span>
             </Link>

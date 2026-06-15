@@ -28,9 +28,11 @@ export const v2 = {
   bodySm: "text-sm leading-relaxed text-zinc-400",
   mono: "font-mono text-xs text-zinc-500",
 
-  // Surfaces
-  card: "rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:border-cyan-400/20",
-  cardStatic: "rounded-xl border border-white/[0.06] bg-white/[0.02] p-6",
+  // Surfaces — glassmorphic (Fable 5 design pass 2026-06-15): backdrop-blur +
+  // a brighter hairline border so cards read as layered glass over the grain
+  // backdrop, not flat panels. Propagates everywhere the recipes are used.
+  card: "rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-6 transition-colors hover:border-cyan-400/25",
+  cardStatic: "rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-6",
   terminal:
     "rounded-xl border border-white/[0.08] bg-[#0b0b12] font-mono text-sm shadow-[0_0_40px_rgba(34,211,238,0.04)]",
 
