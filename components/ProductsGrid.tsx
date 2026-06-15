@@ -121,11 +121,11 @@ export default function ProductsGrid({ products }: Props) {
                 <p className="text-stone text-sm leading-relaxed mb-6 flex-1">
                   {product.description}
                 </p>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-display font-bold text-secondary text-lg">
-                    {product.price}
-                  </span>
-                  <div className="flex items-center gap-2">
+                <div className="mt-auto">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="font-display font-bold text-secondary text-lg">
+                      {product.price}
+                    </span>
                     {product.stripeUrl ? (
                       <a
                         href={product.stripeUrl}
@@ -141,8 +141,8 @@ export default function ProductsGrid({ products }: Props) {
                         Card Soon
                       </span>
                     )}
-                    <CoinbaseGuideButton productSlug={product.slug} />
                   </div>
+                  <CoinbaseGuideButton productSlug={product.slug} block />
                 </div>
               </div>
             </div>
