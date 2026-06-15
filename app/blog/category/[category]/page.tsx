@@ -5,6 +5,7 @@ import BlogCard from "@/components/BlogCard";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { v2 } from "@/components/v2/tokens";
 
 export async function generateMetadata({
   params,
@@ -33,33 +34,31 @@ export default async function CategoryPage({
 
   return (
     <main>
-      <section className="bg-ash py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center gap-2 mb-6 text-xs uppercase tracking-widest">
-            <Link
-              href="/blog"
-              className="text-stone hover:text-primary transition-colors"
-            >
-              Blog
-            </Link>
-            <span className="text-stone">/</span>
-            <span className="text-primary font-semibold">{decoded}</span>
-          </div>
-          <h1 className="font-display font-bold text-5xl text-secondary leading-tight mb-4">
-            {decoded}
-          </h1>
-          <p className="text-stone text-xl">
-            {posts.length} {posts.length === 1 ? "post" : "posts"}
-          </p>
+      {/* Header */}
+      <section className={`${v2.section} pt-20 pb-10`}>
+        <div className="mb-5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
+          <Link
+            href="/blog"
+            className="text-zinc-500 transition-colors hover:text-cyan-300"
+          >
+            Blog
+          </Link>
+          <span className="text-zinc-600">/</span>
+          <span className="text-cyan-300">{decoded}</span>
         </div>
+        <h1 className={v2.h1}>{decoded}</h1>
+        <p className={`${v2.body} mt-4`}>
+          {posts.length} {posts.length === 1 ? "post" : "posts"}
+        </p>
       </section>
 
-      <section className="border-b border-ash bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center gap-2 overflow-x-auto py-4 scrollbar-none">
+      {/* Category filter */}
+      <section className="border-y border-white/[0.06]">
+        <div className={v2.section}>
+          <div className="flex items-center gap-1.5 overflow-x-auto py-4">
             <Link
               href="/blog"
-              className="whitespace-nowrap border border-ash text-stone rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors flex-shrink-0"
+              className="flex-shrink-0 whitespace-nowrap rounded-md border border-white/10 px-3.5 py-1.5 font-mono text-xs text-zinc-400 transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
             >
               All
             </Link>
@@ -67,10 +66,10 @@ export default async function CategoryPage({
               <Link
                 key={cat}
                 href={`/blog/category/${encodeURIComponent(cat)}`}
-                className={`whitespace-nowrap border rounded-full px-4 py-2 text-sm transition-colors flex-shrink-0 ${
+                className={`flex-shrink-0 whitespace-nowrap rounded-md px-3.5 py-1.5 font-mono text-xs transition-colors ${
                   cat === decoded
-                    ? "border-primary text-primary font-semibold"
-                    : "border-ash text-stone hover:border-primary hover:text-primary"
+                    ? "border border-cyan-400/50 bg-cyan-400/10 text-cyan-200"
+                    : "border border-white/10 text-zinc-400 hover:border-cyan-400/40 hover:text-cyan-300"
                 }`}
               >
                 {cat}
@@ -80,20 +79,19 @@ export default async function CategoryPage({
         </div>
       </section>
 
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          {posts.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {posts.map((post) => (
-                <BlogCard key={post.slug} post={post} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-stone text-lg text-center py-20">
-              No posts in this category yet.
-            </p>
-          )}
-        </div>
+      {/* Posts */}
+      <section className={`${v2.section} py-14`}>
+        {posts.length > 0 ? (
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <BlogCard key={post.slug} post={post} />
+            ))}
+          </div>
+        ) : (
+          <p className={`${v2.body} py-20 text-center text-lg`}>
+            No posts in this category yet.
+          </p>
+        )}
       </section>
     </main>
   );

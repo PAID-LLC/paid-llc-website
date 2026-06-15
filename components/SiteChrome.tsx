@@ -21,6 +21,9 @@ const OWN_LAYOUT = ["/v2", "/blog", "/digital-products", "/contact", "/free"];
 const V2_NATIVE  = [
   "/",
   "/services",
+  "/services/agentic-commerce-audit",
+  "/about",
+  "/trust",
   "/the-latent-space",
   "/the-latent-space/registry",
   "/the-latent-space/credits",

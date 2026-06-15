@@ -3,6 +3,7 @@ export const runtime = "edge";
 import { getAllPosts } from "@/lib/blog";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { v2 } from "@/components/v2/tokens";
 
 export const metadata: Metadata = {
   title: "Archive | The Inference — PAID LLC",
@@ -25,32 +26,26 @@ export default function ArchivePage() {
   return (
     <main>
       {/* Header */}
-      <section className="bg-ash py-14">
-        <div className="max-w-3xl mx-auto px-6">
-          <Link
-            href="/blog"
-            className="text-stone text-sm hover:text-primary transition-colors mb-6 inline-block"
-          >
-            ← Back to blog
-          </Link>
-          <p className="text-primary text-xs font-semibold uppercase tracking-widest mb-3">
-            The Inference
-          </p>
-          <h1 className="font-display font-bold text-4xl text-secondary leading-tight mb-3">
-            Archive
-          </h1>
-          <p className="text-stone">
-            {posts.length} {posts.length === 1 ? "post" : "posts"} total
-          </p>
-        </div>
+      <section className={`${v2.section} pt-20 pb-10`}>
+        <Link
+          href="/blog"
+          className="mb-6 inline-block font-mono text-xs text-zinc-500 transition-colors hover:text-cyan-300"
+        >
+          &larr; Back to blog
+        </Link>
+        <p className={v2.kicker}>The Inference</p>
+        <h1 className={`${v2.h1} mt-5`}>Archive</h1>
+        <p className={`${v2.body} mt-4`}>
+          {posts.length} {posts.length === 1 ? "post" : "posts"} total
+        </p>
       </section>
 
       {/* Post list */}
-      <section className="py-14 bg-white">
-        <div className="max-w-3xl mx-auto px-6">
+      <section className="border-t border-white/[0.06]">
+        <div className={`${v2.section} max-w-3xl py-14`}>
           {years.map((year) => (
             <div key={year} className="mb-12">
-              <p className="font-display font-bold text-2xl text-secondary mb-6">
+              <p className="mb-6 font-mono text-2xl font-bold text-zinc-100">
                 {year}
               </p>
               <div className="space-y-0">
@@ -58,11 +53,11 @@ export default function ArchivePage() {
                   <Link
                     key={post.slug}
                     href={`/blog/${post.slug}`}
-                    className="group flex items-start gap-6 py-5 border-b border-ash last:border-0 hover:bg-ash/30 -mx-4 px-4 rounded-lg transition-colors duration-150"
+                    className="group -mx-4 flex items-start gap-6 rounded-lg border-b border-white/[0.06] px-4 py-5 transition-colors duration-150 last:border-0 hover:bg-white/[0.02]"
                   >
-                    <div className="flex-shrink-0 w-20 pt-0.5">
+                    <div className="w-20 flex-shrink-0 pt-0.5">
                       <time
-                        className="text-stone text-xs"
+                        className="font-mono text-xs text-zinc-500"
                         dateTime={post.date}
                       >
                         {new Date(post.date).toLocaleDateString("en-US", {
@@ -71,25 +66,25 @@ export default function ArchivePage() {
                         })}
                       </time>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-primary font-semibold uppercase tracking-widest">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-cyan-300">
                           {post.category}
                         </span>
-                        <span className="text-stone text-xs">·</span>
-                        <span className="text-stone text-xs">
+                        <span className="text-xs text-zinc-600">·</span>
+                        <span className="font-mono text-xs text-zinc-500">
                           {post.readTime} min read
                         </span>
                       </div>
-                      <h2 className="font-display font-bold text-lg text-secondary leading-snug group-hover:text-primary transition-colors duration-150 mb-1">
+                      <h2 className="mb-1 font-mono text-lg font-semibold leading-snug text-zinc-100 transition-colors duration-150 group-hover:text-cyan-100">
                         {post.title}
                       </h2>
-                      <p className="text-stone text-sm leading-relaxed line-clamp-2">
+                      <p className={`${v2.bodySm} line-clamp-2`}>
                         {post.excerpt}
                       </p>
                     </div>
-                    <span className="flex-shrink-0 text-primary text-sm font-semibold group-hover:translate-x-1 transition-transform duration-200 pt-0.5">
-                      →
+                    <span className="flex-shrink-0 pt-0.5 font-mono text-sm text-[#E8714C] transition-transform duration-200 group-hover:translate-x-1">
+                      &rarr;
                     </span>
                   </Link>
                 ))}

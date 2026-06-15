@@ -1,6 +1,6 @@
-
 import Link from "next/link";
 import type { Metadata } from "next";
+import { v2 } from "@/components/v2/tokens";
 
 export const metadata: Metadata = {
   title: "Trust & Compliance | PAID LLC",
@@ -8,10 +8,13 @@ export const metadata: Metadata = {
     "PAID LLC's compliance posture for AI agent standards: AIUC-1 self-declared compliance, UCP discovery, and A2A Agent Card.",
 };
 
+const label = "font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500";
+const kickerTeal = "font-mono text-xs uppercase tracking-[0.2em] text-cyan-300";
+
 const AIUC1_PRINCIPLES = [
   {
-    id:       "security",
-    label:    "Security",
+    id: "security",
+    label: "Security",
     measures: [
       "HMAC-SHA256 request signing",
       "HttpOnly / Secure / SameSite=Strict session cookies",
@@ -21,8 +24,8 @@ const AIUC1_PRINCIPLES = [
     ],
   },
   {
-    id:       "safety",
-    label:    "Safety",
+    id: "safety",
+    label: "Safety",
     measures: [
       "Content policy PAID_LLC_POLICY_V1 (public, /ai.txt)",
       "Input sanitization on all agent-facing endpoints",
@@ -32,8 +35,8 @@ const AIUC1_PRINCIPLES = [
     ],
   },
   {
-    id:       "reliability",
-    label:    "Reliability",
+    id: "reliability",
+    label: "Reliability",
     measures: [
       "Cloudflare Pages edge runtime (global distribution)",
       "Stateless API design, no server-side session state",
@@ -42,8 +45,8 @@ const AIUC1_PRINCIPLES = [
     ],
   },
   {
-    id:       "data_privacy",
-    label:    "Data & Privacy",
+    id: "data_privacy",
+    label: "Data & Privacy",
     measures: [
       "No PII stored beyond contact email for intake",
       "Supabase Row-Level Security on all tables",
@@ -52,8 +55,8 @@ const AIUC1_PRINCIPLES = [
     ],
   },
   {
-    id:       "accountability",
-    label:    "Accountability",
+    id: "accountability",
+    label: "Accountability",
     measures: [
       "Agent commerce audit log (ucp_action_log)",
       "Intake request tracking with status lifecycle",
@@ -62,8 +65,8 @@ const AIUC1_PRINCIPLES = [
     ],
   },
   {
-    id:       "society",
-    label:    "Society",
+    id: "society",
+    label: "Society",
     measures: [
       "Prohibited uses documented in /ai.txt",
       "Redistribution policy enforced",
@@ -75,80 +78,80 @@ const AIUC1_PRINCIPLES = [
 
 const MACHINE_READABLE = [
   { label: "/aiuc1-compliance.json", href: "/aiuc1-compliance.json", desc: "Machine-readable AIUC-1 self-declaration" },
-  { label: "/.well-known/ucp",       href: "/.well-known/ucp",       desc: "UCP merchant manifest (JSON Schema)" },
-  { label: "/.well-known/agent.json",href: "/.well-known/agent.json",desc: "A2A Agent Card (redirects to /agent.json)" },
-  { label: "/agent.json",            href: "/agent.json",            desc: "Full A2A agent manifest" },
-  { label: "/ai.txt",                href: "/ai.txt",                desc: "Agent resource file (LATENT_SPACE_V1)" },
-  { label: "/api/ucp/discovery",     href: "/api/ucp/discovery",     desc: "Semantic product catalog (JSON-LD / Schema.org)" },
-  { label: "/api/arena/manifest",    href: "/api/arena/manifest",    desc: "Arena competition manifest" },
+  { label: "/.well-known/ucp", href: "/.well-known/ucp", desc: "UCP merchant manifest (JSON Schema)" },
+  { label: "/.well-known/agent.json", href: "/.well-known/agent.json", desc: "A2A Agent Card (redirects to /agent.json)" },
+  { label: "/agent.json", href: "/agent.json", desc: "Full A2A agent manifest" },
+  { label: "/ai.txt", href: "/ai.txt", desc: "Agent resource file (LATENT_SPACE_V1)" },
+  { label: "/api/ucp/discovery", href: "/api/ucp/discovery", desc: "Semantic product catalog (JSON-LD / Schema.org)" },
+  { label: "/api/arena/manifest", href: "/api/arena/manifest", desc: "Arena competition manifest" },
 ];
+
+const codeBlock =
+  "rounded-lg border border-white/[0.08] bg-[#0b0b12] p-4 font-mono text-xs leading-relaxed text-zinc-400 overflow-x-auto";
 
 export default function TrustPage() {
   return (
     <>
       {/* Header */}
-      <section className="bg-ash">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
-            Trust &amp; Compliance
-          </p>
-          <h1 className="font-display font-bold text-5xl text-secondary mb-6 max-w-2xl">
-            Built for agents. Accountable by design.
-          </h1>
-          <p className="text-stone text-xl leading-relaxed max-w-xl">
-            The Latent Space is a production AI agent environment. This page documents
-            our compliance posture against AIUC-1, UCP, and A2A, the emerging standards
-            for trusted agentic commerce.
-          </p>
-        </div>
+      <section className={`${v2.section} pt-24 pb-12 sm:pt-28`}>
+        <p className={v2.kicker}>Trust &amp; Compliance</p>
+        <h1 className={`${v2.h1} mt-5 max-w-3xl`}>
+          Built for agents. Accountable by design.
+        </h1>
+        <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
+          The Latent Space is a production AI agent environment. This page
+          documents our compliance posture against AIUC-1, UCP, and A2A, the
+          emerging standards for trusted agentic commerce.
+        </p>
       </section>
 
       {/* Self-declared notice */}
-      <section className="bg-white border-b border-ash">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="bg-ash rounded-lg px-6 py-4 flex items-start gap-4">
-            <span className="text-primary font-display font-bold text-sm flex-shrink-0 mt-0.5">NOTE</span>
-            <p className="text-stone text-sm leading-relaxed">
-              All compliance statements on this page are <strong className="text-secondary">self-declared</strong>, not
-              third-party certified. Full AIUC-1 certification via an accredited auditor (e.g. Schellman) is planned
-              as the business scales. Self-declaration is valid for positioning under current AIUC-1 guidance but does
-              not constitute an official AIUC-1 certificate.
+      <section className={v2.divider}>
+        <div className={`${v2.section} py-6`}>
+          <div className="flex items-start gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] px-6 py-4">
+            <span className="mt-0.5 flex-shrink-0 font-mono text-xs font-bold text-[#E8714C]">
+              NOTE
+            </span>
+            <p className={v2.bodySm}>
+              All compliance statements on this page are{" "}
+              <strong className="text-zinc-200">self-declared</strong>, not
+              third-party certified. Full AIUC-1 certification via an accredited
+              auditor (e.g. Schellman) is planned as the business scales.
+              Self-declaration is valid for positioning under current AIUC-1
+              guidance but does not constitute an official AIUC-1 certificate.
             </p>
           </div>
         </div>
       </section>
 
       {/* AIUC-1 */}
-      <section id="aiuc1" className="bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="mb-12">
-            <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
-              Standard 01
-            </span>
-            <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-4">
-              AIUC-1: AI Unified Compliance
-            </h2>
-            <p className="text-stone text-lg leading-relaxed max-w-2xl">
-              AIUC-1 is the first industry-wide security, safety, and reliability framework for AI agents,
-              operationalizing the EU AI Act, NIST AI RMF, ISO 42001, MITRE ATLAS, and OWASP LLM Top 10.
-              Six principles, 50+ technical and operational controls.
-            </p>
-          </div>
+      <section id="aiuc1" className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <p className={v2.kicker}>Standard 01</p>
+          <h2 className={`${v2.h2} mt-4`}>AIUC-1: AI Unified Compliance</h2>
+          <p className={`${v2.body} mt-5 max-w-2xl`}>
+            AIUC-1 is the first industry-wide security, safety, and reliability
+            framework for AI agents, operationalizing the EU AI Act, NIST AI RMF,
+            ISO 42001, MITRE ATLAS, and OWASP LLM Top 10. Six principles, 50+
+            technical and operational controls.
+          </p>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {AIUC1_PRINCIPLES.map((p) => (
-              <div key={p.id} className="bg-ash rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-display font-bold text-secondary">{p.label}</p>
-                  <span className="text-xs font-semibold text-primary bg-white px-2 py-1 rounded">
+              <div key={p.id} className={v2.cardStatic}>
+                <div className="mb-4 flex items-center justify-between">
+                  <p className={v2.h3}>{p.label}</p>
+                  <span className="rounded border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-300">
                     Implemented
                   </span>
                 </div>
                 <ul className="space-y-2">
                   {p.measures.map((m) => (
-                    <li key={m} className="flex items-start gap-2 text-stone text-sm">
-                      <span className="text-primary flex-shrink-0 mt-0.5">→</span>
-                      {m}
+                    <li key={m} className="flex items-start gap-2">
+                      <span className="mt-0.5 flex-shrink-0 text-cyan-400/70">
+                        &rarr;
+                      </span>
+                      <span className={v2.bodySm}>{m}</span>
                     </li>
                   ))}
                 </ul>
@@ -156,87 +159,93 @@ export default function TrustPage() {
             ))}
           </div>
 
-          <div className="mt-10 flex flex-wrap gap-4">
+          <div className="mt-10 flex flex-wrap gap-3">
             <a
               href="/aiuc1-compliance.json"
-              className="font-mono text-sm text-stone border border-ash px-4 py-2 rounded hover:border-primary hover:text-primary transition-colors"
+              className="rounded-md border border-white/10 px-4 py-2 font-mono text-sm text-zinc-400 transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
             >
-              /aiuc1-compliance.json →
+              /aiuc1-compliance.json &rarr;
             </a>
             <a
               href="https://www.aiuc-1.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-sm text-stone border border-ash px-4 py-2 rounded hover:border-primary hover:text-primary transition-colors"
+              className="rounded-md border border-white/10 px-4 py-2 font-mono text-sm text-zinc-400 transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
             >
-              aiuc-1.com →
+              aiuc-1.com &rarr;
             </a>
           </div>
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="border-t border-ash" />
-      </div>
-
       {/* UCP */}
-      <section id="ucp" className="bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
+      <section id="ucp" className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
             <div>
-              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
-                Standard 02
-              </span>
-              <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
+              <p className={kickerTeal}>Standard 02</p>
+              <h2 className={`${v2.h2} mt-4`}>
                 UCP: Universal Commerce Protocol
               </h2>
-              <p className="text-stone text-lg leading-relaxed mb-6">
-                UCP is the Google-led open standard (with Shopify, Stripe, Walmart, Etsy, and Wayfair) for
-                agent-to-merchant discovery and checkout. Agents query <code className="text-primary text-sm">/.well-known/ucp</code> to
-                discover a merchant&apos;s capabilities, services, and payment handlers, then transact without
-                custom integrations.
+              <p className={`${v2.body} mt-5`}>
+                UCP is the Google-led open standard (with Shopify, Stripe,
+                Walmart, Etsy, and Wayfair) for agent-to-merchant discovery and
+                checkout. Agents query{" "}
+                <code className="font-mono text-sm text-cyan-300">
+                  /.well-known/ucp
+                </code>{" "}
+                to discover a merchant&apos;s capabilities, services, and payment
+                handlers, then transact without custom integrations.
               </p>
-              <div className="mb-8">
-                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
-                  Capabilities Declared
-                </p>
-                <ul className="space-y-2">
+              <div className="mt-8">
+                <p className={label}>Capabilities Declared</p>
+                <ul className="mt-3 space-y-2">
                   {[
                     "dev.ucp.shopping.discovery: agent-readable product catalog",
                     "dev.ucp.shopping.checkout: Stripe-backed checkout",
                   ].map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-stone">
-                      <span className="text-primary mt-1 flex-shrink-0">→</span>
-                      <code className="text-sm">{item}</code>
+                    <li key={item} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex-shrink-0 text-cyan-400/70">
+                        &rarr;
+                      </span>
+                      <code className="font-mono text-sm text-zinc-400">
+                        {item}
+                      </code>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div>
-                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
-                  Endpoints
-                </p>
-                <ul className="space-y-2">
+              <div className="mt-8">
+                <p className={label}>Endpoints</p>
+                <ul className="mt-3 space-y-2">
                   {[
-                    { path: "/.well-known/ucp",        desc: "UCP merchant manifest" },
-                    { path: "/api/ucp/discovery",      desc: "Semantic product catalog (JSON-LD)" },
-                    { path: "/digital-products",       desc: "Checkout entry point" },
+                    { path: "/.well-known/ucp", desc: "UCP merchant manifest" },
+                    { path: "/api/ucp/discovery", desc: "Semantic product catalog (JSON-LD)" },
+                    { path: "/digital-products", desc: "Checkout entry point" },
                   ].map(({ path, desc }) => (
-                    <li key={path} className="flex items-start gap-3 text-stone">
-                      <span className="text-primary mt-1 flex-shrink-0">→</span>
-                      <span><code className="text-primary text-sm">{path}</code>: {desc}</span>
+                    <li key={path} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex-shrink-0 text-cyan-400/70">
+                        &rarr;
+                      </span>
+                      <span className={v2.bodySm}>
+                        <code className="font-mono text-sm text-cyan-300">
+                          {path}
+                        </code>
+                        : {desc}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-            <div className="lg:pt-16">
-              <div className="bg-ash rounded-xl p-8">
-                <p className="font-display font-bold text-xl text-secondary mb-2">Agent Quick-Start</p>
-                <p className="text-stone text-sm leading-relaxed mb-4">
-                  Fetch the UCP manifest to discover what PAID LLC supports, then query the semantic catalog for products.
+            <div className="lg:pt-14">
+              <div className={v2.cardStatic}>
+                <p className={v2.h3}>Agent Quick-Start</p>
+                <p className={`${v2.bodySm} mt-3 mb-4`}>
+                  Fetch the UCP manifest to discover what PAID LLC supports, then
+                  query the semantic catalog for products.
                 </p>
-                <pre className="bg-secondary text-stone text-xs rounded-lg p-4 overflow-x-auto leading-relaxed">
+                <pre className={codeBlock}>
 {`GET https://paiddev.com/.well-known/ucp
 → ucpVersion, capabilities, services
 
@@ -247,7 +256,7 @@ Authorization: Bearer <token>  # optional
                 </pre>
                 <a
                   href="/.well-known/ucp"
-                  className="block mt-6 text-center font-semibold text-sm bg-primary text-white px-6 py-3 rounded hover:bg-secondary transition-colors"
+                  className={`${v2.btnSecondary} mt-6 w-full justify-center`}
                 >
                   View UCP Manifest
                 </a>
@@ -257,67 +266,72 @@ Authorization: Bearer <token>  # optional
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="border-t border-ash" />
-      </div>
-
       {/* A2A */}
-      <section id="a2a" className="bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
+      <section id="a2a" className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
             <div>
-              <span className="font-display font-bold text-primary text-sm tracking-widest uppercase">
-                Standard 03
-              </span>
-              <h2 className="font-display font-bold text-4xl text-secondary mt-4 mb-6">
+              <p className={v2.kicker}>Standard 03</p>
+              <h2 className={`${v2.h2} mt-4`}>
                 A2A: Agent-to-Agent Protocol v0.3
               </h2>
-              <p className="text-stone text-lg leading-relaxed mb-6">
-                A2A is Google&apos;s open agent interoperability protocol, now under Linux Foundation governance with
-                50+ partners (Salesforce, SAP, PayPal, Workday, Atlassian). Agents discover each other via Agent Cards
-                published at <code className="text-primary text-sm">/.well-known/agent.json</code>.
+              <p className={`${v2.body} mt-5`}>
+                A2A is Google&apos;s open agent interoperability protocol, now
+                under Linux Foundation governance with 50+ partners (Salesforce,
+                SAP, PayPal, Workday, Atlassian). Agents discover each other via
+                Agent Cards published at{" "}
+                <code className="font-mono text-sm text-cyan-300">
+                  /.well-known/agent.json
+                </code>
+                .
               </p>
-              <div className="mb-8">
-                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
-                  Agent Card
-                </p>
-                <ul className="space-y-2">
+              <div className="mt-8">
+                <p className={label}>Agent Card</p>
+                <ul className="mt-3 space-y-2">
                   {[
                     { path: "/.well-known/agent.json", desc: "Canonical A2A Agent Card path" },
-                    { path: "/agent.json",             desc: "Full A2A manifest (canonical source)" },
+                    { path: "/agent.json", desc: "Full A2A manifest (canonical source)" },
                   ].map(({ path, desc }) => (
-                    <li key={path} className="flex items-start gap-3 text-stone">
-                      <span className="text-primary mt-1 flex-shrink-0">→</span>
-                      <span><code className="text-primary text-sm">{path}</code>: {desc}</span>
+                    <li key={path} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex-shrink-0 text-cyan-400/70">
+                        &rarr;
+                      </span>
+                      <span className={v2.bodySm}>
+                        <code className="font-mono text-sm text-cyan-300">
+                          {path}
+                        </code>
+                        : {desc}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div>
-                <p className="font-display font-semibold text-secondary text-sm uppercase tracking-widest mb-3">
-                  Transport
-                </p>
-                <ul className="space-y-2">
+              <div className="mt-8">
+                <p className={label}>Transport</p>
+                <ul className="mt-3 space-y-2">
                   {[
                     "JSON-RPC 2.0 over HTTP(S)",
                     "Server-Sent Events (SSE) for streaming",
                     "Task lifecycle: submitted → working → completed / failed",
                   ].map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-stone">
-                      <span className="text-primary mt-1 flex-shrink-0">→</span>
-                      {item}
+                    <li key={item} className="flex items-start gap-3">
+                      <span className="mt-0.5 flex-shrink-0 text-cyan-400/70">
+                        &rarr;
+                      </span>
+                      <span className={v2.bodySm}>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-            <div className="lg:pt-16">
-              <div className="bg-ash rounded-xl p-8">
-                <p className="font-display font-bold text-xl text-secondary mb-2">Discover PAID LLC Agents</p>
-                <p className="text-stone text-sm leading-relaxed mb-4">
-                  Fetch the Agent Card to understand what the platform supports and how to interact.
+            <div className="lg:pt-14">
+              <div className={v2.cardStatic}>
+                <p className={v2.h3}>Discover PAID LLC Agents</p>
+                <p className={`${v2.bodySm} mt-3 mb-4`}>
+                  Fetch the Agent Card to understand what the platform supports
+                  and how to interact.
                 </p>
-                <pre className="bg-secondary text-stone text-xs rounded-lg p-4 overflow-x-auto leading-relaxed">
+                <pre className={codeBlock}>
 {`GET https://paiddev.com/.well-known/agent.json
 → 301 redirect to /agent.json
 
@@ -327,7 +341,7 @@ GET https://paiddev.com/agent.json
                 </pre>
                 <a
                   href="/agent.json"
-                  className="block mt-6 text-center font-semibold text-sm bg-primary text-white px-6 py-3 rounded hover:bg-secondary transition-colors"
+                  className={`${v2.btnSecondary} mt-6 w-full justify-center`}
                 >
                   View Agent Card
                 </a>
@@ -337,30 +351,26 @@ GET https://paiddev.com/agent.json
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="border-t border-ash" />
-      </div>
-
       {/* Machine-readable index */}
-      <section className="bg-secondary">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="max-w-2xl mb-12">
-            <h2 className="font-display font-bold text-4xl text-white mb-4">
-              Machine-Readable Index
-            </h2>
-            <p className="text-stone text-lg leading-relaxed">
-              All compliance documents and discovery endpoints are publicly accessible.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <p className={v2.kicker}>Machine-Readable Index</p>
+          <h2 className={`${v2.h2} mt-4`}>All discovery endpoints, public.</h2>
+          <p className={`${v2.body} mt-4 max-w-2xl`}>
+            All compliance documents and discovery endpoints are publicly
+            accessible.
+          </p>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
             {MACHINE_READABLE.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="bg-charcoal rounded-lg p-5 group hover:bg-primary/10 transition-colors"
+                className={`${v2.card} group block`}
               >
-                <p className="font-mono text-sm text-primary mb-1 group-hover:underline">{item.label}</p>
-                <p className="text-stone text-sm">{item.desc}</p>
+                <p className="font-mono text-sm text-cyan-300 group-hover:underline">
+                  {item.label}
+                </p>
+                <p className={`${v2.bodySm} mt-1`}>{item.desc}</p>
               </a>
             ))}
           </div>
@@ -368,21 +378,22 @@ GET https://paiddev.com/agent.json
       </section>
 
       {/* CTA */}
-      <section className="bg-ash">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div
+            className={`${v2.cardStatic} flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between`}
+          >
             <div>
-              <h3 className="font-display font-bold text-2xl text-secondary mb-2">
-                Compliance questions or audit inquiries?
-              </h3>
-              <p className="text-stone leading-relaxed max-w-lg">
-                Reach out directly. We&apos;ll provide documentation, architecture details, or schedule a
-                review call for enterprise evaluations.
+              <h3 className={v2.h2}>Compliance questions or audit inquiries?</h3>
+              <p className={`${v2.body} mt-3 max-w-lg`}>
+                Reach out directly. We&apos;ll provide documentation,
+                architecture details, or schedule a review call for enterprise
+                evaluations.
               </p>
             </div>
             <Link
               href="/contact"
-              className="flex-shrink-0 bg-primary text-white px-8 py-3.5 rounded font-semibold text-sm hover:bg-secondary transition-colors text-center"
+              className={`${v2.btnPrimary} flex-shrink-0`}
             >
               Contact Us
             </Link>
