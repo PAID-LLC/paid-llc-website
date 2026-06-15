@@ -58,27 +58,31 @@ export default function CoinbaseGuideButton({ productSlug }: Props) {
   }
 
   return (
-    <span className="inline-flex flex-col items-end gap-1">
+    <span className="inline-flex flex-col items-end gap-1.5">
       <span className="inline-flex items-center gap-1">
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") startCheckout(); }}
-          placeholder="email for delivery"
+          placeholder="your email"
           autoFocus
-          className="border border-stone/40 bg-transparent text-stone px-2 py-2 rounded text-sm w-[160px] focus:border-primary outline-none"
+          className="border border-stone/40 bg-transparent text-stone px-2 py-2 rounded text-sm w-[150px] focus:border-primary outline-none"
         />
         <button
           onClick={startCheckout}
           disabled={loading}
-          className="border border-stone/40 text-stone px-3 py-2 rounded text-sm font-semibold hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="border border-primary bg-primary text-white px-3 py-2 rounded text-sm font-semibold hover:bg-secondary hover:border-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
         >
-          {loading ? "..." : "Go"}
+          {loading ? "Opening..." : "Continue to Coinbase"}
         </button>
       </span>
+      <span className="text-xs text-stone/60 max-w-[280px] text-right leading-snug">
+        Next step opens Coinbase to pay in crypto. We email your download to this
+        address.
+      </span>
       {error && (
-        <span className="text-xs text-red-500 max-w-[200px] text-right">{error}</span>
+        <span className="text-xs text-red-500 max-w-[280px] text-right">{error}</span>
       )}
     </span>
   );
