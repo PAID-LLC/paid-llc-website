@@ -36,7 +36,7 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
 
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#07070b]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2.5">
               {/* Brand lettermark: PAID terracotta (#C14826), not the system cyan */}
@@ -49,12 +49,12 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav className="hidden items-center gap-7 md:flex">
             {v2Links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="font-mono text-xs text-zinc-400 transition-colors hover:text-cyan-300"
+                className="font-mono text-sm font-medium text-zinc-200 transition-colors hover:text-cyan-300"
               >
                 {link.label}
               </Link>
@@ -68,7 +68,7 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
             <Link
               key={link.href}
               href={link.href}
-              className="shrink-0 font-mono text-xs text-zinc-400 transition-colors hover:text-cyan-300"
+              className="shrink-0 font-mono text-sm font-medium text-zinc-200 transition-colors hover:text-cyan-300"
             >
               {link.label}
             </Link>
