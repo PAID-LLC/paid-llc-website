@@ -75,7 +75,7 @@ export default function CoinbaseGuideButton({ productSlug, block = false }: Prop
           onKeyDown={(e) => { if (e.key === "Enter") startCheckout(); }}
           placeholder="your email"
           autoFocus
-          className={`border border-stone/40 bg-transparent text-stone px-2 py-2 rounded text-sm focus:border-cyan-400 outline-none ${block ? "flex-1 min-w-0" : "w-[150px]"}`}
+          className={`border border-white/15 bg-white/[0.03] text-zinc-100 placeholder-zinc-500 px-2 py-2 rounded text-sm focus:border-cyan-400 outline-none ${block ? "flex-1 min-w-0" : "w-[150px]"}`}
         />
         <button
           onClick={startCheckout}
@@ -86,12 +86,12 @@ export default function CoinbaseGuideButton({ productSlug, block = false }: Prop
         </button>
       </span>
       <span
-        className={`text-xs text-stone/60 leading-snug ${block ? "text-left" : "max-w-[280px] text-right"}`}
+        className={`text-xs text-zinc-500 leading-snug ${block ? "text-left" : "max-w-[280px] text-right"}`}
       >
         Opens Coinbase to pay in crypto. We email your download here.
       </span>
       {error && (
-        <span className={`text-xs text-red-500 ${block ? "text-left" : "max-w-[280px] text-right"}`}>{error}</span>
+        <span className={`text-xs text-red-400 ${block ? "text-left" : "max-w-[280px] text-right"}`}>{error}</span>
       )}
     </span>
   );

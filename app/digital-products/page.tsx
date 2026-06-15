@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import Link from "next/link";
 import type { Metadata } from "next";
+import { v2 } from "@/components/v2/tokens";
 import ProductsGrid, { type ProductItem } from "@/components/ProductsGrid";
 import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
 
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
   description:
     "17 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment. Instant PDF download.",
 };
+
+const BUNDLE_URL = "https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I";
+const FOUNDING_URL = "https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J";
 
 const products: ProductItem[] = [
   // Getting Started
@@ -233,113 +237,108 @@ export default function DigitalProducts() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
       />
 
-      {/* Page Header */}
-      <section className="bg-ash">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
-            Digital Products
-          </p>
-          <h1 className="font-display font-bold text-5xl text-secondary mb-6 max-w-2xl">
-            AI guides that get you moving.
-          </h1>
-          <p className="text-stone text-xl leading-relaxed max-w-xl">
-            17 practical guides -- from free-tier setup to enterprise deployment.
-            No consultant required.
-          </p>
+      {/* Header */}
+      <section className={`${v2.section} pt-24 pb-12 sm:pt-28`}>
+        <p className={v2.kicker}>Digital Products</p>
+        <h1 className={`${v2.h1} mt-5 max-w-3xl`}>
+          AI guides that get you moving.
+        </h1>
+        <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
+          17 practical guides, from free-tier setup to enterprise deployment.
+          Instant PDF download. No consultant required.
+        </p>
+        <div className="mt-9 flex flex-wrap items-center gap-3">
+          <a
+            href={BUNDLE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={v2.btnPrimary}
+          >
+            Full Bundle, 17 guides &middot; $119
+          </a>
+          <a
+            href={FOUNDING_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={v2.btnSecondary}
+          >
+            Founding Member &middot; $199
+          </a>
         </div>
       </section>
 
-      {/* Bundle Strip */}
-      <section className="bg-secondary">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-wrap items-center justify-between gap-4">
-          <p className="text-white font-semibold text-sm">
-            Get all 17 guides for one flat price.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <a
-              href="https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-primary text-white px-5 py-2 rounded text-sm font-semibold hover:bg-white hover:text-secondary transition-colors"
-            >
-              Full Bundle — $119
-            </a>
-            <a
-              href="https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border border-white/40 text-white px-5 py-2 rounded text-sm font-semibold hover:border-white transition-colors"
-            >
-              Founding Member — $199
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Filtered Product Grid */}
-      <section className="bg-white">
+      {/* Filtered product grid */}
+      <section className={v2.divider}>
         <ProductsGrid products={products} />
       </section>
 
-      {/* Bundle CTA */}
-      <section className="bg-ash">
-        <div className="max-w-6xl mx-auto px-6 py-24 text-center">
-          <h2 className="font-display font-bold text-3xl text-secondary mb-4">
-            Need the whole stack?
-          </h2>
-          <p className="text-stone leading-relaxed mb-8 max-w-lg mx-auto">
-            Get all 17 guides for one flat price -- the complete AI toolkit
-            from free-tier setup to enterprise deployment.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <a
-              href="https://buy.stripe.com/00w4gA8UL28y6HY5j2cs80I"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
-            >
-              Get the Full Bundle (17 Guides) -- $119
-            </a>
-            <CoinbaseGuideButton productSlug="all-guides-bundle" />
+      {/* Full bundle CTA */}
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div
+            className={`${v2.cardStatic} flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between`}
+          >
+            <div>
+              <p className={v2.kicker}>The whole stack</p>
+              <h2 className={`${v2.h2} mt-3`}>
+                Get all 17 guides for one flat price.
+              </h2>
+              <p className={`${v2.body} mt-3 max-w-xl`}>
+                The complete AI toolkit, from free-tier setup to enterprise
+                deployment.
+              </p>
+            </div>
+            <div className="flex flex-shrink-0 flex-col items-stretch gap-3 sm:items-end">
+              <a
+                href={BUNDLE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={v2.btnPrimary}
+              >
+                Get the Full Bundle, $119
+              </a>
+              <CoinbaseGuideButton productSlug="all-guides-bundle" />
+            </div>
           </div>
         </div>
       </section>
 
       {/* Founding Member CTA */}
-      <section className="bg-secondary">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="max-w-2xl">
-            <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
-              Founding Member
-            </p>
-            <h2 className="font-display font-bold text-4xl text-white mb-4">
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div className="max-w-3xl">
+            <p className={v2.kicker}>Founding Member</p>
+            <h2 className={`${v2.h2} mt-3`}>
               All 17 guides. 12 months of new releases. One guide built for you.
             </h2>
-            <p className="text-stone text-lg leading-relaxed mb-4">
+            <p className={`${v2.body} mt-5`}>
               Founding Members get all 17 current guides plus every guide
-              PAID LLC publishes over the next 12 months -- automatically
+              PAID LLC publishes over the next 12 months, automatically
               delivered as each one releases.
             </p>
-            <p className="text-stone text-lg leading-relaxed mb-4">
-              Plus: one custom guide on any AI topic you choose. Tell us what
-              you need and we build it. Email{" "}
-              <a href="mailto:hello@paiddev.com" className="text-primary hover:text-white transition-colors">
+            <p className={`${v2.body} mt-4`}>
+              Plus one custom guide on any AI topic you choose. Tell us what you
+              need and we build it. Email{" "}
+              <a
+                href="mailto:hello@paiddev.com"
+                className="text-[#E8714C] transition-colors hover:text-[#F08A66]"
+              >
                 hello@paiddev.com
               </a>{" "}
               after purchase to request yours.
             </p>
-            <p className="text-stone/60 text-sm leading-relaxed mb-8">
+            <p className={`${v2.bodySm} mt-4 text-zinc-500`}>
               One flat price. No renewals. No subscriptions. Custom guide offer
               available while capacity allows.
             </p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
-                href="https://buy.stripe.com/7sYeVe4Ev28ygiy9zics80J"
+                href={FOUNDING_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block bg-primary text-white px-8 py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors"
+                className={v2.btnPrimary}
               >
-                Become a Founding Member -- $199
+                Become a Founding Member, $199
               </a>
               <CoinbaseGuideButton productSlug="founding-member" />
             </div>
@@ -348,22 +347,22 @@ export default function DigitalProducts() {
       </section>
 
       {/* Consulting CTA */}
-      <section className="bg-white border-t border-ash">
-        <div className="max-w-6xl mx-auto px-6 py-24">
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
           <div className="max-w-2xl">
-            <h2 className="font-display font-bold text-4xl text-secondary mb-4">
-              Need more than a guide?
+            <p className={v2.kicker}>Need more than a guide?</p>
+            <h2 className={`${v2.h2} mt-3`}>
+              From strategy to shipping, with a partner the whole way.
             </h2>
-            <p className="text-stone text-lg leading-relaxed mb-8">
-              Our consulting and implementation services take you from strategy
-              to shipping -- with a dedicated partner the whole way.
+            <p className={`${v2.body} mt-5`}>
+              Our consulting and implementation services take you from AI
+              strategy to production, with a dedicated partner the whole way.
             </p>
-            <Link
-              href="/services"
-              className="inline-block border-2 border-secondary text-secondary px-8 py-4 rounded font-semibold text-sm hover:bg-secondary hover:text-white transition-colors"
-            >
-              View Services
-            </Link>
+            <div className="mt-8">
+              <Link href="/services" className={v2.btnSecondary}>
+                View Services
+              </Link>
+            </div>
           </div>
         </div>
       </section>

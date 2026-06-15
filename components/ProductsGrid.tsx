@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { v2 } from "@/components/v2/tokens";
 import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
 
 const CATEGORIES = [
@@ -59,29 +60,23 @@ export default function ProductsGrid({ products }: Props) {
 
   return (
     <>
-      {/* Filter Bar */}
-      <div className="border-b border-ash bg-white sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex gap-1 overflow-x-auto py-3">
+      {/* Filter bar */}
+      <div className="border-b border-white/[0.06]">
+        <div className={v2.section}>
+          <div className="flex gap-1.5 overflow-x-auto py-4">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActive(cat)}
-                className={`whitespace-nowrap flex-shrink-0 px-4 py-2 rounded text-sm font-semibold transition-colors ${
+                className={`flex-shrink-0 whitespace-nowrap rounded-md px-3.5 py-1.5 font-mono text-xs transition-colors ${
                   active === cat
-                    ? "bg-primary text-white"
-                    : "text-stone hover:text-secondary hover:bg-ash"
+                    ? "border border-cyan-400/50 bg-cyan-400/10 text-cyan-200"
+                    : "border border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
                 }`}
               >
                 {cat}
                 {cat !== "All" && (counts[cat] ?? 0) > 0 && (
-                  <span
-                    className={`ml-1.5 text-xs ${
-                      active === cat ? "opacity-70" : "opacity-50"
-                    }`}
-                  >
-                    {counts[cat]}
-                  </span>
+                  <span className="ml-1.5 opacity-60">{counts[cat]}</span>
                 )}
               </button>
             ))}
@@ -89,72 +84,62 @@ export default function ProductsGrid({ products }: Props) {
         </div>
       </div>
 
-      {/* Product Grid */}
-      <div className="max-w-6xl mx-auto px-6 py-16">
-        <div className="grid md:grid-cols-3 gap-8">
+      {/* Product grid */}
+      <div className={`${v2.section} py-16`}>
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((product) => (
             <div
               key={product.slug}
               id={product.slug}
-              className="border border-ash rounded-xl overflow-hidden flex flex-col hover:border-stone/40 transition-colors scroll-mt-16"
+              className={`${v2.cardStatic} group flex scroll-mt-24 flex-col transition-colors hover:border-cyan-400/20`}
             >
-              {/* Cover */}
-              <div className="bg-secondary aspect-[3/2] flex items-center justify-center px-8 relative">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="font-mono text-[11px] uppercase tracking-widest text-cyan-300">
+                  {product.category}
+                </span>
                 {product.isNew && (
-                  <span className="absolute top-3 right-3 bg-primary text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
+                  <span className="inline-flex items-center rounded-full border border-[#C14826]/40 bg-[#C14826]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-[#E8714C]">
                     New
                   </span>
                 )}
-                <p className="font-display font-bold text-white text-center text-lg leading-snug">
-                  {product.title}
-                </p>
               </div>
 
-              {/* Content */}
-              <div className="p-6 flex flex-col flex-1">
-                <span className="text-xs font-semibold tracking-widest uppercase mb-3 text-primary">
-                  {product.category}
-                </span>
-                <h3 className="font-display font-bold text-secondary text-base mb-3 leading-snug">
-                  {product.title}
-                </h3>
-                <p className="text-stone text-sm leading-relaxed mb-6 flex-1">
-                  {product.description}
-                </p>
-                <div className="mt-auto">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="font-display font-bold text-secondary text-lg">
-                      {product.price}
+              <h3 className={`${v2.h3} leading-snug`}>{product.title}</h3>
+              <p className={`${v2.bodySm} mt-2 flex-1`}>{product.description}</p>
+
+              <div className="mt-5 border-t border-white/[0.06] pt-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="font-mono text-lg font-bold text-zinc-100">
+                    {product.price}
+                  </span>
+                  {product.stripeUrl ? (
+                    <a
+                      href={product.stripeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => trackCheckout(product.slug, product.title, product.price)}
+                      className="inline-flex items-center rounded-md border border-[#C14826]/50 bg-[#C14826]/15 px-4 py-2 font-mono text-xs font-medium text-[#E8714C] transition-colors hover:border-[#C14826]/70 hover:bg-[#C14826]/25"
+                    >
+                      Buy Now
+                    </a>
+                  ) : (
+                    <span className="cursor-not-allowed select-none rounded-md border border-white/10 px-4 py-2 font-mono text-xs text-zinc-600">
+                      Card Soon
                     </span>
-                    {product.stripeUrl ? (
-                      <a
-                        href={product.stripeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => trackCheckout(product.slug, product.title, product.price)}
-                        className="bg-primary text-white px-4 py-2 rounded text-sm font-semibold hover:bg-secondary transition-colors"
-                      >
-                        Buy Now
-                      </a>
-                    ) : (
-                      <span className="bg-ash text-stone/40 px-4 py-2 rounded text-sm font-semibold cursor-not-allowed select-none">
-                        Card Soon
-                      </span>
-                    )}
-                  </div>
-                  <CoinbaseGuideButton productSlug={product.slug} block />
+                  )}
                 </div>
+                <CoinbaseGuideButton productSlug={product.slug} block />
               </div>
             </div>
           ))}
         </div>
 
         {/* Payment note */}
-        <p className="text-center text-stone text-sm mt-12">
-          Not satisfied? We offer a 7-day refund -- no hassle, no fine print.{" "}
+        <p className={`${v2.bodySm} mt-12 text-center`}>
+          Not satisfied? We offer a 7-day refund, no hassle, no fine print.{" "}
           <a
             href="mailto:hello@paiddev.com"
-            className="text-primary hover:text-secondary transition-colors"
+            className="text-[#E8714C] transition-colors hover:text-[#F08A66]"
           >
             Email us
           </a>{" "}
