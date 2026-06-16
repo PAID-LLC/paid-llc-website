@@ -181,3 +181,28 @@ export async function PATCH(req: Request) {
   if (rows.length === 0) return Response.json({ ok: false, reason: "lead not found" }, { status: 404 });
   return Response.json({ ok: true, lead: rows[0] });
 }
+
+// ── DELETE — remove a lead ──────────────────────────────────────────────────
+
+export async function DELETE(req: Request) {
+  if (!supabaseReady())        return Response.json({ ok: false, reason: "supabase unavailable" }, { status: 503 });
+  if (!checkOrigin(req))       return Response.json({ ok: false, reason: "forbidden" },    { status: 403 });
+  if (!(await checkAuth(req))) return Response.json({ ok: false, reason: "unauthorized" }, { status: 401 });
+
+  let body: Record<string, unknown>;
+  try { body = await req.json() as Record<string, unknown>; }
+  catch { return Response.json({ ok: false, reason: "invalid body" }, { status: 400 }); }
+
+  const id = Number(body.id);
+  if (!id) return Response.json({ ok: false, reason: "id required" }, { status: 400 });
+
+  const res = await fetch(sbUrl(`leads?id=eq.${id}`), {
+    method:  "DELETE",
+    headers: { ...sbHeaders(), Prefer: "return=representation" },
+  }).catch(() => null);
+
+  if (!res?.ok) return Response.json({ ok: false, reason: "delete failed" }, { status: 502 });
+  const rows = await res.json() as LeadRow[];
+  if (rows.length === 0) return Response.json({ ok: false, reason: "lead not found" }, { status: 404 });
+  return Response.json({ ok: true, deleted: id });
+}

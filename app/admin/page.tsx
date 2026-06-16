@@ -539,6 +539,8 @@ function PipelineTab() {
   const [open,    setOpen]    = useState<number | null>(null);  // expanded lead id
   const [adding,  setAdding]  = useState(false);
   const [form,    setForm]    = useState({ name: "", email: "", company: "", source: "outreach", notes: "", value: "" });
+  const [q,       setQ]       = useState("");                 // board text filter
+  const [stageFilter, setStageFilter] = useState("all");      // board stage filter
 
   const load = useCallback(() => {
     fetch("/api/admin/pipeline").then((r) => r.json()).then((d) => {
@@ -574,6 +576,25 @@ function PipelineTab() {
     setAdding(false);
     load();
   }
+
+  async function del(id: number, name: string) {
+    if (!window.confirm(`Delete lead "${name}" permanently? This cannot be undone.`)) return;
+    setBusy(id);
+    await fetch("/api/admin/pipeline", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setBusy(null);
+    setOpen(null);
+    load();
+  }
+
+  // Board text filter: name, company, or email substring (case-insensitive).
+  const matchesQuery = (l: Lead) => {
+    const s = q.trim().toLowerCase();
+    if (!s) return true;
+    return `${l.name} ${l.company ?? ""} ${l.email}`.toLowerCase().includes(s);
+  };
 
   if (loading) return <div style={{ color: "#444", fontSize: 13 }}>Loading pipeline…</div>;
   if (error)   return <div style={{ color: "#C14826", fontSize: 13 }}>{error}</div>;
@@ -611,6 +632,14 @@ function PipelineTab() {
               +{d}d
             </button>
           ))}
+          <button
+            disabled={busy === l.id}
+            style={{ ...S.btnSmall, color: "#C14826", borderColor: "#553333" }}
+            title="Delete lead permanently"
+            onClick={() => del(l.id, l.name)}
+          >
+            ✕
+          </button>
         </div>
       </div>
       {open === l.id && (
@@ -678,19 +707,48 @@ function PipelineTab() {
         </div>
       </div>
 
-      {/* Board, grouped by stage */}
-      {PIPELINE_STAGES.map((stage) => {
-        const rows = data.leads.filter((l) => l.stage === stage);
-        if (rows.length === 0) return null;
-        return (
-          <div key={stage} style={{ marginBottom: 20 }}>
-            <div style={{ ...S.sectionHd, color: STAGE_COLORS[stage] }}>
-              {STAGE_LABELS[stage].toUpperCase()} ({rows.length})
+      {/* Board controls: search + stage filter */}
+      <div style={{ ...S.sectionHd, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <span>ALL LEADS ({data.leads.length})</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            style={{ ...S.input, width: 200, padding: "5px 8px", fontSize: 12 }}
+            placeholder="Filter name / company / email"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <select
+            style={{ ...S.select, width: "auto", padding: "5px 8px", fontSize: 12 }}
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+          >
+            <option value="all">All stages</option>
+            {PIPELINE_STAGES.map((s) => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+          </select>
+          {(q || stageFilter !== "all") && (
+            <button style={S.btnSmall} onClick={() => { setQ(""); setStageFilter("all"); }}>Clear</button>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable board, grouped by stage */}
+      <div style={{ maxHeight: 560, overflowY: "auto", paddingRight: 4 }}>
+        {PIPELINE_STAGES.filter((s) => stageFilter === "all" || s === stageFilter).map((stage) => {
+          const rows = data.leads.filter((l) => l.stage === stage && matchesQuery(l));
+          if (rows.length === 0) return null;
+          return (
+            <div key={stage} style={{ marginBottom: 20 }}>
+              <div style={{ ...S.sectionHd, color: STAGE_COLORS[stage] }}>
+                {STAGE_LABELS[stage].toUpperCase()} ({rows.length})
+              </div>
+              {rows.map((l) => renderLeadRow(l))}
             </div>
-            {rows.map((l) => renderLeadRow(l))}
-          </div>
-        );
-      })}
+          );
+        })}
+        {data.leads.filter((l) => (stageFilter === "all" || l.stage === stageFilter) && matchesQuery(l)).length === 0 && (
+          <div style={{ color: "#555", fontSize: 13, padding: "12px 0" }}>No leads match.</div>
+        )}
+      </div>
     </div>
   );
 }
