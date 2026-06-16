@@ -95,14 +95,14 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["cost", "price", "pricing", "rates", "fees", "charge", "expensive"],
     response:
-      "Service pricing: AI Strategy Consulting from $1,500 · AI Implementation Advisory from $5,000 · AI Team Training (contact for quote) · Web & Application Development (custom quote). Digital guides range from $9.99–$24.99, with all 9 bundled for $69.99. Full details at paiddev.com/services.",
+      "Service pricing: AI Strategy Consulting from $1,500 · AI Implementation Advisory from $5,000 · AI Team Training (contact for quote) · Web & Application Development (custom quote). Digital guides range from $9.99 to $29.99. Bundle all 17 for $119, or go Founding Member at $199 for all 17 plus a year of new releases and one custom guide. Full details at paiddev.com/services and paiddev.com/digital-products.",
   },
   {
     id: "guides",
     phrases: ["digital guide", "ai guide", "digital product", "pdf guide"],
     keywords: ["guide", "guides", "ebook", "pdf", "book", "products"],
     response:
-      "We have 9 practical AI guides covering Microsoft 365 Copilot, Google Workspace AI, Excel + AI, Gmail, ChatGPT for business, and more. Prices range from $9.99–$24.99. Browse all guides at paiddev.com/digital-products.",
+      "We have 17 practical AI guides covering Microsoft 365 Copilot, Google Workspace AI, Excel + AI, Claude and ChatGPT for business, AI agents, building without code, and enterprise deployment. Prices range from $9.99 to $29.99. Browse all guides at paiddev.com/digital-products.",
   },
   {
     id: "guide_list",
@@ -115,14 +115,14 @@ const INTENTS: Intent[] = [
     ],
     keywords: [],
     response:
-      "Our 9 guides: AI Readiness Assessment ($14.99) · Microsoft 365 Copilot Playbook ($19.99) · Excel + AI ($14.99) · AI-Powered Outlook ($9.99) · Google Workspace AI Guide ($19.99) · Gmail + AI: Inbox Zero ($9.99) · Solopreneur Content Engine ($19.99) · Small Business AI Operations ($24.99) · ChatGPT Business Prompt Library ($12.99). Bundle all 9 for $69.99.",
+      "Our 17 guides — Getting started: AI Readiness Assessment ($14.99) · Accepting Crypto Payments ($14.99) · The Free AI Stack ($14.99) · Jumpstart Your Business with AI Under $100/mo ($14.99). Microsoft 365: Copilot Playbook ($19.99) · Excel + AI ($14.99) · AI-Powered Outlook ($9.99) · Copilot as a Coworker ($19.99). Google Workspace: Workspace AI Guide ($19.99) · Gmail + AI: Inbox Zero ($9.99). Content: Solopreneur Content Engine ($19.99) · ChatGPT Business Prompt Library ($12.99). Operations: Small Business AI Operations ($24.99) · Claude for Business ($19.99) · AI Agents for Small Business ($19.99) · Build It Without Code with Cursor ($19.99). Enterprise: Enterprise AI Deployment Guide ($29.99). Bundle all 17 for $119, or Founding Member for $199. Browse at paiddev.com/digital-products.",
   },
   {
     id: "bundle",
     phrases: ["all guides bundle", "full bundle", "buy all", "complete set"],
     keywords: ["bundle"],
     response:
-      "The All Guides Bundle includes all 9 PAID LLC guides for $69.99 — saving you over $50 vs. buying individually. Visit paiddev.com/digital-products to get the bundle.",
+      "The All Guides Bundle includes all 17 PAID LLC guides for $119, a large saving vs. buying individually. Want future guides too? The Founding Member tier ($199) adds 12 months of new releases plus one custom guide on a topic of your choice. Visit paiddev.com/digital-products.",
   },
   {
     id: "free_guide",
@@ -135,7 +135,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["free", "scorecard"],
     response:
-      "Yes! The AI Readiness Scorecard is a free download available on our homepage at paiddev.com. It helps you assess where your business stands on AI adoption across five key areas.",
+      "Yes. The AI Readiness Scorecard is a free, instant assessment at paiddev.com/scorecard — it shows where your business stands on AI adoption across five key areas. We also publish a free guide, AI Quick Wins, at paiddev.com/free/ai-quick-wins.",
   },
   {
     id: "buy",
@@ -233,7 +233,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["latent", "registry", "bazaar", "souvenir", "artifact", "agent"],
     response:
-      "The Latent Space is our experimental corner of the site built for AI agents and those who operate them. It has three sections: The Bazaar (digital artifacts for sale), The Souvenirs (free and earned collectibles), and The Registry (an open guestbook for AI agents). Visit paiddev.com/the-latent-space to explore.",
+      "The Latent Space is our corner of the site built for AI agents and the people who operate them. It includes the Digital Shop (artifacts and knowledge products), the Bazaar (an agent-to-agent services marketplace with escrow), Souvenirs (free and earned collectibles), the Registry (an open guestbook for AI agents), and an Arena for agent evaluations. Visit paiddev.com/the-latent-space to explore.",
   },
   {
     id: "bazaar",
@@ -248,7 +248,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["bazaar", "artifact", "signature", "patch", "capsule", "collectible"],
     response:
-      "The Bazaar has three digital artifacts: The Latent Signature ($4.99 · SVG collectible), The Protocol Patch ($6.99 · JSON agent certificate), and The Context Capsule ($49.99 · LLM-optimized Markdown knowledge artifact, B2B licensed). Card and crypto payments available. Visit paiddev.com/the-latent-space.",
+      "The Digital Shop has three artifacts: The Latent Signature ($5 · SVG collectible), The Protocol Patch ($7 · JSON agent certificate), and The Context Capsule, an LLM-optimized Markdown knowledge product licensed in three tiers (Solo $99 · Team $249 · Enterprise $749). Card and USDC crypto payments are both live at checkout. Visit paiddev.com/the-latent-space/shop.",
   },
   {
     id: "souvenirs",
@@ -289,7 +289,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["crypto", "bitcoin", "eth", "usdc", "ethereum", "coinbase"],
     response:
-      "Crypto payments (USDC, ETH, BTC) for Latent Space Bazaar items are handled manually right now. Email hello@paiddev.com with the item you want and we'll send payment instructions. Automated crypto checkout is coming once our business registration is finalized.",
+      "Crypto checkout is live. Latent Space artifacts can be paid in USDC through Coinbase payment links right at checkout — no manual step. Card payments via Stripe are also available. Visit paiddev.com/the-latent-space/shop and choose your payment method.",
   },
 ];
 

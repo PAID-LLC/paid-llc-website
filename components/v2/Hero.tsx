@@ -19,14 +19,19 @@ export default function Hero() {
 
       <div className="mt-10 flex flex-wrap gap-4">
         <Magnetic>
-          <Link href="/v2/platform" className={v2.btnPrimary}>
-            Explore the platform
+          <Link href="/services" className={v2.btnPrimary}>
+            Work with us
             <span aria-hidden>&rarr;</span>
           </Link>
         </Magnetic>
         <Magnetic>
           <Link href="/the-latent-space" className={v2.btnSecondary}>
             Enter The Latent Space
+          </Link>
+        </Magnetic>
+        <Magnetic>
+          <Link href="/v2/platform" className={v2.btnGhost}>
+            Explore the platform
           </Link>
         </Magnetic>
       </div>

@@ -103,17 +103,17 @@ export default function AskArti() {
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {/* Chat window */}
       {open && (
-        <div className="w-[360px] bg-white rounded-2xl shadow-2xl border border-ash flex flex-col overflow-hidden"
+        <div className="w-[360px] bg-[#0b0b12] rounded-2xl shadow-2xl border border-white/[0.08] backdrop-blur-sm flex flex-col overflow-hidden"
           style={{ height: "480px" }}>
           {/* Header */}
-          <div className="bg-primary px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="bg-white/[0.03] border-b border-white/[0.08] px-5 py-4 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                <span className="font-display font-bold text-primary text-sm">A</span>
+              <div className="w-8 h-8 rounded-full bg-[#C14826]/20 border border-[#C14826]/40 flex items-center justify-center flex-shrink-0">
+                <span className="font-mono font-bold text-[#E8714C] text-sm">A</span>
               </div>
               <div>
-                <p className="font-display font-semibold text-white text-sm">Arti</p>
-                <p className="text-white/70 text-xs">PAID LLC Assistant</p>
+                <p className="font-mono font-semibold text-zinc-100 text-sm">Arti</p>
+                <p className="text-zinc-500 text-xs">PAID LLC Assistant</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export default function AskArti() {
                     return next;
                   });
                 }}
-                className="text-white/70 hover:text-white transition-colors"
+                className="text-zinc-500 hover:text-zinc-200 transition-colors"
                 aria-label={voiceEnabled ? "Mute voice" : "Enable voice"}
                 title={voiceEnabled ? "Voice on — click to mute" : "Click to hear Arti's voice"}
               >
@@ -151,7 +151,7 @@ export default function AskArti() {
               </button>
               <button
                 onClick={() => setOpen(false)}
-                className="text-white/70 hover:text-white transition-colors text-xl leading-none"
+                className="text-zinc-500 hover:text-zinc-200 transition-colors text-xl leading-none"
                 aria-label="Close chat"
               >
                 ×
@@ -169,8 +169,8 @@ export default function AskArti() {
                 <div
                   className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-primary text-white rounded-br-none"
-                      : "bg-ash text-secondary rounded-bl-none"
+                      ? "bg-[#C14826]/20 border border-[#C14826]/40 text-zinc-100 rounded-br-none"
+                      : "bg-white/[0.04] border border-white/[0.08] text-zinc-300 rounded-bl-none"
                   }`}
                 >
                   {msg.text}
@@ -179,12 +179,12 @@ export default function AskArti() {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-ash rounded-xl rounded-bl-none px-4 py-2.5">
+                <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl rounded-bl-none px-4 py-2.5">
                   <span className="flex gap-1">
                     {[0, 1, 2].map((i) => (
                       <span
                         key={i}
-                        className="w-1.5 h-1.5 bg-stone rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce"
                         style={{ animationDelay: `${i * 0.15}s` }}
                       />
                     ))}
@@ -193,9 +193,9 @@ export default function AskArti() {
               </div>
             )}
             {limitReached && (
-              <div className="text-center text-xs text-stone py-2">
+              <div className="text-center text-xs text-zinc-500 py-2">
                 Message limit reached. Email{" "}
-                <a href="mailto:hello@paiddev.com" className="text-primary">
+                <a href="mailto:hello@paiddev.com" className="text-[#E8714C] hover:text-[#E8714C]/80">
                   hello@paiddev.com
                 </a>{" "}
                 to continue.
@@ -206,11 +206,11 @@ export default function AskArti() {
 
           {/* Discovery CTA strip */}
           {messages.length >= 2 && !limitReached && (
-            <div className="border-t border-ash px-4 py-2 flex items-center justify-between bg-ash/40 flex-shrink-0">
-              <p className="text-xs text-stone">Want a personalized AI audit?</p>
+            <div className="border-t border-white/[0.08] px-4 py-2 flex items-center justify-between bg-white/[0.02] flex-shrink-0">
+              <p className="text-xs text-zinc-500">Want a personalized AI audit?</p>
               <a
                 href="/contact"
-                className="text-xs font-semibold text-primary hover:text-secondary transition-colors"
+                className="text-xs font-semibold text-[#E8714C] hover:text-[#E8714C]/80 transition-colors"
               >
                 Book free call →
               </a>
@@ -219,7 +219,7 @@ export default function AskArti() {
 
           {/* Input */}
           {!limitReached && (
-            <div className="border-t border-ash px-4 py-3 flex gap-2 flex-shrink-0">
+            <div className="border-t border-white/[0.08] px-4 py-3 flex gap-2 flex-shrink-0">
               <input
                 type="text"
                 value={input}
@@ -228,12 +228,12 @@ export default function AskArti() {
                 placeholder="Ask about PAID LLC..."
                 maxLength={500}
                 disabled={loading}
-                className="flex-1 text-sm text-secondary placeholder:text-stone bg-transparent focus:outline-none"
+                className="flex-1 text-sm text-zinc-200 placeholder:text-zinc-600 bg-transparent focus:outline-none"
               />
               <button
                 onClick={send}
                 disabled={loading || !input.trim()}
-                className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-secondary transition-colors disabled:opacity-40"
+                className="bg-[#C14826]/20 border border-[#C14826]/40 text-[#E8714C] w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-[#C14826]/30 transition-colors disabled:opacity-40"
                 aria-label="Send"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -249,13 +249,13 @@ export default function AskArti() {
       {/* Trigger button */}
       <button
         onClick={() => setOpen(!open)}
-        className="bg-primary text-white px-5 py-3 rounded-full font-semibold text-sm shadow-lg hover:bg-secondary transition-colors flex items-center gap-2"
+        className="bg-[#C14826]/15 border border-[#C14826]/50 text-[#E8714C] px-5 py-3 rounded-full font-mono font-medium text-sm shadow-lg hover:bg-[#C14826]/25 transition-colors flex items-center gap-2"
         style={{
           animation: !open ? "pulse-soft 2.5s ease-in-out infinite" : "none",
         }}
       >
-        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-          <span className="font-display font-bold text-white text-xs">A</span>
+        <div className="w-5 h-5 rounded-full bg-[#C14826]/30 flex items-center justify-center">
+          <span className="font-mono font-bold text-[#E8714C] text-xs">A</span>
         </div>
         Ask Arti
       </button>
