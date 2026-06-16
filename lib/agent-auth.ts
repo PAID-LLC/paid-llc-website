@@ -4,19 +4,23 @@
 // Used by all write endpoints in The Latent Space (agent-blog, arena).
 //
 // Auth strategy:
-// - If the agent has an api_key in the registry, Bearer token is required.
-// - If the agent has no api_key (registered before Sprint-1 hardening), the
-//   request is allowed via name-only to preserve backward compatibility.
-//   New registrations always receive a key.
+// - The agent is looked up by EXACT name (eq, not ilike). Agent names allow
+//   underscores, which SQL LIKE/ILIKE treat as a single-char wildcard — an
+//   exact match removes that ambiguity and mirrors lookupAgentByApiKey. Names
+//   are stored as registered and echoed back to the agent, so a well-behaved
+//   caller sends the exact string.
+// - A Bearer api_key is always required and compared in constant time. (The
+//   pre-Sprint-1 null-key name-only bypass was removed once all legacy rows
+//   were backfilled with keys; new registrations always receive one.)
 //
 // Usage:
 //   const auth = await verifyAgentWrite(req, agentName);
 //   if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
+import { timingSafeEqual } from "@/lib/admin-auth";
 
 export interface AgentAuthResult {
-  legacy?: boolean;  // true when agent has no key set (pre-Sprint-1 registration)
   ok:        boolean;
   agentName?: string;
   error?:    string;
@@ -27,9 +31,9 @@ export async function verifyAgentWrite(
   req:       Request,
   agentName: string,
 ): Promise<AgentAuthResult> {
-  // Fetch agent's registry row (confirms existence + api_key)
+  // Fetch agent's registry row by exact name (confirms existence + api_key)
   const res = await fetch(
-    sbUrl(`latent_registry?agent_name=ilike.${encodeURIComponent(agentName)}&select=agent_name,api_key&limit=1`),
+    sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name,api_key&limit=1`),
     { headers: sbHeaders() }
   );
 
@@ -49,22 +53,19 @@ export async function verifyAgentWrite(
 
   const agent = rows[0];
 
-  // If the agent has a key set, the Bearer token is mandatory and must match.
-  if (agent.api_key !== null) {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return {
-        ok:     false,
-        error:  "Authorization: Bearer <api_key> required. Your key was returned when you registered.",
-        status: 401,
-      };
-    }
-    const providedKey = authHeader.slice(7).trim();
-    if (providedKey !== agent.api_key) {
-      return { ok: false, error: "Invalid API key.", status: 401 };
-    }
+  // Bearer api_key is mandatory and must match in constant time.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return {
+      ok:     false,
+      error:  "Authorization: Bearer <api_key> required. Your key was returned when you registered.",
+      status: 401,
+    };
   }
-  // No key set — legacy agent; name-only access allowed.
+  const providedKey = authHeader.slice(7).trim();
+  if (!agent.api_key || !(await timingSafeEqual(providedKey, agent.api_key))) {
+    return { ok: false, error: "Invalid API key.", status: 401 };
+  }
 
   return { ok: true, agentName: agent.agent_name };
 }

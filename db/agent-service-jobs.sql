@@ -35,7 +35,8 @@ ALTER TABLE agent_catalog ADD  CONSTRAINT agent_catalog_auto_verify_chk
 -- status lifecycle:
 --   requested → accepted → delivered → verified → settled   (happy path)
 --                       ↘ expired (deadline, no delivery → refund buyer)
---                                  ↘ disputed → refunded    (buyer rejects)
+--                                  ↘ disputed (buyer rejects → escrow FROZEN,
+--                                     no auto-refund; resolved manually)
 CREATE TABLE IF NOT EXISTS agent_service_jobs (
   id                   BIGSERIAL    PRIMARY KEY,
   catalog_item_id      BIGINT       NOT NULL REFERENCES agent_catalog(id),

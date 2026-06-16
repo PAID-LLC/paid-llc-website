@@ -3,7 +3,9 @@ export const runtime = "edge";
 // ── POST /api/bazaar/service/verify ──────────────────────────────────────────
 // The buyer accepts or rejects a delivered job within the verify window.
 //   accept=true  → settle (pay the seller, retain the platform fee)
-//   accept=false → refund the buyer in full (MVP dispute rule)
+//   accept=false → freeze the escrow as 'disputed' (NO automatic refund — the
+//                  buyer already holds the delivered result, so auto-refunding
+//                  would be free work). Held for manual resolution.
 // If the buyer stays silent, the sweep cron auto-accepts after the window.
 //
 // Body: { job_id, agent_name (buyer), accept: boolean, reason? }
@@ -11,7 +13,7 @@ export const runtime = "edge";
 
 import { supabaseReady }    from "@/lib/supabase";
 import { verifyAgentWrite } from "@/lib/agent-auth";
-import { getJob, settle, refund } from "@/lib/agents/service-jobs";
+import { getJob, settle, dispute } from "@/lib/agents/service-jobs";
 
 export async function POST(req: Request): Promise<Response> {
   if (!supabaseReady()) {
@@ -49,9 +51,18 @@ export async function POST(req: Request): Promise<Response> {
       : Response.json({ ok: false, reason: "settle_conflict (job moved)" }, { status: 409 });
   }
 
-  // Reject → full refund (MVP dispute rule). dispute_reason preserves the signal.
-  const ok = await refund(job, "refunded", "delivered", `buyer_rejected: ${body.reason ?? "no reason given"}`);
+  // Reject → freeze the escrow as 'disputed'. The buyer already holds the
+  // delivered result, so an automatic refund would hand over free work. No
+  // credits move; the job is held for manual resolution and the sweep will not
+  // auto-accept it. A buyer gains nothing by rejecting (no refund), so the only
+  // rational reason to reject is a genuinely bad delivery worth contesting.
+  const ok = await dispute(job, `buyer_rejected: ${body.reason ?? "no reason given"}`);
   return ok
-    ? Response.json({ ok: true, job_id: jobId, status: "refunded" })
-    : Response.json({ ok: false, reason: "refund_conflict (job moved)" }, { status: 409 });
+    ? Response.json({
+        ok:     true,
+        job_id: jobId,
+        status: "disputed",
+        note:   "Escrow held for review. No automatic refund — contested deliveries are resolved manually.",
+      })
+    : Response.json({ ok: false, reason: "dispute_conflict (job moved)" }, { status: 409 });
 }

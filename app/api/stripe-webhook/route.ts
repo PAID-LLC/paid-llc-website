@@ -39,12 +39,24 @@ async function verifyStripeSignature(
 
   // crypto.subtle.verify() is constant-time — prevents timing attacks that could
   // leak the valid signature one byte at a time via response latency differences.
-  return crypto.subtle.verify(
+  const valid = await crypto.subtle.verify(
     "HMAC",
     key,
     v1Bytes,
     encoder.encode(`${t}.${payload}`)
   );
+  if (!valid) return false;
+
+  // Replay guard (defense-in-depth on top of the processed_webhooks idempotency
+  // table): reject events whose signed timestamp is outside the tolerance window.
+  // Window is intentionally generous (1h) — Stripe re-sends retries with the
+  // ORIGINAL timestamp, and front-loads them within the first hour, so a tighter
+  // window would drop legitimate delayed retries. ms-normalized for safety.
+  let ts = parseInt(t, 10);
+  if (!Number.isFinite(ts)) return false;
+  if (ts > 1e12) ts = Math.floor(ts / 1000);
+  if (Math.abs(Date.now() / 1000 - ts) > 3600) return false;
+  return true;
 }
 
 // ── MailerLite subscriber ─────────────────────────────────────────────────────

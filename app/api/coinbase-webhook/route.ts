@@ -70,7 +70,16 @@ async function verifyHook0Signature(
     for (let i = 0; i < computed.length; i++) {
       diff |= computed.charCodeAt(i) ^ v1.charCodeAt(i);
     }
-    return diff === 0;
+    if (diff !== 0) return false;
+
+    // Replay guard (defense-in-depth on top of processed_webhooks idempotency):
+    // reject signed timestamps outside a generous 1h window. ms-normalized so it
+    // works whether Hook0 sends seconds or milliseconds.
+    let ts = parseInt(t, 10);
+    if (!Number.isFinite(ts)) return false;
+    if (ts > 1e12) ts = Math.floor(ts / 1000);
+    if (Math.abs(Date.now() / 1000 - ts) > 3600) return false;
+    return true;
   } catch {
     return false;
   }
@@ -362,7 +371,10 @@ export async function POST(req: Request) {
 
   const secret = process.env.COINBASE_WEBHOOK_SECRET;
   if (!secret) {
-    return Response.json({ received: true });
+    // Misconfiguration — do NOT 200-ack an unverifiable payload (that silently
+    // masks the missing secret). 503 signals "not configured", matching the
+    // Stripe handler, and lets Coinbase retry once the secret is set.
+    return Response.json({ error: "webhook not configured" }, { status: 503 });
   }
 
   const sigHeader = req.headers.get("x-hook0-signature") ?? "";

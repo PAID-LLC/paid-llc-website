@@ -94,7 +94,10 @@ export async function verifyJwt(token: string): Promise<JwtPayload | null> {
     const elapsed = Date.now() - start;
     if (elapsed < 5) await new Promise((r) => setTimeout(r, 5 - elapsed));
 
-    if (!valid || parts.length !== 3) return null;
+    // Structural gate stays AFTER verify so malformed input still pays the full
+    // (padded) verification cost — no early-return timing oracle. Requires
+    // exactly three non-empty segments.
+    if (!valid || parts.length !== 3 || !p0 || !p1 || !p2) return null;
 
     const payload = JSON.parse(b64urlDecodeStr(p1)) as JwtPayload;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;

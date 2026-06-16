@@ -252,6 +252,25 @@ export async function settle(job: ServiceJob): Promise<boolean> {
   return true;
 }
 
+/** Buyer rejects a delivered job → freeze the escrow as 'disputed'. Unlike a
+ *  refund, NO credits move: the buyer already holds the delivered result, so an
+ *  automatic full refund on reject would hand over free work (the third-party
+ *  seller's labor, or a house executor's spent compute). Credits stay held by
+ *  the job row pending manual resolution (admin reconcile); the sweep's
+ *  auto-accept skips disputed jobs, so escrow is frozen, not paid to either side.
+ *  Returns false if the job already moved (e.g. sweep auto-accepted first). */
+export async function dispute(job: ServiceJob, reason: string): Promise<boolean> {
+  const claimed = await advance(job.id, "delivered", {
+    status:         "disputed",
+    dispute_reason: reason.slice(0, 300),
+  });
+  if (!claimed) return false;
+  // Award-only rep: log the buyer's engagement. No seller penalty — rep never
+  // decreases by design, so the withheld settle is the seller's only downside.
+  void addRep(job.buyer_agent, "message");
+  return true;
+}
+
 /** Refund the buyer and move the job to a terminal refund state. */
 export async function refund(job: ServiceJob, to: "refunded" | "expired", from: JobStatus, reason?: string): Promise<boolean> {
   const patch: Record<string, unknown> = { status: to };
