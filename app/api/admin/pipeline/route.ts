@@ -43,11 +43,13 @@ interface LeadRow {
   stage: string; source: string;
   next_action_at: string | null; next_action: string | null;
   notes: string | null; value_cents: number | null; last_contacted_at: string | null;
+  deleted_at: string | null;
 }
 
-const SELECT =
+const SELECT_BASE =
   "id,created_at,updated_at,name,email,phone,company,message,guide_interest," +
   "stage,source,next_action_at,next_action,notes,value_cents,last_contacted_at";
+const SELECT = `${SELECT_BASE},deleted_at`;
 
 // ── GET ─────────────────────────────────────────────────────────────────────
 
@@ -58,14 +60,25 @@ export async function GET(req: Request) {
   // Active pipeline + last 90 days of closed deals (won/lost stay visible
   // long enough to learn from, then drop off the board).
   const closedSince = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-  const res = await fetch(
-    sbUrl(
-      `leads?select=${SELECT}` +
-      `&or=(stage.not.in.(won,lost),updated_at.gte.${encodeURIComponent(closedSince)})` +
-      `&order=created_at.desc&limit=500`
-    ),
+  const filter =
+    `&or=(stage.not.in.(won,lost),updated_at.gte.${encodeURIComponent(closedSince)})` +
+    `&order=created_at.desc&limit=500`;
+
+  // Prefer the soft-delete-aware query (excludes the recycle bin). Fall back to
+  // the base select if db/leads-soft-delete.sql hasn't run yet, so the board
+  // never breaks on a missing deleted_at column.
+  let softDelete = true;
+  let res = await fetch(
+    sbUrl(`leads?select=${SELECT}&deleted_at=is.null${filter}`),
     { headers: sbHeaders() }
   ).catch(() => null);
+  if (res && res.status === 400) {
+    softDelete = false;
+    res = await fetch(
+      sbUrl(`leads?select=${SELECT_BASE}${filter}`),
+      { headers: sbHeaders() }
+    ).catch(() => null);
+  }
   if (!res?.ok) {
     return Response.json({
       ok: false,
@@ -76,6 +89,17 @@ export async function GET(req: Request) {
   }
 
   const leads = await res.json() as LeadRow[];
+
+  // Recycle bin — soft-deleted leads, most recently binned first.
+  let deleted: LeadRow[] = [];
+  if (softDelete) {
+    const binRes = await fetch(
+      sbUrl(`leads?select=${SELECT}&deleted_at=not.is.null&order=deleted_at.desc&limit=200`),
+      { headers: sbHeaders() }
+    ).catch(() => null);
+    if (binRes?.ok) deleted = await binRes.json() as LeadRow[];
+  }
+
   const now = Date.now();
 
   const open = leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
@@ -93,6 +117,7 @@ export async function GET(req: Request) {
   return Response.json({
     ok: true,
     leads,
+    deleted,
     due,
     no_next_action,
     counts: Object.fromEntries(STAGES.map((s) => [s, leads.filter((l) => l.stage === s).length])),
@@ -158,6 +183,9 @@ export async function PATCH(req: Request) {
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
+  // Restore from the recycle bin (clear deleted_at).
+  if (body.restore === true) update.deleted_at = null;
+
   if (body.stage !== undefined) {
     if (!STAGES.includes(body.stage as typeof STAGES[number])) {
       return Response.json({ ok: false, reason: `invalid stage. Valid: ${STAGES.join(", ")}` }, { status: 400 });
@@ -196,13 +224,34 @@ export async function DELETE(req: Request) {
   const id = Number(body.id);
   if (!id) return Response.json({ ok: false, reason: "id required" }, { status: 400 });
 
-  const res = await fetch(sbUrl(`leads?id=eq.${id}`), {
-    method:  "DELETE",
-    headers: { ...sbHeaders(), Prefer: "return=representation" },
-  }).catch(() => null);
+  // Default: soft delete to the recycle bin (restorable). permanent: true is the
+  // bin's "delete forever" — an irreversible row removal.
+  const permanent = body.permanent === true;
 
+  if (permanent) {
+    const res = await fetch(sbUrl(`leads?id=eq.${id}`), {
+      method:  "DELETE",
+      headers: { ...sbHeaders(), Prefer: "return=representation" },
+    }).catch(() => null);
+    if (!res?.ok) return Response.json({ ok: false, reason: "delete failed" }, { status: 502 });
+    const rows = await res.json() as LeadRow[];
+    if (rows.length === 0) return Response.json({ ok: false, reason: "lead not found" }, { status: 404 });
+    return Response.json({ ok: true, deleted: id, permanent: true });
+  }
+
+  const res = await fetch(sbUrl(`leads?id=eq.${id}`), {
+    method:  "PATCH",
+    headers: { ...sbHeaders(), Prefer: "return=representation" },
+    body:    JSON.stringify({ deleted_at: new Date().toISOString() }),
+  }).catch(() => null);
+  if (res && res.status === 400) {
+    return Response.json({
+      ok: false,
+      reason: "recycle bin not enabled — run db/leads-soft-delete.sql in the Supabase SQL editor",
+    }, { status: 503 });
+  }
   if (!res?.ok) return Response.json({ ok: false, reason: "delete failed" }, { status: 502 });
   const rows = await res.json() as LeadRow[];
   if (rows.length === 0) return Response.json({ ok: false, reason: "lead not found" }, { status: 404 });
-  return Response.json({ ok: true, deleted: id });
+  return Response.json({ ok: true, binned: id });
 }

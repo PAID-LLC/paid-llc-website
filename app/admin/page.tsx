@@ -510,9 +510,10 @@ interface Lead {
   stage: string; source: string;
   next_action_at: string | null; next_action: string | null;
   notes: string | null; value_cents: number | null; last_contacted_at: string | null;
+  deleted_at?: string | null;
 }
 interface PipelineData {
-  leads: Lead[]; due: Lead[]; no_next_action: Lead[];
+  leads: Lead[]; deleted?: Lead[]; due: Lead[]; no_next_action: Lead[];
   counts: Record<string, number>;
   pipeline_value_cents: number; won_value_cents: number;
 }
@@ -577,8 +578,8 @@ function PipelineTab() {
     load();
   }
 
-  async function del(id: number, name: string) {
-    if (!window.confirm(`Delete lead "${name}" permanently? This cannot be undone.`)) return;
+  async function del(id: number) {
+    // Soft delete → recycle bin. Recoverable, so no scary confirm needed.
     setBusy(id);
     await fetch("/api/admin/pipeline", {
       method: "DELETE", headers: { "Content-Type": "application/json" },
@@ -586,6 +587,27 @@ function PipelineTab() {
     });
     setBusy(null);
     setOpen(null);
+    load();
+  }
+
+  async function restore(id: number) {
+    setBusy(id);
+    await fetch("/api/admin/pipeline", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, restore: true }),
+    });
+    setBusy(null);
+    load();
+  }
+
+  async function purge(id: number, name: string) {
+    if (!window.confirm(`Permanently delete "${name}"? This cannot be undone.`)) return;
+    setBusy(id);
+    await fetch("/api/admin/pipeline", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, permanent: true }),
+    });
+    setBusy(null);
     load();
   }
 
@@ -635,8 +657,8 @@ function PipelineTab() {
           <button
             disabled={busy === l.id}
             style={{ ...S.btnSmall, color: "#C14826", borderColor: "#553333" }}
-            title="Delete lead permanently"
-            onClick={() => del(l.id, l.name)}
+            title="Move to recycle bin"
+            onClick={() => del(l.id)}
           >
             ✕
           </button>
@@ -749,6 +771,44 @@ function PipelineTab() {
           <div style={{ color: "#555", fontSize: 13, padding: "12px 0" }}>No leads match.</div>
         )}
       </div>
+
+      {/* Recycle bin */}
+      {data.deleted && data.deleted.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <div style={{ ...S.sectionHd, color: "#774444", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>RECYCLE BIN ({data.deleted.length})</span>
+            <span style={{ fontSize: 10, color: "#555", fontWeight: 400 }}>Restore, or delete forever</span>
+          </div>
+          <div style={{ maxHeight: 320, overflowY: "auto", paddingRight: 4 }}>
+            {data.deleted.map((l) => (
+              <div key={l.id} style={{ ...S.card, borderColor: "#1A1A1A", opacity: 0.85 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <span style={{ color: "#A8A4A0", fontSize: 13 }}>{l.name}</span>
+                    {l.company && <span style={{ color: "#666", fontSize: 12 }}> · {l.company}</span>}
+                    <span style={{ color: "#555", fontSize: 11 }}> · {l.email}</span>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                      <span style={{ color: STAGE_COLORS[l.stage] }}>{STAGE_LABELS[l.stage]}</span>
+                      {" · "}{l.source.replace("_", " ")}
+                      {l.deleted_at && <> · binned {fmtDate(l.deleted_at)}</>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <button disabled={busy === l.id} style={{ ...S.btnSmall, color: "#44AA44", borderColor: "#335533" }}
+                      title="Restore to pipeline" onClick={() => restore(l.id)}>
+                      Restore
+                    </button>
+                    <button disabled={busy === l.id} style={{ ...S.btnSmall, color: "#C14826", borderColor: "#553333" }}
+                      title="Delete forever" onClick={() => purge(l.id, l.name)}>
+                      Delete forever
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
