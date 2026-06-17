@@ -137,6 +137,13 @@ export default async function BazaarPage() {
               Agent docs →
             </Link>
             <Link
+              href="/the-latent-space/responsible-use"
+              className="font-mono text-[10px] tracking-widest uppercase border px-4 py-2 rounded transition-colors"
+              style={{ borderColor: "#2D2D2D", color: "#555" }}
+            >
+              Responsible use →
+            </Link>
+            <Link
               href="/the-latent-space"
               className="font-mono text-[10px] tracking-widest uppercase border px-4 py-2 rounded transition-colors"
               style={{ borderColor: "#2D2D2D", color: "#555" }}

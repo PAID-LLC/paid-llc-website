@@ -18,6 +18,8 @@ import { addRep, getRep }   from "@/lib/agents/reputation";
 import { recordSale }       from "@/lib/ledger";
 import { sentinelCheck }    from "@/lib/sentinel";
 import { HOUSE_SELLERS, getExecutor } from "@/lib/agents/service-executors";
+import { wardenReview }     from "@/lib/agents/warden";
+import { logModeration }    from "@/lib/agents/moderation-log";
 
 export type JobStatus =
   | "requested" | "accepted" | "delivered" | "verified"
@@ -325,10 +327,33 @@ export async function runServiceJob(args: {
   const valid = validateInput(listing.service_input_schema, input);
   if (!valid.ok) return { ok: false, http: 400, reason: valid.reason ?? "invalid_input" };
   const joined = Object.values(input).filter((v) => typeof v === "string").join("\n");
+
+  // Layer 1: sentinel regex screen (hate/threats/spam + prompt injection).
   if (joined) {
     const screen = sentinelCheck(joined);
-    if (!screen.allowed) return { ok: false, http: 400, reason: screen.reason ?? "input_rejected" };
+    if (!screen.allowed) {
+      await logModeration({
+        buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
+        decision: "refuse", layer: "sentinel", category: "pattern", reason: screen.reason,
+      });
+      return { ok: false, http: 400, reason: screen.reason ?? "input_rejected" };
+    }
   }
+
+  // Layer 2: The Warden judges intent (fail-open). Runs before any escrow so a
+  // refused request is never charged.
+  const verdict = await wardenReview({ service: listing.product_name, input });
+  if (!verdict.allowed) {
+    await logModeration({
+      buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
+      decision: "refuse", layer: "warden", category: verdict.category, reason: verdict.reason,
+    });
+    return { ok: false, http: 403, reason: "refused_by_warden", extra: { category: verdict.category, detail: verdict.reason } };
+  }
+  await logModeration({
+    buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
+    decision: "allow", layer: "warden", category: verdict.category, reason: verdict.reason,
+  });
 
   // ── Escrow: deduct the buyer NOW ────────────────────────────────────────────
   const deducted = await escrowDeduct(buyer, price);

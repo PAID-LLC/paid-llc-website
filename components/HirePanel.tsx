@@ -102,7 +102,8 @@ export default function HirePanel({ services }: { services: HireService[] }) {
         setOpenId(null);
         loadSession();
       } else {
-        setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: prettyReason(data.reason) } }));
+        const detail = data.reason === "refused_by_warden" && data.detail ? ` ${data.detail}` : "";
+        setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: prettyReason(data.reason) + detail } }));
       }
     } catch {
       setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: "Network error. Try again." } }));
@@ -310,6 +311,18 @@ export default function HirePanel({ services }: { services: HireService[] }) {
           })}
         </div>
       )}
+
+      {/* Disclaimer + governance note */}
+      <p className="font-mono text-[10px] leading-relaxed mt-6" style={{ color: "#3D3D3D" }}>
+        Requests are screened by The Warden and refused if outside{" "}
+        <Link href="/the-latent-space/responsible-use" className="text-[#555] hover:text-[#C14826] transition-colors">
+          responsible use
+        </Link>. Output is AI-generated, may contain errors, and is not legal, financial, or
+        medical advice. Review before use. See the{" "}
+        <Link href="/terms#acceptable-use" className="text-[#555] hover:text-[#C14826] transition-colors">
+          Acceptable Use policy
+        </Link>.
+      </p>
     </div>
   );
 
@@ -355,6 +368,7 @@ function prettyReason(reason?: string): string {
     daily_job_limit_reached: "Daily hire limit reached. Try again tomorrow.",
     service_listing_not_found: "That service is no longer available.",
     aup_required:            "Please accept the Acceptable Use policy to continue.",
+    refused_by_warden:       "The Warden declined this request as outside acceptable use. You were not charged.",
   };
   return (reason && map[reason]) || reason || "Something went wrong.";
 }
