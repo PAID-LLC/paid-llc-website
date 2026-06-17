@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { v2 } from "@/components/v2/tokens";
 
 // ── HirePanel ────────────────────────────────────────────────────────────────
 // The human front door to the Bazaar labor market. Renders a sign-in bar (magic
 // link) and, for each service, an inline hire form that posts to /api/bazaar/hire
 // under the signed-in human's shadow identity. No api_key ever touches the browser.
+// Styled on the v2 token system: terracotta lead, cyan partner (credits are a
+// system signal), glass cards.
 
 export interface HireService {
   id:           number;
@@ -26,6 +29,10 @@ interface Session {
 }
 
 const LONG_FIELDS = new Set(["text", "notes", "transcript", "body", "content", "criteria", "angle"]);
+
+// Shared input recipe so every field and the email box match the v2 surfaces.
+const INPUT =
+  "w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-400/40 focus:outline-none";
 
 type HireResult =
   | { kind: "settled"; result: Record<string, unknown>; credits_spent: number }
@@ -81,7 +88,6 @@ export default function HirePanel({ services }: { services: HireService[] }) {
   }
 
   async function hire(svc: HireService) {
-    // Persist Acceptable Use acceptance the first time a hire is confirmed.
     if (!aupAccepted) {
       try { localStorage.setItem("latent_aup_accepted", "1"); } catch { /* ignore */ }
       setAup(true);
@@ -96,14 +102,12 @@ export default function HirePanel({ services }: { services: HireService[] }) {
       if (data.ok && data.status === "settled") {
         setResults((r) => ({ ...r, [svc.id]: { kind: "settled", result: data.result, credits_spent: data.credits_spent } }));
         setOpenId(null);
-        loadSession();   // refresh balance
+        loadSession();
       } else if (data.ok && data.status === "accepted") {
         setResults((r) => ({ ...r, [svc.id]: { kind: "accepted", note: data.note ?? "Escrow held. Seller is fulfilling." } }));
         setOpenId(null);
         loadSession();
       } else {
-        // Deliberately do not surface the Warden's internal reason on a refusal:
-        // the user gets a clean, consistent message rather than a rationale to game.
         setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: prettyReason(data.reason) } }));
       }
     } catch {
@@ -119,63 +123,49 @@ export default function HirePanel({ services }: { services: HireService[] }) {
   return (
     <div>
       {/* Account bar */}
-      <div
-        className="rounded-lg p-5 mb-8 flex flex-wrap items-center justify-between gap-4"
-        style={{ background: "#0A0A0A", border: "1px solid #1A1A1A" }}
-      >
+      <div className={`${v2.cardStatic} mb-8 flex flex-wrap items-center justify-between gap-4`}>
         {session === null ? (
-          <p className="font-mono text-xs" style={{ color: "#555" }}>Loading...</p>
+          <p className={v2.mono}>Loading...</p>
         ) : signedIn ? (
           <>
-            <div className="flex items-center gap-4">
-              <span className="font-mono text-[10px] px-2 py-1 rounded tracking-widest uppercase"
-                style={{ background: "#C1482618", color: "#C14826", border: "1px solid #C1482633" }}>
-                Signed in
-              </span>
-              <span className="font-mono text-xs" style={{ color: "#9B9B9B" }}>{localPart}</span>
+            <div className="flex items-center gap-3">
+              <span className={v2.chipLive}><span className={v2.dotLive} />Signed in</span>
+              <span className="font-mono text-sm text-zinc-300">{localPart}</span>
             </div>
             <div className="flex items-center gap-5">
-              <span className="font-mono text-xs" style={{ color: "#6B6B6B" }}>
-                Balance: <span style={{ color: "#C14826" }} className="font-bold">{session.balance ?? 0}</span> credits
+              <span className="font-mono text-sm text-zinc-400">
+                Balance: <span className="font-bold text-cyan-300">{session.balance ?? 0}</span> credits
               </span>
-              <Link href="/the-latent-space/credits" className="font-mono text-[10px] tracking-widest uppercase hover:underline" style={{ color: "#4ADE80" }}>
+              <Link href="/the-latent-space/credits" className="font-mono text-[11px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200">
                 Buy credits
               </Link>
-              <button onClick={signOut} className="font-mono text-[10px] tracking-widest uppercase hover:underline" style={{ color: "#555" }}>
+              <button onClick={signOut} className="font-mono text-[11px] uppercase tracking-widest text-zinc-500 hover:text-zinc-300">
                 Sign out
               </button>
             </div>
           </>
         ) : magic === "sent" ? (
-          <p className="font-mono text-xs" style={{ color: "#4ADE80" }}>
+          <p className="font-mono text-sm text-emerald-300">
             Check your inbox. We sent a sign-in link to {email}. It expires in 15 minutes.
           </p>
         ) : (
           <>
-            <p className="font-mono text-xs max-w-sm" style={{ color: "#6B6B6B" }}>
+            <p className="max-w-sm font-mono text-sm text-zinc-400">
               Sign in to hire an agent. No password. We email you a one-click link.
             </p>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); if (magic === "error") setMagic("idle"); }}
                 onKeyDown={(e) => e.key === "Enter" && sendMagic()}
                 placeholder="you@company.com"
-                className="font-mono text-xs px-3 py-2 rounded bg-transparent focus:outline-none"
-                style={{ border: "1px solid #2D2D2D", color: "#E8E4E0", minWidth: "220px" }}
+                className={`${INPUT} min-w-[220px]`}
               />
-              <button
-                onClick={sendMagic}
-                disabled={magic === "sending"}
-                className="font-mono text-[10px] tracking-widest uppercase px-4 py-2 rounded transition-colors hover:bg-[#C14826] hover:text-white disabled:opacity-40"
-                style={{ border: "1px solid #C14826", color: "#C14826" }}
-              >
+              <button onClick={sendMagic} disabled={magic === "sending"} className={`${v2.btnPrimary} disabled:opacity-40`}>
                 {magic === "sending" ? "Sending..." : "Email me a link"}
               </button>
-              {magic === "error" && (
-                <span className="font-mono text-[10px]" style={{ color: "#E0564B" }}>Enter a valid email.</span>
-              )}
+              {magic === "error" && <span className="font-mono text-[11px] text-amber-400">Enter a valid email.</span>}
             </div>
           </>
         )}
@@ -183,128 +173,87 @@ export default function HirePanel({ services }: { services: HireService[] }) {
 
       {/* Service cards */}
       {services.length === 0 ? (
-        <p className="font-mono text-sm" style={{ color: "#3D3D3D" }}>
-          No services listed yet. The labor market opens when the first agent posts one.
-        </p>
+        <p className={v2.mono}>No services listed yet. The labor market opens when the first agent posts one.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((svc) => {
             const result = results[svc.id];
             const isOpen = openId === svc.id;
             return (
-              <div key={svc.id} className="rounded-lg p-5 flex flex-col" style={{ background: "#111", border: "1px solid #1A1A1A" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-[9px] px-2 py-0.5 rounded tracking-widest uppercase"
-                    style={{ background: "#C1482618", color: "#C14826", border: "1px solid #C1482633" }}>
+              <div key={svc.id} className={`${v2.cardStatic} flex flex-col`}>
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-300">
                     Service
                   </span>
-                  <span className="font-mono text-[10px]" style={{ color: "#3D3D3D" }}>by {svc.agent_name}</span>
+                  <span className="font-mono text-[11px] text-zinc-600">by {svc.agent_name}</span>
                 </div>
-                <h3 className="font-display text-sm font-semibold mb-2 leading-snug" style={{ color: "#E8E4E0" }}>
-                  {svc.product_name}
-                </h3>
-                <p className="text-xs leading-relaxed mb-4" style={{ color: "#6B6B6B" }}>{svc.description}</p>
+                <h3 className={`${v2.h3} mb-2 leading-snug`}>{svc.product_name}</h3>
+                <p className={`${v2.bodySm} mb-4`}>{svc.description}</p>
 
-                <div className="flex items-center justify-between mt-auto mb-3">
-                  <span className="font-mono text-sm font-bold" style={{ color: "#C14826" }}>{svc.price} credits</span>
-                  <span className="font-mono text-[10px]" style={{ color: "#4ADE80" }}>
+                <div className="mt-auto mb-3 flex items-center justify-between">
+                  <span className="font-mono text-sm font-bold text-cyan-300">{svc.price} credits</span>
+                  <span className="font-mono text-[11px] text-emerald-300">
                     {svc.sla_minutes ? `~${svc.sla_minutes} min` : "instant"}
                   </span>
                 </div>
 
-                {/* Hire control */}
                 {!isOpen && (
                   <button
                     onClick={() => (signedIn ? openForm(svc) : sendFocusHint())}
-                    className="font-mono text-[10px] tracking-widest uppercase px-4 py-2 rounded transition-colors hover:bg-[#C14826] hover:text-white w-full"
-                    style={{ border: "1px solid #C14826", color: "#C14826" }}
+                    className={`${v2.btnPrimary} w-full justify-center`}
                   >
-                    {signedIn ? "Hire →" : "Sign in to hire"}
+                    {signedIn ? "Hire" : "Sign in to hire"} <span aria-hidden>&rarr;</span>
                   </button>
                 )}
 
-                {/* Inline hire form */}
                 {isOpen && (
                   <div className="space-y-2">
                     {svc.fields.map((f) => (
                       <div key={f}>
-                        <label className="font-mono text-[9px] tracking-widest uppercase block mb-1" style={{ color: "#555" }}>{f}</label>
+                        <label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-zinc-500">{f}</label>
                         {LONG_FIELDS.has(f) ? (
-                          <textarea
-                            rows={3}
-                            value={form[f] ?? ""}
-                            onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))}
-                            className="w-full font-mono text-xs px-2 py-1.5 rounded bg-transparent focus:outline-none"
-                            style={{ border: "1px solid #2D2D2D", color: "#E8E4E0" }}
-                          />
+                          <textarea rows={3} value={form[f] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))} className={INPUT} />
                         ) : (
-                          <input
-                            value={form[f] ?? ""}
-                            onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))}
-                            className="w-full font-mono text-xs px-2 py-1.5 rounded bg-transparent focus:outline-none"
-                            style={{ border: "1px solid #2D2D2D", color: "#E8E4E0" }}
-                          />
+                          <input value={form[f] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))} className={INPUT} />
                         )}
                       </div>
                     ))}
+
                     {!aupAccepted && (
-                      <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={aupCheck}
-                          onChange={(e) => setAupCheck(e.target.checked)}
-                          className="mt-0.5 accent-[#C14826]"
-                        />
-                        <span className="text-[10px] leading-relaxed" style={{ color: "#6B6B6B" }}>
+                      <label className="flex cursor-pointer items-start gap-2 pt-1">
+                        <input type="checkbox" checked={aupCheck} onChange={(e) => setAupCheck(e.target.checked)} className="mt-0.5 accent-[#C14826]" />
+                        <span className="text-[11px] leading-relaxed text-zinc-500">
                           I am 18 or older, and this task complies with the{" "}
-                          <Link href="/terms#acceptable-use" target="_blank" className="text-[#C14826] hover:underline">
-                            Acceptable Use policy
-                          </Link>{" "}
-                          (no illegal, deceptive, harassing, or infringing use).
+                          <Link href="/terms#acceptable-use" target="_blank" className="text-[#E8714C] hover:underline">Acceptable Use policy</Link>.
                         </span>
                       </label>
                     )}
+
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => hire(svc)}
-                        disabled={
-                          busy ||
-                          svc.fields.some((f) => !(form[f] ?? "").trim()) ||
-                          (!aupAccepted && !aupCheck)
-                        }
-                        className="font-mono text-[10px] tracking-widest uppercase px-4 py-2 rounded transition-colors hover:bg-[#C14826] hover:text-white disabled:opacity-40 flex-1"
-                        style={{ border: "1px solid #C14826", color: "#C14826" }}
+                        disabled={busy || svc.fields.some((f) => !(form[f] ?? "").trim()) || (!aupAccepted && !aupCheck)}
+                        className={`${v2.btnPrimary} flex-1 justify-center disabled:opacity-40`}
                       >
                         {busy ? "Working..." : `Hire for ${svc.price} cr`}
                       </button>
-                      <button
-                        onClick={() => setOpenId(null)}
-                        className="font-mono text-[10px] tracking-widest uppercase px-3 py-2 rounded"
-                        style={{ border: "1px solid #2D2D2D", color: "#555" }}
-                      >
-                        Cancel
-                      </button>
+                      <button onClick={() => setOpenId(null)} className={v2.btnGhost}>Cancel</button>
                     </div>
                   </div>
                 )}
 
-                {/* Result */}
                 {result && (
-                  <div className="mt-3 rounded p-3" style={{ background: "#0A0A0A", border: "1px solid #1A1A1A" }}>
+                  <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
                     {result.kind === "settled" && (
                       <>
-                        <p className="font-mono text-[9px] tracking-widest uppercase mb-2" style={{ color: "#4ADE80" }}>
+                        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-emerald-300">
                           Delivered · {result.credits_spent} cr spent
                         </p>
                         <ResultView result={result.result} />
                       </>
                     )}
-                    {result.kind === "accepted" && (
-                      <p className="font-mono text-[11px]" style={{ color: "#4ADE80" }}>{result.note}</p>
-                    )}
-                    {result.kind === "error" && (
-                      <p className="font-mono text-[11px]" style={{ color: "#E0564B" }}>{result.reason}</p>
-                    )}
+                    {result.kind === "accepted" && <p className="font-mono text-[12px] text-emerald-300">{result.note}</p>}
+                    {result.kind === "error" && <p className="font-mono text-[12px] text-amber-400">{result.reason}</p>}
                   </div>
                 )}
               </div>
@@ -314,15 +263,11 @@ export default function HirePanel({ services }: { services: HireService[] }) {
       )}
 
       {/* Disclaimer + governance note */}
-      <p className="font-mono text-[10px] leading-relaxed mt-6" style={{ color: "#3D3D3D" }}>
+      <p className="mt-6 font-mono text-[11px] leading-relaxed text-zinc-600">
         Requests are screened by The Warden and refused if outside{" "}
-        <Link href="/the-latent-space/responsible-use" className="text-[#555] hover:text-[#C14826] transition-colors">
-          responsible use
-        </Link>. Output is AI-generated, may contain errors, and is not legal, financial, or
-        medical advice. Review before use. See the{" "}
-        <Link href="/terms#acceptable-use" className="text-[#555] hover:text-[#C14826] transition-colors">
-          Acceptable Use policy
-        </Link>.
+        <Link href="/the-latent-space/responsible-use" className="text-zinc-400 hover:text-cyan-300">responsible use</Link>.
+        Output is AI-generated, may contain errors, and is not legal, financial, or medical advice. Review before use. See the{" "}
+        <Link href="/terms#acceptable-use" className="text-zinc-400 hover:text-cyan-300">Acceptable Use policy</Link>.
       </p>
     </div>
   );
@@ -334,26 +279,23 @@ export default function HirePanel({ services }: { services: HireService[] }) {
   }
 }
 
-// Generic renderer for an arbitrary result object: strings shown inline, arrays as
-// bullet lists, nested objects pretty-printed.
+// Generic renderer for an arbitrary result object.
 function ResultView({ result }: { result: Record<string, unknown> }) {
   return (
     <div className="space-y-2">
       {Object.entries(result).map(([k, v]) => (
         <div key={k}>
-          <p className="font-mono text-[9px] tracking-widest uppercase mb-0.5" style={{ color: "#555" }}>{k}</p>
+          <p className="mb-0.5 font-mono text-[10px] uppercase tracking-widest text-zinc-500">{k}</p>
           {Array.isArray(v) ? (
-            <ul className="list-disc pl-4 space-y-0.5">
+            <ul className="list-disc space-y-0.5 pl-4">
               {v.map((item, i) => (
-                <li key={i} className="text-xs leading-relaxed" style={{ color: "#C9C5C0" }}>{String(item)}</li>
+                <li key={i} className="text-sm leading-relaxed text-zinc-300">{String(item)}</li>
               ))}
             </ul>
           ) : typeof v === "object" && v !== null ? (
-            <pre className="text-[11px] font-mono overflow-x-auto whitespace-pre-wrap" style={{ color: "#C9C5C0" }}>
-              {JSON.stringify(v, null, 2)}
-            </pre>
+            <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] text-zinc-300">{JSON.stringify(v, null, 2)}</pre>
           ) : (
-            <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: "#C9C5C0" }}>{String(v)}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{String(v)}</p>
           )}
         </div>
       ))}
@@ -363,14 +305,14 @@ function ResultView({ result }: { result: Record<string, unknown> }) {
 
 function prettyReason(reason?: string): string {
   const map: Record<string, string> = {
-    insufficient_credits:    "Not enough credits. Buy a pack and try again.",
-    not_signed_in:           "Your session expired. Sign in again.",
-    executor_unavailable:    "The agent could not complete this right now. You were refunded.",
-    daily_job_limit_reached: "Daily hire limit reached. Try again tomorrow.",
+    insufficient_credits:      "Not enough credits. Buy a pack and try again.",
+    not_signed_in:             "Your session expired. Sign in again.",
+    executor_unavailable:      "The agent could not complete this right now. You were refunded.",
+    daily_job_limit_reached:   "Daily hire limit reached. Try again tomorrow.",
     service_listing_not_found: "That service is no longer available.",
-    aup_required:            "Please confirm you are 18+ and accept the Acceptable Use policy to continue.",
-    refused_by_warden:       "I can't help with that. You were not charged.",
-    review_unavailable:      "We could not review your request right now. Please try again shortly.",
+    aup_required:              "Please confirm you are 18+ and accept the Acceptable Use policy to continue.",
+    refused_by_warden:         "I can't help with that. You were not charged.",
+    review_unavailable:        "We could not review your request right now. Please try again shortly.",
   };
   return (reason && map[reason]) || reason || "Something went wrong.";
 }

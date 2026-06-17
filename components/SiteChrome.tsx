@@ -27,6 +27,8 @@ const V2_NATIVE  = [
   "/the-latent-space",
   "/the-latent-space/registry",
   "/the-latent-space/credits",
+  "/the-latent-space/bazaar",
+  "/the-latent-space/responsible-use",
 ];
 
 export default function SiteChrome({
