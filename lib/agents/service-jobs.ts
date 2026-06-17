@@ -14,8 +14,10 @@
 // instant the sweep auto-accepts — can never double-pay.
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { addRep }           from "@/lib/agents/reputation";
+import { addRep, getRep }   from "@/lib/agents/reputation";
 import { recordSale }       from "@/lib/ledger";
+import { sentinelCheck }    from "@/lib/sentinel";
+import { HOUSE_SELLERS, getExecutor } from "@/lib/agents/service-executors";
 
 export type JobStatus =
   | "requested" | "accepted" | "delivered" | "verified"
@@ -279,4 +281,97 @@ export async function refund(job: ServiceJob, to: "refunded" | "expired", from: 
   if (!claimed) return false;
   await creditAgent(job.buyer_agent, job.price_credits);
   return true;
+}
+
+// ── Shared request runner ──────────────────────────────────────────────────────
+// The escrow core behind a service hire, shared by the Bearer agent route
+// (/api/bazaar/service/request) and the human session route (/api/bazaar/hire) so
+// the money rules live in exactly one place. Callers are responsible ONLY for
+// authenticating the buyer and any per-caller rate limiting BEFORE calling this;
+// everything from listing lookup through escrow + settlement happens here.
+
+export type RunResult =
+  | { ok: true;  http: 200; status: "settled" | "delivered"; job_id: number; result: Record<string, unknown>; proof_hash: string | null; credits_spent: number }
+  | { ok: true;  http: 200; status: "accepted"; job_id: number; seller_agent: string; deadline_at: string | null }
+  | { ok: false; http: number; reason: string; extra?: Record<string, unknown> };
+
+export async function runServiceJob(args: {
+  buyer: string;
+  itemId: number;
+  input: Record<string, unknown>;
+}): Promise<RunResult> {
+  const { buyer, itemId, input } = args;
+
+  const listing = await fetchServiceListing(itemId);
+  if (!listing) return { ok: false, http: 404, reason: "service_listing_not_found" };
+
+  // Self-dealing guard.
+  if (listing.agent_name.toLowerCase() === buyer.toLowerCase()) {
+    return { ok: false, http: 400, reason: "cannot_buy_your_own_service" };
+  }
+
+  const { price, fee } = creditMath(listing);
+  if (price <= 0) return { ok: false, http: 400, reason: "listing_misconfigured_price" };
+
+  // Reputation gate (buy-side).
+  if (listing.min_rep > 0) {
+    const rep = await getRep(buyer);
+    if (rep < listing.min_rep) {
+      return { ok: false, http: 403, reason: "insufficient_reputation", extra: { required_rep: listing.min_rep, your_rep: rep } };
+    }
+  }
+
+  // Input schema + injection screen (input flows into an LLM prompt downstream).
+  const valid = validateInput(listing.service_input_schema, input);
+  if (!valid.ok) return { ok: false, http: 400, reason: valid.reason ?? "invalid_input" };
+  const joined = Object.values(input).filter((v) => typeof v === "string").join("\n");
+  if (joined) {
+    const screen = sentinelCheck(joined);
+    if (!screen.allowed) return { ok: false, http: 400, reason: screen.reason ?? "input_rejected" };
+  }
+
+  // ── Escrow: deduct the buyer NOW ────────────────────────────────────────────
+  const deducted = await escrowDeduct(buyer, price);
+  if (!deducted) return { ok: false, http: 402, reason: "insufficient_credits", extra: { required_credits: price } };
+
+  const job = await createJob({ listing, buyer, price, fee, input });
+  if (!job) {
+    await creditAgent(buyer, price);   // unwind so the buyer is never out funds
+    return { ok: false, http: 500, reason: "job_create_failed_refunded" };
+  }
+
+  // ── House fulfilment (synchronous) ──────────────────────────────────────────
+  const executorKey = listing.service_input_schema?.executor;
+  const executor = HOUSE_SELLERS.has(listing.agent_name) ? getExecutor(executorKey) : null;
+
+  if (executor) {
+    const exec = await executor(input);
+    if (!exec) {
+      await refund(job, "refunded", "accepted", "executor_unavailable");
+      return { ok: false, http: 503, reason: "executor_unavailable", extra: { refunded: true, job_id: job.id } };
+    }
+    const delivered = await deliverResult(job, exec.result, listing.auto_verify);
+    if (!delivered) {
+      await refund(job, "refunded", "accepted", "deliver_failed");
+      return { ok: false, http: 500, reason: "deliver_failed_refunded", extra: { job_id: job.id } };
+    }
+    const settled = await settle(delivered);
+    return {
+      ok: true, http: 200,
+      status: settled ? "settled" : "delivered",   // delivered+settled is the house happy path
+      job_id: job.id,
+      result: exec.result,
+      proof_hash: delivered.proof_hash,
+      credits_spent: price,
+    };
+  }
+
+  // ── Third-party service (asynchronous) ──────────────────────────────────────
+  return {
+    ok: true, http: 200,
+    status: "accepted",
+    job_id: job.id,
+    seller_agent: listing.agent_name,
+    deadline_at: job.deadline_at,
+  };
 }

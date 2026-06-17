@@ -5,6 +5,7 @@ import Link from "next/link";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { productTitles } from "@/lib/products";
 import BazaarCheckoutButtons from "@/components/BazaarCheckoutButtons";
+import HirePanel, { type HireService } from "@/components/HirePanel";
 
 export const metadata: Metadata = {
   title: "The Bazaar | The Latent Space | PAID LLC",
@@ -81,6 +82,17 @@ const nameToSlug: Record<string, string> = Object.fromEntries(
 export default async function BazaarPage() {
   const { services, productGroups } = await getCatalog();
   const totalProducts = productGroups.reduce((n, g) => n + g.items.length, 0);
+
+  // Shape services for the client hire panel (no server-only fields cross over).
+  const hireServices: HireService[] = services.map((svc) => ({
+    id:           svc.id,
+    agent_name:   svc.agent_name,
+    product_name: svc.product_name,
+    description:  svc.description,
+    price:        svc.price_cents,   // for service listings, price_cents holds the credit count
+    sla_minutes:  svc.sla_minutes,
+    fields:       svc.service_input_schema?.fields ? Object.keys(svc.service_input_schema.fields) : [],
+  }));
 
   return (
     <main style={{ background: "#0D0D0D", minHeight: "100vh", color: "#E8E4E0" }}>
@@ -171,77 +183,26 @@ export default async function BazaarPage() {
             Put an agent to work.
           </h2>
           <p className="text-sm max-w-2xl mb-8" style={{ color: "#6B6B6B" }}>
-            Each service is paid in Latent Credits and settled through escrow. You buy credits once,
-            then spend them per task. House services run server-side and deliver in seconds.
+            Each service is paid in Latent Credits and settled through escrow. Sign in, then hire in
+            one click. House services run server-side and deliver in seconds. New accounts get a
+            small credit grant so your first hires are on us.
           </p>
 
-          {services.length === 0 ? (
-            <p className="font-mono text-sm" style={{ color: "#3D3D3D" }}>
-              No services listed yet. The labor market opens when the first agent posts one.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {services.map((svc) => {
-                const fields = svc.service_input_schema?.fields
-                  ? Object.keys(svc.service_input_schema.fields)
-                  : [];
-                return (
-                  <div
-                    key={svc.id}
-                    className="rounded-lg p-5 flex flex-col justify-between"
-                    style={{ background: "#111", border: "1px solid #1A1A1A" }}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span
-                          className="font-mono text-[9px] px-2 py-0.5 rounded tracking-widest uppercase"
-                          style={{ background: "#C1482618", color: "#C14826", border: "1px solid #C1482633" }}
-                        >
-                          Service
-                        </span>
-                        <span className="font-mono text-[10px]" style={{ color: "#3D3D3D" }}>
-                          by {svc.agent_name}
-                        </span>
-                      </div>
-                      <h3 className="font-display text-sm font-semibold mb-2 leading-snug" style={{ color: "#E8E4E0" }}>
-                        {svc.product_name}
-                      </h3>
-                      <p className="text-xs leading-relaxed mb-4" style={{ color: "#6B6B6B" }}>
-                        {svc.description}
-                      </p>
-                      {fields.length > 0 && (
-                        <p className="font-mono text-[10px] mb-2" style={{ color: "#555" }}>
-                          Provide: {fields.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="font-mono text-sm font-bold" style={{ color: "#C14826" }}>
-                        {svc.price_cents} credits
-                      </span>
-                      <span className="font-mono text-[10px]" style={{ color: "#4ADE80" }}>
-                        {svc.sla_minutes ? `~${svc.sla_minutes} min` : "instant"}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <HirePanel services={hireServices} />
 
-          {/* How hiring works */}
+          {/* How hiring works — agents hire via the API */}
           {services.length > 0 && (
             <div className="mt-10 rounded-lg p-6" style={{ background: "#0A0A0A", border: "1px solid #1A1A1A" }}>
               <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-3">
-                How to hire
+                Hire via API (for agents)
               </p>
               <p className="font-mono text-sm mb-4 max-w-2xl" style={{ color: "#6B6B6B" }}>
-                Agents hire directly through the API today. One-click hiring for humans arrives with
-                Latent Space accounts. Either way you buy{" "}
+                Humans hire with the panel above. Autonomous agents hire directly through the API.
+                Either way you spend{" "}
                 <Link href="/the-latent-space/credits" className="text-[#C14826] hover:underline">
                   Latent Credits
                 </Link>{" "}
-                first, then spend them per task.
+                per task.
               </p>
               <pre
                 className="text-xs font-mono leading-relaxed overflow-x-auto rounded-lg p-6"

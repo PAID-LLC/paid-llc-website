@@ -177,10 +177,148 @@ const scoreResponse: Executor = async (input) => {
   };
 };
 
+// ── Phase 4 executors ─────────────────────────────────────────────────────────
+// All Gemini-only (plus fetchReadable for the URL-based one), so they deliver the
+// moment GEMINI_API_KEY is live — no new external dependency. Each enforces house
+// style (no em dashes) in its prompt where it produces prose.
+
+/** Best-effort JSON parse of a model response: strips code fences, then parses.
+ *  Returns null on any failure so the executor can refund cleanly. */
+function parseJsonLoose(raw: string): unknown {
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try { return JSON.parse(cleaned); } catch { /* fall through */ }
+  // Last resort: grab the first {...} or [...] block.
+  const m = cleaned.match(/[[{][\s\S]*[\]}]/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* give up */ } }
+  return null;
+}
+
+/** Split a model response into clean, non-empty lines with list markers stripped. */
+function toLines(raw: string, max = 12): string[] {
+  return raw
+    .split("\n")
+    .map((l) => l.replace(/^\s*(?:[-*•\d.)]+)\s*/, "").trim())
+    .filter((l) => l.length > 0)
+    .slice(0, max);
+}
+
+// Proofread + tighten copy, enforcing PAID LLC house style (no em dashes).
+const proofread: Executor = async (input) => {
+  const text = typeof input.text === "string" ? input.text.trim().slice(0, 6000) : "";
+  if (!text) return null;
+  const out = await geminiText(
+    `Proofread and tighten the following text. Fix grammar, spelling, and clarity. ` +
+    `Enforce these house rules: no em dashes (use periods, commas, or colons instead), ` +
+    `no filler phrases, plain direct language. Preserve the author's meaning and voice. ` +
+    `Return only the corrected text, no commentary.\n\nTEXT:\n${text}`,
+    900
+  );
+  if (!out) return null;
+  const edited = out.replace(/[—–]/g, ", ").trim();
+  return {
+    result: { original_chars: text.length, edited, house_style: "no em dashes; plain language" },
+    fields: ["edited"],
+  };
+};
+
+// Pull structured fields out of unstructured text into a JSON object.
+const extractData: Executor = async (input) => {
+  const text   = typeof input.text   === "string" ? input.text.trim().slice(0, 6000) : "";
+  const fields = typeof input.fields === "string" ? input.fields.trim().slice(0, 300) : "";
+  if (!text || !fields) return null;
+  const out = await geminiText(
+    `Extract the following fields from the text and return ONLY a JSON object whose keys are ` +
+    `exactly these fields: ${fields}. Use null for any field not present. No prose, no code fences.\n\n` +
+    `TEXT:\n${text}`,
+    700
+  );
+  if (!out) return null;
+  const parsed = parseJsonLoose(out);
+  if (!parsed || typeof parsed !== "object") return null;
+  return {
+    result: { fields_requested: fields, extracted: parsed as Record<string, unknown> },
+    fields: ["extracted"],
+  };
+};
+
+// Fetch a competitor's page and return a structured teardown.
+const competitorTeardown: Executor = async (input) => {
+  const url = typeof input.url === "string" ? input.url.trim() : "";
+  if (!url) return null;
+  const body = await fetchReadable(url);
+  if (!body) return null;
+  const out = await geminiText(
+    `You are a product strategist. Based on this competitor web page, produce a teardown. ` +
+    `Return ONLY a JSON object with keys: "positioning" (one sentence), "strengths" (array of ` +
+    `3-5 short strings), "weaknesses" (array of 3-5 short strings), "opportunities" (array of ` +
+    `2-4 short strings, gaps a challenger could exploit). No em dashes. No code fences.\n\n` +
+    `PAGE CONTENT:\n${body}`,
+    800
+  );
+  if (!out) return null;
+  const parsed = parseJsonLoose(out);
+  if (!parsed || typeof parsed !== "object") return null;
+  return {
+    result: { source_url: url, teardown: parsed as Record<string, unknown> },
+    fields: ["teardown"],
+  };
+};
+
+// Generate a social post pack: LinkedIn + X variants on a topic.
+const socialPack: Executor = async (input) => {
+  const topic = typeof input.topic === "string" ? input.topic.trim().slice(0, 400) : "";
+  if (!topic) return null;
+  const li = await geminiText(
+    `Write 3 distinct LinkedIn posts about: ${topic}. Each 40-80 words, professional and modern, ` +
+    `one idea each, no hashtags, no em dashes, no emojis. Separate each post with a line containing only "---".`,
+    700
+  );
+  const x = await geminiText(
+    `Write 3 distinct posts for X (Twitter) about: ${topic}. Each under 270 characters, punchy, ` +
+    `no hashtags, no em dashes, no emojis. Separate each post with a line containing only "---".`,
+    500
+  );
+  if (!li && !x) return null;
+  const split = (s: string | null) =>
+    (s ?? "").split(/^\s*---\s*$/m).map((p) => p.trim()).filter(Boolean).slice(0, 3);
+  return {
+    result: { topic, linkedin: split(li), x: split(x) },
+    fields: ["linkedin", "x"],
+  };
+};
+
+// Turn meeting notes or a transcript into a summary + action items.
+const meetingNotes: Executor = async (input) => {
+  const text = typeof input.text === "string" ? input.text.trim().slice(0, 8000) : "";
+  if (!text) return null;
+  const summary = await geminiText(
+    `Summarize these meeting notes in 3-5 tight bullet points. No preamble, no em dashes. ` +
+    `Just the bullets, one per line.\n\nNOTES:\n${text}`,
+    400
+  );
+  const actions = await geminiText(
+    `Extract every action item from these meeting notes. Return one action per line in the form ` +
+    `"owner: task" when an owner is identifiable, otherwise just the task. No preamble, no em dashes. ` +
+    `If there are no action items, return the single word NONE.\n\nNOTES:\n${text}`,
+    400
+  );
+  if (!summary && !actions) return null;
+  const actionItems = actions && !/^\s*none\s*$/i.test(actions) ? toLines(actions) : [];
+  return {
+    result: { summary: summary ? toLines(summary) : [], action_items: actionItems },
+    fields: ["summary", "action_items"],
+  };
+};
+
 const EXECUTORS: Record<string, Executor> = {
-  summarize_url:    summarizeUrl,
-  draft_cold_email: draftColdEmail,
-  score_response:   scoreResponse,
+  summarize_url:       summarizeUrl,
+  draft_cold_email:    draftColdEmail,
+  score_response:      scoreResponse,
+  proofread:           proofread,
+  extract_data:        extractData,
+  competitor_teardown: competitorTeardown,
+  social_pack:         socialPack,
+  meeting_notes:       meetingNotes,
 };
 
 /** Look up a house executor by key. Returns null for unknown keys. */
