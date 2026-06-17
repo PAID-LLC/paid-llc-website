@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { QUICK_WINS } from "@/lib/lead-magnet";
+import { v2 } from "@/components/v2/tokens";
 
 // ── Lead magnet capture form ─────────────────────────────────────────────────
 // POSTs to /api/lead-magnet (MailerLite + leads row + delivery email), then
 // reveals the full checklist inline so the value is immediate either way.
+
+const labelClass = "block font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400 mb-2";
+const inputClass =
+  "w-full rounded-md border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-cyan-400/60 focus:outline-none";
 
 export default function CaptureForm() {
   const [name,    setName]    = useState("");
@@ -37,9 +42,9 @@ export default function CaptureForm() {
   if (done) {
     return (
       <div>
-        <div className="bg-ash border-l-4 border-primary p-6 mb-10">
-          <p className="text-secondary font-semibold mb-1">{done}</p>
-          <p className="text-stone text-sm">
+        <div className="mb-10 rounded-md border-l-2 border-cyan-400/60 bg-white/[0.03] p-6">
+          <p className="mb-1 font-mono text-sm font-semibold text-zinc-100">{done}</p>
+          <p className={v2.bodySm}>
             The full checklist is below. Keep the email copy for your desk.
           </p>
         </div>
@@ -47,27 +52,24 @@ export default function CaptureForm() {
         <div className="space-y-8">
           {QUICK_WINS.map((w, i) => (
             <div key={w.title}>
-              <h3 className="font-display font-bold text-lg text-secondary mb-2">
+              <h3 className={`${v2.h3} mb-2`}>
                 {String(i + 1).padStart(2, "0")}. {w.title}
               </h3>
-              <p className="text-charcoal leading-relaxed mb-1">{w.how}</p>
-              <p className="text-stone text-sm">Tools: {w.tool}</p>
+              <p className={`${v2.body} mb-1`}>{w.how}</p>
+              <p className={v2.mono}>Tools: {w.tool}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-secondary text-white p-8 mt-12">
-          <h3 className="font-display font-bold text-xl mb-3">
+        <div className={`${v2.cardStatic} mt-12`}>
+          <h3 className={v2.h3}>
             Want these implemented for you instead of by you?
           </h3>
-          <p className="text-white/70 leading-relaxed mb-6">
+          <p className={`${v2.body} mb-6 mt-3`}>
             PAID LLC sets up AI workflows for small businesses: consulting,
             implementation, and team training.
           </p>
-          <a
-            href="/contact"
-            className="inline-block bg-primary text-white font-semibold px-6 py-3 hover:opacity-90 transition-opacity"
-          >
+          <a href="/contact" className={v2.btnPrimary}>
             Book a free discovery call
           </a>
         </div>
@@ -76,16 +78,14 @@ export default function CaptureForm() {
   }
 
   return (
-    <form onSubmit={submit} className="bg-ash p-8">
-      <h3 className="font-display font-bold text-xl text-secondary mb-2">
-        Get the checklist
-      </h3>
-      <p className="text-stone text-sm mb-6">
+    <form onSubmit={submit} className={`${v2.cardStatic} p-8`}>
+      <h3 className={v2.h3}>Get the checklist</h3>
+      <p className={`${v2.bodySm} mb-6 mt-2`}>
         Delivered to your inbox and unlocked on this page. No spam; unsubscribe
         any time.
       </p>
 
-      <label className="block text-sm font-semibold text-secondary mb-2" htmlFor="lm-name">
+      <label className={labelClass} htmlFor="lm-name">
         First name
       </label>
       <input
@@ -93,12 +93,12 @@ export default function CaptureForm() {
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full border border-stone/30 bg-white px-4 py-3 mb-4 text-secondary focus:outline-none focus:border-primary"
+        className={`${inputClass} mb-4`}
         placeholder="Pat"
         autoComplete="given-name"
       />
 
-      <label className="block text-sm font-semibold text-secondary mb-2" htmlFor="lm-email">
+      <label className={labelClass} htmlFor="lm-email">
         Work email
       </label>
       <input
@@ -107,7 +107,7 @@ export default function CaptureForm() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full border border-stone/30 bg-white px-4 py-3 mb-6 text-secondary focus:outline-none focus:border-primary"
+        className={`${inputClass} mb-6`}
         placeholder="pat@company.com"
         autoComplete="email"
       />
@@ -124,12 +124,12 @@ export default function CaptureForm() {
         name="website"
       />
 
-      {err && <p className="text-primary text-sm mb-4">{err}</p>}
+      {err && <p className="mb-4 text-sm text-red-400">{err}</p>}
 
       <button
         type="submit"
         disabled={busy || !email}
-        className="w-full bg-primary text-white font-semibold py-3 hover:opacity-90 transition-opacity disabled:opacity-50"
+        className={`${v2.btnPrimary} w-full justify-center py-3.5 disabled:cursor-not-allowed disabled:opacity-50`}
       >
         {busy ? "Sending…" : "Send me the checklist"}
       </button>

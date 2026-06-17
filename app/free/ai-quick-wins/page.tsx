@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import type { Metadata } from "next";
 import { LEAD_MAGNET, QUICK_WINS } from "@/lib/lead-magnet";
+import { v2 } from "@/components/v2/tokens";
 import CaptureForm from "./CaptureForm";
 
 export const metadata: Metadata = {
@@ -14,46 +15,46 @@ export const metadata: Metadata = {
   },
 };
 
+// Teal the final word of the title to match the site-wide H1 accent pattern.
+const titleWords = LEAD_MAGNET.title.trim().split(" ");
+const titleLead = titleWords.slice(0, -1).join(" ");
+const titleLast = titleWords[titleWords.length - 1];
+
 export default function AiQuickWins() {
   return (
     <>
       {/* Header */}
-      <section className="bg-ash">
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <p className="text-primary font-semibold text-sm tracking-widest uppercase mb-4">
-            Free resource
-          </p>
-          <h1 className="font-display font-bold text-5xl text-secondary mb-6 max-w-2xl">
-            {LEAD_MAGNET.title}
-          </h1>
-          <p className="text-stone text-xl leading-relaxed max-w-xl">
-            {LEAD_MAGNET.subtitle} Written for owners, not engineers. Every item
-            takes under an hour to set up.
-          </p>
-        </div>
+      <section className={`${v2.section} pt-24 pb-12 sm:pt-28`}>
+        <p className={v2.kicker}>Free resource</p>
+        <h1 className={`${v2.h1} mt-5 max-w-2xl`}>
+          {titleLead}{titleLead ? " " : ""}
+          <span className="text-cyan-400">{titleLast}</span>
+        </h1>
+        <p className={`${v2.body} mt-6 max-w-xl text-lg`}>
+          {LEAD_MAGNET.subtitle} Written for owners, not engineers. Every item
+          takes under an hour to set up.
+        </p>
       </section>
 
       {/* Capture + preview */}
-      <section className="bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div className="grid items-start gap-16 lg:grid-cols-2">
             <CaptureForm />
 
             <div>
-              <h3 className="font-display font-bold text-xl text-secondary mb-6">
-                What&apos;s inside
-              </h3>
-              <ul className="space-y-4">
+              <h3 className={v2.h3}>What&apos;s inside</h3>
+              <ul className="mt-6 space-y-4">
                 {QUICK_WINS.map((w, i) => (
                   <li key={w.title} className="flex gap-4">
-                    <span className="text-primary font-display font-bold text-lg leading-snug w-7 shrink-0">
+                    <span className="w-7 shrink-0 font-mono text-lg font-bold leading-snug text-cyan-400/70">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="text-charcoal leading-snug pt-0.5">{w.title}</span>
+                    <span className="pt-0.5 leading-snug text-zinc-300">{w.title}</span>
                   </li>
                 ))}
               </ul>
-              <p className="text-stone text-sm leading-relaxed mt-8 max-w-md">
+              <p className={`${v2.bodySm} mt-8 max-w-md`}>
                 Each item comes with exactly how to do it and which tool to use,
                 including free options. From PAID LLC, the team behind 17
                 practical AI guides for small business.
