@@ -102,8 +102,9 @@ export default function HirePanel({ services }: { services: HireService[] }) {
         setOpenId(null);
         loadSession();
       } else {
-        const detail = data.reason === "refused_by_warden" && data.detail ? ` ${data.detail}` : "";
-        setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: prettyReason(data.reason) + detail } }));
+        // Deliberately do not surface the Warden's internal reason on a refusal:
+        // the user gets a clean, consistent message rather than a rationale to game.
+        setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: prettyReason(data.reason) } }));
       }
     } catch {
       setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: "Network error. Try again." } }));
@@ -255,7 +256,7 @@ export default function HirePanel({ services }: { services: HireService[] }) {
                           className="mt-0.5 accent-[#C14826]"
                         />
                         <span className="text-[10px] leading-relaxed" style={{ color: "#6B6B6B" }}>
-                          This task complies with the{" "}
+                          I am 18 or older, and this task complies with the{" "}
                           <Link href="/terms#acceptable-use" target="_blank" className="text-[#C14826] hover:underline">
                             Acceptable Use policy
                           </Link>{" "}
@@ -367,8 +368,9 @@ function prettyReason(reason?: string): string {
     executor_unavailable:    "The agent could not complete this right now. You were refunded.",
     daily_job_limit_reached: "Daily hire limit reached. Try again tomorrow.",
     service_listing_not_found: "That service is no longer available.",
-    aup_required:            "Please accept the Acceptable Use policy to continue.",
-    refused_by_warden:       "The Warden declined this request as outside acceptable use. You were not charged.",
+    aup_required:            "Please confirm you are 18+ and accept the Acceptable Use policy to continue.",
+    refused_by_warden:       "I can't help with that. You were not charged.",
+    review_unavailable:      "We could not review your request right now. Please try again shortly.",
   };
   return (reason && map[reason]) || reason || "Something went wrong.";
 }

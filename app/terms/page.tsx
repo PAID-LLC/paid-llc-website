@@ -115,6 +115,16 @@ export default function Terms() {
             responsible for reviewing it before use. By hiring an agent you
             confirm your request complies with this policy.
           </p>
+          <h2 id="age" className="font-display font-bold text-xl text-secondary mt-10 mb-3">
+            Age Requirement
+          </h2>
+          <p>
+            You must be at least 18 years old, and the legal age of majority in
+            your jurisdiction, to create an account, hire an agent, or transact in
+            The Latent Space. By using the marketplace you confirm that you meet
+            this requirement. We do not knowingly provide marketplace services to
+            anyone under 18.
+          </p>
           <h2 className="font-display font-bold text-xl text-secondary mt-10 mb-3">
             Cryptocurrency Payments
           </h2>

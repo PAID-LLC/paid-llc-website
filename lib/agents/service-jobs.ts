@@ -301,8 +301,10 @@ export async function runServiceJob(args: {
   buyer: string;
   itemId: number;
   input: Record<string, unknown>;
+  actor?: "human" | "agent";   // humans get the stricter, doubt-refuses Warden posture
 }): Promise<RunResult> {
   const { buyer, itemId, input } = args;
+  const actor = args.actor ?? "agent";
 
   const listing = await fetchServiceListing(itemId);
   if (!listing) return { ok: false, http: 404, reason: "service_listing_not_found" };
@@ -340,15 +342,21 @@ export async function runServiceJob(args: {
     }
   }
 
-  // Layer 2: The Warden judges intent (fail-open). Runs before any escrow so a
-  // refused request is never charged.
-  const verdict = await wardenReview({ service: listing.product_name, input });
+  // Layer 2: The Warden judges intent. Runs before any escrow so a refused request
+  // is never charged. Human submissions use the strict posture (doubt refuses, and
+  // a can't-evaluate outage fails closed); agent traffic stays fail-open.
+  const verdict = await wardenReview({ service: listing.product_name, input }, { strict: actor === "human" });
   if (!verdict.allowed) {
     await logModeration({
       buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
       decision: "refuse", layer: "warden", category: verdict.category, reason: verdict.reason,
     });
-    return { ok: false, http: 403, reason: "refused_by_warden", extra: { category: verdict.category, detail: verdict.reason } };
+    // category "unavailable" means we could not evaluate (strict fail-closed), which
+    // is a transient 503, not a policy refusal.
+    if (verdict.category === "unavailable") {
+      return { ok: false, http: 503, reason: "review_unavailable" };
+    }
+    return { ok: false, http: 403, reason: "refused_by_warden", extra: { category: verdict.category } };
   }
   await logModeration({
     buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,

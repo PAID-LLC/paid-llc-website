@@ -23,20 +23,32 @@ const POLICY = `You are The Warden, the acceptable-use adjudicator for The Laten
 
 ALLOW legitimate, productive work: business writing, research, summarization, marketing for real products or services, data structuring, competitive analysis of companies, drafting, and similar tasks.
 
-REFUSE requests that are: illegal under US law; phishing, fraud, scams, or deceptive or impersonating communications; harassment, threats, doxxing, or content targeting a specific private individual; malware or attacks on computer systems; harvesting personal data without a lawful basis; disinformation or content designed to mislead the public; sexual content involving minors; or clear intellectual-property or privacy infringement.
+REFUSE requests that are: illegal under US law; phishing, fraud, scams, or deceptive or impersonating communications; harassment, threats, doxxing, or content targeting a specific private individual; content whose primary purpose is to demean, degrade, manipulate, or emotionally harm a person; malware or attacks on computer systems; harvesting personal data without a lawful basis; disinformation or content designed to mislead the public; sexual content involving minors; self-harm or dangerous instructions; or clear intellectual-property or privacy infringement.`;
 
-When the task is ambiguous but has a plausible legitimate purpose, ALLOW. Reserve refusal for clear violations. Do not refuse merely because a task is mundane, critical, or commercial.`;
+// Tie-breaker appended per actor. Human submissions are held to a stricter, safety-
+// first posture per the operator's directive: any doubt resolves to a refusal.
+const LENIENT_RULE =
+  "When the task is ambiguous but has a plausible legitimate purpose, ALLOW. Reserve refusal for clear violations. Do not refuse merely because a task is mundane, critical, or commercial.";
+const STRICT_RULE =
+  "This request comes from a human user. If you have ANY doubt about its legality, safety, honesty, or potential to cause harm, REFUSE. Only allow requests you are confident are safe and legitimate.";
 
-export async function wardenReview(task: {
-  service: string;
-  input:   Record<string, unknown>;
-}): Promise<WardenVerdict> {
+export async function wardenReview(
+  task: { service: string; input: Record<string, unknown> },
+  opts?: { strict?: boolean }
+): Promise<WardenVerdict> {
+  const strict = opts?.strict === true;
+  // Disposition when the Warden cannot actually run. Lenient (agent) traffic fails
+  // OPEN so an outage degrades to the other layers; strict (human) traffic fails
+  // CLOSED so an unevaluated human request is never quietly let through.
+  const unavailable = (reason: string): WardenVerdict =>
+    strict
+      ? { allowed: false, category: "unavailable", reason }
+      : { allowed: true,  category: "unreviewed",  reason };
+
   const key = process.env.GEMINI_API_KEY;
-  if (!key) return { allowed: true, category: "unreviewed", reason: "warden_unavailable" };
-  // Don't starve the executors that do the actual work: if the daily budget is
-  // spent, fail open rather than blocking hires on the safety check.
+  if (!key) return unavailable("warden_unavailable");
   if (!(await underDailyLimit("gemini", GEMINI_DAILY_BUDGET))) {
-    return { allowed: true, category: "unreviewed", reason: "warden_over_budget" };
+    return unavailable("warden_over_budget");
   }
 
   const inputText = Object.entries(task.input)
@@ -45,7 +57,8 @@ export async function wardenReview(task: {
     .slice(0, 4000);
 
   const prompt =
-    `${POLICY}\n\nSERVICE: ${task.service}\nREQUEST INPUT:\n${inputText}\n\n` +
+    `${POLICY}\n\n${strict ? STRICT_RULE : LENIENT_RULE}\n\n` +
+    `SERVICE: ${task.service}\nREQUEST INPUT:\n${inputText}\n\n` +
     `Return ONLY a JSON object: {"decision":"allow"|"refuse","category":"<short tag>","reason":"<one sentence>"}. No code fences.`;
 
   try {
@@ -60,11 +73,12 @@ export async function wardenReview(task: {
         }),
       }
     );
-    if (!res.ok) return { allowed: true, category: "unreviewed", reason: "warden_error" };
+    if (!res.ok) return unavailable("warden_error");
     const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
     const m = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim().match(/\{[\s\S]*\}/);
-    if (!m) return { allowed: true, category: "unreviewed", reason: "warden_unparsed" };
+    // A parse failure on a strict (human) review fails closed via unavailable().
+    if (!m) return unavailable("warden_unparsed");
     const parsed = JSON.parse(m[0]) as { decision?: string; category?: string; reason?: string };
     const refused = (parsed.decision ?? "").toLowerCase() === "refuse";
     return {
@@ -73,6 +87,6 @@ export async function wardenReview(task: {
       reason:   (parsed.reason ?? "").slice(0, 200),
     };
   } catch {
-    return { allowed: true, category: "unreviewed", reason: "warden_error" };
+    return unavailable("warden_error");
   }
 }

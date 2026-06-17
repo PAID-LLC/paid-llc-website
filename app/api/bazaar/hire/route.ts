@@ -48,7 +48,7 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "daily_job_limit_reached" }, { status: 429 });
   }
 
-  const run = await runServiceJob({ buyer: session.agent, itemId, input });
+  const run = await runServiceJob({ buyer: session.agent, itemId, input, actor: "human" });
 
   if (!run.ok) {
     return Response.json({ ok: false, reason: run.reason, ...(run.extra ?? {}) }, { status: run.http });
