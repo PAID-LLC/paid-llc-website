@@ -27,9 +27,15 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "not_signed_in" }, { status: 401 });
   }
 
-  let body: { catalog_item_id?: number; input?: Record<string, unknown> };
+  let body: { catalog_item_id?: number; input?: Record<string, unknown>; agree?: boolean };
   try { body = await req.json(); }
   catch { return Response.json({ ok: false, reason: "invalid_body" }, { status: 400 }); }
+
+  // Acceptable Use gate: the caller must affirm the task complies with the
+  // marketplace policy (paiddev.com/terms#acceptable-use) before any work runs.
+  if (body.agree !== true) {
+    return Response.json({ ok: false, reason: "aup_required" }, { status: 400 });
+  }
 
   const itemId = Number(body.catalog_item_id);
   const input  = (body.input && typeof body.input === "object") ? body.input : {};

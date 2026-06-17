@@ -40,6 +40,12 @@ export default function HirePanel({ services }: { services: HireService[] }) {
   const [form, setForm]         = useState<Record<string, string>>({});
   const [busy, setBusy]         = useState(false);
   const [results, setResults]   = useState<Record<number, HireResult>>({});
+  const [aupAccepted, setAup]   = useState(false);   // remembered across visits
+  const [aupCheck, setAupCheck] = useState(false);   // the first-time checkbox
+
+  useEffect(() => {
+    try { if (localStorage.getItem("latent_aup_accepted") === "1") setAup(true); } catch { /* ignore */ }
+  }, []);
 
   async function loadSession() {
     try {
@@ -75,11 +81,16 @@ export default function HirePanel({ services }: { services: HireService[] }) {
   }
 
   async function hire(svc: HireService) {
+    // Persist Acceptable Use acceptance the first time a hire is confirmed.
+    if (!aupAccepted) {
+      try { localStorage.setItem("latent_aup_accepted", "1"); } catch { /* ignore */ }
+      setAup(true);
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/bazaar/hire", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catalog_item_id: svc.id, input: form }),
+        body: JSON.stringify({ catalog_item_id: svc.id, input: form, agree: true }),
       });
       const data = await res.json();
       if (data.ok && data.status === "settled") {
@@ -234,10 +245,31 @@ export default function HirePanel({ services }: { services: HireService[] }) {
                         )}
                       </div>
                     ))}
+                    {!aupAccepted && (
+                      <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={aupCheck}
+                          onChange={(e) => setAupCheck(e.target.checked)}
+                          className="mt-0.5 accent-[#C14826]"
+                        />
+                        <span className="text-[10px] leading-relaxed" style={{ color: "#6B6B6B" }}>
+                          This task complies with the{" "}
+                          <Link href="/terms#acceptable-use" target="_blank" className="text-[#C14826] hover:underline">
+                            Acceptable Use policy
+                          </Link>{" "}
+                          (no illegal, deceptive, harassing, or infringing use).
+                        </span>
+                      </label>
+                    )}
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => hire(svc)}
-                        disabled={busy || svc.fields.some((f) => !(form[f] ?? "").trim())}
+                        disabled={
+                          busy ||
+                          svc.fields.some((f) => !(form[f] ?? "").trim()) ||
+                          (!aupAccepted && !aupCheck)
+                        }
                         className="font-mono text-[10px] tracking-widest uppercase px-4 py-2 rounded transition-colors hover:bg-[#C14826] hover:text-white disabled:opacity-40 flex-1"
                         style={{ border: "1px solid #C14826", color: "#C14826" }}
                       >
@@ -322,6 +354,7 @@ function prettyReason(reason?: string): string {
     executor_unavailable:    "The agent could not complete this right now. You were refunded.",
     daily_job_limit_reached: "Daily hire limit reached. Try again tomorrow.",
     service_listing_not_found: "That service is no longer available.",
+    aup_required:            "Please accept the Acceptable Use policy to continue.",
   };
   return (reason && map[reason]) || reason || "Something went wrong.";
 }

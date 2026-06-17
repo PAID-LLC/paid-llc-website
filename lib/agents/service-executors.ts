@@ -17,6 +17,23 @@ import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 
 const GEMINI_MODEL = "gemini-flash-lite-latest";
 
+// ── Output guardrail ──────────────────────────────────────────────────────────
+// Input is already screened by sentinelCheck before an executor runs, but that is
+// a regex pass and cannot judge intent. For the executors that produce persuasive
+// or people-targeting output, we also instruct the model to refuse clearly abusive
+// requests with a REFUSED sentinel. A refusal maps to a clean refund (null result),
+// so the buyer is never charged and no disallowed content is produced or paid for.
+const SAFETY_RULES =
+  "Policy: refuse this task if it involves anything illegal, or phishing, fraud, " +
+  "scams, deception, impersonation, harassment, threats, targeting a specific " +
+  "private individual, malware, harvesting personal data, or disinformation. " +
+  "To refuse, reply with exactly the single word REFUSED on its own line and nothing else.";
+
+/** True when the model declined under SAFETY_RULES. */
+function wasRefused(text: string | null): boolean {
+  return !!text && /^\s*REFUSED\b/i.test(text);
+}
+
 /** Agents allowed to be fulfilled by a house executor. Guards against a
  *  third-party seller setting executor=... to siphon free server compute. */
 export const HOUSE_SELLERS = new Set<string>(["TheCurator"]);
@@ -140,12 +157,14 @@ const draftColdEmail: Executor = async (input) => {
   const out = await geminiText(
     `Write a cold outreach email to ${company}. ` +
     (angle ? `Angle/value proposition: ${angle}. ` : "") +
-    `Constraints: under 120 words, one clear call to action, no filler openers ` +
+    `Constraints: legitimate business outreach only, no impersonation or false claims, ` +
+    `under 120 words, one clear call to action, no filler openers ` +
     `("I hope this finds you well"), no em dashes. ` +
-    `Return exactly two lines: first line "SUBJECT: <subject>", then a blank line, then the body.`,
+    `Return exactly two lines: first line "SUBJECT: <subject>", then a blank line, then the body. ` +
+    SAFETY_RULES,
     400
   );
-  if (!out) return null;
+  if (!out || wasRefused(out)) return null;
   const m = out.match(/^\s*SUBJECT:\s*(.+?)\s*\n([\s\S]+)$/i);
   const subject = m ? m[1].trim() : `Quick idea for ${company}`;
   const emailBody = (m ? m[2] : out).trim();
@@ -248,14 +267,17 @@ const competitorTeardown: Executor = async (input) => {
   const body = await fetchReadable(url);
   if (!body) return null;
   const out = await geminiText(
-    `You are a product strategist. Based on this competitor web page, produce a teardown. ` +
+    `You are a product strategist. Based on this competitor web page, produce a teardown of the ` +
+    `company or product. If the page is the personal profile of a private individual rather than ` +
+    `a business or product, refuse. ` +
     `Return ONLY a JSON object with keys: "positioning" (one sentence), "strengths" (array of ` +
     `3-5 short strings), "weaknesses" (array of 3-5 short strings), "opportunities" (array of ` +
-    `2-4 short strings, gaps a challenger could exploit). No em dashes. No code fences.\n\n` +
+    `2-4 short strings, gaps a challenger could exploit). No em dashes. No code fences. ` +
+    SAFETY_RULES + `\n\n` +
     `PAGE CONTENT:\n${body}`,
     800
   );
-  if (!out) return null;
+  if (!out || wasRefused(out)) return null;
   const parsed = parseJsonLoose(out);
   if (!parsed || typeof parsed !== "object") return null;
   return {
@@ -270,14 +292,17 @@ const socialPack: Executor = async (input) => {
   if (!topic) return null;
   const li = await geminiText(
     `Write 3 distinct LinkedIn posts about: ${topic}. Each 40-80 words, professional and modern, ` +
-    `one idea each, no hashtags, no em dashes, no emojis. Separate each post with a line containing only "---".`,
+    `one idea each, honest and non-deceptive, no hashtags, no em dashes, no emojis. ` +
+    `Separate each post with a line containing only "---". ` + SAFETY_RULES,
     700
   );
   const x = await geminiText(
     `Write 3 distinct posts for X (Twitter) about: ${topic}. Each under 270 characters, punchy, ` +
-    `no hashtags, no em dashes, no emojis. Separate each post with a line containing only "---".`,
+    `honest and non-deceptive, no hashtags, no em dashes, no emojis. ` +
+    `Separate each post with a line containing only "---". ` + SAFETY_RULES,
     500
   );
+  if (wasRefused(li) || wasRefused(x)) return null;
   if (!li && !x) return null;
   const split = (s: string | null) =>
     (s ?? "").split(/^\s*---\s*$/m).map((p) => p.trim()).filter(Boolean).slice(0, 3);
