@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { v2 } from "@/components/v2/tokens";
+
+const labelClass = "block font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400 mb-2";
 
 export default function ContactForm() {
   const searchParams = useSearchParams();
@@ -57,16 +60,16 @@ export default function ContactForm() {
   if (status === "success") {
     return (
       <div className="py-12">
-        <p className="font-display font-bold text-2xl text-secondary mb-3">Message received.</p>
+        <p className={`${v2.h2} mb-3`}>Message received.</p>
         {artiResponse ? (
           <>
-            <p className="text-stone mb-4">Arti has a response for you:</p>
-            <div className="border border-ash rounded-xl p-6 bg-ash text-secondary text-sm leading-relaxed whitespace-pre-wrap">
+            <p className={`${v2.body} mb-4`}>Arti has a response for you:</p>
+            <div className={`${v2.cardStatic} whitespace-pre-wrap text-sm leading-relaxed text-zinc-300`}>
               {artiResponse}
             </div>
           </>
         ) : (
-          <p className="text-stone">
+          <p className={v2.body}>
             {submitterType === "agent"
               ? "Your submission has been received. We look forward to connecting."
               : "We'll be in touch within 1 business day."}
@@ -77,35 +80,33 @@ export default function ContactForm() {
   }
 
   const inputClass =
-    "w-full border border-ash rounded px-4 py-3 text-secondary placeholder:text-stone focus:outline-none focus:border-secondary transition-colors text-sm";
+    "w-full rounded-md border border-white/[0.12] bg-white/[0.03] px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-cyan-400/60 focus:outline-none";
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
       {/* Submitter type */}
       <div>
-        <p className="block font-display font-semibold text-secondary text-sm mb-3">
-          Are you a human or an AI agent?
-        </p>
+        <p className={labelClass}>Are you a human or an AI agent?</p>
         <div className="flex gap-6">
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-secondary">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
             <input
               type="radio"
               name="submitter_type"
               value="human"
               checked={submitterType === "human"}
               onChange={() => setSubmitterType("human")}
-              className="accent-primary"
+              className="accent-cyan-400"
             />
             Human
           </label>
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-secondary">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
             <input
               type="radio"
               name="submitter_type"
               value="agent"
               checked={submitterType === "agent"}
               onChange={() => setSubmitterType("agent")}
-              className="accent-primary"
+              className="accent-cyan-400"
             />
             AI Agent
           </label>
@@ -114,9 +115,9 @@ export default function ContactForm() {
 
       {/* Name — label changes for agents */}
       <div>
-        <label htmlFor="name" className="block font-display font-semibold text-secondary text-sm mb-2">
+        <label htmlFor="name" className={labelClass}>
           {submitterType === "agent" ? "Agent Name / Handle" : "Name"}{" "}
-          <span className="text-primary">*</span>
+          <span className="text-[#E8714C]">*</span>
         </label>
         <input
           id="name"
@@ -131,12 +132,12 @@ export default function ContactForm() {
 
       {/* Email — optional for agents */}
       <div>
-        <label htmlFor="email" className="block font-display font-semibold text-secondary text-sm mb-2">
+        <label htmlFor="email" className={labelClass}>
           Email{" "}
           {submitterType === "agent" ? (
-            <span className="text-stone font-normal">(optional)</span>
+            <span className="font-normal text-zinc-500">(optional)</span>
           ) : (
-            <span className="text-primary">*</span>
+            <span className="text-[#E8714C]">*</span>
           )}
         </label>
         <input
@@ -153,9 +154,9 @@ export default function ContactForm() {
       {/* Agent model — only shown for agents */}
       {submitterType === "agent" && (
         <div>
-          <label htmlFor="agent_model" className="block font-display font-semibold text-secondary text-sm mb-2">
+          <label htmlFor="agent_model" className={labelClass}>
             Model / System{" "}
-            <span className="text-stone font-normal">(optional)</span>
+            <span className="font-normal text-zinc-500">(optional)</span>
           </label>
           <input
             id="agent_model"
@@ -170,9 +171,9 @@ export default function ContactForm() {
 
       {/* Phone (optional) */}
       <div>
-        <label htmlFor="phone" className="block font-display font-semibold text-secondary text-sm mb-2">
+        <label htmlFor="phone" className={labelClass}>
           Phone{" "}
-          <span className="text-stone font-normal">(optional)</span>
+          <span className="font-normal text-zinc-500">(optional)</span>
         </label>
         <input
           id="phone"
@@ -186,9 +187,9 @@ export default function ContactForm() {
 
       {/* Company (optional) */}
       <div>
-        <label htmlFor="company" className="block font-display font-semibold text-secondary text-sm mb-2">
+        <label htmlFor="company" className={labelClass}>
           Company{" "}
-          <span className="text-stone font-normal">(optional)</span>
+          <span className="font-normal text-zinc-500">(optional)</span>
         </label>
         <input
           id="company"
@@ -202,8 +203,8 @@ export default function ContactForm() {
 
       {/* Message */}
       <div>
-        <label htmlFor="message" className="block font-display font-semibold text-secondary text-sm mb-2">
-          Message <span className="text-primary">*</span>
+        <label htmlFor="message" className={labelClass}>
+          Message <span className="text-[#E8714C]">*</span>
         </label>
         <textarea
           id="message"
@@ -222,22 +223,22 @@ export default function ContactForm() {
 
       {/* Error message */}
       {status === "error" && (
-        <p className="text-sm text-red-600">{errorMsg}</p>
+        <p className="text-sm text-red-400">{errorMsg}</p>
       )}
 
       <button
         type="submit"
         disabled={status === "loading"}
-        className="w-full bg-primary text-white py-4 rounded font-semibold text-sm hover:bg-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        className={`${v2.btnPrimary} w-full justify-center py-3.5 disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {status === "loading" ? "Sending..." : "Send Message"}
       </button>
 
       {/* Privacy disclaimer */}
-      <p className="text-xs text-stone text-center leading-relaxed">
+      <p className="text-center text-xs leading-relaxed text-zinc-500">
         Your information is used solely to respond to your inquiry.{" "}
         We never share or sell your data.{" "}
-        <Link href="/privacy" className="underline hover:text-secondary transition-colors">
+        <Link href="/privacy" className="underline transition-colors hover:text-zinc-300">
           Privacy Policy
         </Link>
       </p>

@@ -241,7 +241,8 @@ export default function Services() {
       <section className={`${v2.section} pt-24 pb-12 sm:pt-28`}>
         <p className={v2.kicker}>Services</p>
         <h1 className={`${v2.h1} mt-5 max-w-3xl`}>
-          AI that works for your business.
+          AI that works for your{" "}
+          <span className="text-cyan-400">business.</span>
         </h1>
         <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
           Strategy, implementation, team training, custom development, AI agent

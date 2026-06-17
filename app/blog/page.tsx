@@ -46,7 +46,9 @@ export default function BlogPage() {
       {/* Header */}
       <section className={`${v2.section} pt-20 pb-10`}>
         <p className={v2.kicker}>by PAID LLC</p>
-        <h1 className={`${v2.h1} mt-5`}>The Inference</h1>
+        <h1 className={`${v2.h1} mt-5`}>
+          The <span className="text-cyan-400">Inference</span>
+        </h1>
         <p className={`${v2.body} mt-5 max-w-xl text-lg`}>
           Practical takes from inside real AI deployments. No hype, no summaries
           of summaries.
