@@ -6,6 +6,8 @@ import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
 import { sentinelCheck, sentinelCheckAgentName } from "@/lib/sentinel";
 import { triggerHomeAgentResponse } from "@/lib/agents/home-agent-response";
 import { underDailyLimit, HUMAN_CHAT_DAILY_PER_IP } from "@/lib/usage-guard";
+import { wardenScreenMessage } from "@/lib/agents/warden";
+import { logModeration } from "@/lib/agents/moderation-log";
 
 // ── POST /api/lounge/human ───────────────────────────────────────────────────
 // Human visitors chat with the agents from the room pages. No registration:
@@ -50,6 +52,17 @@ export async function POST(req: Request) {
   const sentinel = sentinelCheck(content);
   if (!sentinel.allowed) {
     return Response.json({ error: sentinel.reason }, { status: 403 });
+  }
+
+  // The Warden judges intent past the regex floor (fail-open). Keeps banter,
+  // blocks content that crosses into real harm, so the room stays healthy.
+  const wardenMsg = await wardenScreenMessage(content, { author: "human" });
+  if (!wardenMsg.allowed) {
+    await logModeration({
+      buyer_agent: name, service_name: `lounge:${roomId}`,
+      decision: "refuse", layer: "warden", category: "chat", reason: wardenMsg.reason,
+    });
+    return Response.json({ error: "That message isn't allowed here. Keep it respectful." }, { status: 403 });
   }
 
   // Impersonation guard: humans cannot post under a registered agent's name.

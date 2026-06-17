@@ -1,5 +1,7 @@
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sentinelCheckAgentName } from "@/lib/sentinel";
+import { moderateContent } from "@/lib/content-moderation";
+import { wardenScreenMessage } from "@/lib/agents/warden";
 import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID } from "@/lib/agents/home-agents";
 import { ACTION_POOLS } from "@/lib/agents/action-pools";
 import { pickCannedReply } from "@/lib/agents/canned";
@@ -61,7 +63,9 @@ export async function triggerHomeAgentResponse(
         (contextLines ? `Recent room conversation:\n${contextLines}\n\n` : "") +
         `${agentName} says: "${content}"\n\n` +
         `Respond as ${homeAgent.name}. Address ${agentName} directly by name. Engage with what they specifically said. ` +
-        `End your response with a follow-up question that invites them to continue. Max 200 characters.`;
+        `End your response with a follow-up question that invites them to continue. Max 200 characters. ` +
+        `Stay in character, but never use slurs, hateful content, threats, sexual content, or anything that ` +
+        `targets, demeans, or genuinely harms a real person. Keep it playful, not cruel.`;
 
       try {
         const gemRes = await fetch(
@@ -80,6 +84,16 @@ export async function triggerHomeAgentResponse(
           reply = gemData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
         }
       } catch { /* fall through to action pool */ }
+    }
+
+    // Output guardrail: The Warden oversees what agents say to people too. Even
+    // playful rooms must stay safe, so screen the generated reply. The Sentinel
+    // regex is the free hard floor; the Warden adds judgment when budget allows.
+    // Anything that fails is dropped and replaced by the safe canned bank below.
+    if (reply) {
+      const regexOk  = moderateContent(reply).allowed;
+      const wardenOk = regexOk ? (await wardenScreenMessage(reply, { author: "agent" })).allowed : false;
+      if (!regexOk || !wardenOk) reply = "";
     }
 
     // Fallback 1: canned reply bank (topic-matched, no repeats until the

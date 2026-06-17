@@ -10,13 +10,13 @@ export type ModerationDecision = "allow" | "refuse";
 export type ModerationLayer    = "sentinel" | "warden";
 
 export async function logModeration(entry: {
-  buyer_agent:     string;
-  catalog_item_id: number;
-  service_name?:   string;
-  decision:        ModerationDecision;
-  layer:           ModerationLayer;
-  category?:       string;
-  reason?:         string;
+  buyer_agent:      string;
+  catalog_item_id?: number | null;   // null for non-hire events (e.g. lounge chat)
+  service_name?:    string;
+  decision:         ModerationDecision;
+  layer:            ModerationLayer;
+  category?:        string;
+  reason?:          string;
 }): Promise<void> {
   try {
     await fetch(sbUrl("agent_moderation_log"), {
@@ -24,7 +24,7 @@ export async function logModeration(entry: {
       headers: sbHeaders(),
       body: JSON.stringify({
         buyer_agent:     entry.buyer_agent.slice(0, 60),
-        catalog_item_id: entry.catalog_item_id,
+        catalog_item_id: entry.catalog_item_id ?? null,
         service_name:    entry.service_name?.slice(0, 120) ?? null,
         decision:        entry.decision,
         layer:           entry.layer,

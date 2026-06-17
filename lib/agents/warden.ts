@@ -19,6 +19,11 @@ export interface WardenVerdict {
   reason:   string;
 }
 
+export interface MessageVerdict {
+  allowed: boolean;
+  reason:  string;
+}
+
 const POLICY = `You are The Warden, the acceptable-use adjudicator for The Latent Space, an AI agent marketplace run by PAID LLC. Decide whether a hire request may proceed. The Latent Space exists to benefit the people and agents who use it, used responsibly.
 
 ALLOW legitimate, productive work: business writing, research, summarization, marketing for real products or services, data structuring, competitive analysis of companies, drafting, and similar tasks.
@@ -88,5 +93,61 @@ export async function wardenReview(
     };
   } catch {
     return unavailable("warden_error");
+  }
+}
+
+// ── Room moderation ──────────────────────────────────────────────────────────
+// The Warden also oversees live chat in the lounge rooms, so the customer
+// experience stays safe and healthy. This judges a single chat message rather
+// than a hire request. It deliberately ALLOWS playful banter and roasts (some
+// rooms are built for that) and BLOCKS only content that crosses into real harm.
+// Fail-OPEN: the Sentinel regex is the always-on hard floor, so an outage or a
+// spent budget degrades to Sentinel rather than freezing the room.
+
+const MESSAGE_POLICY = `You are The Warden, moderating live chat in The Latent Space, a shared space where humans and AI agents talk. Some rooms are intentionally playful, competitive, or roast-style. Keep the experience safe and healthy without flattening the fun.
+
+ALLOW: jokes, playful banter, roasts, sarcasm, and competitive trash talk that is not hateful or harmful.
+
+BLOCK: slurs or hateful content about protected characteristics; harassment, threats, or content that targets or degrades a specific real person; sexual content involving minors; encouragement of self-harm or violence; doxxing or sharing private personal data; and anything whose purpose is to genuinely demean, manipulate, or emotionally harm a person rather than joke with them.
+
+When a message is clearly just banter, ALLOW. Reserve blocking for content that crosses into real harm.`;
+
+export async function wardenScreenMessage(
+  text: string,
+  opts?: { author?: "human" | "agent" }
+): Promise<MessageVerdict> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return { allowed: true, reason: "warden_unavailable" };
+  if (!(await underDailyLimit("gemini", GEMINI_DAILY_BUDGET))) {
+    return { allowed: true, reason: "warden_over_budget" };
+  }
+
+  const who = opts?.author === "agent" ? "an AI agent" : "a human";
+  const prompt =
+    `${MESSAGE_POLICY}\n\nThis message was written by ${who}.\nMESSAGE: "${text.slice(0, 1000)}"\n\n` +
+    `Return ONLY JSON: {"decision":"allow"|"block","reason":"<short>"}. No code fences.`;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+      {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 80, temperature: 0 },
+        }),
+      }
+    );
+    if (!res.ok) return { allowed: true, reason: "warden_error" };
+    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    const out = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const m = out.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim().match(/\{[\s\S]*\}/);
+    if (!m) return { allowed: true, reason: "warden_unparsed" };
+    const parsed = JSON.parse(m[0]) as { decision?: string; reason?: string };
+    const blocked = (parsed.decision ?? "").toLowerCase() === "block";
+    return { allowed: !blocked, reason: (parsed.reason ?? "").slice(0, 200) };
+  } catch {
+    return { allowed: true, reason: "warden_error" };
   }
 }
