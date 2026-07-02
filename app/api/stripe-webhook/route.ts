@@ -97,6 +97,7 @@ import { productTitles } from "@/lib/products";
 import { issueSouvenir } from "@/lib/souvenirs";
 import { bumpCounter }   from "@/lib/usage-guard";
 import { recordSale, markProvisioned } from "@/lib/ledger";
+import { claimCreditGrant } from "@/lib/idempotency";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -466,7 +467,10 @@ export async function POST(req: NextRequest) {
       const agentName  = meta.agent_name ?? (session as { client_reference_id?: string }).client_reference_id ?? "";
       const creditAmt  = parseInt(meta.credit_amount ?? "0", 10);
       const amountCents = (session as { amount_total?: number }).amount_total ?? 0;
-      if (agentName && creditAmt > 0) {
+      // Idempotency keyed on the Stripe session id (second layer over the
+      // event-id claim above) so credits grant at most once per payment even if
+      // the event is delivered twice during a Supabase fail-open window.
+      if (agentName && creditAmt > 0 && (await claimCreditGrant(session.id))) {
         let credited = false;
         const url = process.env.SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_KEY;

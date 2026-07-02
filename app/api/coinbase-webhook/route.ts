@@ -14,9 +14,10 @@ export const runtime = "edge";
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY, RESEND_API_KEY (existing)
 
 import { productTitles, slugToFile, CREDIT_PACKS, PRODUCTS } from "@/lib/products";
-import { issueSouvenir } from "@/lib/souvenirs";
-import { bumpCounter }   from "@/lib/usage-guard";
-import { recordSale }    from "@/lib/ledger";
+import { issueSouvenir }    from "@/lib/souvenirs";
+import { bumpCounter }      from "@/lib/usage-guard";
+import { recordSale }       from "@/lib/ledger";
+import { claimCreditGrant } from "@/lib/idempotency";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 
@@ -193,26 +194,7 @@ async function sendGuideEmail(email: string, slug: string, checkoutId: string): 
   return !!res?.ok;
 }
 
-// ── Coinbase Commerce (charge:confirmed) ──────────────────────────────────────
-// Handles artifact delivery for Latent Space items purchased via Commerce charges.
-// Signature: X-CC-Webhook-Signature = HMAC-SHA256 hex of raw body.
-
-async function verifyCommerceSignature(payload: string, signature: string, secret: string): Promise<boolean> {
-  try {
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw", enc.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false, ["sign"]
-    );
-    const mac      = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
-    const computed = Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, "0")).join("");
-    if (computed.length !== signature.length) return false;
-    let diff = 0;
-    for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
-    return diff === 0;
-  } catch { return false; }
-}
+// ── Supabase signed download URL (shared by the CDP guide-delivery path) ──────
 
 async function getSignedDownloadUrl(filename: string): Promise<string | null> {
   const url = process.env.SUPABASE_URL;
@@ -231,142 +213,16 @@ async function getSignedDownloadUrl(filename: string): Promise<string | null> {
   return `${url}/storage/v1${data.signedURL}`;
 }
 
-async function deliverCommerceArtifact(slug: string, email: string): Promise<boolean> {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey || !slug || !email) return false;
-
-  const title    = productTitles[slug];
-  const filename = slugToFile[slug];
-  if (!title || !filename) return false;
-
-  const downloadUrl = await getSignedDownloadUrl(filename);
-  if (!downloadUrl) return false;
-
-  const text = [
-    `Hi,`,
-    ``,
-    `Thank you for purchasing ${title}.`,
-    ``,
-    `Your download link is below. It expires in 1 hour — download your file now:`,
-    ``,
-    downloadUrl,
-    ``,
-    `Questions? Reply to this email or reach us at hello@paiddev.com.`,
-    ``,
-    `-- Travis`,
-    `PAID LLC`,
-  ].join("\n");
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method:  "POST",
-    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from:    "PAID LLC <hello@paiddev.com>",
-      to:      [email],
-      subject: `Your ${title} download link`,
-      text,
-    }),
-  }).catch(err => {
-    console.error("[coinbase-webhook] commerce delivery failed:", err);
-    return null;
-  });
-  return !!res?.ok;
-}
-
-async function handleCommerceWebhook(payload: string, req: Request): Promise<Response> {
-  const secret    = process.env.COINBASE_COMMERCE_WEBHOOK_SECRET;
-  const signature = req.headers.get("x-cc-webhook-signature") ?? "";
-
-  if (!secret) return Response.json({ error: "not configured" }, { status: 503 });
-
-  const valid = await verifyCommerceSignature(payload, signature, secret);
-  if (!valid) return Response.json({ error: "invalid signature" }, { status: 400 });
-
-  type CommerceEvent = {
-    event?: {
-      id?: string;
-      type?: string;
-      data?: {
-        code?: string;               // Commerce charge code — stable sale id
-        buyer_email?: string;        // Coinbase-collected at checkout
-        metadata?: Record<string, string>;
-        pricing?: { local?: { amount?: string; currency?: string } };
-      };
-    };
-  };
-  let body: CommerceEvent;
-  try { body = JSON.parse(payload) as CommerceEvent; }
-  catch { return Response.json({ error: "invalid json" }, { status: 400 }); }
-
-  if (body.event?.type === "charge:confirmed") {
-    const eventId = body.event?.id ?? "";
-    if (eventId && !(await claimWebhookEvent(`commerce:${eventId}`))) {
-      return Response.json({ received: true });
-    }
-    const data  = body.event.data ?? {};
-    const meta  = data.metadata ?? {};
-    const saleId = data.code ?? eventId; // prefer charge code (visible in Commerce dashboard)
-    const grossCents = Math.round(parseFloat(data.pricing?.local?.amount ?? "0") * 100) || 0;
-
-    // ── Credit pack via Commerce ──
-    // /api/coinbase-checkout creates these with full metadata. Fulfill credits
-    // exactly like the Stripe and CDP paths.
-    if (meta.product_type === "credit_pack") {
-      const agentName = meta.agent_name ?? "";
-      const creditAmt = parseInt(meta.credit_amount ?? "0", 10);
-      const credited  = await creditAgent(agentName, creditAmt);
-      const pack = CREDIT_PACKS.find((p) => p.id === (meta.pack_id ?? ""));
-      const packCents = grossCents || pack?.price_cents || 0;
-      await Promise.all([
-        packCents > 0 ? bumpCounter("credit_revenue_cents", packCents) : Promise.resolve(),
-        creditAmt > 0 ? bumpCounter("credits_sold", creditAmt) : Promise.resolve(),
-        recordSale({
-          source:              "coinbase_commerce",
-          event_type:          "credit_pack",
-          external_id:         `commerce:${saleId}`,
-          gross_cents:         packCents,
-          agent_name:          agentName,
-          product_name:        pack?.label ?? `${creditAmt} Latent Credits`,
-          provisioning_status: credited ? "delivered" : "failed",
-          provisioning_detail: credited ? "credits granted" : "credit_seller RPC failed",
-        }),
-      ]);
-      return Response.json({ received: true });
-    }
-
-    // ── Digital guide via Commerce ──
-    const slug  = meta.product ?? "";
-    // Prefer Coinbase's native buyer_email (collected at checkout); fall back
-    // to metadata field set by dynamic charges (MCP create_checkout tool).
-    const email = data.buyer_email ?? meta.buyer_email ?? "";
-    const product = PRODUCTS.find((p) => p.id === slug);
-    let delivered = false;
-    if (slug && email) delivered = await deliverCommerceArtifact(slug, email);
-    await recordSale({
-      source:              "coinbase_commerce",
-      event_type:          "guide_sale",
-      external_id:         `commerce:${saleId}`,
-      gross_cents:         grossCents || Math.round((product?.price ?? 0) * 100),
-      product_slug:        slug || undefined,
-      product_name:        productTitles[slug],
-      customer_email:      email || undefined,
-      provisioning_status: delivered ? "delivered" : "failed",
-      provisioning_detail: delivered
-        ? "delivery email sent"
-        : (slug && email ? "delivery failed — redeliver from admin" : "missing slug or buyer email"),
-    });
-  }
-
-  return Response.json({ received: true });
-}
-
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  // Route to correct handler based on which signature header is present
   const payload = await req.text();
+
+  // Coinbase Commerce was shut down 2026-03-31; its charge:confirmed webhook is
+  // no longer a live payment path. Reject any lingering Commerce delivery with
+  // 410 Gone rather than processing it. (History: git.)
   if (req.headers.get("x-cc-webhook-signature")) {
-    return handleCommerceWebhook(payload, req);
+    return Response.json({ error: "coinbase commerce retired" }, { status: 410 });
   }
 
   const secret = process.env.COINBASE_WEBHOOK_SECRET;
@@ -416,7 +272,9 @@ export async function POST(req: Request) {
     }
 
 
-    if (meta.product_type === "credit_pack") {
+    // Idempotency keyed on the payment id — even if this event is delivered
+    // twice (fail-open window in claimWebhookEvent), credits grant at most once.
+    if (meta.product_type === "credit_pack" && (await claimCreditGrant(`cdp:${id}`))) {
       const agentName    = meta.agent_name    ?? "";
       const creditAmount = parseInt(meta.credit_amount ?? "0", 10);
       const credited     = await creditAgent(agentName, creditAmount);
