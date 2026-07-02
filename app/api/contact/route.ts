@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sanitize, MESSAGE_CHARS } from "@/lib/api-utils";
+import { sanitize, MESSAGE_CHARS, hashIp, extractIp } from "@/lib/api-utils";
 import { sentinelCheck } from "@/lib/sentinel";
+import { underDailyLimit } from "@/lib/usage-guard";
 
 export const runtime = "edge";
+
+// Per-IP daily cap on contact submissions. The origin check alone is trivially
+// bypassed (a script omits the Origin header), so this is the real abuse gate:
+// it bounds lead-table growth, notification-email spam, and Gemini spend from a
+// single source. Fails open (usage-guard) — a broken guard never blocks a real
+// customer from reaching us.
+const CONTACT_DAILY_PER_IP = 10;
 
 // Calls the Supabase REST API directly — no SDK required, works in edge runtime.
 // SUPABASE_URL and SUPABASE_SERVICE_KEY are server-only env vars (no NEXT_PUBLIC_ prefix).
@@ -152,6 +160,15 @@ async function insertLead(record: {
 export async function POST(req: NextRequest) {
   if (!isOriginAllowed(req)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  // ── Per-IP rate limit ───────────────────────────────────────────────────────
+  const ipHash = await hashIp(extractIp(req), "contact_2026");
+  if (!(await underDailyLimit(`contact:${ipHash}`, CONTACT_DAILY_PER_IP))) {
+    return NextResponse.json(
+      { error: "Too many submissions today. Please email us directly at hello@paiddev.com." },
+      { status: 429 }
+    );
   }
 
   let body: {

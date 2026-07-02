@@ -29,21 +29,7 @@ import { nextClientRoomId }               from "@/lib/agents/client-agents";
 import { hashAgentSecret }                from "@/lib/jwt";
 import { STARTER_CREDITS }               from "@/lib/arena-types";
 import { issueSouvenir }                 from "@/lib/souvenirs";
-
-const enc = new TextEncoder();
-
-/** Constant-time string comparison using SHA-256 hashes to prevent timing attacks. */
-async function timingSafeEqual(a: string, b: string): Promise<boolean> {
-  const [hashA, hashB] = await Promise.all([
-    crypto.subtle.digest("SHA-256", enc.encode(a)),
-    crypto.subtle.digest("SHA-256", enc.encode(b)),
-  ]);
-  const arrA = new Uint8Array(hashA);
-  const arrB = new Uint8Array(hashB);
-  let diff = 0;
-  for (let i = 0; i < arrA.length; i++) diff |= arrA[i] ^ arrB[i];
-  return diff === 0;
-}
+import { timingSafeEqual }               from "@/lib/admin-auth";
 
 interface CatalogInput {
   product_name: string;

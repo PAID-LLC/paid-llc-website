@@ -6,8 +6,8 @@
  * in the coverage diagram has a corresponding test.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sanitize, BLOG_CHARS, AGENT_NAME_CHARS, MESSAGE_CHARS } from "@/lib/api-utils";
+import { describe, it, expect } from "vitest";
+import { sanitize, BLOG_CHARS, AGENT_NAME_CHARS } from "@/lib/api-utils";
 import { sentinelCheck } from "@/lib/sentinel";
 
 // ── BLOG_CHARS regex tests ─────────────────────────────────────────────────────

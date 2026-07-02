@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 // ── Security middleware ────────────────────────────────────────────────────────
 //
@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 // the page. Nonce-based CSP requires SSR so every response can stamp the nonce
 // onto each inline script tag — not compatible with static export.
 
-export function middleware(request: NextRequest) {
+export function middleware() {
   const isProd = process.env.NODE_ENV !== "development";
 
   const csp = [

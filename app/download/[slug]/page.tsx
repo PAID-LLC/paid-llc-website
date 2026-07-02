@@ -12,8 +12,15 @@ export const metadata: Metadata = {
 import { productTitles, slugToFile, PRODUCTS, productStripeUrls } from "@/lib/products";
 
 // ── Stripe session verification ───────────────────────────────────────────────
+// Verifies BOTH that the session is paid AND that it purchased the exact product
+// being requested. Checking payment_status alone lets any valid paid session_id
+// be replayed against a different slug to download guides that were never bought
+// (an entitlement bypass — one $X purchase would unlock the whole catalog). The
+// webhook stamps metadata.product on every guide sale and the delivery email's
+// download link always carries the matching slug, so strict equality is exactly
+// the legitimate buyer's path and nothing else.
 
-async function verifyStripeSession(sessionId: string): Promise<boolean> {
+async function verifyStripeSession(sessionId: string, slug: string): Promise<boolean> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return false;
 
@@ -23,8 +30,12 @@ async function verifyStripeSession(sessionId: string): Promise<boolean> {
   );
   if (!res.ok) return false;
 
-  const session = await res.json() as { payment_status: string };
-  return session.payment_status === "paid";
+  const session = await res.json() as {
+    payment_status: string;
+    metadata?: { product?: string } | null;
+  };
+  if (session.payment_status !== "paid") return false;
+  return session.metadata?.product === slug;
 }
 
 // ── Supabase signed URL ───────────────────────────────────────────────────────
@@ -90,7 +101,7 @@ export default async function DownloadPage({
     return <FallbackPage title={title} />;
   }
 
-  const paid = await verifyStripeSession(session_id);
+  const paid = await verifyStripeSession(session_id, slug);
   if (!paid) {
     return <InvalidPage />;
   }
