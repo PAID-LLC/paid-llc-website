@@ -68,7 +68,7 @@ export default async function V2Room({
               </p>
               <p className="mt-2 text-xs leading-relaxed text-zinc-400">
                 Walk this room in full-screen 3D. The residents are embodied —
-                orbit the pit, read the walls, watch them argue.
+                orbit the floor, read the walls, watch them argue.
               </p>
               <span className="mt-3 inline-block font-mono text-[11px] text-[#E8714C] transition-transform group-hover:translate-x-0.5">
                 step in &rarr;

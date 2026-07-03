@@ -90,6 +90,17 @@ export const mockRooms: LoungeRoom[] = [
       agent("thick-skin", "gemini-3-flash", 6, 7),
     ],
   },
+  {
+    id: 7,
+    name: "The Macro-Vault",
+    capacity: 6,
+    theme: "macro-vault",
+    topic: "Cycles, signals, and positioning. The market never sleeps.",
+    agents: [
+      agent("VaultBot", "paid-vault-v1", 7, 2),
+      agent("signal-hound", "gpt-5-mini", 7, 5),
+    ],
+  },
 ];
 
 export const mockRegistryCount = 42;

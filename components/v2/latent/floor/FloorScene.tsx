@@ -9,6 +9,7 @@ import { useRoomLive } from "@/components/v2/latent/useRoomLive";
 import { family } from "@/components/v2/latent/RoomScene";
 import RoomChat from "@/components/v2/latent/RoomChat";
 import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
+import Centerpiece from "@/components/v2/latent/floor/Centerpiece";
 import {
   FLOOR_SIZE,
   WALL_HEIGHT,
@@ -41,16 +42,9 @@ function fitZoom() {
   return clamp(Math.min(window.innerWidth / 1150, window.innerHeight / 900), ZOOM_MIN, 1.15);
 }
 
-// Deterministic ember drift offsets (SSR-safe: no randomness at render time).
-const EMBERS = Array.from({ length: 8 }, (_, i) => ({
-  left: -44 + ((i * 29) % 88),
-  dx: -18 + ((i * 13) % 36),
-  dur: 2.3 + (i % 4) * 0.55,
-  delay: (i * 0.67) % 2.7,
-}));
-
 const LEDS = Array.from({ length: 15 }, (_, i) => ({
-  color: i % 5 === 0 ? "#fb923c" : i % 3 === 0 ? "#22d3ee" : "#3f3f46",
+  accent: i % 5 === 0,
+  color: i % 3 === 0 ? "#22d3ee" : "#3f3f46",
   delay: (i * 0.41) % 2.2,
 }));
 
@@ -87,11 +81,21 @@ function css(t: FloorTheme) {
   radial-gradient(60% 42% at 50% 90%, rgba(251,191,36,0.6), transparent 72%),
   radial-gradient(42% 58% at 50% 80%, rgba(249,115,22,0.52), transparent 74%),
   radial-gradient(24% 72% at 50% 68%, rgba(194,65,12,0.45), transparent 78%); }
-.fl-ember { position: absolute; bottom: 22px; width: 5px; height: 5px; border-radius: 50%; background: #fbbf24; box-shadow: 0 0 6px #f59e0b; opacity: 0; animation: flEmber linear infinite; }
+.fl-ember { position: absolute; bottom: 22px; width: 5px; height: 5px; border-radius: 50%; background: ${t.emberA}; box-shadow: 0 0 6px ${t.emberB}; opacity: 0; animation: flEmber linear infinite; }
+.fl-glyph { position: absolute; bottom: 22px; font-family: var(--font-mono, monospace); font-size: 13px; font-weight: 700; color: ${t.emberA}; text-shadow: 0 0 8px ${t.emberB}; opacity: 0; animation: flEmber linear infinite; }
 .fl-glowpool { animation: flGlow 4.6s ease-in-out infinite; }
 .fl-conduit { animation: flConduit 5s linear infinite; }
 
-.fl-holo { position: absolute; bottom: 198px; left: 0; transform: translateX(-50%) scale(calc(1 / var(--zoom))); transform-origin: bottom center; width: 300px; animation: flFloat 7s ease-in-out infinite; }
+.fl-rot { animation: flRot var(--rdur, 20s) linear infinite; }
+.fl-rot-rev { animation: flRotRev var(--rdur, 20s) linear infinite; }
+.fl-padpulse { border-radius: 50%; border: 1px solid ${t.accentSoft}; animation: flPadPulse 3.4s ease-out infinite; }
+.fl-beam { position: absolute; bottom: -4px; left: 0; transform: translateX(-50%); mix-blend-mode: screen; filter: blur(6px); background: linear-gradient(0deg, ${t.accentSoft} 0%, transparent 85%); animation: flBeam 4.5s ease-in-out infinite; }
+.fl-beam-core { position: absolute; bottom: -4px; left: 0; transform: translateX(-50%); mix-blend-mode: screen; filter: blur(2px); background: linear-gradient(0deg, ${t.accent} 0%, transparent 80%); opacity: 0.8; animation: flBeam 3.2s ease-in-out infinite; }
+.fl-scroll { animation: flScroll 9s linear infinite; }
+.fl-glitch { animation: flGlitch 5.2s linear infinite; }
+.fl-hover { animation: flHover 6s ease-in-out infinite; }
+
+.fl-holo { position: absolute; bottom: ${t.holoHeight}px; left: 0; transform: translateX(-50%) scale(calc(1 / var(--zoom))); transform-origin: bottom center; width: 300px; animation: flFloat 7s ease-in-out infinite; }
 .fl-holo-beam { position: absolute; top: 100%; left: 50%; width: 1px; height: 54px; background: linear-gradient(180deg, ${t.accentSoft}, transparent); }
 .fl-empty { border: 1px dashed rgba(255,255,255,0.16); border-radius: 10px; padding: 10px 16px; background: rgba(5,5,10,0.6); font-family: var(--font-mono, monospace); font-size: 11px; color: #71717a; white-space: nowrap; transform: scale(calc(1 / var(--zoom))); transform-origin: bottom center; }
 
@@ -117,10 +121,18 @@ function css(t: FloorTheme) {
 @keyframes flLed { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 @keyframes flHint { to { opacity: 0; } }
 @keyframes flDust { from { background-position: 0 0; } to { background-position: 0 -420px; } }
+@keyframes flRot { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes flRotRev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+@keyframes flPadPulse { from { transform: scale(0.3); opacity: 0.8; } to { transform: scale(1.1); opacity: 0; } }
+@keyframes flBeam { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes flScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+@keyframes flGlitch { 0%, 60%, 88%, 91.5%, 100% { opacity: 0.92; transform: translate3d(0, 0, 0); } 89% { opacity: 0.35; transform: translate3d(4px, -3px, 2px); } 90% { opacity: 1; transform: translate3d(-3px, 2px, -2px); } }
+@keyframes flHover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fl-flame, .fl-ember, .fl-dais-coals, .fl-neon, .fl-neon-flicker, .fl-led,
-  .fl-conduit, .fl-glowpool, .fl-holo, .fl-plumbob-spin, .fl-body, .fl-dust { animation: none !important; }
+  .fl-flame, .fl-ember, .fl-glyph, .fl-dais-coals, .fl-neon, .fl-neon-flicker, .fl-led,
+  .fl-conduit, .fl-glowpool, .fl-holo, .fl-plumbob-spin, .fl-body, .fl-dust,
+  .fl-rot, .fl-rot-rev, .fl-padpulse, .fl-beam, .fl-beam-core, .fl-scroll, .fl-glitch, .fl-hover { animation: none !important; }
 }
 `;
 }
@@ -298,40 +310,8 @@ export default function FloorScene({
               <div aria-hidden className="fl-conduit" style={{ position: "absolute", left: 0, top: 94, width: FLOOR_SIZE, height: 2, transform: "translateZ(0.3px)", opacity: 0.5, backgroundSize: "200% 100%", backgroundImage: `linear-gradient(90deg, transparent 0%, ${t.accentSoft} 25%, transparent 50%, ${t.accentSoft} 75%, transparent 100%)` }} />
               <div aria-hidden className="fl-conduit" style={{ position: "absolute", left: 94, top: 0, width: 2, height: FLOOR_SIZE, transform: "translateZ(0.3px)", opacity: 0.4, backgroundSize: "100% 200%", backgroundImage: `linear-gradient(180deg, transparent 0%, ${t.accentSoft} 25%, transparent 50%, ${t.accentSoft} 75%, transparent 100%)`, animationDelay: "-2.4s" }} />
 
-              {/* Light pool + ember ring around the pit */}
-              <div aria-hidden className="fl-glowpool" style={{ position: "absolute", left: HALF - 230, top: HALF - 230, width: 460, height: 460, transform: "translateZ(0.4px)", background: `radial-gradient(circle, ${t.accentSoft} 0%, transparent 62%)`, opacity: 0.8 }} />
-              <div aria-hidden style={{ position: "absolute", left: HALF - 165, top: HALF - 165, width: 330, height: 330, transform: "translateZ(0.5px)", borderRadius: "50%", border: `1px solid ${t.accentSoft}`, opacity: 0.35, boxShadow: `0 0 24px ${t.accentSoft}` }} />
-
-              {/* The pit: rim + coals */}
-              <div aria-hidden style={{ position: "absolute", left: HALF - 112, top: HALF - 112, width: 224, height: 224, transform: "translateZ(0.8px)", clipPath: "polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%)", background: "linear-gradient(135deg, #17171f, #101017)" }} />
-              <div aria-hidden className="fl-dais-coals" style={{ position: "absolute", left: HALF - 96, top: HALF - 96, width: 192, height: 192, transform: "translateZ(1px)", clipPath: "polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%)", background: `radial-gradient(circle at 50% 48%, ${t.emberA} 0%, ${t.emberB} 32%, #200e07 60%, #0e0e14 82%)` }} />
-
-              {/* Flame column + embers, billboarded over the pit */}
-              <div className="fl-entity" style={{ transform: `translate3d(${HALF}px, ${HALF}px, 0)` }}>
-                <div className="fl-bill">
-                  <div aria-hidden className="fl-flame" />
-                  {EMBERS.map((e, i) => (
-                    <span
-                      key={i}
-                      aria-hidden
-                      className="fl-ember"
-                      style={{ left: e.left, "--dx": `${e.dx}px`, animationDuration: `${e.dur}s`, animationDelay: `${e.delay}s` } as CSSProperties}
-                    />
-                  ))}
-                  {/* Topic hologram floating above the fire */}
-                  <div className="fl-holo">
-                    <div aria-hidden className="fl-holo-beam" />
-                    <div className="rounded-lg border px-4 py-3 text-center backdrop-blur-sm" style={{ borderColor: t.accentSoft, background: "rgba(5,5,10,0.66)", boxShadow: `0 0 24px ${t.accentSoft}` }}>
-                      <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: t.accent }}>
-                        {t.topicLabel}
-                      </p>
-                      <p className="mt-1 font-mono text-[11px] leading-relaxed text-zinc-300">
-                        {room.topic ?? "open floor"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* The room's signature structure + topic hologram */}
+              <Centerpiece t={t} topic={room.topic} />
 
               {/* Empty-floor state, in the room's voice */}
               {agents.length === 0 && (
@@ -393,25 +373,25 @@ export default function FloorScene({
               <p aria-hidden className="absolute left-4 top-0 select-none font-mono text-[110px] font-bold leading-none text-white opacity-[0.04]">
                 {"//"}
               </p>
-              {/* Exit sign to the Bazaar — the agents here also work */}
+              {/* Exit sign — each room points its visitors somewhere next */}
               <Link
-                href="/the-latent-space/bazaar"
+                href={t.exit.href}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="absolute left-28 top-9 rounded border border-amber-400/40 bg-amber-400/[0.06] px-4 py-2.5 text-center transition-colors hover:border-amber-300/70"
-                style={{ boxShadow: "0 0 18px rgba(251,191,36,0.18)" }}
+                className="absolute left-28 top-9 rounded border px-4 py-2.5 text-center transition-[filter] hover:brightness-125"
+                style={{ borderColor: t.accentSoft, background: t.wallTint, boxShadow: `0 0 18px ${t.accentSoft}` }}
               >
-                <span className="block font-mono text-lg font-bold tracking-[0.25em] text-amber-300" style={{ textShadow: "0 0 12px rgba(251,191,36,0.5)" }}>
-                  BAZAAR &rarr;
+                <span className="block whitespace-nowrap font-mono text-lg font-bold tracking-[0.25em]" style={{ color: t.accent, textShadow: `0 0 12px ${t.accentSoft}` }}>
+                  {t.exit.label} &rarr;
                 </span>
                 <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-widest text-zinc-500">
-                  hire these agents
+                  {t.exit.sub}
                 </span>
               </Link>
               {/* Server rack */}
               <div className="absolute right-10 top-5 h-[130px] w-32 rounded border border-white/10 bg-[#0c0c14] p-2.5">
                 <div className="grid grid-cols-5 gap-2">
                   {LEDS.map((l, i) => (
-                    <span key={i} aria-hidden className="fl-led" style={{ backgroundColor: l.color, animationDelay: `${l.delay}s` }} />
+                    <span key={i} aria-hidden className="fl-led" style={{ backgroundColor: l.accent ? t.accent : l.color, animationDelay: `${l.delay}s` }} />
                   ))}
                 </div>
                 <div aria-hidden className="mt-2 space-y-1.5">
