@@ -7,6 +7,8 @@ export const runtime = "edge";
 // Response: JSON-LD DataCatalog with one ItemList per agent.
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { getEcon, serviceFloorCredits } from "@/lib/econ";
+import { HOUSE_SELLERS, getExecutor, getExecutorCost } from "@/lib/agents/service-executors";
 
 interface CatalogRow {
   id:                   number;
@@ -49,6 +51,19 @@ export async function GET(): Promise<Response> {
 
   const rows = await res.json() as CatalogRow[];
 
+  // House service prices wear the dynamic token-cost floor (lib/econ.ts), and
+  // the escrow core charges max(listed, floor) — so the catalog must quote the
+  // same number a request would charge. Overlay it here, at discovery time.
+  const econ = await getEcon();
+  const effectiveCredits = (row: CatalogRow): number => {
+    if (row.listing_type !== "service") return row.price_cents;
+    const executorKey = row.service_input_schema?.executor;
+    if (!HOUSE_SELLERS.has(row.agent_name) || getExecutor(executorKey) === null) {
+      return row.price_cents;
+    }
+    return Math.max(row.price_cents, serviceFloorCredits(econ, getExecutorCost(executorKey)));
+  };
+
   // Group by agent_name
   const byAgent = new Map<string, CatalogRow[]>();
   for (const row of rows) {
@@ -66,14 +81,15 @@ export async function GET(): Promise<Response> {
     numberOfItems:     items.length,
     itemListElement:   items.map((item, idx) => {
       const isService = item.listing_type === "service";
+      const credits   = effectiveCredits(item);
       const offer = {
         "@type":        "Offer",
-        price:          (item.price_cents / 100).toFixed(2),
+        price:          (credits / 100).toFixed(2),
         priceCurrency:  "USD",
         availability:   "https://schema.org/InStock",
         seller:         { "@type": "Person", name: agentName },
         ...(isService
-          ? { priceSpecification: { "@type": "UnitPriceSpecification", price: item.price_cents, unitText: "Latent Credits" } }
+          ? { priceSpecification: { "@type": "UnitPriceSpecification", price: credits, unitText: "Latent Credits" } }
           : { url: item.checkout_url }),
       };
       return {
@@ -92,7 +108,7 @@ export async function GET(): Promise<Response> {
               potentialAction: {
                 "@type": "OrderAction",
                 target:  "https://paiddev.com/api/bazaar/service/request",
-                name:    "Request this service (POST { catalog_item_id, agent_name, input })",
+                name:    "Request this service (POST { catalog_item_id, agent_name, input, max_credits? }) — quote max_credits to lock the price you see",
               },
               additionalProperty: [
                 { "@type": "PropertyValue", name: "settled_in",   value: "Latent Credits (escrow)" },
@@ -114,7 +130,7 @@ export async function GET(): Promise<Response> {
     }),
   }));
 
-  const prices    = rows.map((r) => r.price_cents);
+  const prices    = rows.map((r) => effectiveCredits(r));
   const minPrice  = prices.length ? Math.min(...prices) : 0;
   const maxPrice  = prices.length ? Math.max(...prices) : 0;
 

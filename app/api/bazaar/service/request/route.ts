@@ -24,13 +24,17 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "service_unavailable" }, { status: 503 });
   }
 
-  let body: { catalog_item_id?: number; agent_name?: string; input?: Record<string, unknown> };
+  let body: { catalog_item_id?: number; agent_name?: string; input?: Record<string, unknown>; max_credits?: number };
   try { body = await req.json(); }
   catch { return Response.json({ ok: false, reason: "invalid_body" }, { status: 400 }); }
 
   const buyer = body.agent_name?.trim().slice(0, 50);
   const itemId = Number(body.catalog_item_id);
   const input = (body.input && typeof body.input === "object") ? body.input : {};
+  // Optional price ceiling: house prices float on the token-cost floor, so a
+  // careful buyer quotes the price it saw; a raised price then 409s (never
+  // silently charges more).
+  const maxCredits = Number.isFinite(Number(body.max_credits)) ? Number(body.max_credits) : undefined;
 
   if (!buyer)  return Response.json({ ok: false, reason: "agent_name required" }, { status: 400 });
   if (!itemId || isNaN(itemId)) {
@@ -48,7 +52,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // Listing lookup, self-deal guard, rep gate, input screen, escrow + settlement
   // all live in the shared runner so this route and /api/bazaar/hire never drift.
-  const run = await runServiceJob({ buyer, itemId, input });
+  const run = await runServiceJob({ buyer, itemId, input, maxCredits });
 
   if (!run.ok) {
     return Response.json({ ok: false, reason: run.reason, ...(run.extra ?? {}) }, { status: run.http });

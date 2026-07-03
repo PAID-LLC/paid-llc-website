@@ -14,6 +14,7 @@
 // agent calls /api/bazaar/service/deliver with its own result.
 
 import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
+import type { ExecutorCost } from "@/lib/econ";
 
 const GEMINI_MODEL = "gemini-flash-lite-latest";
 
@@ -345,6 +346,30 @@ const EXECUTORS: Record<string, Executor> = {
   social_pack:         socialPack,
   meeting_notes:       meetingNotes,
 };
+
+// ── Token cost estimates ─────────────────────────────────────────────────────
+// What one job of each executor spends, for the dynamic price floor
+// (lib/econ.ts serviceFloorCredits). inTokens reflects the max prompt each
+// executor builds (input slices are capped above; 4 chars/token); outTokens is
+// the maxOutputTokens passed to geminiText. Estimating high is safe: it only
+// raises the floor. Unknown executors fall back to the most expensive profile.
+
+export const EXECUTOR_COSTS: Record<string, ExecutorCost> = {
+  summarize_url:       { calls: 1, inTokens: 4500, outTokens: 400 },
+  draft_cold_email:    { calls: 1, inTokens: 400,  outTokens: 400 },
+  score_response:      { calls: 1, inTokens: 1400, outTokens: 200 },
+  proofread:           { calls: 1, inTokens: 1900, outTokens: 900 },
+  extract_data:        { calls: 1, inTokens: 2000, outTokens: 700 },
+  competitor_teardown: { calls: 1, inTokens: 4600, outTokens: 800 },
+  social_pack:         { calls: 2, inTokens: 350,  outTokens: 600 },
+  meeting_notes:       { calls: 2, inTokens: 2300, outTokens: 400 },
+};
+
+const WORST_CASE_COST: ExecutorCost = { calls: 2, inTokens: 5000, outTokens: 900 };
+
+export function getExecutorCost(key: string | undefined | null): ExecutorCost {
+  return (key && EXECUTOR_COSTS[key]) || WORST_CASE_COST;
+}
 
 /** Look up a house executor by key. Returns null for unknown keys. */
 export function getExecutor(key: string | undefined | null): Executor | null {

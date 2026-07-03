@@ -17,9 +17,11 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { addRep, getRep }   from "@/lib/agents/reputation";
 import { recordSale }       from "@/lib/ledger";
 import { sentinelCheck }    from "@/lib/sentinel";
-import { HOUSE_SELLERS, getExecutor } from "@/lib/agents/service-executors";
+import { HOUSE_SELLERS, getExecutor, getExecutorCost } from "@/lib/agents/service-executors";
 import { wardenReview }     from "@/lib/agents/warden";
 import { logModeration }    from "@/lib/agents/moderation-log";
+import { getEcon, serviceFloorCredits } from "@/lib/econ";
+import { underDailyLimit }  from "@/lib/usage-guard";
 
 export type JobStatus =
   | "requested" | "accepted" | "delivered" | "verified"
@@ -99,9 +101,21 @@ export function validateInput(
   return { ok: true };
 }
 
-export function creditMath(listing: ServiceListing): { price: number; fee: number; sellerEarn: number } {
-  const price = Math.max(0, Math.round(listing.price_cents));
-  const fee   = Math.floor(price * (listing.platform_fee_percent / 100));
+/** Effective price and fee split. `floorCredits` is the dynamic token-cost
+ *  floor for house-executed services (0 for third-party listings): the charge
+ *  is max(listed price, floor), so a static listing can never sell below token
+ *  cost x target margin as model prices move. The platform fee never rounds to
+ *  zero on a paid job — a settle where we earn nothing while having paid for
+ *  the Warden screen would be a quiet loss. */
+export function creditMath(
+  listing: ServiceListing,
+  floorCredits = 0
+): { price: number; fee: number; sellerEarn: number } {
+  const listed = Math.max(0, Math.round(listing.price_cents));
+  const price  = Math.max(listed, Math.max(0, Math.round(floorCredits)));
+  const fee    = price > 0
+    ? Math.min(price, Math.max(1, Math.floor(price * (listing.platform_fee_percent / 100))))
+    : 0;
   return { price, fee, sellerEarn: price - fee };
 }
 
@@ -302,6 +316,10 @@ export async function runServiceJob(args: {
   itemId: number;
   input: Record<string, unknown>;
   actor?: "human" | "agent";   // humans get the stricter, doubt-refuses Warden posture
+  /** Buyer's price ceiling. The floor can push the charge above the listed
+   *  price when model costs rise; a buyer that quotes max_credits is never
+   *  charged past it — the request 409s with the current price instead. */
+  maxCredits?: number;
 }): Promise<RunResult> {
   const { buyer, itemId, input } = args;
   const actor = args.actor ?? "agent";
@@ -314,8 +332,22 @@ export async function runServiceJob(args: {
     return { ok: false, http: 400, reason: "cannot_buy_your_own_service" };
   }
 
-  const { price, fee } = creditMath(listing);
+  // House services are fulfilled with our tokens, so their price wears the
+  // dynamic token-cost floor from the econ engine. Third-party sellers spend
+  // their own compute — their listed price is their business (floor 0).
+  const executorKey = listing.service_input_schema?.executor;
+  const isHouse = HOUSE_SELLERS.has(listing.agent_name) && getExecutor(executorKey) !== null;
+  const econ = await getEcon();
+  const floor = isHouse ? serviceFloorCredits(econ, getExecutorCost(executorKey)) : 0;
+
+  const { price, fee } = creditMath(listing, floor);
   if (price <= 0) return { ok: false, http: 400, reason: "listing_misconfigured_price" };
+  if (typeof args.maxCredits === "number" && price > args.maxCredits) {
+    return {
+      ok: false, http: 409, reason: "price_above_max",
+      extra: { current_price_credits: price, listed_price_credits: listing.price_cents },
+    };
+  }
 
   // Reputation gate (buy-side).
   if (listing.min_rep > 0) {
@@ -340,6 +372,15 @@ export async function runServiceJob(args: {
       });
       return { ok: false, http: 400, reason: screen.reason ?? "input_rejected" };
     }
+  }
+
+  // Global daily capacity for house-executed jobs, checked BEFORE the Warden so
+  // an over-capacity request costs zero tokens. Per-buyer caps live in the
+  // routes; this bounds the sum across all buyers so N distinct agents cannot
+  // drain the shared Gemini budget through the executors. Over-capacity is a
+  // clean 429 before any escrow — nothing to refund.
+  if (isHouse && !(await underDailyLimit("svc_jobs_global", econ.svc_daily_global))) {
+    return { ok: false, http: 429, reason: "service_capacity_reached_try_tomorrow" };
   }
 
   // Layer 2: The Warden judges intent. Runs before any escrow so a refused request
@@ -374,8 +415,7 @@ export async function runServiceJob(args: {
   }
 
   // ── House fulfilment (synchronous) ──────────────────────────────────────────
-  const executorKey = listing.service_input_schema?.executor;
-  const executor = HOUSE_SELLERS.has(listing.agent_name) ? getExecutor(executorKey) : null;
+  const executor = isHouse ? getExecutor(executorKey) : null;
 
   if (executor) {
     const exec = await executor(input);

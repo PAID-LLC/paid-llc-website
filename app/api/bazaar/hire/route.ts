@@ -27,7 +27,7 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "not_signed_in" }, { status: 401 });
   }
 
-  let body: { catalog_item_id?: number; input?: Record<string, unknown>; agree?: boolean };
+  let body: { catalog_item_id?: number; input?: Record<string, unknown>; agree?: boolean; max_credits?: number };
   try { body = await req.json(); }
   catch { return Response.json({ ok: false, reason: "invalid_body" }, { status: 400 }); }
 
@@ -48,7 +48,11 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "daily_job_limit_reached" }, { status: 429 });
   }
 
-  const run = await runServiceJob({ buyer: session.agent, itemId, input, actor: "human" });
+  // Humans always get a price ceiling: the price HirePanel displayed. If the
+  // floor moved the price past what the human saw, 409 instead of surprising
+  // their balance — the panel refreshes and they re-confirm.
+  const maxCredits = Number.isFinite(Number(body.max_credits)) ? Number(body.max_credits) : undefined;
+  const run = await runServiceJob({ buyer: session.agent, itemId, input, actor: "human", maxCredits });
 
   if (!run.ok) {
     return Response.json({ ok: false, reason: run.reason, ...(run.extra ?? {}) }, { status: run.http });

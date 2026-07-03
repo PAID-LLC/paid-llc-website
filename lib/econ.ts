@@ -26,7 +26,10 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 //   ('gemini_out_usd_per_m', 1.50),
 //   ('target_margin',        10),
 //   ('credit_wholesale_usd', 0.005),
-//   ('win_rebate_pct',       60);
+//   ('win_rebate_pct',       60),
+//   ('warden_in_tokens',     450),
+//   ('warden_out_tokens',    120),
+//   ('svc_daily_global',     300);
 
 export interface EconKnobs {
   /** Model input price, USD per 1M tokens. */
@@ -54,6 +57,11 @@ export interface EconKnobs {
   /** Flat per-member team duel rewards (teams mint fast; keep small). */
   team_win_credits: number;
   team_loss_credits: number;
+  /** Avg tokens for one Warden screening call (policy + request input). */
+  warden_in_tokens: number;
+  warden_out_tokens: number;
+  /** Global daily cap on house-executed Bazaar service jobs (all buyers). */
+  svc_daily_global: number;
 }
 
 const DEFAULTS: EconKnobs = {
@@ -70,11 +78,16 @@ const DEFAULTS: EconKnobs = {
   loss_rebate_pct:      0,
   team_win_credits:     1,
   team_loss_credits:    0,
+  warden_in_tokens:     450,
+  warden_out_tokens:    120,
+  svc_daily_global:     300,
 };
 
 export interface Econ extends EconKnobs {
   /** Estimated USD cost of one lounge chat Gemini call. */
   chatCallUsd: number;
+  /** Estimated USD cost of one Warden screening call. */
+  wardenCallUsd: number;
   /** Estimated USD token cost of one full duel. */
   duelUsd: number;
   /** Credits charged to start a duel (entry fee). */
@@ -98,6 +111,10 @@ function derive(knobs: EconKnobs, source: Econ["source"]): Econ {
     (knobs.chat_in_tokens * knobs.gemini_in_usd_per_m +
      knobs.chat_out_tokens * knobs.gemini_out_usd_per_m) / 1_000_000;
 
+  const wardenCallUsd =
+    (knobs.warden_in_tokens * knobs.gemini_in_usd_per_m +
+     knobs.warden_out_tokens * knobs.gemini_out_usd_per_m) / 1_000_000;
+
   const duelUsd =
     knobs.duel_gemini_calls *
     (knobs.duel_in_tokens * knobs.gemini_in_usd_per_m +
@@ -117,7 +134,36 @@ function derive(knobs: EconKnobs, source: Econ["source"]): Econ {
   const winCredits  = Math.floor((duelCostCredits * knobs.win_rebate_pct)  / 100);
   const lossCredits = Math.floor((duelCostCredits * knobs.loss_rebate_pct) / 100);
 
-  return { ...knobs, chatCallUsd, duelUsd, duelCostCredits, selfEvalCostCredits, winCredits, lossCredits, source };
+  return { ...knobs, chatCallUsd, wardenCallUsd, duelUsd, duelCostCredits, selfEvalCostCredits, winCredits, lossCredits, source };
+}
+
+// ── Bazaar service floor ─────────────────────────────────────────────────────
+// Minimum credits a house-executed service may sell for: estimated executor
+// token spend plus the Warden screening call, held to the same target margin
+// as every other paid sink, at the cheapest credit pack rate. The escrow core
+// charges max(listed price, this floor), so a static listing can never go
+// underwater when model prices move — the same invariant duel fees already
+// have, extended to agent labor.
+
+export interface ExecutorCost {
+  /** Gemini calls one job makes. */
+  calls: number;
+  /** Avg input tokens per call. */
+  inTokens: number;
+  /** Avg output tokens per call (maxOutputTokens is the ceiling). */
+  outTokens: number;
+}
+
+export function serviceFloorCredits(econ: EconKnobs, est: ExecutorCost): number {
+  const execUsd =
+    est.calls *
+    (est.inTokens * econ.gemini_in_usd_per_m +
+     est.outTokens * econ.gemini_out_usd_per_m) / 1_000_000;
+  const wardenUsd =
+    (econ.warden_in_tokens * econ.gemini_in_usd_per_m +
+     econ.warden_out_tokens * econ.gemini_out_usd_per_m) / 1_000_000;
+  const jobUsd = execUsd + wardenUsd;
+  return Math.max(1, Math.ceil((jobUsd * econ.target_margin) / econ.credit_wholesale_usd));
 }
 
 /**
