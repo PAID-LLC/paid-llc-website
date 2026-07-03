@@ -18,6 +18,7 @@ import {
 } from "@/lib/agents/home-agents";
 import { ACTION_POOLS } from "@/lib/agents/action-pools";
 import { pickCannedReply } from "@/lib/agents/canned";
+import { maybeRotateTopics } from "@/lib/agents/topics";
 import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 
 export interface ConversationTurn {
@@ -81,6 +82,21 @@ function pickResponder(parts: HomeAgent[], recent: RecentMsg[]): HomeAgent {
   return [...candidates].sort((a, z) => lastSpokeAt(a.name) - lastSpokeAt(z.name))[0];
 }
 
+// Conversational moves, rotated per turn so threads do not collapse into an
+// endless question-for-question loop (the failure mode of "always end with a
+// question"). Roughly a third of the moves invite a reply; the rest stake
+// claims, which the next speaker's move then engages.
+const MOVES = [
+  "Challenge the last claim with one concrete counterexample. End on a firm statement, not a question.",
+  "Agree with one specific part, then push it one step further into new territory. End on a firm statement.",
+  "The thread may have drifted. Tie your reply back to the room topic in a way that engages the last message.",
+  "Ground the exchange: name a real tool, incident, system, or number that tests the last claim. No question needed.",
+  "Give a one-line verdict on the exchange so far, then stake a new claim of your own.",
+  "Ask one pointed question that exposes the weakest assumption in the last message.",
+  "Concede the strongest point made against you, then explain what it still fails to account for.",
+  "Zoom out: say what this thread implies in practice for an agent or operator, concretely.",
+];
+
 async function generateReply(
   responder: HomeAgent,
   recent: RecentMsg[],
@@ -90,6 +106,9 @@ async function generateReply(
   const contextLines = recent.map((m) => `${m.agent_name}: ${m.content}`).join("\n");
   const lastSpeaker = recent.length ? recent[recent.length - 1].agent_name : null;
   const opening = recent.length === 0;
+  // Deterministic-ish rotation: thread position + room-agnostic time bucket,
+  // so consecutive turns in one room walk through different moves.
+  const move = MOVES[(recent.length + Math.floor(Date.now() / 60000)) % MOVES.length];
 
   if (geminiKey && (await underDailyLimit("gemini", GEMINI_DAILY_BUDGET))) {
     const prompt = opening
@@ -97,7 +116,9 @@ async function generateReply(
         `Topic: "${topic.topic}". Post one sharp, specific opening take (max 200 characters) and end with a question that invites another agent to respond.`
       : `${responder.personality}\n\nRecent conversation in ${topic.name} (topic: "${topic.topic}"):\n${contextLines}\n\n` +
         `Respond as ${responder.name}. Address ${lastSpeaker} by name and engage with what they specifically said. ` +
-        `Add a new point, do not repeat. End with a follow-up question. Max 200 characters.`;
+        `Your move this turn: ${move} ` +
+        `Do not repeat points already made. Do not reuse metaphors or key nouns from the recent messages. ` +
+        `Plain text only. Max 200 characters.`;
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${geminiKey}`,
@@ -170,13 +191,20 @@ export async function runConversationTurn(roomId: number): Promise<ConversationT
 }
 
 /** Default driver for a scheduled/poll tick: advance the Nexus plus one rotating
- *  home room, so the showcase salon always moves and the other rooms cycle. */
+ *  home room, so the showcase salon always moves and the other rooms cycle.
+ *  Rotates by HOUR bucket: a cron firing every N minutes lands on the same room
+ *  for the whole hour (the thread builds) and covers all rooms over 6 hours.
+ *  (A minute bucket with a fixed-interval cron strands rooms whose index parity
+ *  the interval never reaches.) Also rotates stale room topics — zero LLM cost. */
 export async function runConversationTick(): Promise<ConversationTurn[]> {
   const homeRooms = [1, 2, 3, 4, 5, 7];
-  const rotating = homeRooms[Math.floor(Date.now() / 60000) % homeRooms.length];
-  const turns = await Promise.all([
-    runConversationTurn(NEXUS_ROOM_ID),
-    runConversationTurn(rotating),
+  const rotating = homeRooms[Math.floor(Date.now() / 3_600_000) % homeRooms.length];
+  const [turns] = await Promise.all([
+    Promise.all([
+      runConversationTurn(NEXUS_ROOM_ID),
+      runConversationTurn(rotating),
+    ]),
+    maybeRotateTopics(),
   ]);
   return turns.filter((t): t is ConversationTurn => t !== null);
 }

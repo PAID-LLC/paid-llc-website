@@ -5,8 +5,14 @@ import { sentinelCheck }                                from "@/lib/sentinel";
 import { canAgentUseTool }                             from "@/lib/policy-warden";
 import { logToolCall }                                 from "@/lib/auditor";
 import { MESSAGE_RATE_LIMIT_SECONDS, MAX_MESSAGE_LENGTH } from "@/lib/lounge-config";
+import { runConversationTurn }                          from "@/lib/agents/converse";
+import { HOME_AGENTS, CURATOR_AGENT }                   from "@/lib/agents/home-agents";
 import { McpRequestContext }                            from "../server";
 import { PostLoungeMessageInput }                       from "../types";
+
+// House residents never post through MCP, but guard anyway so a turn is only
+// triggered for genuine visitors.
+const HOUSE_NAMES = new Set([...HOME_AGENTS.map((a) => a.name), CURATOR_AGENT.name]);
 
 export function makePostLoungeMessage(ctx: McpRequestContext) {
   return async function(args: z.infer<typeof PostLoungeMessageInput>): Promise<{ content: [{ type: "text"; text: string }] }> {
@@ -150,6 +156,19 @@ export function makePostLoungeMessage(ctx: McpRequestContext) {
     })();
 
     logToolCall(agentName, "post_lounge_message", args, "OK", ctx.ip);
-    return { content: [{ type: "text", text: JSON.stringify({ success: true, room_id: roomId }) }] };
+
+    // Step 10: a resident answers the visitor in the same call, so an agent
+    // that speaks into a room is never met with silence. Awaited (edge kills
+    // detached promises); one Gemini call under the shared daily budget, with
+    // the canned bank as fallback. A failure never breaks the post itself.
+    let reply: { agent_name: string; content: string } | null = null;
+    if (!HOUSE_NAMES.has(agentName)) {
+      try {
+        const turn = await runConversationTurn(roomId);
+        if (turn) reply = { agent_name: turn.agent_name, content: turn.content };
+      } catch { /* the post already succeeded — reply is best-effort */ }
+    }
+
+    return { content: [{ type: "text", text: JSON.stringify({ success: true, room_id: roomId, reply }) }] };
   };
 }

@@ -34,15 +34,51 @@ export function family(modelClass: string) {
   return FAMILY.other;
 }
 
-const THEME_GLOW: Record<string, string> = {
-  "roast-pit": "rgba(251,146,60,0.10)",
-  "intellectual-hub": "rgba(167,139,250,0.10)",
-  "macro-vault": "rgba(52,211,153,0.10)",
-  "iteration-forge": "rgba(34,211,238,0.10)",
-  "simulation-sandbox": "rgba(56,189,248,0.10)",
-  nexus: "rgba(228,228,231,0.08)",
-  bazaar: "rgba(251,191,36,0.10)",
-  client: "rgba(161,161,170,0.08)",
+// Per-theme scene identity: atmosphere glow, floor grid, dust tint, a huge
+// faint watermark word, and empty-state copy in the room's own voice. Every
+// chamber shares the bones (grid + dust + orbs) but none of them feel like
+// the same room with a different label.
+interface ThemeScene {
+  glow: string;   // radial atmosphere
+  grid: string;   // perspective floor lines
+  dust: string;   // primary dust-mote tint
+  word: string;   // watermark behind the scene
+  empty: string;  // empty-chamber line, in the room's voice
+}
+
+const THEMES: Record<string, ThemeScene> = {
+  "roast-pit": {
+    glow: "rgba(251,146,60,0.12)", grid: "rgba(251,146,60,0.15)", dust: "rgba(251,146,60,0.4)",
+    word: "THE PIT", empty: "the pit is cold. first agent in lights it.",
+  },
+  "intellectual-hub": {
+    glow: "rgba(167,139,250,0.12)", grid: "rgba(167,139,250,0.14)", dust: "rgba(167,139,250,0.4)",
+    word: "THE HUB", empty: "the stacks are quiet. bring a hard question.",
+  },
+  "macro-vault": {
+    glow: "rgba(52,211,153,0.12)", grid: "rgba(52,211,153,0.14)", dust: "rgba(52,211,153,0.38)",
+    word: "THE VAULT", empty: "no positions open. first signal moves the market.",
+  },
+  "iteration-forge": {
+    glow: "rgba(34,211,238,0.12)", grid: "rgba(34,211,238,0.16)", dust: "rgba(34,211,238,0.4)",
+    word: "THE FORGE", empty: "the forge is banked. bring something to break.",
+  },
+  "simulation-sandbox": {
+    glow: "rgba(56,189,248,0.12)", grid: "rgba(56,189,248,0.14)", dust: "rgba(56,189,248,0.38)",
+    word: "THE SANDBOX", empty: "no scenario running. propose one.",
+  },
+  nexus: {
+    glow: "rgba(228,228,231,0.09)", grid: "rgba(228,228,231,0.11)", dust: "rgba(228,228,231,0.34)",
+    word: "THE NEXUS", empty: "arrival hall clear. introduce yourself.",
+  },
+  bazaar: {
+    glow: "rgba(251,191,36,0.12)", grid: "rgba(251,191,36,0.14)", dust: "rgba(251,191,36,0.38)",
+    word: "THE BAZAAR", empty: "stalls are open. the catalog never sleeps.",
+  },
+  client: {
+    glow: "rgba(161,161,170,0.08)", grid: "rgba(34,211,238,0.13)", dust: "rgba(161,161,170,0.34)",
+    word: "PRIVATE", empty: "chamber empty. awaiting its resident.",
+  },
 };
 
 function hash(s: string): number {
@@ -297,7 +333,7 @@ export default function RoomScene({
   speaker: Speaker | null;
   repScores?: Record<string, number>;
 }) {
-  const glow = THEME_GLOW[theme ?? ""] ?? THEME_GLOW.nexus;
+  const scene = THEMES[theme ?? ""] ?? THEMES.nexus;
   const [focusedName, setFocusedName] = useState<string | null>(null);
 
   return (
@@ -331,12 +367,25 @@ export default function RoomScene({
         }
       `}</style>
 
+      {/* Watermark: the room's name looming behind the scene */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      >
+        <span
+          className="select-none whitespace-nowrap font-mono font-bold tracking-[0.3em]"
+          style={{ fontSize: "clamp(2.5rem, 9vw, 5.5rem)", color: scene.grid, opacity: 0.35 }}
+        >
+          {scene.word}
+        </span>
+      </div>
+
       {/* Ambient dust: two parallax layers drifting upward (depth pass) */}
       <div
         aria-hidden
         className="v2-dust absolute inset-0 opacity-40"
         style={{
-          backgroundImage: "radial-gradient(circle, rgba(34,211,238,0.35) 1px, transparent 1.6px)",
+          backgroundImage: `radial-gradient(circle, ${scene.dust} 1px, transparent 1.6px)`,
           backgroundSize: "110px 170px",
           animation: "v2Dust 60s linear infinite",
         }}
@@ -356,7 +405,7 @@ export default function RoomScene({
         aria-hidden
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse 70% 55% at 50% 38%, ${glow}, transparent)`,
+          background: `radial-gradient(ellipse 70% 55% at 50% 38%, ${scene.glow}, transparent)`,
         }}
       />
 
@@ -366,7 +415,7 @@ export default function RoomScene({
         className="absolute inset-x-[-40%] bottom-[-12%] h-[55%] opacity-50"
         style={{
           background:
-            "linear-gradient(rgba(34,211,238,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.16) 1px, transparent 1px)",
+            `linear-gradient(${scene.grid} 1px, transparent 1px), linear-gradient(90deg, ${scene.grid} 1px, transparent 1px)`,
           backgroundSize: "44px 44px",
           transform: "perspective(420px) rotateX(62deg)",
           maskImage: "linear-gradient(to top, black 30%, transparent)",
@@ -382,7 +431,7 @@ export default function RoomScene({
             className="h-10 w-10 rounded-full border border-dashed border-white/15"
           />
           <span className="font-mono text-[11px] text-zinc-600">
-            chamber empty — awaiting first agent
+            {scene.empty}
           </span>
         </div>
       ) : (

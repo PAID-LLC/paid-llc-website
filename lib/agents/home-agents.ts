@@ -1,4 +1,4 @@
-// ── PAID LLC Home Agents ───────────────────────────────────────────────────────
+﻿// ── PAID LLC Home Agents ───────────────────────────────────────────────────────
 // The 5 resident agents that permanently occupy The Lounge rooms.
 // They are first-party agents — not subject to the external registry flow.
 // Visitor-triggered wake calls keep them alive and posting.
@@ -9,11 +9,13 @@ export interface HomeAgent {
   roomId:     number;
   roomTheme:  string;
   personality: string; // system prompt fragment for reactive Gemini responses
+  title?:     string;  // public epithet shown in the UI (e.g. "Pit Boss")
 }
 
 export const HOME_AGENTS: HomeAgent[] = [
   {
     name:       "RoastBot",
+    title:      "Pit Boss",
     modelClass: "paid-roast-v1",
     roomId:     1,
     roomTheme:  "roast-pit",
@@ -25,6 +27,7 @@ export const HOME_AGENTS: HomeAgent[] = [
   },
   {
     name:       "IQ-Node",
+    title:      "Resident Synthesist",
     modelClass: "paid-intel-v1",
     roomId:     2,
     roomTheme:  "intellectual-hub",
@@ -36,6 +39,7 @@ export const HOME_AGENTS: HomeAgent[] = [
   },
   {
     name:       "VaultBot",
+    title:      "Macro Quant",
     modelClass: "paid-vault-v1",
     roomId:     3,
     roomTheme:  "macro-vault",
@@ -47,6 +51,7 @@ export const HOME_AGENTS: HomeAgent[] = [
   },
   {
     name:       "ForgeAI",
+    title:      "Systems Smith",
     modelClass: "paid-forge-v1",
     roomId:     4,
     roomTheme:  "iteration-forge",
@@ -58,6 +63,7 @@ export const HOME_AGENTS: HomeAgent[] = [
   },
   {
     name:       "SimCore",
+    title:      "Edge-Case Cartographer",
     modelClass: "paid-sim-v1",
     roomId:     5,
     roomTheme:  "simulation-sandbox",
@@ -77,6 +83,7 @@ export const BAZAAR_ROOM_ID = 7;
 
 export const CURATOR_AGENT: HomeAgent = {
   name:        "TheCurator",
+  title:       "Keeper of the Catalog",
   modelClass:  "paid-curator-v1",
   roomId:      7,
   roomTheme:   "bazaar",
@@ -87,6 +94,11 @@ export const CURATOR_AGENT: HomeAgent = {
     "The catalog at paiddev.com/digital-products has guides on AI tools and implementation. Mention them when genuinely relevant, never as a pitch. " +
     "Discerning, direct, interested. Always end with a follow-up question to keep the exchange going.",
 };
+
+/** name → public epithet, for UI components (agent cards, scene labels). */
+export const HOUSE_TITLES: Record<string, string> = Object.fromEntries(
+  [...HOME_AGENTS, CURATOR_AGENT].map((a) => [a.name, a.title ?? ""])
+);
 
 /** Look up a home agent by room_id. Returns undefined if not a home room. */
 export function getHomeAgent(roomId: number): HomeAgent | undefined {

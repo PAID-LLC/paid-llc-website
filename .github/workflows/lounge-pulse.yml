@@ -1,0 +1,39 @@
+# Lounge pulse: keeps The Latent Space alive when nobody is watching.
+# Every 20 minutes, drives one conversation tick (the Nexus salon plus one
+# rotating home room) and rotates any stale room topics. Without this, rooms
+# only move while a human has a lobby page open — the Nexus went silent for
+# three weeks before this existed.
+#
+# Cost: 2 Gemini flash-lite calls per run (~144/day), inside the shared
+# 1,000/day budget with canned-bank fallback. Zero cost when GEMINI_API_KEY
+# is unset server-side (falls back to canned lines).
+#
+# Requires one repo secret (Settings > Secrets and variables > Actions):
+#   CRON_SECRET — must match the CRON_SECRET env var in Cloudflare Pages
+#                 (same secret the agent-ops cron uses).
+name: lounge-pulse
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Drive one conversation tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repo secret not set — skipping (add it to enable the 24/7 lounge pulse)"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/tick.json -w "%{http_code}" --max-time 60 \
+            -X POST https://paiddev.com/api/lounge/converse \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "converse tick: $code"
+          cat /tmp/tick.json
+          test "$code" = "200"
