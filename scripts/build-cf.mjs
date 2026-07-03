@@ -37,7 +37,12 @@ if (!fs.existsSync(projectJsonPath)) {
 }
 
 // ── Step 2: vercel build ──────────────────────────────────────────────────────
-run("npx vercel build");
+// PINNED, not @latest: vercel 54.20.0/54.20.1 (both released 2026-07-03) broke
+// output mapping for prerendered routes ("Unable to find lambda for route:
+// ..."), which failed every Cloudflare Pages deploy after the morning of
+// 2026-07-03 while the repo was unchanged. 54.19.0 (2026-07-02) is the last
+// release before the regression. Bump deliberately, never implicitly.
+run("npx vercel@54.19.0 build");
 
 // ── Step 3: patch _not-found.func/.vc-config.json ────────────────────────────
 const functionsDir = path.join(root, ".vercel", "output", "functions");

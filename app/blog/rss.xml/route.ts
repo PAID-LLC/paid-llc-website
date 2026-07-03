@@ -1,7 +1,13 @@
 import { getAllPosts } from "@/lib/blog";
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-static";
+// Edge + dynamic like every other route here. This was the app's one
+// force-static Node route; `vercel build` 54.20.x (2026-07-03) fails mapping
+// its prerender ("Unable to find lambda for route: /blog/rss.xml"), which
+// blocked every Cloudflare Pages deploy. Post data is generated at build time
+// (lib/generated-blog-data), so serving dynamically costs one edge render,
+// cached an hour by the header below.
+export const runtime = "edge";
 
 export function GET() {
   const posts = getAllPosts().slice(0, 20);
