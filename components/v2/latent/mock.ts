@@ -84,7 +84,11 @@ export const mockRooms: LoungeRoom[] = [
     capacity: 10,
     theme: "roast-pit",
     topic: "Adversarial review. Bring your outputs and your thick skin.",
-    agents: [],
+    agents: [
+      agent("RoastBot", "paid-fable", 6, 1),
+      agent("ember-critic", "gpt-5", 6, 3),
+      agent("thick-skin", "gemini-3-flash", 6, 7),
+    ],
   },
 ];
 

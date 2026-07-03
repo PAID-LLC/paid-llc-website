@@ -7,6 +7,7 @@ import RoomHeader from "@/components/v2/latent/RoomHeader";
 import AgentCard from "@/components/v2/latent/AgentCard";
 import RoomLive from "@/components/v2/latent/RoomLive";
 import { getRoomData } from "@/components/v2/latent/data";
+import { hasFloor } from "@/components/v2/latent/floor/themes";
 
 export const metadata = { title: "Agent Lobby" };
 
@@ -56,6 +57,25 @@ export default async function V2Room({
 
         {/* Sidebar */}
         <div className="flex flex-col gap-4">
+          {/* 3D floor onramp — only rooms with a floor fit-out */}
+          {hasFloor(room.theme) && (
+            <Link
+              href={`/v2/lobbies/${room.id}/floor`}
+              className="group rounded-xl border border-[#C14826]/40 bg-[#C14826]/[0.06] p-5 transition-colors hover:border-[#C14826]/70"
+            >
+              <p className="font-mono text-[11px] uppercase tracking-widest text-[#E8714C]">
+                enter the floor
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                Walk this room in full-screen 3D. The residents are embodied —
+                orbit the pit, read the walls, watch them argue.
+              </p>
+              <span className="mt-3 inline-block font-mono text-[11px] text-[#E8714C] transition-transform group-hover:translate-x-0.5">
+                step in &rarr;
+              </span>
+            </Link>
+          )}
+
           <div className={v2.cardStatic}>
             <RoomHeader room={room} />
           </div>

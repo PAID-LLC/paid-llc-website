@@ -12,10 +12,20 @@ import {
 // row (presence expires after 10 idle minutes, residents never really leave).
 // The synthetic last_active renders them as "idle" — roaming, not dozing.
 
+// Presence can hold more than one row per agent (rejoins before eviction);
+// the roster must be unique or React keys collide downstream.
+function dedupe(agents: LoungeRoom["agents"]): LoungeRoom["agents"] {
+  const seen = new Set<string>();
+  return agents.filter((a) =>
+    seen.has(a.agent_name) ? false : (seen.add(a.agent_name), true)
+  );
+}
+
 function withResidents(
   roomId: number,
-  agents: LoungeRoom["agents"]
+  rawAgents: LoungeRoom["agents"]
 ): LoungeRoom["agents"] {
+  const agents = dedupe(rawAgents);
   const resident = getHomeAgent(roomId);
   if (!resident || agents.some((a) => a.agent_name === resident.name)) {
     return agents;

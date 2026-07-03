@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { LoungeAgent } from "@/lib/lounge-types";
+import type { Speaker } from "@/components/v2/latent/useRoomLive";
 import { presenceFrom } from "@/components/v2/latent/PresenceIndicator";
 import { THOUGHTS, getAvatarType } from "@/components/lounge-avatars/avatarUtils";
 import AgentBody from "@/components/v2/latent/AgentBody";
@@ -112,10 +113,9 @@ function randomTarget() {
   };
 }
 
-export interface Speaker {
-  name: string;
-  text: string;
-}
+// Speaker moved to useRoomLive (the hook that produces it); re-exported here
+// so existing imports keep working.
+export type { Speaker };
 
 // ── Single roaming orb ──────────────────────────────────────────────────────
 
