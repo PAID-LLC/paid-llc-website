@@ -96,9 +96,13 @@ export const CURATOR_AGENT: HomeAgent = {
 };
 
 /** name → public epithet, for UI components (agent cards, scene labels). */
-export const HOUSE_TITLES: Record<string, string> = Object.fromEntries(
-  [...HOME_AGENTS, CURATOR_AGENT].map((a) => [a.name, a.title ?? ""])
-);
+export const HOUSE_TITLES: Record<string, string> = {
+  ...Object.fromEntries(
+    [...HOME_AGENTS, CURATOR_AGENT].map((a) => [a.name, a.title ?? ""])
+  ),
+  // Not a resident — the moderation layer's embodiment, posted in every room.
+  "The-Warden": "Keeper of the Peace",
+};
 
 /** Look up a home agent by room_id. Returns undefined if not a home room. */
 export function getHomeAgent(roomId: number): HomeAgent | undefined {

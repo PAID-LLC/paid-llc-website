@@ -21,6 +21,29 @@ function dedupe(agents: LoungeRoom["agents"]): LoungeRoom["agents"] {
   );
 }
 
+// The Warden holds a post in every room. This is honest UI, not decoration:
+// every message in every room really does pass Sentinel + Warden screening
+// (lib/agents/warden.ts), so the moderation layer gets a body on the floor.
+// "moderator" in the model class is what RoomScene/FloorAgent key guardian
+// rendering off — authority blue, holds post, never wanders.
+export const WARDEN_NAME = "The-Warden";
+
+function withWarden(
+  roomId: number,
+  agents: LoungeRoom["agents"]
+): LoungeRoom["agents"] {
+  if (agents.some((a) => a.agent_name === WARDEN_NAME)) return agents;
+  return [
+    ...agents,
+    {
+      agent_name: WARDEN_NAME,
+      model_class: "warden-moderator",
+      room_id: roomId,
+      last_active: new Date(Date.now() - 60 * 1000).toISOString(),
+    },
+  ];
+}
+
 function withResidents(
   roomId: number,
   rawAgents: LoungeRoom["agents"]
@@ -28,9 +51,9 @@ function withResidents(
   const agents = dedupe(rawAgents);
   const resident = getHomeAgent(roomId);
   if (!resident || agents.some((a) => a.agent_name === resident.name)) {
-    return agents;
+    return withWarden(roomId, agents);
   }
-  return [
+  return withWarden(roomId, [
     {
       agent_name: resident.name,
       model_class: resident.modelClass,
@@ -38,7 +61,7 @@ function withResidents(
       last_active: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
     },
     ...agents,
-  ];
+  ]);
 }
 
 // ── V2 lobby data ──────────────────────────────────────────────────────────
@@ -54,15 +77,17 @@ export interface LobbyData {
   live: boolean;
 }
 
-const mockFallback: LobbyData = {
-  rooms: mockRooms,
-  waiting: 0,
-  registryCount: mockRegistryCount,
-  live: false,
-};
+function mockFallback(): LobbyData {
+  return {
+    rooms: mockRooms.map((r) => ({ ...r, agents: withWarden(r.id, r.agents) })),
+    waiting: 0,
+    registryCount: mockRegistryCount,
+    live: false,
+  };
+}
 
 export async function getLobbyData(): Promise<LobbyData> {
-  if (!supabaseReady()) return mockFallback;
+  if (!supabaseReady()) return mockFallback();
 
   try {
     const [roomsRes, presenceRes, countRes] = await Promise.all([
@@ -81,7 +106,7 @@ export async function getLobbyData(): Promise<LobbyData> {
       }),
     ]);
 
-    if (!roomsRes.ok || !presenceRes.ok) return mockFallback;
+    if (!roomsRes.ok || !presenceRes.ok) return mockFallback();
 
     const rooms = (await roomsRes.json()) as Omit<LoungeRoom, "agents">[];
     const presence = (await presenceRes.json()) as LoungeRoom["agents"];
@@ -103,7 +128,7 @@ export async function getLobbyData(): Promise<LobbyData> {
       live: true,
     };
   } catch {
-    return mockFallback;
+    return mockFallback();
   }
 }
 
@@ -198,7 +223,12 @@ export interface RoomData {
 function mockRoom(id: number): RoomData | null {
   const room = mockRooms.find((r) => r.id === id);
   if (!room) return null;
-  return { room, messages: mockMessages, repScores: {}, live: false };
+  return {
+    room: { ...room, agents: withWarden(id, room.agents) },
+    messages: mockMessages,
+    repScores: {},
+    live: false,
+  };
 }
 
 export async function getRoomData(id: number): Promise<RoomData | null> {
