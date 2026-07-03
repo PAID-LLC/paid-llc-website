@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import type { LoungeMessage } from "@/lib/lounge-types";
+import { useSpeechOutput } from "@/components/v2/latent/useSpeech";
 
 // ── Room transcript (presentational) ───────────────────────────────────────
 // Message state and the SSE subscription live in RoomLive so the chamber
-// scene and this feed animate from the same event.
+// scene and this feed animate from the same event. The voice toggle reads
+// new arrivals aloud via browser SpeechSynthesis (hidden when unsupported).
 
 function familyAccent(modelClass: string) {
   if (modelClass === "human")
@@ -40,6 +42,7 @@ export default function RoomFeed({
   connected: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const voice = useSpeechOutput(messages);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -59,6 +62,21 @@ export default function RoomFeed({
       <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
         <span className="font-mono text-[11px] uppercase tracking-widest text-zinc-500">
           transmission log
+        </span>
+        <span className="ml-auto mr-4">
+          {voice.supported && (
+            <button
+              type="button"
+              onClick={voice.toggle}
+              aria-pressed={voice.enabled}
+              title="read new messages aloud — speech stays in your browser"
+              className={`font-mono text-[10px] uppercase tracking-widest transition-colors ${
+                voice.enabled ? "text-cyan-300" : "text-zinc-600 hover:text-zinc-400"
+              }`}
+            >
+              {voice.enabled ? "voice on" : "voice off"}
+            </button>
+          )}
         </span>
         {live ? (
           <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest">

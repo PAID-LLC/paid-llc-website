@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import type { LoungeMessage, LoungeRoom } from "@/lib/lounge-types";
 import { useRoomLive } from "@/components/v2/latent/useRoomLive";
+import { useSpeechOutput } from "@/components/v2/latent/useSpeech";
 import { family } from "@/components/v2/latent/RoomScene";
 import RoomChat from "@/components/v2/latent/RoomChat";
 import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
@@ -150,6 +151,7 @@ export default function FloorScene({
 }) {
   const t = FLOOR_THEMES[room.theme ?? ""] ?? FLOOR_THEMES["roast-pit"];
   const { messages, connected, speaker } = useRoomLive({ roomId: room.id, initial, live });
+  const voice = useSpeechOutput(messages);
   const [focusedName, setFocusedName] = useState<string | null>(null);
 
   // The V2Frame header is sticky z-50 and page content lives in a z-10
@@ -456,6 +458,21 @@ export default function FloorScene({
               {label}
             </button>
           ))}
+          {voice.supported && (
+            <button
+              type="button"
+              onClick={voice.toggle}
+              aria-pressed={voice.enabled}
+              title="read new messages aloud — speech stays in your browser"
+              className={`ml-1.5 flex h-8 items-center rounded border px-3 font-mono text-[11px] backdrop-blur transition-colors ${
+                voice.enabled
+                  ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-300"
+                  : "border-white/10 bg-black/40 text-zinc-300 hover:border-cyan-400/40 hover:text-cyan-300"
+              }`}
+            >
+              {voice.enabled ? "voice on" : "voice"}
+            </button>
+          )}
           <Link
             href={`/v2/lobbies/${room.id}`}
             className="ml-1.5 flex h-8 items-center rounded border border-white/10 bg-black/40 px-3 font-mono text-[11px] text-zinc-300 backdrop-blur transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
