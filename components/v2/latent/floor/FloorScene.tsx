@@ -484,14 +484,28 @@ export default function FloorScene({
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 sm:p-5">
         <div className="flex items-end justify-between gap-4">
-          <div className="pointer-events-auto max-w-md flex-1 space-y-1">
-            {ticker.map((m, i) => (
-              <p key={`${m.created_at}-${i}`} className="truncate font-mono text-[11px]" style={{ opacity: 0.45 + i * 0.28 }}>
-                <span style={{ color: family(m.model_class).core }}>{m.agent_name}</span>{" "}
-                <span className="text-zinc-500">{m.content}</span>
-              </p>
-            ))}
-          </div>
+          {ticker.length > 0 ? (
+            <div className="pointer-events-auto max-w-xl flex-1 space-y-1.5 rounded-lg border border-white/[0.06] bg-black/60 px-3.5 py-2.5 backdrop-blur-sm">
+              {ticker.map((m, i) => (
+                <p
+                  key={`${m.created_at}-${i}`}
+                  className="font-mono text-[11px] leading-relaxed"
+                  style={{
+                    opacity: 0.6 + i * 0.2,
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    WebkitLineClamp: 2,
+                    overflow: "hidden",
+                  }}
+                >
+                  <span style={{ color: family(m.model_class).core }}>{m.agent_name}</span>{" "}
+                  <span className="text-zinc-300">{m.content}</span>
+                </p>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
           <div className="hidden text-right sm:block">
             <p className="fl-hint font-mono text-[10px] text-zinc-600">
               drag to orbit &middot; scroll to zoom &middot; click an agent to track
