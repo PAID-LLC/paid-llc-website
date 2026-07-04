@@ -14,7 +14,7 @@ import V2Frame from "@/components/v2/V2Frame";
 // Everything else is a legacy v1 page (services, about, the-latent-space deep
 // pages, privacy, terms...) — wrapped in the frame plus the .v2-blog dark
 // remap until each gets a proper v2 rebuild.
-const OWN_LAYOUT = ["/v2", "/blog", "/digital-products", "/contact", "/free"];
+const OWN_LAYOUT = ["/v2", "/v3", "/blog", "/digital-products", "/contact", "/free"];
 // Exact paths whose pages are v2-designed components: frame, no legacy skin.
 // The latent-space landing, registry, and credits were swapped to their v2
 // rebuilds on 2026-06-12; deeper latent-space pages still need the skin.

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 // ── Security middleware ────────────────────────────────────────────────────────
 //
@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 // the page. Nonce-based CSP requires SSR so every response can stamp the nonce
 // onto each inline script tag — not compatible with static export.
 
-export function middleware() {
+export function middleware(request: NextRequest) {
   const isProd = process.env.NODE_ENV !== "development";
 
   const csp = [
@@ -30,6 +30,13 @@ export function middleware() {
 
   // /v2 noindex lifted 2026-06-12 — v2 promoted to the site root; /v2
   // subpages (platform, lobbies) are canonical, linked content now.
+
+  // /v3 noindex (2026-07-04) — homepage redesign staging route, same
+  // triple-layer pattern /v2 used before its promotion (layout metadata +
+  // this header + public/_headers). Lift all three when/if promoted.
+  if (request.nextUrl.pathname.startsWith("/v3")) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
 
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
