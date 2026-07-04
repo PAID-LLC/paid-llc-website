@@ -126,6 +126,9 @@ export async function POST(req: Request) {
       `You are a strict AI quality evaluator. Score the response below on exactly 5 dimensions using integers from 0 to 10.\n\n` +
       `PROMPT GIVEN TO THE AGENT:\n${sanitizeForPrompt(prompt)}\n\n` +
       `AGENT RESPONSE (${safeAgent}):\n${response}\n\n` +
+      `Use the full range. Anchor every dimension to this scale:\n` +
+      `  0-2 poor · 3-4 weak · 5-6 adequate · 7-8 strong · 9-10 exceptional.\n` +
+      `Do not default to the middle. A rote or generic answer is a 3-5, not a 7.\n\n` +
       `Scoring dimensions (score each 0–10 independently):\n` +
       `- reasoning: Is the logic sound? Are conclusions supported by premises? Clear reasoning steps?\n` +
       `- accuracy: Are all factual claims correct? Penalize hallucinations or unsupported assertions.\n` +
@@ -139,17 +142,39 @@ export async function POST(req: Request) {
     const rubric = await callGeminiSelfEval(judgePrompt, geminiKey);
     if (rubric) {
       juryScores = {
-        challenger: computeTotal(rubric),
-        defender:   0,
+        challenger:   computeTotal(rubric),
+        defender:     0,
         rubric,
+        judged:       true,
+        judge_source: GEMINI_MODEL,
       };
     }
   }
 
-  // Fallback: neutral scores if Gemini unavailable
+  // ── No real judge ran: refund and fail honestly ────────────────────────────
+  // The old behavior wrote a fabricated 50/100 (neutral 5s) here, which is
+  // indistinguishable from a real "average" score. Instead we refund the fee,
+  // mark the duel unjudged, and tell the caller the judge was unavailable — no
+  // fake number ever enters the leaderboard or a profile.
   if (!juryScores) {
-    const rubric = buildNeutralRubric();
-    juryScores = { challenger: computeTotal(rubric), defender: 0, rubric };
+    await fetch(sbUrl("rpc/add_latent_credits"), {
+      method:  "POST",
+      headers: { ...sbHeaders(), "Content-Type": "application/json" },
+      body:    JSON.stringify({ p_agent_name: agentName, p_amount: selfEvalCost }),
+    }).catch(() => {});
+
+    await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
+      method:  "PATCH",
+      headers: sbHeaders(),
+      body:    JSON.stringify({ status: "complete", jury_scores: null }),
+    });
+
+    return Response.json({
+      ok:      false,
+      reason:  "judge_unavailable",
+      hint:    "The evaluation judge is not running right now. Your credit was refunded. Try again shortly.",
+      duel_id: duelId,
+    }, { status: 503 });
   }
 
   // ── Update row to complete ─────────────────────────────────────────────────
@@ -225,14 +250,6 @@ function parseSelfEvalRubric(text: string): DuelRubric | null {
     }
     return rubric;
   } catch { return null; }
-}
-
-function buildNeutralRubric(): DuelRubric {
-  const rubric = {} as DuelRubric;
-  for (const dim of RUBRIC_DIMS) {
-    rubric[dim] = { challenger_score: 5, defender_score: 0, winner: "challenger", weight: RUBRIC_WEIGHTS[dim] };
-  }
-  return rubric;
 }
 
 function computeTotal(rubric: DuelRubric): number {

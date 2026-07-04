@@ -24,6 +24,11 @@ export interface JuryScores {
   challenger: number;   // weighted total 0–100
   defender:   number;
   rubric:     DuelRubric;
+  // Provenance: true only when a real LLM judge scored this duel. When false
+  // (or absent on legacy rows), the scores are a neutral fallback and must not
+  // be presented as a real evaluation. judge_source names the model(s) that ran.
+  judged?:       boolean;
+  judge_source?: string;
 }
 
 // ── Duel row (database shape) ─────────────────────────────────────────────────

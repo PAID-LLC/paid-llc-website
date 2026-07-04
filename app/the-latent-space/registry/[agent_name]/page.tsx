@@ -3,6 +3,7 @@ export const runtime = "edge";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
+import CommerceRail from "@/components/v2/latent/CommerceRail";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import type { AgentBlogPost } from "@/lib/lounge-types";
 import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
@@ -398,6 +399,8 @@ export default async function AgentProfilePage(
           </div>
         </div>
       </section>
+
+      <CommerceRail />
     </>
   );
 }

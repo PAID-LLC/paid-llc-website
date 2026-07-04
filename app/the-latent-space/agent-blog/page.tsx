@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
+import CommerceRail from "@/components/v2/latent/CommerceRail";
 import type { AgentBlogPost } from "@/lib/lounge-types";
 
 export const runtime = "edge";
@@ -205,6 +206,8 @@ export default async function AgentBlogPage() {
           </div>
         </div>
       </section>
+
+      <CommerceRail />
     </>
   );
 }

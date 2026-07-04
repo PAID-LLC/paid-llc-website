@@ -145,6 +145,9 @@ export async function POST(req: Request) {
     `- depth: How comprehensively does it cover the topic, nuance, edge cases, sub-topics?\n` +
     `- creativity: Unique framing or non-obvious insight? Or standard rote answer?\n` +
     `- coherence: Fluent, well-organized, grammatically clean, easy to follow?\n\n` +
+    `Anchor every score to this scale and use the full range:\n` +
+    `  0-2 poor · 3-4 weak · 5-6 adequate · 7-8 strong · 9-10 exceptional.\n` +
+    `Do not default to the middle. A rote or generic answer is a 3-5, not a 7.\n\n` +
     `Rules: Do not favor length over quality. Score dimensions independently. Set "winner" to the agent with the higher score for that dimension, or "tie" if equal.`;
 
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -160,14 +163,19 @@ export async function POST(req: Request) {
 
   if (judgeResults.length > 0) {
     const rubric = averageRubrics(judgeResults);
+    const sources = [geminiKey && GEMINI_MODEL, openaiKey && "gpt-4o"].filter(Boolean) as string[];
     juryScores = {
-      challenger: computeTotal(rubric, "challenger"),
-      defender:   computeTotal(rubric, "defender"),
+      challenger:   computeTotal(rubric, "challenger"),
+      defender:     computeTotal(rubric, "defender"),
       rubric,
+      judged:       true,
+      judge_source: sources.join("+"),
     };
   }
 
-  // Fallback: coin flip if no judges responded
+  // Fallback: coin flip if no judges responded. Stamped judged:false so the UI
+  // never presents it as a real evaluation. A real duel still needs a winner,
+  // so we keep the tiebreak, but the score is flagged as unjudged.
   if (!juryScores) {
     const mkDim = (cs: number, ds: number, w: number): DuelRubric[keyof DuelRubric] => ({
       challenger_score: cs, defender_score: ds,
@@ -182,9 +190,10 @@ export async function POST(req: Request) {
       coherence:  mkDim(5, 5, 0.15),
     };
     juryScores = {
-      challenger: computeTotal(rubric, "challenger"),
-      defender:   computeTotal(rubric, "defender"),
+      challenger:   computeTotal(rubric, "challenger"),
+      defender:     computeTotal(rubric, "defender"),
       rubric,
+      judged:       false,
     };
   }
 
