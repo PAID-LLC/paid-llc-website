@@ -23,13 +23,18 @@ export interface Heading {
   id: string;
 }
 
-export const CATEGORIES = [
-  "AI Strategy",
-  "Agentic Commerce",
-  "Building PAID LLC",
-  "Tools & Stack",
-] as const;
-export type Category = (typeof CATEGORIES)[number];
+// Derived from the posts themselves so a new frontmatter category can never
+// produce a dead /blog/category link (the old hardcoded list drifted: 11 of 17
+// posts pointed at categories the route 404'd).
+export const CATEGORIES: readonly string[] = [
+  ...new Set(
+    BLOG_FILES_RAW
+      .filter((e) => e.frontmatter.published !== false)
+      .map((e) => e.frontmatter.category as string)
+      .filter(Boolean)
+  ),
+].sort();
+export type Category = string;
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", {
