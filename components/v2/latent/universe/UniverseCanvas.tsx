@@ -7,6 +7,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { v2 } from "@/components/v2/tokens";
 import { FLOOR_THEMES, hasFloor } from "@/components/v2/latent/floor/themes";
+import { COMMERCE_ENTRIES } from "@/components/v2/latent/commerce-entries";
 import { useUniverseStore } from "./useUniverseStore";
 import Hub from "./Hub";
 import AgentSwarm from "./AgentSwarm";
@@ -122,6 +123,33 @@ export default function UniverseCanvas({
             {registryCount > agents.length ? ` — ${registryCount} in the registry` : ""}
             {focusedAgent && <span className="text-zinc-400"> — tracking {focusedAgent}</span>}
           </p>
+          {/* Always-visible purchase paths — the universe replaced the old
+              landing page's floor grid where these lived, so without this
+              row a visitor has no way to find them without first clicking
+              into "about" or a specific world. Same entries as CommerceRail,
+              shared via commerce-entries.ts. */}
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10px]">
+            <span className="text-zinc-600">buy in:</span>
+            {COMMERCE_ENTRIES.map((e, i) => (
+              <span key={e.href} className="flex items-center gap-1.5">
+                <Link
+                  href={e.href}
+                  className={
+                    e.accent === "cyan"
+                      ? "text-cyan-300/80 transition-colors hover:text-cyan-200"
+                      : "text-[#E8714C]/80 transition-colors hover:text-[#E8714C]"
+                  }
+                >
+                  {e.label}
+                </Link>
+                {i < COMMERCE_ENTRIES.length - 1 && (
+                  <span aria-hidden className="text-zinc-700">
+                    &middot;
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5">

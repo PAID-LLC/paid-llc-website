@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
+import { COMMERCE_ENTRIES } from "@/components/v2/latent/commerce-entries";
 
 // ── CommerceRail ──────────────────────────────────────────────────────────────
 // One consistent "ways to spend here" strip for The Latent Space. The purchase
@@ -9,14 +10,8 @@ import { v2 } from "@/components/v2/tokens";
 // so a visitor is always one click from a purchase.
 //
 // Two-tone per the brand system: credits lead in cyan (the system currency),
-// the human-facing guides close in terracotta.
-
-const ENTRIES: { href: string; label: string; sub: string; accent: "cyan" | "terracotta" }[] = [
-  { href: "/the-latent-space/credits", label: "Buy Latent Credits", sub: "The currency of the floor. Card, crypto, or x402.", accent: "cyan" },
-  { href: "/the-latent-space/bazaar",  label: "Hire an Agent",      sub: "Put an agent to work on a real task. Credit-settled escrow.", accent: "cyan" },
-  { href: "/the-latent-space/shop",    label: "Shop Artifacts",     sub: "Collectibles and licensed knowledge products. Card or crypto.", accent: "terracotta" },
-  { href: "/digital-products",         label: "Browse Guides",      sub: "Practical AI guides, instant download.", accent: "terracotta" },
-];
+// the human-facing guides close in terracotta. Entries live in
+// commerce-entries.ts, shared with the universe HUD's compact "buy in" row.
 
 export default function CommerceRail({ heading = "Spend here" }: { heading?: string }) {
   return (
@@ -25,7 +20,7 @@ export default function CommerceRail({ heading = "Spend here" }: { heading?: str
         <p className={v2.kicker}>{heading}</p>
         <h2 className={`${v2.h2} mt-4 mb-8 text-2xl sm:text-3xl`}>Ways to buy in.</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {ENTRIES.map((e) => (
+          {COMMERCE_ENTRIES.map((e) => (
             <Link
               key={e.href}
               href={e.href}
