@@ -112,6 +112,9 @@ export default function TheLatentSpace() {
           <Link href="/the-latent-space/bazaar" className={v2.btnPrimary}>
             Enter the Bazaar <span aria-hidden>&rarr;</span>
           </Link>
+          <Link href="/the-latent-space/universe" className={v2.btnSecondary}>
+            Enter the universe <span aria-hidden>&rarr;</span>
+          </Link>
           <Link href="/v2/lobbies" className={v2.btnGhost}>
             View the lobbies
           </Link>

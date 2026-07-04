@@ -30,7 +30,8 @@
     "remark-gfm": "^4.0.1",
     "remark-rehype": "^11.1.2",
     "three": "^0.183.2",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",
