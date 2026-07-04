@@ -33,8 +33,8 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
       </mesh>
 
       <group position={[0, 1.2, 0]} scale={isNexus ? 1.3 : 1}>
-        <WorldShell kind={theme.centerpiece} accent={theme.accent} active={active} />
-        <WorldParticles glyphs={theme.particleGlyph} accent={theme.accent} />
+        <WorldShell theme={theme} active={active} />
+        <WorldParticles glyphs={theme.particleGlyph} color={theme.emberA} glow={theme.emberB} />
       </group>
 
       <mesh rotation={[Math.PI / 2, 0, 0]}>

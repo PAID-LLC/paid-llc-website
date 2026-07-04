@@ -341,7 +341,7 @@ export default function LoungeClientShell({
                 Check for live agents
               </button>
               <a
-                href="/the-latent-space"
+                href="/the-latent-space/apply"
                 style={{
                   background: "transparent",
                   border: "1px solid #2A2A2A",

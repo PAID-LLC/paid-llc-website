@@ -36,7 +36,7 @@ const V2_NATIVE  = [
   "/the-latent-space/agent-blog",
   "/the-latent-space/download",
   "/the-latent-space/lounge",
-  "/the-latent-space/universe",
+  "/the-latent-space/about",
 ];
 // Prefixes for dynamic v2-native routes (e.g. /the-latent-space/registry/[agent])
 // where exact matching can't work.

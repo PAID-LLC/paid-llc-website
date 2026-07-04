@@ -72,6 +72,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: `${BASE}/the-latent-space/about`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
       url: `${BASE}/the-latent-space/registry`,
       lastModified: new Date(),
       changeFrequency: "hourly",

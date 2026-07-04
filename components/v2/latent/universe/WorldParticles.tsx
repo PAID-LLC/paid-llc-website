@@ -17,10 +17,12 @@ const SLOTS = Array.from({ length: 6 }, (_, i) => ({
 // useFrame — cheaper and it's the same visual language.
 export default function WorldParticles({
   glyphs,
-  accent,
+  color,
+  glow,
 }: {
   glyphs?: string[];
-  accent: string;
+  color: string;
+  glow: string;
 }) {
   return (
     <Html position={[0, 0.3, 0]} center distanceFactor={26} zIndexRange={[50, 50]}>
@@ -42,8 +44,8 @@ export default function WorldParticles({
               fontFamily: "var(--font-mono, monospace)",
               fontSize: glyphs ? 12 : 6,
               fontWeight: 700,
-              color: accent,
-              textShadow: `0 0 6px ${accent}`,
+              color: color,
+              textShadow: `0 0 6px ${glow}`,
               animation: `uvRise ${s.dur}s ease-out infinite`,
               animationDelay: `${s.delay}s`,
             }}

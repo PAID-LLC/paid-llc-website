@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { FLOOR_SIZE, type FloorTheme } from "@/components/v2/latent/floor/themes";
+import { FLOOR_SIZE, TICKER_ROWS, type FloorTheme } from "@/components/v2/latent/floor/themes";
 
 // ── Floor centerpieces ───────────────────────────────────────────────────────
 // The structure at the center of each 3D floor — the one thing that makes a
@@ -230,8 +230,6 @@ function Spindle({ t, topic }: { t: FloorTheme; topic?: string | null }) {
 }
 
 // ── vault: data obelisk with a scrolling ticker ──────────────────────────────
-const TICKER_ROWS = ["BTC ▲ 4.2%", "M2 EXPAND", "CR 5 / 60%", "USDC 1.000", "VOL ▼ 12%", "ELO +24", "DXY ▼ 0.8", "YLD 4.1%"];
-
 function Obelisk({ t, topic }: { t: FloorTheme; topic?: string | null }) {
   const bolts = Array.from({ length: 8 }, (_, i) => {
     const a = (i * Math.PI) / 4;

@@ -60,15 +60,24 @@ export default function UniverseCanvas({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#050508]">
+      {/* Screen-space atmosphere behind the canvas — same night-city-adjacent
+          mood as the CSS floor, without touching WebGL draw calls. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(ellipse at 50% 38%, rgba(34,211,238,0.08), transparent 62%)" }}
+      />
       <Canvas
         camera={{ position: [0, 26, 46], fov: 55 }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         dpr={[1, 1.75]}
       >
         <color attach="background" args={["#050508"]} />
+        <fog attach="fog" args={["#050508", 34, 96]} />
         <ambientLight intensity={0.35} />
         <pointLight position={[20, 30, 10]} intensity={1.2} />
         <Stars radius={140} depth={50} count={4000} factor={4} saturation={0} fade speed={0.6} />
+        <gridHelper args={[130, 52, "#134e56", "#0a0e12"]} position={[0, -0.05, 0]} />
 
         <Hub worlds={worlds} agents={agents} />
         <AgentSwarm />
@@ -83,16 +92,22 @@ export default function UniverseCanvas({
           maxPolarAngle={Math.PI / 2 - 0.03}
         />
       </Canvas>
+      {/* Screen-space scanline texture — matches the floor's atmosphere layer. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-20 opacity-40"
+        style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 3px)" }}
+      />
 
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between p-4 sm:p-5">
         <div className="pointer-events-auto flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
-            <Link href="/the-latent-space" className="transition-colors hover:text-cyan-300">
-              &larr; the latent space
-            </Link>
+            <span className="text-zinc-300">the latent space</span>
             <span aria-hidden className="text-zinc-700">/</span>
-            <span className="text-zinc-300">universe</span>
+            <Link href="/the-latent-space/about" className="transition-colors hover:text-cyan-300">
+              about
+            </Link>
             {live ? (
               <span className={v2.chipLive}>
                 <span className={v2.dotLive} aria-hidden />

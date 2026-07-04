@@ -175,3 +175,7 @@ export const FLOOR_THEMES: Record<string, FloorTheme> = {
 export function hasFloor(theme?: string): boolean {
   return Boolean(theme && FLOOR_THEMES[theme]);
 }
+
+// Shared between the floor's Obelisk centerpiece and the universe's map-scale
+// Obelisk marker so both readouts show the same ticker.
+export const TICKER_ROWS = ["BTC ▲ 4.2%", "M2 EXPAND", "CR 5 / 60%", "USDC 1.000", "VOL ▼ 12%", "ELO +24", "DXY ▼ 0.8", "YLD 4.1%"];
