@@ -7,6 +7,7 @@ import { FLOOR_THEMES } from "@/components/v2/latent/floor/themes";
 import { useUniverseStore } from "./useUniverseStore";
 import AgentNode from "./AgentNode";
 import WorldShell from "./WorldShell";
+import WorldParticles from "./WorldParticles";
 import type { WorldNode, UniverseAgent } from "./universe-data";
 
 function WorldNodeMesh({ node }: { node: WorldNode }) {
@@ -33,6 +34,7 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
 
       <group position={[0, 1.2, 0]} scale={isNexus ? 1.3 : 1}>
         <WorldShell kind={theme.centerpiece} accent={theme.accent} active={active} />
+        <WorldParticles glyphs={theme.particleGlyph} accent={theme.accent} />
       </group>
 
       <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -61,8 +63,11 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
           }}
         >
           {node.name.toUpperCase()}
-          <span style={{ display: "block", fontSize: 9, fontWeight: 400, color: "#a1a1aa", marginTop: 2 }}>
-            {node.agentCount} on the floor
+          <span style={{ display: "block", fontSize: 8, fontWeight: 400, color: "rgba(161,161,170,0.75)", marginTop: 3, textTransform: "none", letterSpacing: "normal" }}>
+            {theme.tagline}
+          </span>
+          <span style={{ display: "block", fontSize: 9, fontWeight: 400, color: "#a1a1aa", marginTop: 4 }}>
+            {node.agentCount > 0 ? `${node.agentCount} on the floor` : theme.empty}
           </span>
         </div>
       </Html>

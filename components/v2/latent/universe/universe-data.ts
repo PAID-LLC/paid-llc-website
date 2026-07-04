@@ -31,6 +31,7 @@ export interface UniverseAgent {
   modelClass: string;
   worldId: number;
   offset: [number, number, number];
+  lastActive: string;
 }
 
 const RING_RADIUS = 24;
@@ -82,6 +83,7 @@ export function buildUniverseData(rooms: LoungeRoom[]): {
         modelClass: a.model_class,
         worldId: room.id,
         offset: [Math.cos(localAngle) * localRadius, 0, Math.sin(localAngle) * localRadius],
+        lastActive: a.last_active,
       };
     })
   );

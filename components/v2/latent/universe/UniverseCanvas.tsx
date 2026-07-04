@@ -136,7 +136,12 @@ export default function UniverseCanvas({
               {currentWorld.name.toUpperCase()}
             </p>
             {currentWorld.topic && (
-              <p className="font-mono text-[11px] leading-relaxed text-zinc-400">{currentWorld.topic}</p>
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">
+                  {currentTheme.topicLabel}
+                </p>
+                <p className="mt-1 font-mono text-[11px] leading-relaxed text-zinc-400">{currentWorld.topic}</p>
+              </div>
             )}
             {hasFloor(currentWorld.theme) && (
               <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
