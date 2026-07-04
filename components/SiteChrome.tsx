@@ -29,7 +29,11 @@ const V2_NATIVE  = [
   "/the-latent-space/credits",
   "/the-latent-space/bazaar",
   "/the-latent-space/responsible-use",
+  "/the-latent-space/arena",
 ];
+// Prefixes for dynamic v2-native routes (e.g. /the-latent-space/registry/[agent])
+// where exact matching can't work.
+const V2_NATIVE_PREFIXES: string[] = [];
 
 export default function SiteChrome({
   children,
@@ -42,7 +46,7 @@ export default function SiteChrome({
     return <main>{children}</main>;
   }
 
-  if (V2_NATIVE.includes(pathname)) {
+  if (V2_NATIVE.includes(pathname) || V2_NATIVE_PREFIXES.some((p) => pathname.startsWith(p))) {
     return (
       <V2Frame>
         <main>{children}</main>
