@@ -33,10 +33,16 @@ const V2_NATIVE  = [
   "/the-latent-space/shop",
   "/the-latent-space/docs",
   "/the-latent-space/apply",
+  "/the-latent-space/agent-blog",
+  "/the-latent-space/download",
+  "/the-latent-space/lounge",
 ];
 // Prefixes for dynamic v2-native routes (e.g. /the-latent-space/registry/[agent])
 // where exact matching can't work.
-const V2_NATIVE_PREFIXES: string[] = [];
+const V2_NATIVE_PREFIXES: string[] = [
+  "/the-latent-space/registry/",
+  "/the-latent-space/souvenirs/",
+];
 
 export default function SiteChrome({
   children,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { v2 } from "@/components/v2/tokens";
 
 export const runtime = "edge";
 
@@ -38,88 +39,50 @@ export default async function DownloadPage({
   const artifact = item ? ARTIFACTS[item] : null;
 
   return (
-    <main
-      style={{ background: "#0D0D0D", minHeight: "100vh" }}
-      className="flex items-center justify-center px-6 py-24"
-    >
-      <div className="max-w-lg w-full">
+    <section className={`${v2.section} flex min-h-[70vh] items-center justify-center py-24`}>
+      <div className="w-full max-w-lg">
         {artifact ? (
           <>
-            {/* Header */}
-            <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-              {"// PAYMENT_CONFIRMED"}
-            </p>
-            <h1 className="font-mono font-bold text-2xl text-[#E8E4E0] mb-3">
-              {artifact.name}
-            </h1>
-            <p className="font-mono text-sm text-[#6B6B6B] mb-10 leading-relaxed">
-              {artifact.description}
-            </p>
+            <p className={v2.kicker}>Payment confirmed</p>
+            <h1 className={`${v2.h2} mt-4 mb-3`}>{artifact.name}</h1>
+            <p className={`${v2.bodySm} mb-10`}>{artifact.description}</p>
 
-            {/* Download card */}
-            <div
-              style={{ background: "#141414", border: "1px solid #2D2D2D" }}
-              className="rounded-xl p-8 mb-8"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <span className="font-mono text-[10px] text-[#555] tracking-widest uppercase">
-                  FORMAT
-                </span>
-                <span className="font-mono text-xs text-[#E8E4E0]">
-                  {artifact.format}
-                </span>
+            <div className={`${v2.cardStatic} mb-8 p-8`}>
+              <div className="mb-6 flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">Format</span>
+                <span className="font-mono text-xs text-zinc-100">{artifact.format}</span>
               </div>
-              <a
-                href={artifact.file}
-                download
-                className="block font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border border-[#C14826] text-[#C14826] rounded hover:bg-[#C14826] hover:text-[#0D0D0D] transition-colors"
-              >
-                DOWNLOAD {artifact.format} FILE
+              <a href={artifact.file} download className={`${v2.btnPrimary} w-full justify-center`}>
+                Download {artifact.format} file
               </a>
             </div>
 
-            {/* Footer note */}
-            <p className="font-mono text-[10px] text-[#3D3D3D] mb-6">
-              {"// Save this page URL — your download link will always work."}
+            <p className={`${v2.mono} mb-6`}>
+              Save this page URL: your download link will always work.
               <br />
-              {"// Questions: hello@paiddev.com"}
+              Questions: hello@paiddev.com
             </p>
-            <Link
-              href="/the-latent-space"
-              className="font-mono text-xs text-[#4A9ECC] hover:underline"
-            >
-              ← Return to The Latent Space
+            <Link href="/the-latent-space" className="font-mono text-xs text-cyan-300 transition-colors hover:text-cyan-200">
+              &larr; Return to The Latent Space
             </Link>
           </>
         ) : (
           <>
-            {/* Unknown / missing item */}
-            <p className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase mb-2">
-              {"// ERROR_404"}
-            </p>
-            <h1 className="font-mono font-bold text-2xl text-[#E8E4E0] mb-4">
-              Artifact not found.
-            </h1>
-            <p className="font-mono text-sm text-[#6B6B6B] mb-8 leading-relaxed">
-              This link doesn&apos;t match a known artifact. If you completed a purchase,
-              email{" "}
-              <a
-                href="mailto:hello@paiddev.com"
-                className="text-[#4A9ECC] hover:underline"
-              >
+            <p className={v2.kicker}>Error 404</p>
+            <h1 className={`${v2.h2} mt-4 mb-4`}>Artifact not found.</h1>
+            <p className={`${v2.bodySm} mb-8`}>
+              This link doesn&apos;t match a known artifact. If you completed a purchase, email{" "}
+              <a href="mailto:hello@paiddev.com" className="text-cyan-300 hover:text-cyan-200">
                 hello@paiddev.com
               </a>{" "}
               and we&apos;ll sort it out.
             </p>
-            <Link
-              href="/the-latent-space"
-              className="font-mono text-xs text-[#4A9ECC] hover:underline"
-            >
-              ← Return to The Latent Space
+            <Link href="/the-latent-space" className="font-mono text-xs text-cyan-300 transition-colors hover:text-cyan-200">
+              &larr; Return to The Latent Space
             </Link>
           </>
         )}
       </div>
-    </main>
+    </section>
   );
 }

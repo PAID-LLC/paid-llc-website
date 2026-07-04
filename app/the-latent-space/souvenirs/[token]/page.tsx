@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { v2 } from "@/components/v2/tokens";
 import { RARITY_CONFIG } from "@/lib/souvenirs";
 
 export const runtime = "edge";
@@ -53,15 +54,15 @@ export default async function SouvenirDisplay(
 
   if (!claim) {
     return (
-      <main style={{ background: "#0D0D0D", minHeight: "100vh" }} className="flex items-center justify-center px-6">
+      <section className={`${v2.section} flex min-h-[70vh] items-center justify-center py-24`}>
         <div className="text-center">
-          <p className="font-mono text-[#C14826] text-xs tracking-widest uppercase mb-4">{"// ERR :: NOT_FOUND"}</p>
-          <p className="font-mono text-[#6B6B6B] text-sm mb-6">This token does not exist or has not been issued.</p>
-          <Link href="/the-latent-space" className="font-mono text-xs text-[#C14826] hover:underline tracking-widest">
-            ← BACK TO LATENT SPACE
+          <p className={v2.kicker}>Not found</p>
+          <p className={`${v2.bodySm} mt-4 mb-6`}>This token does not exist or has not been issued.</p>
+          <Link href="/the-latent-space" className="font-mono text-xs uppercase tracking-widest text-cyan-300 hover:text-cyan-200">
+            &larr; Back to The Latent Space
           </Link>
         </div>
-      </main>
+      </section>
     );
   }
 
@@ -71,76 +72,62 @@ export default async function SouvenirDisplay(
   });
 
   return (
-    <main style={{ background: "#0D0D0D", minHeight: "100vh", color: "#E8E4E0" }}>
-      <div className="max-w-2xl mx-auto px-6 py-20">
+    <section className={`${v2.section} py-20`}>
+      <div className="mx-auto max-w-2xl">
 
-        {/* Breadcrumb */}
-        <Link href="/the-latent-space" className="font-mono text-[10px] text-[#3D3D3D] hover:text-[#C14826] tracking-widest uppercase transition-colors">
-          ← THE LATENT SPACE
+        <Link href="/the-latent-space" className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 transition-colors hover:text-cyan-300">
+          &larr; The Latent Space
         </Link>
 
-        {/* Card */}
+        {/* Certificate card */}
         <div
-          style={{ background: "#141414", border: `1px solid ${rarityConfig.borderColor}` }}
-          className="rounded-xl p-10 mt-8 flex flex-col items-center text-center"
+          className="mt-8 flex flex-col items-center rounded-xl bg-white/[0.03] p-10 text-center backdrop-blur-sm"
+          style={{ border: `1px solid ${rarityConfig.borderColor}` }}
         >
-          {/* Rarity badge */}
           <span
+            className="mb-8 rounded-full border px-3 py-1 font-mono text-[9px] uppercase tracking-widest"
             style={{ color: rarityConfig.color, borderColor: rarityConfig.borderColor }}
-            className="font-mono text-[9px] tracking-widest uppercase border px-3 py-1 rounded-full mb-8"
           >
             {claim.rarity_label}
           </span>
 
-          {/* SVG */}
           <div className="mb-8">
-            <Image
-              src={claim.svg_path}
-              alt={claim.name}
-              width={180}
-              height={180}
-            />
+            <Image src={claim.svg_path} alt={claim.name} width={180} height={180} />
           </div>
 
-          {/* Name */}
-          <h1 className="font-mono font-bold text-2xl text-[#E8E4E0] mb-3">{claim.name}</h1>
-          <p className="font-mono text-xs text-[#6B6B6B] leading-relaxed max-w-sm mb-8">{claim.description}</p>
+          <h1 className={`${v2.h2} mb-3 text-2xl`}>{claim.name}</h1>
+          <p className={`${v2.bodySm} mb-8 max-w-sm font-mono text-xs`}>{claim.description}</p>
 
-          {/* Metadata */}
-          <div style={{ borderTop: "1px solid #2D2D2D", borderBottom: "1px solid #2D2D2D" }} className="w-full py-6 mb-8 grid grid-cols-2 gap-4 text-left">
+          <div className="mb-8 grid w-full grid-cols-2 gap-4 border-y border-white/[0.08] py-6 text-left">
             <div>
-              <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-1">Claimed By</p>
-              <p className="font-mono text-sm text-[#E8E4E0]">{claim.display_name}</p>
+              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-zinc-500">Claimed By</p>
+              <p className="font-mono text-sm text-zinc-100">{claim.display_name}</p>
             </div>
             <div>
-              <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-1">Claimed On</p>
-              <p className="font-mono text-sm text-[#E8E4E0]">{claimedDate}</p>
+              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-zinc-500">Claimed On</p>
+              <p className="font-mono text-sm text-zinc-100">{claimedDate}</p>
             </div>
             <div>
-              <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-1">Token</p>
-              <p className="font-mono text-xs text-[#3D3D3D] break-all">{token}</p>
+              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-zinc-500">Token</p>
+              <p className="break-all font-mono text-xs text-zinc-600">{token}</p>
             </div>
             <div>
-              <p className="font-mono text-[9px] text-[#555] tracking-widest uppercase mb-1">Protocol</p>
-              <p className="font-mono text-xs text-[#3D3D3D]">LATENT_SPACE_V1</p>
+              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-zinc-500">Protocol</p>
+              <p className="font-mono text-xs text-zinc-600">LATENT_SPACE_V1</p>
             </div>
           </div>
 
-          {/* Share */}
-          <p className="font-mono text-[10px] text-[#3D3D3D] mb-3">{"// SHARE THIS SOUVENIR"}</p>
-          <code
-            style={{ background: "#0D0D0D", border: "1px solid #2D2D2D" }}
-            className="font-mono text-xs text-[#6B6B6B] px-4 py-2 rounded w-full break-all text-center block"
-          >
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-cyan-300">Share this souvenir</p>
+          <code className={`${v2.terminal} block w-full break-all px-4 py-2 text-center text-xs text-zinc-400`}>
             {displayUrl}
           </code>
         </div>
 
-        {/* Footer */}
-        <p className="font-mono text-[10px] text-[#2D2D2D] text-center mt-8">
-          {"// PAID LLC · paiddev.com · "}<a href="/ai.txt" className="hover:text-[#C14826] transition-colors">/ai.txt</a>
+        <p className={`${v2.mono} mt-8 text-center`}>
+          PAID LLC · paiddev.com ·{" "}
+          <a href="/ai.txt" className="transition-colors hover:text-cyan-300">/ai.txt</a>
         </p>
       </div>
-    </main>
+    </section>
   );
 }

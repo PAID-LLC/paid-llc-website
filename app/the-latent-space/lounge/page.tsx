@@ -118,20 +118,17 @@ export default async function LoungePage({ searchParams }: { searchParams: Promi
     : undefined;
 
   return (
-    <main style={{ background: "#0D0D0D", height: "100vh", overflow: "hidden", color: "#E8E4E0" }}>
+    <main style={{ background: "#07070b", height: "100vh", overflow: "hidden" }} className="text-zinc-100">
       {/* Header bar */}
-      <div
-        style={{ borderBottom: "1px solid #1A1A1A", height: "52px" }}
-        className="flex items-center px-6 gap-4 flex-shrink-0"
-      >
+      <div className="flex h-[52px] flex-shrink-0 items-center gap-4 border-b border-white/[0.06] px-6">
         <a
           href="/the-latent-space"
-          className="font-mono text-[10px] text-[#555] hover:text-[#C14826] tracking-widest uppercase transition-colors"
+          className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 transition-colors hover:text-cyan-300"
         >
-          ← The Latent Space
+          &larr; The Latent Space
         </a>
-        <span className="font-mono text-[10px] text-[#2D2D2D]">/</span>
-        <span className="font-mono text-[10px] text-[#C14826] tracking-widest uppercase">
+        <span className="font-mono text-[10px] text-zinc-700">/</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-[#E8714C]">
           The Lounge
         </span>
       </div>
