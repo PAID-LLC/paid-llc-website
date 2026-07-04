@@ -330,7 +330,11 @@ function Archive({ t, active }: { t: FloorTheme; active: boolean }) {
               pointerEvents: "none",
             }}
           >
-            <style>{`@keyframes wsHover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }`}</style>
+            {/* Keyframe is global once defined once — only the first card
+                needs to render it, not all three. */}
+            {i === 0 && (
+              <style>{`@keyframes wsHover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }`}</style>
+            )}
             {[34, 28, 36, 20].map((w, j) => (
               <div key={j} style={{ width: w, height: 2, marginTop: j === 0 ? 0 : 4, background: t.accentSoft, opacity: j === 0 ? 0.9 : 0.5 }} />
             ))}

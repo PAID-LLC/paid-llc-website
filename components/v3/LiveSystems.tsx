@@ -5,7 +5,6 @@ import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
 import { v3 } from "@/components/v3/tokens";
 import { gsap, useGSAP } from "@/components/v3/gsap";
-import { prefersReducedMotion } from "@/components/v3/motion-prefs";
 
 // ── Live Systems ─────────────────────────────────────────────────────────────
 // The showcase moment: same live production data as v2's LiveBento (registry
@@ -26,9 +25,15 @@ import { prefersReducedMotion } from "@/components/v3/motion-prefs";
 // confirmed via preview_eval (a scripted scroll jump landed on a blank pinned
 // section). Building once and feeding it live refs sidesteps that entirely.
 //
-// Accessibility/fallback: under prefers-reduced-motion the section never
-// pins and every tile is simply visible via its default (non-hidden) CSS
-// state — no ScrollTrigger.create() call happens at all in that branch.
+// Accessibility/fallback: gated by gsap.matchMedia() (same technique as
+// EnterpriseShowcase) to desktop + fine pointer + no-reduced-motion. Below
+// that the tile grid drops to 2 or 1 columns and stacks taller than one
+// viewport — pinning it anyway would scrub tiles 3-5 to full opacity while
+// they sit off-screen below the fixed viewport, since a pinned element
+// can't show content taller than the screen. Confirmed live via preview_eval
+// at 375px: tile 3's top (867px) exceeded the 845px viewport while its
+// opacity had already reached 0.3. Below the breakpoint every tile is just
+// visible via its default (non-hidden) CSS state — no ScrollTrigger at all.
 
 const MCP_CONFIG = `{
   "mcpServers": {
@@ -99,66 +104,77 @@ export default function LiveSystems() {
   };
 
   // Built exactly once (dependencies: []) — see the note above on why this
-  // must not rebuild when agents/econ/post arrive.
+  // must not rebuild when agents/econ/post arrive. The whole pin/scrub setup
+  // lives inside gsap.matchMedia() so it only ever exists where the 4-column
+  // grid fits in one viewport, and gsap auto-reverts it if the viewport
+  // crosses the breakpoint (resize, rotate) — same pattern as
+  // EnterpriseShowcase's horizontal scroll-jack gate.
   useGSAP(
     () => {
-      if (prefersReducedMotion() || !sectionRef.current) return;
+      if (!sectionRef.current) return;
 
-      const tiles = gsap.utils.toArray<HTMLElement>("[data-ls-tile]");
-      gsap.set(tiles, { opacity: 0, y: 40, scale: 0.96 });
+      const mm = gsap.matchMedia();
+      mm.add(
+        "(min-width: 1024px) and (pointer: fine) and (prefers-reduced-motion: no-preference)",
+        () => {
+          const tiles = gsap.utils.toArray<HTMLElement>("[data-ls-tile]");
+          gsap.set(tiles, { opacity: 0, y: 40, scale: 0.96 });
 
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top top",
-          end: () => `+=${window.innerHeight * 1.6}`,
-          scrub: 1,
-          pin: true,
-          anticipatePin: 1,
-        },
-      });
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top top",
+              end: () => `+=${window.innerHeight * 1.6}`,
+              scrub: 1,
+              pin: true,
+              anticipatePin: 1,
+            },
+          });
 
-      tiles.forEach((tile, i) => {
-        tl.to(tile, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "power2.out" }, i * 0.4);
-      });
+          tiles.forEach((tile, i) => {
+            tl.to(tile, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: "power2.out" }, i * 0.4);
+          });
 
-      // Progress-based, not value-based: the tween always animates a 0→1
-      // fraction, and onUpdate multiplies by whatever the ref currently
-      // holds — so a late-arriving value still counts up correctly whenever
-      // the scrub passes through this segment, no rebuild required.
-      const agentsProgress = { p: 0 };
-      tl.to(
-        agentsProgress,
-        {
-          p: 1,
-          duration: 0.4,
-          ease: "power1.out",
-          onUpdate: () => {
-            if (agentsNumRef.current) {
-              agentsNumRef.current.textContent = String(Math.round(agentsProgress.p * agentsTargetRef.current));
-            }
-          },
-        },
-        0.4
+          // Progress-based, not value-based: the tween always animates a
+          // 0→1 fraction, and onUpdate multiplies by whatever the ref
+          // currently holds — so a late-arriving value still counts up
+          // correctly whenever the scrub passes through this segment, no
+          // rebuild required.
+          const agentsProgress = { p: 0 };
+          tl.to(
+            agentsProgress,
+            {
+              p: 1,
+              duration: 0.4,
+              ease: "power1.out",
+              onUpdate: () => {
+                if (agentsNumRef.current) {
+                  agentsNumRef.current.textContent = String(Math.round(agentsProgress.p * agentsTargetRef.current));
+                }
+              },
+            },
+            0.4
+          );
+
+          const econProgress = { p: 0 };
+          tl.to(
+            econProgress,
+            {
+              p: 1,
+              duration: 0.4,
+              ease: "power1.out",
+              onUpdate: () => {
+                if (econNumRef.current) {
+                  econNumRef.current.textContent = `$${(econProgress.p * econTargetRef.current).toFixed(2)}`;
+                }
+              },
+            },
+            0.8
+          );
+        }
       );
 
-      const econProgress = { p: 0 };
-      tl.to(
-        econProgress,
-        {
-          p: 1,
-          duration: 0.4,
-          ease: "power1.out",
-          onUpdate: () => {
-            if (econNumRef.current) {
-              econNumRef.current.textContent = `$${(econProgress.p * econTargetRef.current).toFixed(2)}`;
-            }
-          },
-        },
-        0.8
-      );
-      // No manual cleanup needed — useGSAP's context automatically reverts
-      // every tween/timeline/ScrollTrigger created above on unmount.
+      return () => mm.revert();
     },
     { scope: sectionRef, dependencies: [] }
   );
