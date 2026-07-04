@@ -41,6 +41,12 @@ describe("serviceFloorCredits — dynamic token-cost floor", () => {
     expect(serviceFloorCredits(econ, EXECUTOR_COSTS.summarize_url)).toBeLessThanOrEqual(5);
     expect(serviceFloorCredits(econ, EXECUTOR_COSTS.draft_cold_email)).toBeLessThanOrEqual(8);
     expect(serviceFloorCredits(econ, EXECUTOR_COSTS.score_response)).toBeLessThanOrEqual(5);
+    // Phase 5 seeds: humanize 6cr, product descriptions 8cr, prompt upgrade 6cr,
+    // website audit brief 25cr (premium anchor).
+    expect(serviceFloorCredits(econ, EXECUTOR_COSTS.humanize_text)).toBeLessThanOrEqual(6);
+    expect(serviceFloorCredits(econ, EXECUTOR_COSTS.product_descriptions)).toBeLessThanOrEqual(8);
+    expect(serviceFloorCredits(econ, EXECUTOR_COSTS.prompt_upgrade)).toBeLessThanOrEqual(6);
+    expect(serviceFloorCredits(econ, EXECUTOR_COSTS.website_audit_brief)).toBeLessThanOrEqual(25);
   });
 
   it("rises monotonically with token prices (1x -> 5x -> 10x)", () => {

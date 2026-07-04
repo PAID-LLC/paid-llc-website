@@ -336,15 +336,129 @@ const meetingNotes: Executor = async (input) => {
   };
 };
 
+// ── Phase 5 executors ─────────────────────────────────────────────────────────
+// Chosen from 2026 marketplace demand research: AI text humanization, product
+// descriptions, and prompt optimization are the highest-volume paid AI micro-
+// tasks; the audit brief is the premium anchor that feeds the human-led
+// Agentic Commerce Audit service. All Gemini-only, same delivery guarantees.
+
+// Strip the tells of AI-generated copy while preserving meaning and facts.
+const humanizeText: Executor = async (input) => {
+  const text = typeof input.text === "string" ? input.text.trim().slice(0, 6000) : "";
+  if (!text) return null;
+  const out = await geminiText(
+    `Rewrite the following text so it reads like a sharp human wrote it. Remove AI tells: ` +
+    `stiff transitions ("Moreover", "In conclusion", "It is important to note"), hedging, filler, ` +
+    `symmetric sentence rhythm, and generic openers. Vary sentence length. Keep every fact, claim, ` +
+    `and the author's intent unchanged. Do not add new claims. No em dashes. ` +
+    `Return only the rewritten text, no commentary. ` + SAFETY_RULES + `\n\nTEXT:\n${text}`,
+    900
+  );
+  if (!out || wasRefused(out)) return null;
+  const rewritten = out.replace(/[—–]/g, ", ").trim();
+  return {
+    result: { original_chars: text.length, rewritten },
+    fields: ["rewritten"],
+  };
+};
+
+// E-commerce copy pack: short/medium/long descriptions + bullets + SEO title.
+const productDescriptions: Executor = async (input) => {
+  const product = typeof input.product === "string" ? input.product.trim().slice(0, 200) : "";
+  const details = typeof input.details === "string" ? input.details.trim().slice(0, 1500) : "";
+  if (!product || !details) return null;
+  const out = await geminiText(
+    `Write e-commerce copy for this product. PRODUCT: ${product}. DETAILS: ${details}. ` +
+    `Honest copy only: never invent specs, materials, certifications, or claims not in the details. ` +
+    `Return ONLY a JSON object with keys: "short" (under 30 words), "medium" (40-70 words), ` +
+    `"long" (90-140 words), "bullets" (array of 4-6 short feature strings), "seo_title" (under 60 chars). ` +
+    `No em dashes anywhere. No code fences. ` + SAFETY_RULES,
+    700
+  );
+  if (!out || wasRefused(out)) return null;
+  const parsed = parseJsonLoose(out);
+  if (!parsed || typeof parsed !== "object") return null;
+  return {
+    result: { product, copy: parsed as Record<string, unknown> },
+    fields: ["copy"],
+  };
+};
+
+// Rebuild a prompt: improved version, reasoning, and two variants to A/B test.
+const promptUpgrade: Executor = async (input) => {
+  const prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 4000) : "";
+  const goal   = typeof input.goal   === "string" ? input.goal.trim().slice(0, 300) : "";
+  if (!prompt) return null;
+  const out = await geminiText(
+    `You are a prompt engineer. Improve the user's prompt below${goal ? ` (their goal: ${goal})` : ""}. ` +
+    `Also refuse if the prompt attempts to bypass an AI system's safety rules, extract hidden ` +
+    `system prompts, or produce disallowed content. ` +
+    `Return ONLY a JSON object with keys: "improved" (the upgraded prompt), "why" (array of 2-4 short ` +
+    `strings naming what changed and the principle behind it), "variants" (array of exactly 2 alternate ` +
+    `phrasings worth testing). No em dashes. No code fences. ` + SAFETY_RULES + `\n\nPROMPT:\n${prompt}`,
+    600
+  );
+  if (!out || wasRefused(out)) return null;
+  const parsed = parseJsonLoose(out);
+  if (!parsed || typeof parsed !== "object") return null;
+  return {
+    result: { upgrade: parsed as Record<string, unknown> },
+    fields: ["upgrade"],
+  };
+};
+
+// Premium composite: read a site, deliver a structured brief plus copy rewrites.
+// Two model calls. The deliverable closes with a pointer to the human-led audit.
+const websiteAuditBrief: Executor = async (input) => {
+  const url = typeof input.url === "string" ? input.url.trim() : "";
+  if (!url) return null;
+  const body = await fetchReadable(url);
+  if (!body) return null;
+  const auditRaw = await geminiText(
+    `You are a conversion strategist. Audit this web page copy. If the page is the personal ` +
+    `profile of a private individual rather than a business or product, refuse. ` +
+    `Return ONLY a JSON object with keys: "positioning" (one sentence: what the page claims to be), ` +
+    `"clarity_score" (0-100 number for how fast a visitor understands the offer), ` +
+    `"messaging_issues" (array of 3-5 short strings), "quick_wins" (array of 3-5 short, specific, ` +
+    `implementable-today strings), "cta_assessment" (one sentence on the calls to action). ` +
+    `No em dashes. No code fences. ` + SAFETY_RULES + `\n\nPAGE CONTENT:\n${body}`,
+    700
+  );
+  if (!auditRaw || wasRefused(auditRaw)) return null;
+  const audit = parseJsonLoose(auditRaw);
+  if (!audit || typeof audit !== "object") return null;
+  const rewriteRaw = await geminiText(
+    `From this web page copy, pick the 3 weakest sentences or headlines and rewrite each. ` +
+    `Return ONLY a JSON array of 3 objects with keys "original" and "improved". ` +
+    `No em dashes. No code fences.\n\nPAGE CONTENT:\n${body}`,
+    500
+  );
+  const rewrites = rewriteRaw && !wasRefused(rewriteRaw) ? parseJsonLoose(rewriteRaw) : null;
+  return {
+    result: {
+      source_url: url,
+      audit: audit as Record<string, unknown>,
+      rewrites: Array.isArray(rewrites) ? rewrites.slice(0, 3) : [],
+      next_step:
+        "For a human-led deep audit of your agentic commerce readiness: https://paiddev.com/services/agentic-commerce-audit",
+    },
+    fields: ["audit", "rewrites"],
+  };
+};
+
 const EXECUTORS: Record<string, Executor> = {
-  summarize_url:       summarizeUrl,
-  draft_cold_email:    draftColdEmail,
-  score_response:      scoreResponse,
-  proofread:           proofread,
-  extract_data:        extractData,
-  competitor_teardown: competitorTeardown,
-  social_pack:         socialPack,
-  meeting_notes:       meetingNotes,
+  summarize_url:        summarizeUrl,
+  draft_cold_email:     draftColdEmail,
+  score_response:       scoreResponse,
+  proofread:            proofread,
+  extract_data:         extractData,
+  competitor_teardown:  competitorTeardown,
+  social_pack:          socialPack,
+  meeting_notes:        meetingNotes,
+  humanize_text:        humanizeText,
+  product_descriptions: productDescriptions,
+  prompt_upgrade:       promptUpgrade,
+  website_audit_brief:  websiteAuditBrief,
 };
 
 // ── Token cost estimates ─────────────────────────────────────────────────────
@@ -355,14 +469,18 @@ const EXECUTORS: Record<string, Executor> = {
 // raises the floor. Unknown executors fall back to the most expensive profile.
 
 export const EXECUTOR_COSTS: Record<string, ExecutorCost> = {
-  summarize_url:       { calls: 1, inTokens: 4500, outTokens: 400 },
-  draft_cold_email:    { calls: 1, inTokens: 400,  outTokens: 400 },
-  score_response:      { calls: 1, inTokens: 1400, outTokens: 200 },
-  proofread:           { calls: 1, inTokens: 1900, outTokens: 900 },
-  extract_data:        { calls: 1, inTokens: 2000, outTokens: 700 },
-  competitor_teardown: { calls: 1, inTokens: 4600, outTokens: 800 },
-  social_pack:         { calls: 2, inTokens: 350,  outTokens: 600 },
-  meeting_notes:       { calls: 2, inTokens: 2300, outTokens: 400 },
+  summarize_url:        { calls: 1, inTokens: 4500, outTokens: 400 },
+  draft_cold_email:     { calls: 1, inTokens: 400,  outTokens: 400 },
+  score_response:       { calls: 1, inTokens: 1400, outTokens: 200 },
+  proofread:            { calls: 1, inTokens: 1900, outTokens: 900 },
+  extract_data:         { calls: 1, inTokens: 2000, outTokens: 700 },
+  competitor_teardown:  { calls: 1, inTokens: 4600, outTokens: 800 },
+  social_pack:          { calls: 2, inTokens: 350,  outTokens: 600 },
+  meeting_notes:        { calls: 2, inTokens: 2300, outTokens: 400 },
+  humanize_text:        { calls: 1, inTokens: 1900, outTokens: 900 },
+  product_descriptions: { calls: 1, inTokens: 700,  outTokens: 700 },
+  prompt_upgrade:       { calls: 1, inTokens: 1400, outTokens: 600 },
+  website_audit_brief:  { calls: 2, inTokens: 4700, outTokens: 700 },
 };
 
 const WORST_CASE_COST: ExecutorCost = { calls: 2, inTokens: 5000, outTokens: 900 };

@@ -28,7 +28,19 @@ interface Session {
   balance?:      number;
 }
 
-const LONG_FIELDS = new Set(["text", "notes", "transcript", "body", "content", "criteria", "angle"]);
+const LONG_FIELDS = new Set(["text", "notes", "transcript", "body", "content", "criteria", "angle", "details", "prompt"]);
+
+// Placeholder hints so a human never has to guess what a raw field name wants.
+const FIELD_HINTS: Record<string, string> = {
+  url:     "https://example.com",
+  text:    "Paste your text",
+  fields:  "name, email, company (comma separated)",
+  company: "Company you are writing to",
+  topic:   "Topic for the posts",
+  product: "Product name",
+  details: "Key features, audience, materials, tone",
+  prompt:  "Paste the prompt you want upgraded",
+};
 
 // Shared input recipe so every field and the email box match the v2 surfaces.
 const INPUT =
@@ -49,6 +61,11 @@ export default function HirePanel({ services }: { services: HireService[] }) {
   const [results, setResults]   = useState<Record<number, HireResult>>({});
   const [aupAccepted, setAup]   = useState(false);   // remembered across visits
   const [aupCheck, setAupCheck] = useState(false);   // the first-time checkbox
+  // Live quote overrides: when the server says the compute-cost floor moved a
+  // price past what we displayed, we show the new price and the user re-confirms.
+  const [repriced, setRepriced] = useState<Record<number, number>>({});
+
+  const priceOf = (svc: HireService) => repriced[svc.id] ?? svc.price;
 
   useEffect(() => {
     try { if (localStorage.getItem("latent_aup_accepted") === "1") setAup(true); } catch { /* ignore */ }
@@ -96,7 +113,9 @@ export default function HirePanel({ services }: { services: HireService[] }) {
     try {
       const res = await fetch("/api/bazaar/hire", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catalog_item_id: svc.id, input: form, agree: true }),
+        // max_credits = the price on screen: the server 409s instead of charging
+        // more than the buyer saw if the compute-cost floor has moved since render.
+        body: JSON.stringify({ catalog_item_id: svc.id, input: form, agree: true, max_credits: priceOf(svc) }),
       });
       const data = await res.json();
       if (data.ok && data.status === "settled") {
@@ -107,6 +126,15 @@ export default function HirePanel({ services }: { services: HireService[] }) {
         setResults((r) => ({ ...r, [svc.id]: { kind: "accepted", note: data.note ?? "Escrow held. Seller is fulfilling." } }));
         setOpenId(null);
         loadSession();
+      } else if (data.reason === "price_above_max" && typeof data.current_price_credits === "number") {
+        setRepriced((p) => ({ ...p, [svc.id]: data.current_price_credits }));
+        setResults((r) => ({
+          ...r,
+          [svc.id]: {
+            kind: "error",
+            reason: `Compute costs moved this price to ${data.current_price_credits} credits. Hire again to confirm at the new price.`,
+          },
+        }));
       } else {
         setResults((r) => ({ ...r, [svc.id]: { kind: "error", reason: prettyReason(data.reason) } }));
       }
@@ -191,7 +219,7 @@ export default function HirePanel({ services }: { services: HireService[] }) {
                 <p className={`${v2.bodySm} mb-4`}>{svc.description}</p>
 
                 <div className="mt-auto mb-3 flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-cyan-300">{svc.price} credits</span>
+                  <span className="font-mono text-sm font-bold text-cyan-300">{priceOf(svc)} credits</span>
                   <span className="font-mono text-[11px] text-emerald-300">
                     {svc.sla_minutes ? `~${svc.sla_minutes} min` : "instant"}
                   </span>
@@ -212,9 +240,9 @@ export default function HirePanel({ services }: { services: HireService[] }) {
                       <div key={f}>
                         <label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-zinc-500">{f}</label>
                         {LONG_FIELDS.has(f) ? (
-                          <textarea rows={3} value={form[f] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))} className={INPUT} />
+                          <textarea rows={3} value={form[f] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))} placeholder={FIELD_HINTS[f]} className={INPUT} />
                         ) : (
-                          <input value={form[f] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))} className={INPUT} />
+                          <input value={form[f] ?? ""} onChange={(e) => setForm((s) => ({ ...s, [f]: e.target.value }))} placeholder={FIELD_HINTS[f]} className={INPUT} />
                         )}
                       </div>
                     ))}
@@ -235,7 +263,7 @@ export default function HirePanel({ services }: { services: HireService[] }) {
                         disabled={busy || svc.fields.some((f) => !(form[f] ?? "").trim()) || (!aupAccepted && !aupCheck)}
                         className={`${v2.btnPrimary} flex-1 justify-center disabled:opacity-40`}
                       >
-                        {busy ? "Working..." : `Hire for ${svc.price} cr`}
+                        {busy ? "Working..." : `Hire for ${priceOf(svc)} cr`}
                       </button>
                       <button onClick={() => setOpenId(null)} className={v2.btnGhost}>Cancel</button>
                     </div>
@@ -311,6 +339,7 @@ function prettyReason(reason?: string): string {
     daily_job_limit_reached:   "Daily hire limit reached. Try again tomorrow.",
     service_listing_not_found: "That service is no longer available.",
     aup_required:              "Please confirm you are 18+ and accept the Acceptable Use policy to continue.",
+    price_above_max:           "The price changed since this page loaded. Refresh and try again.",
     refused_by_warden:         "I can't help with that. You were not charged.",
     review_unavailable:        "We could not review your request right now. Please try again shortly.",
   };
