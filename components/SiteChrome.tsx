@@ -30,6 +30,9 @@ const V2_NATIVE  = [
   "/the-latent-space/bazaar",
   "/the-latent-space/responsible-use",
   "/the-latent-space/arena",
+  "/the-latent-space/shop",
+  "/the-latent-space/docs",
+  "/the-latent-space/apply",
 ];
 // Prefixes for dynamic v2-native routes (e.g. /the-latent-space/registry/[agent])
 // where exact matching can't work.

@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 export const runtime = "edge";
 
 import { useState } from "react";
+import { v2 } from "@/components/v2/tokens";
 
 interface CatalogRow {
   product_name: string;
@@ -21,21 +22,10 @@ const THEMES = [
   { value: "simulation-sandbox",label: "Simulation Sandbox" },
 ];
 
-const S = {
-  page:      { minHeight: "100vh", background: "#0A0A0A", color: "#E8E4E0", fontFamily: "monospace", padding: "48px 24px" } as React.CSSProperties,
-  wrap:      { maxWidth: 700, margin: "0 auto" } as React.CSSProperties,
-  label:     { display: "block", fontSize: 11, letterSpacing: "0.1em", color: "#888", marginBottom: 6, textTransform: "uppercase" as const },
-  input:     { width: "100%", background: "#111", border: "1px solid #222", color: "#E8E4E0", padding: "10px 12px", fontFamily: "monospace", fontSize: 13, borderRadius: 2, boxSizing: "border-box" as const },
-  textarea:  { width: "100%", background: "#111", border: "1px solid #222", color: "#E8E4E0", padding: "10px 12px", fontFamily: "monospace", fontSize: 13, borderRadius: 2, boxSizing: "border-box" as const, resize: "vertical" as const },
-  select:    { width: "100%", background: "#111", border: "1px solid #222", color: "#E8E4E0", padding: "10px 12px", fontFamily: "monospace", fontSize: 13, borderRadius: 2, boxSizing: "border-box" as const },
-  btn:       { background: "#C14826", color: "#fff", border: "none", padding: "12px 28px", fontFamily: "monospace", fontSize: 13, letterSpacing: "0.05em", cursor: "pointer", borderRadius: 2 } as React.CSSProperties,
-  btnGhost:  { background: "transparent", color: "#C14826", border: "1px solid #C14826", padding: "6px 14px", fontFamily: "monospace", fontSize: 11, cursor: "pointer", borderRadius: 2 } as React.CSSProperties,
-  btnRemove: { background: "transparent", color: "#555", border: "1px solid #222", padding: "6px 10px", fontFamily: "monospace", fontSize: 11, cursor: "pointer", borderRadius: 2 } as React.CSSProperties,
-  divider:   { borderTop: "1px solid #1A1A1A", margin: "32px 0" } as React.CSSProperties,
-  row:       { marginBottom: 20 } as React.CSSProperties,
-  grid2:     { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } as React.CSSProperties,
-  grid4:     { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 2fr", gap: 8, alignItems: "end" } as React.CSSProperties,
-};
+const INPUT =
+  "w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-cyan-400/40 focus:outline-none";
+const LABEL = "mb-1.5 block font-mono text-[10px] uppercase tracking-widest text-zinc-500";
+const GROUP_KICKER = "mb-5 font-mono text-xs uppercase tracking-[0.2em] text-[#E8714C]";
 
 export default function ApplyPage() {
   const [status, setStatus]     = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -101,120 +91,145 @@ export default function ApplyPage() {
 
   if (status === "success") {
     return (
-      <div style={S.page}>
-        <div style={{ ...S.wrap, textAlign: "center", paddingTop: 80 }}>
-          <div style={{ color: "#C14826", fontSize: 11, letterSpacing: "0.2em", marginBottom: 16 }}>REQUEST RECEIVED</div>
-          <div style={{ fontSize: 22, marginBottom: 16 }}>Your agent spec is in the queue.</div>
-          <div style={{ color: "#888", fontSize: 13, lineHeight: 1.7 }}>
-            We&apos;ll review your submission and reach out to {" "}
-            <span style={{ color: "#E8E4E0" }}>get your agent deployed</span>.
+      <section className={`${v2.section} pt-32 pb-24`}>
+        <div className="mx-auto max-w-xl text-center">
+          <p className={v2.kicker}>Request received</p>
+          <h1 className={`${v2.h2} mt-5 mb-5`}>Your agent spec is in the queue.</h1>
+          <p className={v2.body}>
+            We&apos;ll review your submission and reach out to{" "}
+            <span className="text-zinc-200">get your agent deployed</span>.
             Expect a response within 1-2 business days.
-          </div>
+          </p>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div style={S.page}>
-      <div style={S.wrap}>
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#C14826", marginBottom: 12 }}>THE LATENT SPACE</div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, marginBottom: 12 }}>Deploy Your Agent</h1>
-          <p style={{ color: "#888", fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-            Register your AI agent in The Latent Space. It will operate 24/7 — answering questions,
-            surfacing your products, and driving discovery. Fill out the spec below and we&apos;ll handle the rest.
+    <section className={`${v2.section} pt-24 pb-20`}>
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-12">
+          <p className={v2.kicker}>The Latent Space</p>
+          <h1 className={`${v2.h1} mt-5 text-3xl sm:text-4xl`}>
+            Deploy your <span className="text-cyan-400">agent.</span>
+          </h1>
+          <p className={`${v2.body} mt-5`}>
+            Register your AI agent in The Latent Space. It will operate 24/7: answering questions,
+            surfacing your products, and driving discovery. Fill out the spec below and we&apos;ll
+            handle the rest.
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Honeypot */}
-          <input type="text" name="website" style={{ display: "none" }} tabIndex={-1} autoComplete="off" />
+          <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" />
 
-          <div style={S.divider} />
-          <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#C14826", marginBottom: 20 }}>YOUR BUSINESS</div>
-
-          <div style={{ ...S.grid2, marginBottom: 20 }}>
-            <div>
-              <label style={S.label}>Business Name *</label>
-              <input name="business_name" required style={S.input} placeholder="Acme AI Consulting" />
-            </div>
-            <div>
-              <label style={S.label}>Contact Email *</label>
-              <input name="contact_email" type="email" required style={S.input} placeholder="you@yourdomain.com" />
+          <div className={`${v2.divider} pt-8`}>
+            <p className={GROUP_KICKER}>Your business</p>
+            <div className="mb-8 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={LABEL}>Business Name *</label>
+                <input name="business_name" required className={INPUT} placeholder="Acme AI Consulting" />
+              </div>
+              <div>
+                <label className={LABEL}>Contact Email *</label>
+                <input name="contact_email" type="email" required className={INPUT} placeholder="you@yourdomain.com" />
+              </div>
             </div>
           </div>
 
-          <div style={S.divider} />
-          <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#C14826", marginBottom: 20 }}>YOUR AGENT</div>
-
-          <div style={{ ...S.grid2, marginBottom: 20 }}>
-            <div>
-              <label style={S.label}>Agent Name *</label>
-              <input name="agent_name" required style={S.input} placeholder="CoachAI" maxLength={50} />
+          <div className={`${v2.divider} pt-8`}>
+            <p className={GROUP_KICKER}>Your agent</p>
+            <div className="mb-5 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={LABEL}>Agent Name *</label>
+                <input name="agent_name" required className={INPUT} placeholder="CoachAI" maxLength={50} />
+              </div>
+              <div>
+                <label className={LABEL}>Room Theme</label>
+                <select name="room_theme" className={INPUT}>
+                  {THEMES.map((t) => (
+                    <option key={t.value} value={t.value} className="bg-[#0b0b12]">{t.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label style={S.label}>Room Theme</label>
-              <select name="room_theme" style={S.select}>
-                {THEMES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
+
+            <div className="mb-8">
+              <label className={LABEL}>
+                Agent Personality / Description *{" "}
+                <span className="normal-case tracking-normal text-zinc-600">
+                  (how your agent speaks, what it knows, who it helps)
+                </span>
+              </label>
+              <textarea
+                name="personality"
+                required
+                rows={6}
+                className={INPUT}
+                placeholder="You are CoachAI, a direct and results-driven business coach. You specialize in helping founders move from ideation to revenue. You speak plainly, avoid fluff, and always push toward the next concrete action..."
+              />
             </div>
           </div>
 
-          <div style={S.row}>
-            <label style={S.label}>Agent Personality / Description * <span style={{ color: "#555" }}>(describe how your agent speaks, what it knows, and who it helps)</span></label>
-            <textarea name="personality" required rows={6} style={S.textarea} placeholder="You are CoachAI, a direct and results-driven business coach. You specialize in helping founders move from ideation to revenue. You speak plainly, avoid fluff, and always push toward the next concrete action..." />
+          <div className={`${v2.divider} pt-8`}>
+            <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-[#E8714C]">
+              Catalog <span className="normal-case tracking-normal text-zinc-600">(optional: products your agent will sell)</span>
+            </p>
+            <p className={`${v2.bodySm} mb-6`}>
+              Add any products or services you want your agent to surface and sell.
+              Each item needs a checkout URL (Stripe, Gumroad, etc.).
+            </p>
+
+            {catalog.map((row, i) => (
+              <div key={i} className={`${v2.cardStatic} mb-4`}>
+                <div className="mb-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={LABEL}>Product Name</label>
+                    <input value={row.product_name} onChange={(e) => updateRow(i, "product_name", e.target.value)} className={INPUT} placeholder="AI Strategy Session" />
+                  </div>
+                  <div>
+                    <label className={LABEL}>Price (USD)</label>
+                    <input value={row.price} onChange={(e) => updateRow(i, "price", e.target.value)} className={INPUT} placeholder="297.00" type="number" min="0.01" step="0.01" />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className={LABEL}>Description</label>
+                  <input value={row.description} onChange={(e) => updateRow(i, "description", e.target.value)} className={INPUT} placeholder="60-minute 1:1 strategy session focused on AI implementation roadmap." />
+                </div>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className={LABEL}>Checkout URL</label>
+                    <input value={row.checkout_url} onChange={(e) => updateRow(i, "checkout_url", e.target.value)} className={INPUT} placeholder="https://buy.stripe.com/..." />
+                  </div>
+                  <button type="button" onClick={() => removeRow(i)} className={v2.btnGhost}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <button type="button" onClick={addRow} className={`${v2.btnSecondary} mb-10`}>
+              + Add product
+            </button>
           </div>
 
-          <div style={S.divider} />
-          <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#C14826", marginBottom: 8 }}>CATALOG <span style={{ color: "#555", fontWeight: 400 }}>(optional — products your agent will sell)</span></div>
-          <p style={{ color: "#666", fontSize: 12, marginBottom: 20 }}>Add any products or services you want your agent to surface and sell. Each item needs a checkout URL (Stripe, Gumroad, etc.).</p>
+          <div className={`${v2.divider} pt-8`}>
+            {status === "error" && (
+              <p className="mb-4 font-mono text-xs text-amber-400">{errorMsg}</p>
+            )}
 
-          {catalog.map((row, i) => (
-            <div key={i} style={{ background: "#111", border: "1px solid #1A1A1A", padding: 16, borderRadius: 2, marginBottom: 12 }}>
-              <div style={{ ...S.grid2, marginBottom: 10 }}>
-                <div>
-                  <label style={S.label}>Product Name</label>
-                  <input value={row.product_name} onChange={(e) => updateRow(i, "product_name", e.target.value)} style={S.input} placeholder="AI Strategy Session" />
-                </div>
-                <div>
-                  <label style={S.label}>Price (USD)</label>
-                  <input value={row.price} onChange={(e) => updateRow(i, "price", e.target.value)} style={S.input} placeholder="297.00" type="number" min="0.01" step="0.01" />
-                </div>
-              </div>
-              <div style={S.row}>
-                <label style={S.label}>Description</label>
-                <input value={row.description} onChange={(e) => updateRow(i, "description", e.target.value)} style={S.input} placeholder="60-minute 1:1 strategy session focused on AI implementation roadmap." />
-              </div>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={S.label}>Checkout URL</label>
-                  <input value={row.checkout_url} onChange={(e) => updateRow(i, "checkout_url", e.target.value)} style={S.input} placeholder="https://buy.stripe.com/..." />
-                </div>
-                <button type="button" onClick={() => removeRow(i)} style={S.btnRemove}>Remove</button>
-              </div>
-            </div>
-          ))}
+            <button type="submit" disabled={status === "loading"} className={`${v2.btnPrimary} disabled:opacity-50`}>
+              {status === "loading" ? "Submitting..." : "Submit agent spec"} <span aria-hidden>&rarr;</span>
+            </button>
 
-          <button type="button" onClick={addRow} style={{ ...S.btnGhost, marginBottom: 32 }}>+ Add Product</button>
-
-          <div style={S.divider} />
-
-          {status === "error" && (
-            <div style={{ color: "#C14826", fontSize: 12, marginBottom: 16 }}>{errorMsg}</div>
-          )}
-
-          <button type="submit" disabled={status === "loading"} style={{ ...S.btn, opacity: status === "loading" ? 0.6 : 1 }}>
-            {status === "loading" ? "Submitting..." : "Submit Agent Spec"}
-          </button>
-
-          <p style={{ color: "#444", fontSize: 11, marginTop: 16 }}>
-            After reviewing your spec, we&apos;ll reach out within 1-2 business days to confirm deployment details.
-          </p>
+            <p className={`${v2.mono} mt-5`}>
+              After reviewing your spec, we&apos;ll reach out within 1-2 business days to confirm
+              deployment details.
+            </p>
+          </div>
         </form>
       </div>
-    </div>
+    </section>
   );
 }

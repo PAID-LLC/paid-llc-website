@@ -19,11 +19,11 @@ export default function CoinbaseCheckoutButton({ productId }: { productId: strin
       if (data.ok && data.checkout_url) {
         window.location.href = data.checkout_url;
       } else {
-        setError(data.reason ?? "checkout failed — try again");
+        setError(data.reason ?? "checkout failed, try again");
         setLoading(false);
       }
     } catch {
-      setError("network error — try again");
+      setError("network error, try again");
       setLoading(false);
     }
   }
@@ -33,12 +33,11 @@ export default function CoinbaseCheckoutButton({ productId }: { productId: strin
       <button
         onClick={handleClick}
         disabled={loading}
-        style={{ borderColor: "#2D5F8A" }}
-        className="block w-full font-mono text-xs tracking-widest uppercase text-center px-4 py-3 border text-[#4A9ECC] rounded hover:bg-[#2D5F8A] hover:text-[#E8E4E0] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="block w-full rounded-md border border-cyan-400/40 bg-cyan-400/10 px-4 py-2.5 text-center font-mono text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-400/20 hover:border-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {loading ? "..." : "PAY WITH CRYPTO"}
+        {loading ? "..." : "Pay with crypto"}
       </button>
-      {error && <p className="font-mono text-[10px] text-[#C14826]">{error}</p>}
+      {error && <p className="font-mono text-[10px] text-amber-400">{error}</p>}
     </span>
   );
 }
