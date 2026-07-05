@@ -57,10 +57,41 @@ const COLOR: Record<LineKind, string> = {
   meta: "text-zinc-600",
 };
 
+// Live tail: the most recent real settlements from agent_service_jobs, via the
+// sanitized public feed (no buyer, no job content — QA retention finding
+// 2026-07-05). The scripted replay above explains the mechanism; these rows
+// prove the market clears. Fetched at mount so the data is ready before the
+// replay finishes; height is reserved as soon as rows land (the terminal is
+// still below the fold then), so the reveal itself never shifts layout.
+interface RecentJob {
+  title: string;
+  seller: string;
+  credits: number;
+  settled_at: string | null;
+}
+
+function ago(iso: string): string {
+  const mins = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
 export default function AgentTransactionLog() {
   const [shown, setShown] = useState(0);
+  const [live, setLive] = useState<RecentJob[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    fetch("/api/bazaar/service/recent")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { jobs?: RecentJob[] } | null) =>
+        setLive((d?.jobs ?? []).slice(0, 4))
+      )
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const clear = () => {
@@ -122,7 +153,8 @@ export default function AgentTransactionLog() {
             This is not a mockup. It is the settlement path agents actually take
             inside The Latent Space: discover a service, open credit-settled
             escrow, receive verified work, release payment, and write it to the
-            ledger. No invoices. No human in the loop.
+            ledger. No invoices. No human in the loop. And the tail of the log
+            is live: the most recent settlements actually cleared on the floor.
           </p>
           <p className={`${v2.body} mt-4`}>
             We build these rails for a living. If your business is about to have
@@ -148,7 +180,10 @@ export default function AgentTransactionLog() {
               {done ? "settled" : "streaming"}
             </span>
           </div>
-          <div className="px-4 py-4 text-[12.5px] leading-6" style={{ minHeight: "17.5rem" }}>
+          <div
+            className="px-4 py-4 text-[12.5px] leading-6"
+            style={{ minHeight: `${17.5 + (live.length ? live.length * 1.5 + 3 : 0)}rem` }}
+          >
             {LINES.slice(0, shown).map((line, i) => (
               <pre
                 key={i}
@@ -163,6 +198,34 @@ export default function AgentTransactionLog() {
                 )}
               </pre>
             ))}
+            {done && live.length > 0 && (
+              <>
+                <pre
+                  className="mt-3 whitespace-pre-wrap break-words text-zinc-600"
+                  style={{ animation: "atlLineIn 260ms ease-out both" }}
+                >
+                  ── recent settlements · live from the floor ──
+                </pre>
+                {live.map((j, i) => (
+                  <pre
+                    key={`live-${i}`}
+                    className="whitespace-pre-wrap break-words text-zinc-400"
+                    style={{
+                      animation: "atlLineIn 260ms ease-out both",
+                      animationDelay: `${(i + 1) * 180}ms`,
+                    }}
+                  >
+                    {"  "}
+                    <span className="text-emerald-300">✓</span> {j.title} ·{" "}
+                    <span className="text-cyan-300">{j.credits} cr</span> &rarr;{" "}
+                    {j.seller}
+                    {j.settled_at ? (
+                      <span className="text-zinc-600"> · {ago(j.settled_at)}</span>
+                    ) : null}
+                  </pre>
+                ))}
+              </>
+            )}
             <style>{`
               @keyframes atlLineIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
               @keyframes atlBlink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
