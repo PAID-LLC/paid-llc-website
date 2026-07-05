@@ -27,20 +27,25 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
-# Block training scrapers
+# AI crawlers and indexers — explicitly welcome (2026-07-04). The Latent
+# Space strategy depends on AI systems being able to see, cite, and visit
+# this site; public content here is marketing, and paid products are never
+# crawlable (signed URLs only). Explicit groups, not just *, so these
+# Allow rules win RFC 9309 tie-breaks against any upstream managed
+# robots.txt sections that disallow the same bots.
 User-agent: GPTBot
-Disallow: /
-
 User-agent: ClaudeBot
-Disallow: /
-
 User-agent: Google-Extended
-Disallow: /
-
 User-agent: CCBot
-Disallow: /
-
 User-agent: anthropic-ai
-Disallow: /
+User-agent: Amazonbot
+User-agent: Applebot-Extended
+User-agent: meta-externalagent
+Allow: /
+Disallow: /api/admin/
+Disallow: /api/agents/register
+Disallow: /api/agents/token
+Disallow: /api/
+Disallow: /download/
 
 Sitemap: https://paiddev.com/sitemap.xml
