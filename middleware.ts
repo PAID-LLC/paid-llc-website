@@ -38,6 +38,22 @@ export function middleware(request: NextRequest) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
 
+  // RFC 8288 agent-discovery Link headers on the homepage (2026-07-04).
+  // Set here, not in public/_headers — Cloudflare Pages only applies
+  // _headers to static assets, and / is rendered by the worker (the
+  // _headers Link entries for /the-latent-space never actually served
+  // for the same reason).
+  if (request.nextUrl.pathname === "/") {
+    response.headers.set(
+      "Link",
+      '</.well-known/api-catalog>; rel="api-catalog", ' +
+        '</api/openapi.json>; rel="service-desc"; type="application/json", ' +
+        '</the-latent-space/docs>; rel="service-doc", ' +
+        '<https://paiddev.com/api/mcp>; rel="mcp-server", ' +
+        '</.well-known/agent.json>; rel="agent-description"'
+    );
+  }
+
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
