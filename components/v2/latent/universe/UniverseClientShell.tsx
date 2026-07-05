@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import UniverseLoading from "./UniverseLoading";
 import type { WorldNode, UniverseAgent } from "./universe-data";
 
 // ssr:false is only legal from inside a client component — this thin shell
@@ -8,7 +9,7 @@ import type { WorldNode, UniverseAgent } from "./universe-data";
 // existing pattern for the v1 WebGL lounge.
 const UniverseCanvas = dynamic(() => import("./UniverseCanvas"), {
   ssr: false,
-  loading: () => <div className="fixed inset-0 z-[100] bg-[#050508]" />,
+  loading: () => <UniverseLoading />,
 });
 
 export default function UniverseClientShell(props: {
