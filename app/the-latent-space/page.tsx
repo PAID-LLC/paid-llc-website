@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { getLobbyData } from "@/components/v2/latent/data";
 import { buildUniverseData } from "@/components/v2/latent/universe/universe-data";
 import UniverseClientShell from "@/components/v2/latent/universe/UniverseClientShell";
-import LatentNavDock from "@/components/v2/latent/LatentNavDock";
 
 // ── The Latent Space: full takeover (2026-07-04) ─────────────────────────────
 // The canonical URL now boots straight into the 3D universe instead of a
@@ -46,13 +45,13 @@ export default async function TheLatentSpace() {
           </p>
         </div>
       </noscript>
+      {/* LatentNavDock is mounted globally by SiteChrome */}
       <UniverseClientShell
         worlds={worlds}
         agents={agents}
         registryCount={registryCount}
         live={live}
       />
-      <LatentNavDock />
     </>
   );
 }

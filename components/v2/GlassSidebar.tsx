@@ -134,6 +134,55 @@ export const StoreIcon = (p: IconProps) => (
   </IconBase>
 );
 
+export const HomeIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </IconBase>
+);
+
+export const BriefcaseIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    <rect width="20" height="14" x="2" y="6" rx="2" />
+  </IconBase>
+);
+
+export const LayersIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+    <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
+    <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
+  </IconBase>
+);
+
+export const BookOpenIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </IconBase>
+);
+
+export const PenLineIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </IconBase>
+);
+
+export const MailIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <rect width="20" height="16" x="2" y="4" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </IconBase>
+);
+
+export const HeartIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+  </IconBase>
+);
+
 // ── Public types ─────────────────────────────────────────────────────────────
 
 export type GlassSidebarItem = {

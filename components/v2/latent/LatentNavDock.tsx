@@ -15,15 +15,15 @@ import GlassSidebar, {
 
 // ── LatentNavDock ────────────────────────────────────────────────────────────
 //
-// Route-mapped GlassSidebar for the immersive Latent Space surfaces. The
-// universe map and lobby floors portal themselves over the site chrome at
-// z-[100], which buries the header nav — once a visitor is inside, the only
-// exits were tiny breadcrumb links. This dock is the persistent way around
-// the ecosystem. Active state derives from the pathname; clicks router.push.
+// Route-mapped GlassSidebar for the Latent Space ecosystem. On the immersive
+// surfaces (universe map, lobby floors) the scenes portal over the site chrome
+// at z-[100], burying the header nav — there the dock is the only way around,
+// so it rides at z-[110] and shows at every breakpoint. On latent content
+// pages (registry, arena, docs...) the header still exists, so SiteChrome
+// mounts this at z-[60], desktop only. Active state derives from the
+// pathname; clicks router.push.
 //
-// Mount beside the scene component in the page (server) file:
-//   <UniverseClientShell ... />  /  <FloorScene ... />
-//   <LatentNavDock />
+// Mounted globally by components/SiteChrome.tsx — do not add per-page.
 
 type DockItem = GlassSidebarItem & { href: string };
 
@@ -46,7 +46,13 @@ const ALL: DockItem[] = [...MAIN, ...UTILITY];
 // not universe.
 const BY_LENGTH: DockItem[] = [...ALL].sort((a, b) => b.href.length - a.href.length);
 
-export default function LatentNavDock() {
+export default function LatentNavDock({
+  zClassName = "z-[110]",
+  className = "",
+}: {
+  zClassName?: string;
+  className?: string;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -66,7 +72,8 @@ export default function LatentNavDock() {
         const target = ALL.find((i) => i.id === id);
         if (target && target.href !== pathname) router.push(target.href);
       }}
-      zClassName="z-[110]"
+      zClassName={zClassName}
+      className={className}
       subtitle="latent space"
     />
   );

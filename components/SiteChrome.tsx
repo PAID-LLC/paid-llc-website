@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import V2Frame from "@/components/v2/V2Frame";
+import SiteNavDock from "@/components/v2/SiteNavDock";
+import LatentNavDock from "@/components/v2/latent/LatentNavDock";
 
 // ── Site chrome: v2 everywhere (promoted 2026-06-12) ─────────────────────────
 // The v1 Nav/Footer are retired (v1 home archived in the cowork repo).
@@ -45,30 +47,81 @@ const V2_NATIVE_PREFIXES: string[] = [
   "/the-latent-space/souvenirs/",
 ];
 
+// ── Global nav dock (2026-07-05) ─────────────────────────────────────────────
+// GlassSidebar rides every page as persistent navigation. Latent Space routes
+// get the latent item set; everything else mirrors the header nav. Immersive
+// surfaces (universe map, lobby floors) portal over the chrome at z-[100], so
+// there the dock runs z-[110] at every breakpoint; on ordinary pages it runs
+// z-[60], desktop (lg+) only, and the content shell is left-padded 92px so
+// the 80px rail never sits on top of text.
+const DOCK_SKIP = [
+  "/v3", // staging homepage, full-bleed prototype
+  "/v2/dev", // component demo benches mount their own sidebar
+  "/the-latent-space/embed", // self-contained iframe artifact for third parties
+  "/admin", // back office has its own chrome
+  "/free", // lead magnet landing — keep it conversion-focused
+];
+
+const isImmersive = (p: string) =>
+  p === "/the-latent-space" || /^\/v2\/lobbies\/[^/]+\/floor$/.test(p);
+
+const isLatent = (p: string) =>
+  p === "/the-latent-space" ||
+  p.startsWith("/the-latent-space/") ||
+  p === "/v2/lobbies" ||
+  p.startsWith("/v2/lobbies/");
+
+function dockFor(pathname: string): { dock: React.ReactNode; pad: boolean } {
+  if (DOCK_SKIP.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return { dock: null, pad: false };
+  }
+  if (isImmersive(pathname)) {
+    // Scene HUDs already clear the rail (pl-[92px] clusters); no shell pad.
+    return { dock: <LatentNavDock />, pad: false };
+  }
+  if (isLatent(pathname)) {
+    return {
+      dock: <LatentNavDock zClassName="z-[60]" className="hidden lg:block" />,
+      pad: true,
+    };
+  }
+  return { dock: <SiteNavDock />, pad: true };
+}
+
 export default function SiteChrome({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { dock, pad } = dockFor(pathname);
+  // lg:pl matches the dock geometry: 12px inset + 68px rail + 12px gap. The
+  // shell also paints the site's near-black — the padding strip sits outside
+  // V2Frame's own background, and a white body would glow through the glass.
+  const shell = (content: React.ReactNode) => (
+    <>
+      {dock}
+      <div className={pad ? "bg-[#07070b] lg:pl-[92px]" : undefined}>{content}</div>
+    </>
+  );
 
   if (OWN_LAYOUT.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return <main>{children}</main>;
+    return shell(<main>{children}</main>);
   }
 
   if (V2_NATIVE.includes(pathname) || V2_NATIVE_PREFIXES.some((p) => pathname.startsWith(p))) {
-    return (
+    return shell(
       <V2Frame>
         <main>{children}</main>
-      </V2Frame>
+      </V2Frame>,
     );
   }
 
-  return (
+  return shell(
     <V2Frame>
       <div className="v2-blog">
         <main>{children}</main>
       </div>
-    </V2Frame>
+    </V2Frame>,
   );
 }
