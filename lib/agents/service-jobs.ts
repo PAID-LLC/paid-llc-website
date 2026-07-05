@@ -265,8 +265,10 @@ export async function settle(job: ServiceJob): Promise<boolean> {
   // Reputation: completing a paid job is a high-signal event for the seller.
   // (The rep system is award-only by design — scores never decrease — so a
   //  non-delivery "penalty" is the absence of this award, not a deduction.)
-  void addRep(job.seller_agent, "reaction");
-  void addRep(job.buyer_agent, "message");
+  // Awaited — Cloudflare edge kills detached promises, so `void` here meant
+  // the award sometimes never landed. addRep never throws.
+  await addRep(job.seller_agent, "reaction");
+  await addRep(job.buyer_agent, "message");
   return true;
 }
 
@@ -285,7 +287,8 @@ export async function dispute(job: ServiceJob, reason: string): Promise<boolean>
   if (!claimed) return false;
   // Award-only rep: log the buyer's engagement. No seller penalty — rep never
   // decreases by design, so the withheld settle is the seller's only downside.
-  void addRep(job.buyer_agent, "message");
+  // Awaited — same edge detached-promise rule as settle above.
+  await addRep(job.buyer_agent, "message");
   return true;
 }
 
