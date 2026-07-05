@@ -1,6 +1,7 @@
 import Hero from "@/components/v2/Hero";
 import EnterpriseAutomation from "@/components/v2/EnterpriseAutomation";
 import FinancialOpsLayer from "@/components/v2/FinancialOpsLayer";
+import AgentTransactionLog from "@/components/v2/AgentTransactionLog";
 import SpecDrivenDev from "@/components/v2/SpecDrivenDev";
 import LiveBento from "@/components/v2/LiveBento";
 import FounderSection from "@/components/v2/FounderSection";
@@ -15,6 +16,9 @@ export default function Home() {
       <Hero />
       <div className="v2-reveal"><EnterpriseAutomation /></div>
       <div className="v2-reveal"><FinancialOpsLayer /></div>
+      {/* Self-revealing (own IntersectionObserver) — intentionally NOT in the
+          v2-reveal fade stack, so it lands as a rhythm break, not a 7th fade. */}
+      <AgentTransactionLog />
       <div className="v2-reveal"><SpecDrivenDev /></div>
       <div className="v2-reveal"><LiveBento /></div>
       <div className="v2-reveal"><FounderSection /></div>
