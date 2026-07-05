@@ -29,6 +29,7 @@ import {
   type SVGProps,
 } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { MotionConfig, motion } from "framer-motion";
 
 const COLLAPSED_W = 68;
@@ -114,6 +115,25 @@ const ChevronsRightIcon = (p: IconProps) => (
   </IconBase>
 );
 
+export const LayoutGridIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <rect width="7" height="7" x="3" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="14" rx="1" />
+    <rect width="7" height="7" x="3" y="14" rx="1" />
+  </IconBase>
+);
+
+export const StoreIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+    <path d="M2 7h20" />
+    <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" />
+  </IconBase>
+);
+
 // ── Public types ─────────────────────────────────────────────────────────────
 
 export type GlassSidebarItem = {
@@ -153,6 +173,14 @@ export type GlassSidebarProps = {
   /** Brand block text, expanded state only. */
   title?: string;
   subtitle?: string;
+  /** Where the brand mark links. Default "/". */
+  homeHref?: string;
+  /**
+   * Tailwind z-index class for the dock. Default "z-[60]" clears the V2Frame
+   * z-50 header; surfaces that portal themselves over the chrome at z-[100]
+   * (UniverseCanvas, FloorScene) should pass "z-[110]".
+   */
+  zClassName?: string;
   className?: string;
 };
 
@@ -227,6 +255,8 @@ export default function GlassSidebar({
   expandOnHover = true,
   title = "PAID",
   subtitle = "Control deck",
+  homeHref = "/",
+  zClassName = "z-[60]",
   className = "",
 }: GlassSidebarProps) {
   const [pinned, setPinned] = useState(false);
@@ -273,11 +303,11 @@ export default function GlassSidebar({
 
   // Portaled to <body>: V2Frame keeps page content inside a `relative z-10`
   // stacking context, so no in-tree z-index can clear the z-50 sticky header.
-  // As a body child, z-[60] genuinely wins.
+  // As a body child, zClassName genuinely wins.
   return createPortal(
     <MotionConfig reducedMotion="user">
       <div
-        className={`fixed inset-y-3 left-3 z-[60] ${className}`}
+        className={`fixed inset-y-3 left-3 ${zClassName} ${className}`}
         onFocus={handleFocus}
         onBlur={handleBlur}
       >
@@ -293,8 +323,13 @@ export default function GlassSidebar({
           {/* glass sheen */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/[0.05] to-transparent" />
 
-          {/* brand block — terracotta lead, per two-tone rule */}
-          <div className="flex items-center gap-3 px-3 pb-4 pt-4">
+          {/* brand block — terracotta lead, per two-tone rule; links home since
+              the dock covers the header logo's corner on chrome-bearing pages */}
+          <Link
+            href={homeHref}
+            title={expanded ? undefined : title}
+            className="flex items-center gap-3 rounded-lg px-3 pb-4 pt-4 outline-none transition-opacity hover:opacity-90 focus-visible:ring-1 focus-visible:ring-cyan-400/60"
+          >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#C14826]/50 bg-[#C14826]/15 font-mono text-sm font-bold text-[#E8714C]">
               P
             </span>
@@ -312,7 +347,7 @@ export default function GlassSidebar({
                 {subtitle}
               </span>
             </motion.span>
-          </div>
+          </Link>
 
           {/* main nav */}
           <nav className="flex flex-col gap-1 px-3" aria-label="Views">

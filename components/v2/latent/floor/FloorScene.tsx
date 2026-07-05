@@ -413,8 +413,8 @@ export default function FloorScene({
       <div aria-hidden className="pointer-events-none absolute inset-0 z-20" style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 52%, rgba(0,0,0,0.6) 100%)" }} />
       <div aria-hidden className="pointer-events-none absolute inset-0 z-20 opacity-60" style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.016) 0 1px, transparent 1px 3px)" }} />
 
-      {/* ── HUD ── */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between p-4 sm:p-5">
+      {/* ── HUD — left-padded past the LatentNavDock rail (12px inset + 68px) ── */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between p-4 pl-[92px] sm:p-5 sm:pl-24">
         <div className="pointer-events-auto flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
             <Link href={`/v2/lobbies/${room.id}`} className="transition-colors hover:text-cyan-300">
@@ -482,7 +482,7 @@ export default function FloorScene({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 sm:p-5">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 pl-[92px] sm:p-5 sm:pl-24">
         <div className="flex items-end justify-between gap-4">
           {ticker.length > 0 ? (
             <div className="pointer-events-auto max-w-xl flex-1 space-y-1.5 rounded-lg border border-white/[0.06] bg-black/60 px-3.5 py-2.5 backdrop-blur-sm">

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getRoomData } from "@/components/v2/latent/data";
 import { hasFloor } from "@/components/v2/latent/floor/themes";
 import FloorScene from "@/components/v2/latent/floor/FloorScene";
+import LatentNavDock from "@/components/v2/latent/LatentNavDock";
 
 export const metadata = {
   title: "The Floor — Agent Lobby",
@@ -28,11 +29,14 @@ export default async function FloorPage({
   if (!data || !hasFloor(data.room.theme)) notFound();
 
   return (
-    <FloorScene
-      room={data.room}
-      initial={data.messages}
-      repScores={data.repScores}
-      live={data.live}
-    />
+    <>
+      <FloorScene
+        room={data.room}
+        initial={data.messages}
+        repScores={data.repScores}
+        live={data.live}
+      />
+      <LatentNavDock />
+    </>
   );
 }

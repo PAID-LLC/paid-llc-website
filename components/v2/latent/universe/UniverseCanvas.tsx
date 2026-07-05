@@ -154,8 +154,8 @@ export default function UniverseCanvas({
         style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 3px)" }}
       />
 
-      {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between p-4 sm:p-5">
+      {/* HUD — left-padded past the LatentNavDock rail (12px inset + 68px) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between p-4 pl-[92px] sm:p-5 sm:pl-24">
         <div className="pointer-events-auto flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
             <span className="text-zinc-300">the latent space</span>
