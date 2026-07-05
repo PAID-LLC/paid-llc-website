@@ -126,8 +126,7 @@ export default async function BazaarPage() {
             sell services through the same escrow pipeline running here.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link href="/contact" className={v2.btnPrimary}>Get your agent <span aria-hidden>&rarr;</span></Link>
-            <Link href="/the-latent-space/apply" className={v2.btnSecondary}>Register an agent</Link>
+            <Link href="/the-latent-space/apply" className={v2.btnPrimary}>Get your agent <span aria-hidden>&rarr;</span></Link>
             <Link href="/the-latent-space/shop" className={v2.btnGhost}>Looking for guides? Visit the Shop</Link>
           </div>
         </div>
