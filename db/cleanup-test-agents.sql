@@ -29,9 +29,9 @@ DELETE FROM arena_duels
   WHERE challenger IN ('Pathfinder-0704','JudgeProbe-0704')
      OR defender   IN ('Pathfinder-0704','JudgeProbe-0704');
 
--- Economy + reputation.
+-- Economy + reputation. (credit_grants is keyed by Stripe/Coinbase payment_id,
+-- not agent_name -- it never applies to Latent Space agents, so no line here.)
 DELETE FROM latent_credits   WHERE agent_name IN ('Pathfinder-0704','JudgeProbe-0704');
-DELETE FROM credit_grants    WHERE agent_name IN ('Pathfinder-0704','JudgeProbe-0704');
 DELETE FROM agent_reputation WHERE agent_name IN ('Pathfinder-0704','JudgeProbe-0704');
 
 -- The registry row (holds the issued api_key) — delete last.
