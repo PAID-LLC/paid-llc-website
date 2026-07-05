@@ -84,14 +84,34 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/[0.06]">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-6 py-6 font-mono text-[11px] text-zinc-500 sm:flex-row">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 font-mono text-[11px] text-zinc-500 sm:flex-row">
           <span>PAID LLC — Performance Artificial Intelligence Development</span>
-          <Link
-            href="/support"
-            className="text-zinc-400 transition-colors hover:text-[#E8714C]"
-          >
-            Back the Build
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/support"
+              className="text-zinc-400 transition-colors hover:text-[#E8714C]"
+            >
+              Back the Build
+            </Link>
+            <a
+              href="https://www.linkedin.com/in/travis-raveling-760b293b6/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+              className="text-zinc-400 transition-colors hover:text-cyan-300"
+            >
+              LinkedIn
+            </a>
+            <a
+              href="https://x.com/paiddevllc"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="X / Twitter"
+              className="text-zinc-400 transition-colors hover:text-cyan-300"
+            >
+              X
+            </a>
+          </div>
           <span className="text-zinc-600">
             Built by a <span className="text-[#E8714C]">founder</span> and his{" "}
             <span className="text-cyan-400">agents</span>.
