@@ -4,6 +4,7 @@ import FinancialOpsLayer from "@/components/v2/FinancialOpsLayer";
 import AgentTransactionLog from "@/components/v2/AgentTransactionLog";
 import SpecDrivenDev from "@/components/v2/SpecDrivenDev";
 import LiveBento from "@/components/v2/LiveBento";
+import DualTrackCTA from "@/components/v2/DualTrackCTA";
 import FounderSection from "@/components/v2/FounderSection";
 import NewsFeed from "@/components/v2/NewsFeed";
 
@@ -21,6 +22,7 @@ export default function Home() {
       <AgentTransactionLog />
       <div className="v2-reveal"><SpecDrivenDev /></div>
       <div className="v2-reveal"><LiveBento /></div>
+      <div className="v2-reveal"><DualTrackCTA /></div>
       <div className="v2-reveal"><FounderSection /></div>
       <div className="v2-reveal"><NewsFeed /></div>
     </>
