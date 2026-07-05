@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { v2 } from "@/components/v2/tokens";
 import ProductsGrid, { type ProductItem } from "@/components/ProductsGrid";
 import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
+import GuideReviews from "@/components/GuideReviews";
 
 export const metadata: Metadata = {
   title: "Digital Products | PAID LLC",
@@ -271,6 +272,13 @@ export default function DigitalProducts() {
       {/* Filtered product grid */}
       <section className={v2.divider}>
         <ProductsGrid products={products} />
+      </section>
+
+      {/* Reader reviews */}
+      <section className={v2.divider}>
+        <GuideReviews
+          guides={products.map((p) => ({ slug: p.slug, title: p.title }))}
+        />
       </section>
 
       {/* Full bundle CTA */}
