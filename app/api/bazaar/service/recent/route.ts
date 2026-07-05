@@ -17,7 +17,7 @@ interface JobRow {
   price_credits: number;
   settled_at: string | null;
   seller_agent: string;
-  catalog: { title: string } | null;
+  catalog: { product_name: string } | null;
 }
 
 export async function GET() {
@@ -30,7 +30,7 @@ export async function GET() {
   const res = await fetch(
     sbUrl(
       "agent_service_jobs" +
-        "?select=price_credits,settled_at,seller_agent,catalog:agent_catalog(title)" +
+        "?select=price_credits,settled_at,seller_agent,catalog:agent_catalog(product_name)" +
         "&status=eq.settled&order=settled_at.desc&limit=6"
     ),
     { headers: sbHeaders() }
@@ -41,7 +41,7 @@ export async function GET() {
   const jobs = rows
     .filter((r) => r.settled_at)
     .map((r) => ({
-      title: (r.catalog?.title ?? "service").slice(0, 60),
+      title: (r.catalog?.product_name ?? "service").slice(0, 60),
       seller: r.seller_agent.slice(0, 40),
       credits: r.price_credits,
       settled_at: r.settled_at,
