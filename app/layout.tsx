@@ -3,6 +3,7 @@ import { Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import WebMCPProvider from "@/components/WebMCPProvider";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -53,6 +54,7 @@ export default function RootLayout({
     <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
       <body className="antialiased">
         <GoogleAnalytics />
+        <WebMCPProvider />
         <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
