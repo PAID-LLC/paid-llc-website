@@ -19,6 +19,7 @@
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { timingSafeEqual } from "@/lib/admin-auth";
+import { verifyJwt } from "@/lib/jwt";
 
 export interface AgentAuthResult {
   ok:        boolean;
@@ -64,7 +65,14 @@ export async function verifyAgentWrite(
   }
   const providedKey = authHeader.slice(7).trim();
   if (!agent.api_key || !(await timingSafeEqual(providedKey, agent.api_key))) {
-    return { ok: false, error: "Invalid API key.", status: 401 };
+    // Not the api_key — accept a session JWT (issued by /api/oauth/token or
+    // /api/agents/token) as long as it names THIS agent. Same credential
+    // lineage as the key, bounded by the token's expiry; sub-matching blocks
+    // cross-agent use.
+    const jwt = await verifyJwt(providedKey);
+    if (jwt?.sub !== agent.agent_name) {
+      return { ok: false, error: "Invalid API key.", status: 401 };
+    }
   }
 
   return { ok: true, agentName: agent.agent_name };

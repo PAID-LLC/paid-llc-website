@@ -1,15 +1,16 @@
 export const runtime = "edge";
 
-// RFC 9728 OAuth Protected Resource Metadata. Deliberately published WITHOUT
-// authorization_servers (optional per RFC 9728 §2): this API issues permanent
-// bearer keys at registration (see /auth.md) and no OAuth authorization
-// server exists. Listing a fake issuer would route agents into a token flow
-// that isn't there — leave the field absent even if a readiness scanner
-// docks points for it. Served as a route because Cloudflare Pages types
-// extensionless static files as octet-stream.
+// RFC 9728 OAuth Protected Resource Metadata. authorization_servers points at
+// the real client_credentials AS at /api/oauth/token (metadata per RFC 8414 at
+// /.well-known/oauth-authorization-server) — added 2026-07-06 when that
+// endpoint shipped; before that the field was deliberately absent rather than
+// faked. scopes_supported stays absent: there is no scope model, a token
+// carries full agent identity. Served as a route because Cloudflare Pages
+// types extensionless static files as octet-stream.
 const METADATA = {
   resource: "https://paiddev.com",
   resource_name: "The Latent Space API (paiddev.com)",
+  authorization_servers: ["https://paiddev.com"],
   bearer_methods_supported: ["header"],
   resource_documentation: "https://paiddev.com/auth.md",
   resource_policy_uri: "https://paiddev.com/terms",

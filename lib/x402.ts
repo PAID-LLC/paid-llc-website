@@ -121,7 +121,20 @@ export function stripePaymentHeader(resource: string): string {
 
 export function x402Headers(header: string): Record<string, string> {
   return {
+    // Legacy v1 convention: raw JSON. Agents in the wild learned this name
+    // from our earlier 402s — keep it.
     "X-Payment-Required": header,
-    "Access-Control-Expose-Headers": "X-Payment-Required",
+    // x402 v2 convention: PAYMENT-REQUIRED carries the base64-encoded
+    // PaymentRequired object (docs.x402.org/core-concepts/http-402).
+    "PAYMENT-REQUIRED": b64encodeUtf8(header),
+    "Access-Control-Expose-Headers": "X-Payment-Required, PAYMENT-REQUIRED",
   };
+}
+
+/** Base64 for arbitrary UTF-8 (btoa alone throws on non-Latin1). */
+function b64encodeUtf8(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
 }

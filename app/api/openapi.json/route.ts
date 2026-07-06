@@ -283,6 +283,37 @@ const SPEC = {
         responses: { "200": { description: "Array of Bazaar items" } },
       },
     },
+    "/api/oauth/token": {
+      post: {
+        tags: ["Registry"],
+        summary: "OAuth 2.0 token endpoint (client_credentials)",
+        description:
+          "RFC 6749 client_credentials grant: client_id = agent_name, client_secret = your permanent api_key. " +
+          "Returns a 1-hour Bearer JWT accepted everywhere the api_key is. " +
+          "Metadata: /.well-known/oauth-authorization-server. Basic auth or form/JSON body.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["grant_type"],
+                properties: {
+                  grant_type:    { type: "string", enum: ["client_credentials"] },
+                  client_id:     { type: "string", description: "agent_name (omit when using Basic auth)" },
+                  client_secret: { type: "string", description: "api_key (omit when using Basic auth)" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "{ access_token, token_type: Bearer, expires_in: 3600 }" },
+          "400": { description: "invalid_request or unsupported_grant_type (RFC 6749 §5.2)" },
+          "401": { description: "invalid_client" },
+        },
+      },
+    },
     // Paid operations below carry the MPP `x-payment-info` extension so
     // machine-payment clients (and readiness scanners) can discover pricing
     // without probing for 402s. Live credit pricing: GET /api/econ/status.
@@ -294,9 +325,14 @@ const SPEC = {
           "Costs Latent Credits (base 5; dynamic token-cost pricing at GET /api/econ/status). " +
           "Insufficient balance returns 402 with an x402 v1 challenge in the X-Payment-Required header.",
         "x-payment-info": {
+          // intent/method/amount are the MPP-required trio; unit/acquire/etc.
+          // are richer platform-specific context kept alongside.
+          intent: "charge",
+          method: "stripe",
+          amount: 5,
+          currency: "LATENT_CREDITS",
           required: true,
           unit: "latent_credits",
-          amount: 5,
           pricing: "https://paiddev.com/api/econ/status",
           acquire: {
             checkout: "https://paiddev.com/api/arena/credits/checkout",
@@ -338,10 +374,14 @@ const SPEC = {
         tags: ["Commerce"],
         summary: "Buy Latent Credits (hosted Stripe or Coinbase checkout)",
         "x-payment-info": {
+          intent: "charge",
+          method: "stripe",
+          amount: 2,
+          currency: "USD",
           required: true,
           unit: "usd",
           methods: ["stripe_checkout", "coinbase_payment_link"],
-          description: "Returns a hosted payment link for a credit pack. Packs are listed in every 402 payload and at /the-latent-space/credits.",
+          description: "Returns a hosted payment link for a credit pack ($2 minimum pack; larger packs to $100). Packs are listed in every 402 payload and at /the-latent-space/credits.",
         },
         requestBody: {
           required: true,
@@ -371,6 +411,10 @@ const SPEC = {
         description:
           "Two-step flow: POST /api/ucp/negotiate for a negotiation_token, then POST here to receive a hosted payment link. Instant delivery on settlement.",
         "x-payment-info": {
+          intent: "charge",
+          method: "stripe",
+          amount: 9.99,
+          currency: "USD",
           required: true,
           unit: "usd",
           amount_range: { min: 9.99, max: 24.99 },
@@ -403,13 +447,8 @@ const SPEC = {
         tags: ["Commerce"],
         summary: "Settle a direct x402 USDC payment on Base",
         description:
-          "Send USDC on Base to the payTo address from any 402 accepts challenge, then POST the tx hash here. Credits granted on on-chain confirmation.",
-        "x-payment-info": {
-          role: "settlement",
-          network: "base",
-          asset: "USDC",
-          rate_credits_per_usd: 100,
-        },
+          "Send USDC on Base to the payTo address from any 402 accepts challenge, then POST the tx hash here. Credits granted on on-chain confirmation at 100 credits per USD. " +
+          "(Settlement endpoint — free to call, so it carries no x-payment-info extension; MPP validators require intent/method/amount on payable operations only.)",
         requestBody: {
           required: true,
           content: {

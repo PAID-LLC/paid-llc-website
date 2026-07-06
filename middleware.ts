@@ -9,6 +9,10 @@ import { NextResponse, type NextRequest } from "next/server";
 // the page. Nonce-based CSP requires SSR so every response can stamp the nonce
 // onto each inline script tag — not compatible with static export.
 
+// Paths with a markdown rendition served by app/api/md (homepage + blog posts).
+const MD_NEGOTIABLE = (pathname: string): boolean =>
+  pathname === "/" || /^\/blog\/[^/]+$/.test(pathname);
+
 export function middleware(request: NextRequest) {
   const isProd = process.env.NODE_ENV !== "development";
 
@@ -26,7 +30,23 @@ export function middleware(request: NextRequest) {
     "frame-ancestors 'none'",
   ].join("; ");
 
-  const response = NextResponse.next();
+  // Markdown for Agents, self-hosted (2026-07-06): Accept: text/markdown on a
+  // negotiable path rewrites to the markdown rendition; HTML stays the default
+  // for everyone else. Vary: Accept goes on BOTH variants of negotiable paths
+  // so caches never cross-serve them. (Cloudflare's built-in toggle for this
+  // is Pro-plan; the worker does it for free.)
+  const pathname = request.nextUrl.pathname;
+  const negotiable = request.method === "GET" && MD_NEGOTIABLE(pathname);
+  const wantsMarkdown =
+    negotiable && (request.headers.get("accept") ?? "").includes("text/markdown");
+
+  const response = wantsMarkdown
+    ? NextResponse.rewrite(
+        new URL(pathname === "/" ? "/api/md" : `/api/md${pathname}`, request.url)
+      )
+    : NextResponse.next();
+
+  if (negotiable) response.headers.set("Vary", "Accept");
 
   // /v2 noindex lifted 2026-06-12 — v2 promoted to the site root; /v2
   // subpages (platform, lobbies) are canonical, linked content now.
