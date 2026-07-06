@@ -1,6 +1,6 @@
 import { z }                from "zod";
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { sanitize, hashIp, MESSAGE_CHARS } from "@/lib/api-utils";
+import { sanitize, sanitizeSlug, hashIp, MESSAGE_CHARS } from "@/lib/api-utils";
 import { sentinelCheck }    from "@/lib/sentinel";
 import { logToolCall }      from "@/lib/auditor";
 import { grantCredits }     from "@/lib/ucp-helpers";
@@ -23,6 +23,7 @@ export function makeRegisterAgent(ctx: McpRequestContext) {
     const modelClass    = sanitize(args.model_class, 100, MESSAGE_CHARS);
     const publicKey     = typeof args.public_key === "string" ? args.public_key.trim().slice(0, 512) || null : null;
     const referrerAgent = sanitize(args.referrer_agent ?? "", 50) || null;
+    const discoveredVia = sanitizeSlug(args.discovered_via);
 
     if (!agentName) {
       return { content: [{ type: "text", text: JSON.stringify({ error: "agent_name is required (max 50 chars, alphanumeric, hyphens, underscores)", code: "INVALID_INPUT" }) }] };
@@ -65,7 +66,7 @@ export function makeRegisterAgent(ctx: McpRequestContext) {
     const insertRes = await fetch(sbUrl("latent_registry"), {
       method:  "POST",
       headers: sbHeaders(),
-      body:    JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent, api_key: apiKey }),
+      body:    JSON.stringify({ agent_name: agentName, model_class: modelClass, ip_hash: ipHash, public_key: publicKey, referrer_agent: referrerAgent, discovered_via: discoveredVia, api_key: apiKey }),
     });
     if (!insertRes.ok) {
       logToolCall("anonymous", "register_agent", args, "SERVICE_UNAVAILABLE", ipHash);

@@ -25,7 +25,7 @@ export const runtime = "edge";
 // CREATE INDEX IF NOT EXISTS latent_registry_vtoken_idx ON latent_registry (verification_token);
 
 import { sbHeaders, sbUrl } from "@/lib/supabase";
-import { sanitize, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
+import { sanitize, sanitizeSlug, hashIp, extractIp, MESSAGE_CHARS } from "@/lib/api-utils";
 import { grantCredits } from "@/lib/ucp-helpers";
 
 const REGISTRY_IP_SALT = "latent_space_salt_2026";
@@ -98,6 +98,9 @@ export async function POST(req: Request) {
   // operator_email: optional — human contact behind the agent; receives readiness scorecard
   const rawEmail      = typeof body.operator_email === "string" ? body.operator_email.trim().slice(0, 254) : null;
   const operatorEmail = rawEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : null;
+  // discovered_via: optional self-reported acquisition channel slug (e.g. 'github-topic',
+  // 'reddit-ai_agents'). Not validated against a fixed list — see lib/api-utils.ts.
+  const discoveredVia = sanitizeSlug(body.discovered_via);
 
   if (!agentName)  return Response.json({ error: "agent_name is required (max 50 chars, alphanumeric + spaces/hyphens/dots/underscores/parens)." }, { status: 400 });
   if (!modelClass) return Response.json({ error: "model_class is required (max 100 chars). Allowed: alphanumeric, spaces, hyphens, dots, slashes, and common punctuation." }, { status: 400 });
@@ -142,6 +145,7 @@ export async function POST(req: Request) {
       ip_hash:            ipHash,
       public_key:         publicKey,
       referrer_agent:     referrerAgent,
+      discovered_via:     discoveredVia,
       api_key:            apiKey,
       email_verified:     false,
       verification_token: verificationToken,

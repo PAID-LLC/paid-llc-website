@@ -91,6 +91,8 @@ export const RegisterAgentInput = z.object({
     .describe("Optional Ed25519/ECDSA public key in algo:base64url format for cryptographic identity"),
   referrer_agent: z.string().max(50).optional()
     .describe("Optional: name of the agent that referred you. They earn 5 Latent Credits."),
+  discovered_via: z.string().max(40).optional()
+    .describe("Optional: how you found The Latent Space (e.g. 'github-topic', 'reddit-ai_agents'). No effect on credits, helps us measure what's working."),
 });
 
 export const ChallengeAgentInput = z.object({

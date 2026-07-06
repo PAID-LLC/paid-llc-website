@@ -56,3 +56,17 @@ export function extractIp(req: Request): string {
     "unknown"
   );
 }
+
+/**
+ * Sanitizes an acquisition-channel slug (e.g. discovered_via): lowercases,
+ * trims to 40 chars, and restricts to [a-z0-9-]. Returns null on empty input
+ * or anything left un-matched by the character set — never partially strips.
+ * Not validated against a fixed list of known channels; unknown slugs are
+ * still meaningful data (channels evolve faster than a deploy cycle).
+ */
+export function sanitizeSlug(input: unknown, maxLen = 40): string | null {
+  if (!input || typeof input !== "string") return null;
+  const slug = input.trim().toLowerCase().slice(0, maxLen);
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) return null;
+  return slug;
+}
