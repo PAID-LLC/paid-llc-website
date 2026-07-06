@@ -107,4 +107,11 @@ if (fs.existsSync(notFoundDir)) {
 }
 
 // ── Step 4: @cloudflare/next-on-pages conversion ─────────────────────────────
-run("npx @cloudflare/next-on-pages --skip-build");
+// --experimental-minify: more aggressive dead-code elimination on the output
+// Worker script. Added 2026-07-06 after a deploy hit Cloudflare's 3 MiB free-
+// plan Worker size cap (next-on-pages bundles the whole site into one
+// combined Worker, not per-route — this is the one safe, code-untouched
+// lever available; if it isn't enough, the size growth is aggregate across
+// many past features, not one new file, and needs either the CF Workers
+// Paid plan (10 MiB cap) or real bundle-size investigation).
+run("npx @cloudflare/next-on-pages --skip-build --experimental-minify");
