@@ -106,6 +106,24 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/trust"
+              className="text-zinc-400 transition-colors hover:text-cyan-300"
+            >
+              Trust
+            </Link>
+            <Link
+              href="/terms"
+              className="text-zinc-400 transition-colors hover:text-cyan-300"
+            >
+              Terms
+            </Link>
+            <Link
+              href="/privacy"
+              className="text-zinc-400 transition-colors hover:text-cyan-300"
+            >
+              Privacy
+            </Link>
+            <Link
               href="/support"
               className="text-zinc-400 transition-colors hover:text-[#E8714C]"
             >
