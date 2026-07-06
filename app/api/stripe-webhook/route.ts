@@ -257,6 +257,30 @@ async function markAgentVerified(agentName: string): Promise<void> {
 
 // ── Catalog sale logging + seller credit (commission) ─────────────────────────
 
+// ── ACP checkout session completion (additive — see lib/acp-checkout.ts) ──────
+// Runs alongside whatever the rest of this handler already does for the
+// session (commission, ledger, delivery); does not replace any of it.
+
+async function markAcpSessionCompleted(session: {
+  metadata?: Record<string, string>;
+}): Promise<void> {
+  const sessionId = session.metadata?.acp_session_id;
+  if (!sessionId) return;
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+
+  await fetch(
+    `${url}/rest/v1/agent_commerce_log?metadata->>acp_session_id=eq.${encodeURIComponent(sessionId)}`,
+    {
+      method:  "PATCH",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body:    JSON.stringify({ status: "completed" }),
+    },
+  ).catch((err) => console.error("[webhook] markAcpSessionCompleted failed:", err));
+}
+
 async function recordCatalogSale(session: {
   id: string;
   amount_total: number | null;
@@ -461,6 +485,12 @@ export async function POST(req: NextRequest) {
 
     const session = event.data.object;
     const meta    = (session as { metadata?: Record<string, string> }).metadata ?? {};
+
+    // Additive: if this session originated from the ACP adapter, flip its
+    // stored status regardless of which branch below handles the sale itself.
+    // Awaited — Cloudflare edge kills fire-and-forget promises after the
+    // response is sent (see the buyer-verification call further down).
+    await markAcpSessionCompleted(session as { metadata?: Record<string, string> });
 
     // ── Credit pack purchase — deliver credits, skip guide delivery flow ──
     if (meta.product_type === "credit_pack") {

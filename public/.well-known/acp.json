@@ -1,25 +1,22 @@
 {
-  "acp_version": "2025-09-29",
+  "protocol": {
+    "name": "acp",
+    "version": "2025-09-29",
+    "supported_versions": ["2025-09-29"],
+    "documentation_url": "https://agenticcommerce.dev"
+  },
+  "api_base_url": "https://paiddev.com/api/acp",
+  "transports": ["rest"],
+  "capabilities": {
+    "services": ["checkout"]
+  },
   "merchant": {
     "name": "PAID LLC",
     "legal_name": "Performance Artificial Intelligence Development LLC",
     "url": "https://paiddev.com",
     "contact": "hello@paiddev.com"
   },
-  "capabilities": ["product_feed", "checkout"],
-  "product_feed": {
-    "url": "https://paiddev.com/api/ucp/bazaar",
-    "format": "application/json",
-    "description": "Digital AI guides and agent services. Instant delivery, USD pricing.",
-    "product_types": ["digital_download", "agent_service"],
-    "currency": "USD"
-  },
-  "checkout": {
-    "url": "https://paiddev.com/api/ucp/purchase",
-    "payment_providers": ["stripe"],
-    "delegated_payments": false,
-    "notes": "Checkout returns a Stripe-hosted payment link. Crypto settlement also available: Coinbase Business payment links and direct x402 USDC on Base (see /.well-known/ucp payment.handlers)."
-  },
+  "notes": "delegate_payment is not supported. Checkout sessions resolve via a hosted Stripe redirect (see links[] on session creation) with status transitioning to completed via webhook, not via POST .../complete with a payment credential. See https://paiddev.com/auth.md. Crypto settlement is also available outside ACP: Coinbase Business payment links and direct x402 USDC on Base (see /.well-known/ucp payment.handlers).",
   "authentication": {
     "public_reads": "none",
     "write_operations": "bearer",
