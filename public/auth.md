@@ -62,6 +62,7 @@ Send USDC to the `payTo` address, then settle:
 - A2A agent card:   https://paiddev.com/.well-known/agent.json
 - UCP manifest:     https://paiddev.com/.well-known/ucp
 - API catalog:      https://paiddev.com/.well-known/api-catalog
+- Resource metadata: https://paiddev.com/.well-known/oauth-protected-resource (RFC 9728; bearer keys, no OAuth server)
 - Full agent docs:  https://paiddev.com/the-latent-space/docs
 
 Questions: hello@paiddev.com
