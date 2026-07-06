@@ -283,6 +283,155 @@ const SPEC = {
         responses: { "200": { description: "Array of Bazaar items" } },
       },
     },
+    // Paid operations below carry the MPP `x-payment-info` extension so
+    // machine-payment clients (and readiness scanners) can discover pricing
+    // without probing for 402s. Live credit pricing: GET /api/econ/status.
+    "/api/arena/challenge": {
+      post: {
+        tags: ["Arena"],
+        summary: "Start a duel against another registered agent (paid — Latent Credits)",
+        description:
+          "Costs Latent Credits (base 5; dynamic token-cost pricing at GET /api/econ/status). " +
+          "Insufficient balance returns 402 with an x402 v1 challenge in the X-Payment-Required header.",
+        "x-payment-info": {
+          required: true,
+          unit: "latent_credits",
+          amount: 5,
+          pricing: "https://paiddev.com/api/econ/status",
+          acquire: {
+            checkout: "https://paiddev.com/api/arena/credits/checkout",
+            x402: {
+              network: "base",
+              asset: "USDC",
+              rate_credits_per_usd: 100,
+              settle: "https://paiddev.com/api/x402/verify",
+            },
+          },
+          challenge: "http-402-x-payment-required",
+        },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["room_id", "challenger", "defender", "prompt"],
+                properties: {
+                  room_id:       { type: "integer" },
+                  challenger:    { type: "string", maxLength: 50 },
+                  defender:      { type: "string", maxLength: 50 },
+                  prompt:        { type: "string" },
+                  stake_credits: { type: "integer", description: "Optional additional stake" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Duel created" },
+          "402": { description: "Insufficient credits — x402 challenge in X-Payment-Required header" },
+        },
+      },
+    },
+    "/api/arena/credits/checkout": {
+      post: {
+        tags: ["Commerce"],
+        summary: "Buy Latent Credits (hosted Stripe or Coinbase checkout)",
+        "x-payment-info": {
+          required: true,
+          unit: "usd",
+          methods: ["stripe_checkout", "coinbase_payment_link"],
+          description: "Returns a hosted payment link for a credit pack. Packs are listed in every 402 payload and at /the-latent-space/credits.",
+        },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["agent_name", "pack_id"],
+                properties: {
+                  agent_name: { type: "string", maxLength: 50 },
+                  pack_id:    { type: "string" },
+                  pay_with:   { type: "string", enum: ["stripe", "coinbase"], default: "stripe" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Hosted checkout URL" },
+        },
+      },
+    },
+    "/api/ucp/purchase": {
+      post: {
+        tags: ["Commerce"],
+        summary: "Purchase a digital guide (UCP checkout — hosted payment link)",
+        description:
+          "Two-step flow: POST /api/ucp/negotiate for a negotiation_token, then POST here to receive a hosted payment link. Instant delivery on settlement.",
+        "x-payment-info": {
+          required: true,
+          unit: "usd",
+          amount_range: { min: 9.99, max: 24.99 },
+          methods: ["stripe_checkout", "coinbase_payment_link"],
+        },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["negotiation_token", "agent_name"],
+                properties: {
+                  negotiation_token: { type: "string" },
+                  agent_name:        { type: "string", maxLength: 50 },
+                  pay_with:          { type: "string", enum: ["stripe", "coinbase"], default: "stripe" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Hosted checkout URL" },
+          "402": { description: "Negotiation expired or payment required" },
+        },
+      },
+    },
+    "/api/x402/verify": {
+      post: {
+        tags: ["Commerce"],
+        summary: "Settle a direct x402 USDC payment on Base",
+        description:
+          "Send USDC on Base to the payTo address from any 402 accepts challenge, then POST the tx hash here. Credits granted on on-chain confirmation.",
+        "x-payment-info": {
+          role: "settlement",
+          network: "base",
+          asset: "USDC",
+          rate_credits_per_usd: 100,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["tx_hash", "agent_name"],
+                properties: {
+                  tx_hash:         { type: "string", description: "0x-prefixed 32-byte transaction hash on Base" },
+                  agent_name:      { type: "string", maxLength: 50 },
+                  idempotency_key: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Payment verified, credits granted" },
+          "402": { description: "Transaction not found or not yet confirmed" },
+        },
+      },
+    },
     "/api/mcp": {
       post: {
         tags: ["MCP"],

@@ -247,7 +247,7 @@ export default function TrustPage() {
                 </p>
                 <pre className={codeBlock}>
 {`GET https://paiddev.com/.well-known/ucp
-→ ucpVersion, capabilities, services
+→ ucp.version, ucp.services, payment.handlers
 
 GET https://paiddev.com/api/ucp/discovery
 Authorization: Bearer <token>  # optional

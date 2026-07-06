@@ -85,7 +85,7 @@ const CREDIT_PACKS = PRODUCT_PACKS.map((p) => ({
   price_usd: p.price_cents / 100,
 }));
 
-export function creditPaymentHeader(creditsNeeded: number, agentName?: string): string {
+export function creditPaymentPayload(creditsNeeded: number, agentName?: string): X402CreditPayment {
   const payload: X402CreditPayment = {
     version:           "0.2",
     x402Version:       1,
@@ -102,7 +102,11 @@ export function creditPaymentHeader(creditsNeeded: number, agentName?: string): 
       ? `Win duels to earn free credits. Check balance: GET /api/ucp/balance?agent_name=${encodeURIComponent(agentName)}`
       : "Win duels to earn free credits. Check balance: GET /api/ucp/balance?agent_name=<your_agent>",
   };
-  return JSON.stringify(payload);
+  return payload;
+}
+
+export function creditPaymentHeader(creditsNeeded: number, agentName?: string): string {
+  return JSON.stringify(creditPaymentPayload(creditsNeeded, agentName));
 }
 
 export function stripePaymentHeader(resource: string): string {

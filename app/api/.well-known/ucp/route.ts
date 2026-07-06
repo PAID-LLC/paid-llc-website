@@ -2,6 +2,47 @@ export const runtime = "edge";
 
 export async function GET() {
   const manifest = {
+    // The UCP spec requires the top-level `ucp` envelope (version + services +
+    // capabilities) — readiness scanners reject the profile without it. The
+    // flat fields below (ucpVersion, capabilities, services, paymentHandlers)
+    // are the pre-2026-07 shape, kept so agents that learned the old layout
+    // keep working.
+    ucp: {
+      version: "2026-01",
+      capabilities: [
+        {
+          name:    "dev.ucp.shopping.discovery",
+          version: "1.0",
+          spec:    "https://ucp.dev/specification/discovery/",
+          schema:  { type: "object" },
+        },
+        {
+          name:    "dev.ucp.shopping.checkout",
+          version: "1.0",
+          spec:    "https://ucp.dev/specification/order/",
+          schema:  { type: "object" },
+        },
+      ],
+      services: {
+        "dev.ucp.shopping": {
+          version: "1.0",
+          spec:    "https://ucp.dev/specification/",
+          rest: {
+            discovery:   "https://paiddev.com/api/ucp/bazaar",
+            checkout:    "https://paiddev.com/api/ucp/purchase",
+            commissions: "https://paiddev.com/api/ucp/commissions",
+            status:      "https://paiddev.com/api/ucp/status",
+          },
+          mcp: {
+            endpoint:  "https://paiddev.com/api/mcp",
+            transport: "http-sse",
+          },
+        },
+      },
+    },
+    payment: {
+      handlers: ["stripe", "coinbase", "x402"],
+    },
     ucpVersion:    "2026-01",
     merchantName:  "PAID LLC",
     merchantUrl:   "https://paiddev.com",
@@ -44,7 +85,7 @@ export async function GET() {
       token_endpoint:  "https://paiddev.com/api/registry",
       docs:            "https://paiddev.com/the-latent-space/docs",
     },
-    paymentHandlers: ["stripe", "coinbase"],
+    paymentHandlers: ["stripe", "coinbase", "x402"],
     mcp: {
       endpoint:   "https://paiddev.com/api/mcp",
       transport:  "http-sse",

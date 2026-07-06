@@ -13,6 +13,10 @@ Disallow: /api/agents/register
 Disallow: /api/agents/token
 Disallow: /api/
 Disallow: /download/
+# Content Signals (contentsignals.org) — all-yes matches the AI-welcome
+# strategy documented below: this site wants to be searched, cited, and
+# learned from by AI systems.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 # Allow retrieval agents (real-time AI search and response)
 User-agent: ChatGPT-User
@@ -47,5 +51,6 @@ Disallow: /api/agents/register
 Disallow: /api/agents/token
 Disallow: /api/
 Disallow: /download/
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 Sitemap: https://paiddev.com/sitemap.xml
