@@ -82,7 +82,7 @@ interface Service {
 const services: Service[] = [
   {
     id: "consulting",
-    num: "Service 01",
+    num: "[01] // Consulting",
     agent: false,
     title: "AI Strategy Consulting",
     body: "Too many AI tools, no clear ROI, and no idea where to focus? We audit your operations, identify your highest-value AI opportunities, and deliver a roadmap your team can actually act on.",
@@ -105,7 +105,7 @@ const services: Service[] = [
   },
   {
     id: "implementation",
-    num: "Service 02",
+    num: "[02] // Implementation",
     agent: true,
     title: "AI Implementation Advisory",
     body: "AI projects fail in the gap between planning and doing. We embed with your IT department and internal teams to configure tools, build workflows, and make sure solutions actually go live, not just get planned.",
@@ -128,7 +128,7 @@ const services: Service[] = [
   },
   {
     id: "training",
-    num: "Service 03",
+    num: "[03] // Training",
     agent: false,
     title: "AI Team Training",
     body: "Your team knows AI matters, but nobody's using it consistently. We run hands-on workshops and training sessions that build real fluency across your workforce, not just awareness.",
@@ -152,7 +152,7 @@ const services: Service[] = [
   },
   {
     id: "development",
-    num: "Service 04",
+    num: "[04] // Development",
     agent: true,
     title: "Web & Application Development",
     body: "Your website is your first impression and your always-on salesperson. We build professional sites and custom AI-powered applications that work as hard as you do. No templates, no shortcuts.",
@@ -176,7 +176,7 @@ const services: Service[] = [
   },
   {
     id: "agentic-commerce-audit",
-    num: "Service 05",
+    num: "[05] // Audit",
     agent: false,
     title: "Agentic Commerce Readiness Audit",
     body: "Before you deploy an AI agent, you need to know if your stack can support one. We audit your existing tools, workflows, and data infrastructure. We tell you exactly what needs to change before an agent can operate effectively on your behalf.",
@@ -312,7 +312,7 @@ export default function Services() {
         <div className={`${v2.section} ${v2.sectionPad}`}>
           <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
             <div>
-              <p className={kickerTeal}>Service 06</p>
+              <p className={kickerTeal}>[06] // Agent Deployment</p>
               <h2 className={`${v2.h2} mt-4`}>AI Agent Deployment</h2>
               <p className={`${v2.body} mt-5`}>
                 Your business, running 24/7. We build and deploy a branded AI
@@ -420,7 +420,7 @@ export default function Services() {
             {phases.map((p) => (
               <div key={p.phase} className={v2.card}>
                 <span className="font-mono text-xs font-bold text-cyan-400/70">
-                  {p.phase}
+                  [{p.phase}]
                 </span>
                 <h3 className={`${v2.h3} mt-3`}>{p.label}</h3>
               </div>

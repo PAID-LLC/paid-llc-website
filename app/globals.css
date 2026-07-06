@@ -200,6 +200,35 @@ h1, h2, h3, h4, h5, h6 {
   .v2-weight-shift { transition: none; }
 }
 
+/* Crosshair registration marks (HUD polish pass 2026-07-05): a small "+"
+   where each section hairline crosses the content column's edges, like
+   registration marks on a blueprint. Ships inside the v2.divider token but
+   only fires on <section> elements, so inline divider <div>s (apply,
+   agent-blog) stay clean. left/right math centers each mark on the
+   max-w-7xl (80rem) px-6 (1.5rem) column that every v2 section shares. */
+section.v2-crossmarks {
+  position: relative;
+}
+section.v2-crossmarks::before,
+section.v2-crossmarks::after {
+  content: "+";
+  position: absolute;
+  top: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+section.v2-crossmarks::before {
+  left: max(1.5rem, calc(50% - 40rem + 1.5rem));
+  transform: translate(-50%, -50%);
+}
+section.v2-crossmarks::after {
+  right: max(1.5rem, calc(50% - 40rem + 1.5rem));
+  transform: translate(50%, -50%);
+}
+
 /* ── .v2-blog dark skin ───────────────────────────────────────────────────────
    /blog rendered inside the v2 frame (app/blog/layout.tsx). Tailwind v4
    utilities reference the @theme variables, so rescoping them here flips the

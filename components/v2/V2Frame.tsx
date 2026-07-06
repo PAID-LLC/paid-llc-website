@@ -21,6 +21,12 @@ const v2Links = [
   { href: "/contact", label: "Contact" },
 ];
 
+// Build stamp: inlined at build time by next.config.ts (env key), derived
+// from CF_PAGES_COMMIT_SHA — a real release id, matching the site's
+// software-release framing.
+const BUILD_STAMP = process.env.NEXT_PUBLIC_BUILD_STAMP ?? "BUILD_DEV";
+const BUILD_SHA = process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev";
+
 export default function V2Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="v2-root min-h-screen bg-[#07070b] text-zinc-300 antialiased selection:bg-cyan-400/20 selection:text-cyan-100">
@@ -47,6 +53,13 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
                 paiddev
               </span>
             </Link>
+            {/* xl only: below that the 8-link nav needs the width */}
+            <span
+              className="hidden shrink-0 font-mono text-[10px] tracking-[0.15em] text-zinc-600 xl:inline"
+              title={`commit ${BUILD_SHA}`}
+            >
+              {BUILD_STAMP}
+            </span>
           </div>
 
           <nav className="hidden items-center gap-7 md:flex">
@@ -85,7 +98,12 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/[0.06]">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 font-mono text-[11px] text-zinc-500 sm:flex-row">
-          <span>PAID LLC — Performance Artificial Intelligence Development</span>
+          <div className="flex flex-col items-center gap-1 sm:items-start">
+            <span>PAID LLC — Performance Artificial Intelligence Development</span>
+            <span className="text-zinc-600">
+              {`PAID_DEV // ${BUILD_STAMP} // ${BUILD_SHA}`}
+            </span>
+          </div>
           <div className="flex items-center gap-4">
             <Link
               href="/support"

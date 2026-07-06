@@ -41,7 +41,7 @@ export default function EnterpriseAutomation() {
           {stages.map((stage) => (
             <div key={stage.step} className={v2.card}>
               <span className="font-mono text-xs font-bold text-cyan-400/70">
-                {stage.step}
+                [{stage.step}]
               </span>
               <h3 className={`${v2.h3} mt-3`}>{stage.title}</h3>
               <p className={`${v2.bodySm} mt-2`}>{stage.body}</p>

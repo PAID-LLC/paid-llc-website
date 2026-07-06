@@ -6,7 +6,7 @@ export const metadata = { title: "Platform" };
 const pillars = [
   {
     id: "automation",
-    kicker: "01 — Enterprise Automation",
+    kicker: "[01] // Enterprise Automation",
     title: "Workflows that run without babysitting.",
     body: "We take the processes burning your team's hours and rebuild them as agent-driven pipelines with observability and rollback. Scope is fixed per stage; you approve each exit gate before the next begins.",
     deliverables: [
@@ -19,7 +19,7 @@ const pillars = [
   },
   {
     id: "commerce",
-    kicker: "02 — Financial Operations Layer",
+    kicker: "[02] // Financial Operations Layer",
     title: "Checkout that works for humans and agents.",
     body: "Payment infrastructure that closes the sale regardless of who arrives: a person with a card, or an autonomous agent with a budget and a mandate. We run this stack in production on this domain; we install the same layer for you.",
     deliverables: [
@@ -33,7 +33,7 @@ const pillars = [
   },
   {
     id: "specdev",
-    kicker: "03 — Specification-Driven Development",
+    kicker: "[03] // Specification-Driven Development",
     title: "Software anchored to a contract, not a codebase.",
     body: "AI generates code faster than anyone reviews it. We make the specification the durable artifact: precise intent, constraints, and proof. Implementations regenerate; the contract holds across model upgrades and rewrites.",
     deliverables: [

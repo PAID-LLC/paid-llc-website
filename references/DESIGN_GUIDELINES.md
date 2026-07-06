@@ -38,7 +38,9 @@ the v2 token system plus the 2026-06-15 Fable 5 / Claude Design research pass.
 
 ## Layout rhythm
 - `v2.section` (`mx-auto max-w-7xl px-6`) + `v2.sectionPad` (`py-20 sm:py-28`).
-- Separate sections with `v2.divider` (`border-t border-white/[0.06]`), not heavy rules.
+- Separate sections with `v2.divider` (`border-t border-white/[0.06]`), not heavy rules. On `<section>` elements the token also renders "+" crosshair registration marks where the hairline crosses the content column (`.v2-crossmarks` in globals.css).
+- Numbered offerings and step cards use bracketed mono indices: `[01] // Consulting` in kickers, `[01]` on step cards.
+- The site chrome carries a build stamp (`PAID_DEV // BUILD_YYYY.MM.DD // <sha>`), computed at build time in next.config.ts from `CF_PAGES_COMMIT_SHA`. It must stay real; never hardcode it.
 
 ## Buttons
 - `v2.btnPrimary` (terracotta) leads; `v2.btnSecondary` (cyan) is the partner/second action. `v2.btnGhost` for tertiary. Crypto/agent rails lean cyan.

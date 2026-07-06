@@ -14,7 +14,9 @@ export const v2 = {
   // Layout
   section: "mx-auto max-w-7xl px-6",
   sectionPad: "py-20 sm:py-28",
-  divider: "border-t border-white/[0.06]",
+  // v2-crossmarks adds "+" registration marks where the hairline crosses the
+  // content column — CSS in globals.css, scoped to <section> elements only.
+  divider: "v2-crossmarks border-t border-white/[0.06]",
 
   // Type — two-tone rhythm (Travis, 2026-06-12): in every section the LEAD
   // element is terracotta (kicker, first CTA, first card) and the PARTNER
