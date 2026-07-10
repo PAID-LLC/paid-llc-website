@@ -5,46 +5,60 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { FLOOR_THEMES } from "@/components/v2/latent/floor/themes";
 import { useUniverseStore } from "./useUniverseStore";
+import { planetFor, ECLIPTIC_Y } from "./planet-config";
 import AgentNode from "./AgentNode";
 import WorldShell from "./WorldShell";
-import WorldParticles from "./WorldParticles";
 import type { WorldNode, UniverseAgent } from "./universe-data";
+
+const HALFPI = Math.PI / 2;
+
+// Faint accent-tinted orbit path on the ecliptic — the navigational
+// affordance that replaced the old ground grid. Real orbits aren't visible,
+// but every space-map UI draws them; at 0.14 opacity they read as chart
+// lines, not neon.
+function OrbitLine({ radius, color }: { radius: number; color: string }) {
+  return (
+    <mesh rotation={[-HALFPI, 0, 0]} position={[0, ECLIPTIC_Y, 0]}>
+      <ringGeometry args={[radius - 0.035, radius + 0.035, 128]} />
+      <meshBasicMaterial color={color} transparent opacity={0.14} side={THREE.DoubleSide} depthWrite={false} />
+    </mesh>
+  );
+}
 
 function WorldNodeMesh({ node }: { node: WorldNode }) {
   const theme = FLOOR_THEMES[node.theme] ?? FLOOR_THEMES["roast-pit"];
+  const config = planetFor(node.theme);
   const travelTo = useUniverseStore((s) => s.travelTo);
   const currentWorldId = useUniverseStore((s) => s.currentWorldId);
-  const isNexus = node.theme === "nexus";
   const active = currentWorldId === node.id;
+
+  // Hit target must cover the rings where a world has them, and never shrink
+  // below the old 2.6 — the visible body reads small from hub distance, but
+  // the click area shouldn't be that precise.
+  const hitRadius = Math.max(2.6, (config.ring?.outer ?? config.visualRadius) + 0.6);
+  const labelY = ECLIPTIC_Y + config.visualRadius + 1.4;
 
   return (
     <group position={node.position}>
-      {/* Generous invisible hit target — the visible shell reads small from
-          hub distance, but the click area shouldn't be that precise. */}
       <mesh
         onClick={(e) => {
           e.stopPropagation();
           travelTo(node.id);
         }}
         visible={false}
+        position={[0, ECLIPTIC_Y, 0]}
       >
-        <sphereGeometry args={[2.6, 8, 8]} />
+        <sphereGeometry args={[hitRadius, 8, 8]} />
         <meshBasicMaterial />
       </mesh>
 
-      <group position={[0, 1.2, 0]} scale={isNexus ? 1.3 : 1}>
-        <WorldShell theme={theme} active={active} />
-        <WorldParticles glyphs={theme.particleGlyph} color={theme.emberA} glow={theme.emberB} />
+      <group position={[0, ECLIPTIC_Y, 0]}>
+        <WorldShell themeKey={node.theme} active={active} />
       </group>
-
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[isNexus ? 3.1 : 2.4, isNexus ? 3.3 : 2.55, 48]} />
-        <meshBasicMaterial color={theme.accent} transparent opacity={0.35} side={THREE.DoubleSide} />
-      </mesh>
 
       {/* Fixed z-tier above agent labels (AgentNode) — room identity must
           never be occluded by a nearby agent's own name tag. */}
-      <Html distanceFactor={26} position={[0, isNexus ? 3.6 : 2.8, 0]} center zIndexRange={[500, 500]}>
+      <Html distanceFactor={26} position={[0, labelY, 0]} center zIndexRange={[500, 500]}>
         <div
           style={{
             fontFamily: "var(--font-mono, monospace)",
@@ -86,6 +100,16 @@ export default function Hub({
 
   return (
     <group>
+      {worlds.map(
+        (w) =>
+          w.theme !== "nexus" && (
+            <OrbitLine
+              key={`orbit-${w.id}`}
+              radius={planetFor(w.theme).orbitRadius}
+              color={(FLOOR_THEMES[w.theme] ?? FLOOR_THEMES["roast-pit"]).accent}
+            />
+          )
+      )}
       {worlds.map((w) => (
         <WorldNodeMesh key={w.id} node={w} />
       ))}

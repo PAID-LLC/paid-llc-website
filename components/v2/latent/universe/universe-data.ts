@@ -1,19 +1,26 @@
 import type { LoungeRoom } from "@/lib/lounge-types";
 import { hasFloor } from "@/components/v2/latent/floor/themes";
+import { planetFor, ECLIPTIC_Y } from "./planet-config";
 
 // ── Universe data mapping ────────────────────────────────────────────────────
 // Pure, server-safe transform from the real lobby data (getLobbyData) into
-// the shape the 3D hub needs: one WorldNode per themed room, arranged in a
-// ring around the Nexus (the room's own lore already casts it as the arrival
-// hall every agent lands in first, so it takes the literal center instead of
-// an invented hub anchor), plus every real registered agent flattened into a
-// UniverseAgent with a deterministic offset near its world's node.
+// the shape the 3D star system needs: one WorldNode per themed room placed on
+// its configured orbit (planet-config.ts) — the Nexus at the literal center
+// as the sun, since the room's own lore already casts it as the arrival hall
+// every agent lands in first — plus every real registered agent flattened
+// into a UniverseAgent with deterministic moon-orbit parameters around its
+// world.
+//
+// Longitudes use golden-angle spacing per orbit index: natural-looking
+// scatter, fully deterministic across loads. Positions are STATIC — planets
+// spin on axis in the scene but never revolve, because CameraRig targets
+// node.position from the store.
 //
 // Rooms without a floor theme (private client rooms) are excluded — the same
 // scoping the CSS floor already applies, kept here for privacy and to hold
-// the ring at exactly the canonical public rooms.
+// the system at exactly the canonical public rooms.
 //
-// This is the only roster in the scene. The ambient swarm (AgentSwarm.tsx) is
+// This is the only roster in the scene. The asteroid belt (AgentSwarm.tsx) is
 // a separate, clearly-decorative layer and never reads from this data.
 
 export interface WorldNode {
@@ -30,11 +37,12 @@ export interface UniverseAgent {
   name: string;
   modelClass: string;
   worldId: number;
-  offset: [number, number, number];
+  /** moon-orbit parameters around the world's center */
+  orbit: { radius: number; phase: number; incline: number; speed: number };
   lastActive: string;
 }
 
-const RING_RADIUS = 24;
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ≈137.5°
 
 function hash(s: string): number {
   let h = 0;
@@ -47,7 +55,12 @@ export function buildUniverseData(rooms: LoungeRoom[]): {
   agents: UniverseAgent[];
 } {
   const publicRooms = rooms.filter((r) => hasFloor(r.theme));
-  const ring = publicRooms.filter((r) => r.theme !== "nexus");
+  // Stable orbit indexing: sort the non-sun rooms by their configured orbit
+  // radius so golden-angle longitudes don't reshuffle if the room list order
+  // ever changes upstream.
+  const ring = publicRooms
+    .filter((r) => r.theme !== "nexus")
+    .sort((a, b) => planetFor(a.theme ?? "").orbitRadius - planetFor(b.theme ?? "").orbitRadius);
 
   const worlds: WorldNode[] = publicRooms.map((room) => {
     if (room.theme === "nexus") {
@@ -60,33 +73,42 @@ export function buildUniverseData(rooms: LoungeRoom[]): {
         position: [0, 0, 0],
       };
     }
-    const ringIndex = ring.indexOf(room);
-    const angle = (ringIndex / Math.max(ring.length, 1)) * Math.PI * 2;
+    const theme = room.theme ?? "roast-pit";
+    const orbitRadius = planetFor(theme).orbitRadius;
+    const angle = ring.indexOf(room) * GOLDEN_ANGLE + 0.6;
     return {
       id: room.id,
       name: room.name,
-      theme: room.theme ?? "roast-pit",
+      theme,
       topic: room.topic,
       agentCount: room.agents.length,
-      position: [Math.cos(angle) * RING_RADIUS, 0, Math.sin(angle) * RING_RADIUS],
+      position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
     };
   });
 
-  const agents: UniverseAgent[] = publicRooms.flatMap((room) =>
-    room.agents.map((a, i) => {
+  const agents: UniverseAgent[] = publicRooms.flatMap((room) => {
+    const cfg = planetFor(room.theme ?? "roast-pit");
+    // Moons must clear the planet — and its rings, where it has them.
+    const clearance = cfg.ring ? cfg.ring.outer + 0.7 : cfg.visualRadius * 1.5 + 0.9;
+    return room.agents.map((a, i) => {
       const h = hash(a.agent_name);
-      const localAngle = (i / Math.max(room.agents.length, 1)) * Math.PI * 2 + (h % 40) * 0.01;
-      const localRadius = 3 + (h % 5) * 0.6;
       return {
         key: `${room.id}-${a.agent_name}`,
         name: a.agent_name,
         modelClass: a.model_class,
         worldId: room.id,
-        offset: [Math.cos(localAngle) * localRadius, 0, Math.sin(localAngle) * localRadius],
+        orbit: {
+          radius: clearance + (h % 5) * 0.35,
+          phase: (i / Math.max(room.agents.length, 1)) * Math.PI * 2 + (h % 40) * 0.01,
+          incline: 0.12 + (h % 7) * 0.06,
+          speed: 0.08 + (h % 9) * 0.012,
+        },
         lastActive: a.last_active,
       };
-    })
-  );
+    });
+  });
 
   return { worlds, agents };
 }
+
+export { ECLIPTIC_Y };

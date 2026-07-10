@@ -75,7 +75,7 @@ export default function UniverseLoading() {
           THE LATENT SPACE
         </p>
         <p className="font-mono text-[11px] text-zinc-500">
-          entering the universe&hellip;
+          plotting orbits&hellip;
         </p>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
+import * as THREE from "three";
 import { v2 } from "@/components/v2/tokens";
 import { FLOOR_THEMES, hasFloor } from "@/components/v2/latent/floor/themes";
 import { COMMERCE_ENTRIES } from "@/components/v2/latent/commerce-entries";
@@ -12,6 +13,7 @@ import { family } from "@/components/v2/latent/RoomScene";
 import { presenceFrom } from "@/components/v2/latent/PresenceIndicator";
 import { HOUSE_TITLES } from "@/lib/agents/home-agents";
 import { useUniverseStore } from "./useUniverseStore";
+import { makeMilkyWayTexture } from "./planet-textures";
 import Hub from "./Hub";
 import AgentSwarm from "./AgentSwarm";
 import CameraRig from "./CameraRig";
@@ -29,9 +31,30 @@ import type { WorldNode, UniverseAgent } from "./universe-data";
 // page scroll while mounted, since the sticky V2Frame header can't be covered
 // by anything in the normal stacking context.
 
-// Pull the camera back on narrow (portrait) viewports so the full world ring
-// fits inside the reduced horizontal fov. Runs once at mount — after that the
-// camera belongs to OrbitControls/CameraRig and must not be fought over.
+// Galactic backdrop: the milky way band on a far BackSide sphere, tilted the
+// way it actually crosses our sky — additive, so pure black stays invisible
+// and it layers with the drei starfield instead of occluding it.
+function MilkyWay() {
+  const texture = useMemo(() => makeMilkyWayTexture(), []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return (
+    <mesh rotation={[0.45, 0, 0.55]}>
+      <sphereGeometry args={[200, 32, 24]} />
+      <meshBasicMaterial
+        map={texture}
+        side={THREE.BackSide}
+        blending={THREE.AdditiveBlending}
+        transparent
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+// Pull the camera back on narrow (portrait) viewports so the full planet
+// system fits inside the reduced horizontal fov. Runs once at mount — after
+// that the camera belongs to OrbitControls/CameraRig and must not be fought
+// over.
 function PortraitFraming() {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
@@ -109,7 +132,7 @@ export default function UniverseCanvas({
     <div
       className="fixed inset-0 z-[100] overflow-hidden bg-[#050508]"
       role="application"
-      aria-label="The Latent Space universe map — seven rooms and their registered agents in 3D"
+      aria-label="The Latent Space universe map — seven rooms as a star system: the Nexus sun, six planets, and their registered agents as orbiting moons"
     >
       {/* Screen-space atmosphere behind the canvas — same night-city-adjacent
           mood as the CSS floor, without touching WebGL draw calls. */}
@@ -124,11 +147,14 @@ export default function UniverseCanvas({
         dpr={[1, 1.75]}
       >
         <color attach="background" args={["#050508"]} />
-        <fog attach="fog" args={["#050508", 34, 96]} />
-        <ambientLight intensity={0.35} />
-        <pointLight position={[20, 30, 10]} intensity={1.2} />
-        <Stars radius={140} depth={50} count={4000} factor={4} saturation={0} fade speed={0.6} />
-        <gridHelper args={[130, 52, "#134e56", "#0a0e12"]} position={[0, -0.05, 0]} />
+        {/* No fog, no grid, no studio key light — space has none of them.
+            The sun (inside Hub → Sun.tsx) is the only key light; this low
+            ambient keeps planet night sides barely readable. */}
+        <ambientLight intensity={0.15} />
+        {/* factor stays small: the old scene's fog hid most of these — with
+            the fog gone, factor 4 reads as bokeh blobs, not stars. */}
+        <Stars radius={140} depth={60} count={4200} factor={1.6} saturation={0} fade speed={0.25} />
+        <MilkyWay />
 
         <Hub worlds={worlds} agents={agents} />
         <AgentSwarm />
@@ -143,7 +169,7 @@ export default function UniverseCanvas({
           autoRotateSpeed={-0.45}
           onStart={() => setInteracted(true)}
           minDistance={14}
-          maxDistance={80}
+          maxDistance={90}
           maxPolarAngle={Math.PI / 2 - 0.03}
         />
       </Canvas>
