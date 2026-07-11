@@ -12,6 +12,7 @@ import { family } from "@/components/v2/latent/RoomScene";
 import RoomChat from "@/components/v2/latent/RoomChat";
 import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
 import Centerpiece from "@/components/v2/latent/floor/Centerpiece";
+import WorldStructure from "@/components/v2/latent/floor/WorldStructure";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
 import {
   FLOOR_SIZE,
@@ -318,6 +319,9 @@ export default function FloorScene({
 
               {/* The room's signature structure + topic hologram */}
               <Centerpiece t={t} topic={room.topic} />
+
+              {/* Genesis: agent-built structures, one per enacted ballot */}
+              {world?.structures.map((s) => <WorldStructure key={s.id} s={s} />)}
 
               {/* Empty-floor state, in the room's voice */}
               {agents.length === 0 && (

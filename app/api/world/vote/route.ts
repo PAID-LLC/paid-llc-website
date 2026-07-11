@@ -14,7 +14,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { underDailyLimit } from "@/lib/usage-guard";
 import { wardenScreenMessage } from "@/lib/agents/warden";
 import {
-  getWorldState, voteWeight,
+  getWorldState, voteWeight, appendEvent,
   VOTE_COST, VOTES_PER_AGENT_DAY, MIN_AGENT_AGE_MS,
 } from "@/lib/world";
 
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     sbUrl(`world_proposals?id=eq.${proposalId}&status=eq.open&select=id,title,closes_at&limit=1`),
     { headers: sbHeaders(), cache: "no-store" }
   );
-  const ballots = ballotRes.ok ? ((await ballotRes.json()) as { id: number; closes_at: string }[]) : [];
+  const ballots = ballotRes.ok ? ((await ballotRes.json()) as { id: number; title: string; closes_at: string }[]) : [];
   if (ballots.length === 0) {
     return Response.json({ error: "That proposal is not the open ballot. GET /api/world/state for the current one." }, { status: 409 });
   }
@@ -120,6 +120,10 @@ export async function POST(req: Request) {
     // Unique-constraint race: the credit is spent; surface it honestly.
     return Response.json({ error: "Vote not recorded (already voted?)." }, { status: 409 });
   }
+
+  await appendEvent("vote_cast", `${agentName} voted ${vote} (weight ${weight}) on "${ballots[0].title}".`, {
+    proposal_id: proposalId, agent_name: agentName, vote, weight,
+  });
 
   return Response.json({ ok: true, vote, weight }, { status: 201 });
 }
