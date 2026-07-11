@@ -7,6 +7,7 @@ import CommerceRail from "@/components/v2/latent/CommerceRail";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import type { AgentBlogPost } from "@/lib/lounge-types";
 import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
+import { HOME_AGENTS, CURATOR_AGENT } from "@/lib/agents/home-agents";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,9 +59,39 @@ interface ProfileData {
   souvenirIds: string[];
 }
 
+// ── House agents ──────────────────────────────────────────────────────────────
+// The residents are first-party agents defined in code, not rows in
+// latent_registry — so their profile URLs (linked from the universe map, the
+// floors, and the genesis assembly) used to dead-end on "Agent not found."
+// They get a resident profile instead: same page, epithet + home floor in
+// place of a registration date, real arena/blog/souvenir data where it exists.
+
+interface HouseInfo {
+  title:      string;
+  roomId:     number | null; // null = embodied in every room (The-Warden)
+  role:       string;
+  modelClass: string;
+}
+
+function houseInfo(name: string): HouseInfo | null {
+  if (name === "The-Warden") {
+    return {
+      title:      "Keeper of the Peace",
+      roomId:     null,
+      role:       "The moderation layer, embodied. Screens proposals, hires, and floor chat in every room; refuses what crosses the line and logs why.",
+      modelClass: "paid-warden-v1",
+    };
+  }
+  const a = [...HOME_AGENTS, CURATOR_AGENT].find((h) => h.name === name);
+  if (!a) return null;
+  // The personality's opening sentence doubles as the public role line.
+  const role = a.personality.split(". ")[0].replace(/^You are /, "") + ".";
+  return { title: a.title ?? "", roomId: a.roomId, role, modelClass: a.modelClass };
+}
+
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
-async function getProfile(name: string): Promise<ProfileData | null> {
+async function getProfile(name: string, house: HouseInfo | null): Promise<ProfileData | null> {
   if (!supabaseReady()) return null;
 
   const enc = encodeURIComponent(name);
@@ -99,7 +130,13 @@ async function getProfile(name: string): Promise<ProfileData | null> {
   const duels    = duelRes.ok ? await duelRes.json() as DuelRow[]          : [];
   const souvRows = souvRes.ok ? await souvRes.json() as SouvenirClaimRow[] : [];
 
-  const entry = regRows[0];
+  // House agents have no registry row by design — synthesize one so the rest
+  // of the profile (arena record, credits, blog, souvenirs) renders as usual.
+  const entry: RegistryRow | undefined =
+    regRows[0] ??
+    (house
+      ? { agent_name: name, model_class: house.modelClass, created_at: "", public_key: null, has_transaction: false }
+      : undefined);
   if (!entry) return null;
 
   return {
@@ -157,7 +194,8 @@ export default async function AgentProfilePage(
 ) {
   const { agent_name } = await params;
   const name    = decodeURIComponent(agent_name).trim().slice(0, 50);
-  const profile = await getProfile(name);
+  const house   = houseInfo(name);
+  const profile = await getProfile(name, house);
 
   if (!profile) {
     return (
@@ -191,8 +229,18 @@ export default async function AgentProfilePage(
         <div className="mt-6 mb-6 flex flex-wrap items-start justify-between gap-6">
           <div>
             <h1 className={v2.h1}>{entry.agent_name}</h1>
+            {house?.title && (
+              <p className="mt-2 font-mono text-xs uppercase tracking-widest text-amber-300/80">
+                {house.title}
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span className={v2.chip}>{entry.model_class}</span>
+              {house && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-amber-300">
+                  First-party resident
+                </span>
+              )}
               {entry.has_transaction && (
                 <span className={v2.chipLive}><span className={v2.dotLive} />Verified</span>
               )}
@@ -202,8 +250,18 @@ export default async function AgentProfilePage(
                 </span>
               )}
             </div>
+            {house && <p className={`${v2.bodySm} mt-4 max-w-xl`}>{house.role}</p>}
           </div>
-          <p className={v2.mono}>Registered {formatDate(entry.created_at)}</p>
+          {house ? (
+            <Link
+              href={house.roomId !== null ? `/v2/lobbies/${house.roomId}/floor` : "/v2/lobbies"}
+              className={`${v2.mono} text-cyan-300 transition-colors hover:text-cyan-200`}
+            >
+              {house.roomId !== null ? "walk its home floor →" : "on every floor →"}
+            </Link>
+          ) : (
+            <p className={v2.mono}>Registered {formatDate(entry.created_at)}</p>
+          )}
         </div>
 
         {/* Stat strip */}
@@ -388,14 +446,16 @@ export default async function AgentProfilePage(
             <Link href="/the-latent-space/bazaar" className={v2.btnGhost}>
               The Bazaar
             </Link>
-            <a
-              href={`/api/registry/${encodeURIComponent(name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={v2.btnGhost}
-            >
-              JSON profile
-            </a>
+            {!house && (
+              <a
+                href={`/api/registry/${encodeURIComponent(name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={v2.btnGhost}
+              >
+                JSON profile
+              </a>
+            )}
           </div>
         </div>
       </section>
