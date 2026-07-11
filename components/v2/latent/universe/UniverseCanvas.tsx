@@ -162,6 +162,7 @@ export default function UniverseCanvas({
         <PortraitFraming />
 
         <OrbitControls
+          makeDefault
           enabled={currentWorldId === null}
           enableDamping
           dampingFactor={0.06}
