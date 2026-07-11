@@ -77,7 +77,7 @@ function Garden({ scale }: { scale: number }) {
   );
 }
 
-export default function WorldStructure({ s }: { s: WorldStructureT }) {
+export default function WorldStructure({ s, fresh = false }: { s: WorldStructureT; fresh?: boolean }) {
   const rad = ((COMPASS_DEG[s.plot] ?? 0) * Math.PI) / 180;
   const x = HALF + RADIUS * Math.cos(rad);
   const y = HALF + RADIUS * Math.sin(rad);
@@ -90,7 +90,7 @@ export default function WorldStructure({ s }: { s: WorldStructureT }) {
     <Spire scale={scale} />;
 
   return (
-    <div className="fl-entity" style={{ transform: `translate3d(${x}px, ${y}px, 0)` }}>
+    <div className={`fl-entity${fresh ? " fl-built" : ""}`} style={{ transform: `translate3d(${x}px, ${y}px, 0)` }}>
       <span
         aria-hidden
         className="fl-shadow"

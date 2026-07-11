@@ -327,6 +327,112 @@ export interface PlanetTextures {
   emissiveMap?: THREE.CanvasTexture;
 }
 
+// ── Genesis: the surface the ballots decide ──────────────────────────────────
+// The agent-built world's planet is the one body whose texture is derived
+// from live governance state instead of a fixed archetype: each enacted
+// terraform ballot advances world_state.stage (0-5) and sets the direction,
+// and this generator grows that direction's signature across the barren
+// protoplanet rock. Coverage scales with stage; at stage >= 3 settlement
+// lights appear in the terraformed regions (they inhabit what they build).
+
+export interface GenesisSurface {
+  stage: number;
+  terraform: string | null;
+}
+
+const TERRAFORM_PALETTES: Record<string, { deep: string; bright: string }> = {
+  oceans: { deep: "#123a5e", bright: "#38bdf8" },
+  verdant: { deep: "#1d4029", bright: "#4ade80" },
+  aurora: { deep: "#2b2350", bright: "#a78bfa" },
+  crystalline: { deep: "#5b6472", bright: "#dbeafe" },
+};
+
+function genesisCanvas(cfg: PlanetConfig, seed: number, surface: GenesisSurface): HTMLCanvasElement {
+  const p = { base: rgb(cfg.palette.base), low: rgb(cfg.palette.low), high: rgb(cfg.palette.high), detail: rgb(cfg.palette.detail) };
+  const t = Math.min(1, Math.max(0, surface.stage / 5));
+  const terra = TERRAFORM_PALETTES[surface.terraform ?? ""] ?? null;
+  const deep = terra ? rgb(terra.deep) : null;
+  const bright = terra ? rgb(terra.bright) : null;
+
+  const canvas = paint(TEX_W, TEX_H, (sx, sy, sz, _u, v) => {
+    const n = fbm(sx * 3, sy * 3, sz * 3, seed, 4);
+    let c = mix(p.base, p.high, n);
+    c = mix(c, p.low, noise3(sx * 7, sy * 7, sz * 7, seed + 7) * 0.4);
+    const ridge = Math.abs(fbm(sx * 5, sy * 5, sz * 5, seed + 31, 3) - 0.5);
+    if (ridge < 0.012) c = mix(c, p.detail, 0.9 - ridge / 0.012);
+
+    // Terraform growth: an independent coverage field claims more of the
+    // surface as the stage rises. Aurora is polar-first (it is light, not
+    // ground); the other directions spread from their own noise basins.
+    if (deep && bright && t > 0) {
+      if (surface.terraform === "aurora") {
+        const polar = Math.abs(v - 0.5) * 2;
+        const wave = fbm(sx * 4 + 5, sy * 4, sz * 4, seed + 201, 3);
+        const reach = 1 - t * 0.55; // stage pulls the aurora toward the equator
+        if (polar > reach) {
+          const s = Math.min(1, ((polar - reach) / 0.25) * (0.5 + wave));
+          c = mix(c, mix(deep, bright, wave), s * 0.8);
+        }
+      } else {
+        const m = fbm(sx * 2.6 + 11, sy * 2.6, sz * 2.6, seed + 201, 4);
+        const threshold = t * 0.52;
+        if (m < threshold) {
+          const s = Math.min(1, (threshold - m) / 0.14);
+          c = mix(c, mix(deep, bright, fbm(sx * 6, sy * 6, sz * 6, seed + 307, 3)), s * 0.9);
+        }
+      }
+    }
+    return c;
+  });
+
+  // The protoplanet keeps its craters — terraforming is young here.
+  const ctx = canvas.getContext("2d")!;
+  const rand = mulberry32(seed + 77);
+  const craters = Math.round(46 * (1 - t * 0.6));
+  for (let i = 0; i < craters; i++) {
+    const cx = rand() * TEX_W;
+    const cy = TEX_H * 0.15 + rand() * TEX_H * 0.7;
+    const r = 2 + rand() * 9;
+    const g = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+    g.addColorStop(0, "rgba(0,0,0,0.35)");
+    g.addColorStop(0.75, "rgba(0,0,0,0.12)");
+    g.addColorStop(0.88, "rgba(255,220,190,0.18)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas;
+}
+
+/** Rose settlement specks inside the terraformed regions — emissive map. */
+function genesisLightsCanvas(cfg: PlanetConfig, seed: number, surface: GenesisSurface): HTMLCanvasElement {
+  const lights = rgb(cfg.cityLights ?? "#f9a8d4");
+  const black = { r: 0, g: 0, b: 0 };
+  const t = Math.min(1, Math.max(0, surface.stage / 5));
+  return paint(TEX_W, TEX_H, (sx, sy, sz) => {
+    const m = fbm(sx * 2.6 + 11, sy * 2.6, sz * 2.6, seed + 201, 4); // same coverage field
+    if (m >= t * 0.52) return black;
+    const speck = noise3(sx * 42, sy * 42, sz * 42, seed + 92);
+    if (speck > 0.72) return mix(black, lights, Math.min(1, (speck - 0.72) * 5));
+    return black;
+  });
+}
+
+export function makeGenesisTextures(
+  themeKey: string,
+  cfg: PlanetConfig,
+  surface: GenesisSurface
+): PlanetTextures {
+  const seed = hashStr(themeKey);
+  const lit = surface.stage >= 3 && surface.terraform;
+  return {
+    map: toTexture(genesisCanvas(cfg, seed, surface)),
+    emissiveMap: lit ? toTexture(genesisLightsCanvas(cfg, seed, surface)) : undefined,
+  };
+}
+
 export function makePlanetTextures(themeKey: string, cfg: PlanetConfig): PlanetTextures {
   const seed = hashStr(themeKey);
   switch (cfg.kind) {

@@ -112,10 +112,12 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     palette: { base: "#10307a", low: "#1c4aa5", high: "#5b93dd", detail: "#0a1e52" },
     atmosphere: { color: "#22d3ee", opacity: 0.36 },
   },
-  // The frontier: the agent-built world at the system's edge, still barren
-  // protoplanet rock in Phase 1 — its inhabitants terraform it by ballot
-  // (Phase 2 derives the surface from world_state.stage). Rose accent is the
-  // Program's own signal, unused elsewhere in the system.
+  // The frontier: the agent-built world at the system's edge. Barren
+  // protoplanet rock at stage 0 — its inhabitants terraform it by ballot, and
+  // makeGenesisTextures derives the surface from live world_state (stage +
+  // terraform direction; settlement lights from stage 3). Rose accent is the
+  // Program's own signal, unused elsewhere in the system; cityLights only
+  // fires once the genesis emissive map exists.
   genesis: {
     kind: "rock",
     orbitRadius: 46,
@@ -124,6 +126,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     spinSpeed: 0.045,
     palette: { base: "#2a2126", low: "#463038", high: "#7d5f6b", detail: "#f472b6" },
     atmosphere: { color: "#f472b6", opacity: 0.3 },
+    cityLights: "#f9a8d4",
   },
 };
 

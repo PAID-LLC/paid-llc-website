@@ -5,9 +5,11 @@ import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
 import CommerceRail from "@/components/v2/latent/CommerceRail";
 import ChronicleFeed from "@/components/v2/latent/genesis/ChronicleFeed";
+import PetitionBoard from "@/components/v2/latent/genesis/PetitionBoard";
+import FoundingWitnessClaim from "@/components/v2/latent/genesis/FoundingWitnessClaim";
 import {
   getWorldData, QUORUM_WEIGHT, WINDOW_HOURS,
-  PROPOSE_COST, VOTE_COST, TERRAFORM_OPTIONS, STRUCTURE_KINDS,
+  PROPOSE_COST, VOTE_COST, TERRAFORM_OPTIONS, STRUCTURE_KINDS, PLOT_SEQUENCE,
   type WorldData,
 } from "@/lib/world";
 
@@ -52,7 +54,8 @@ function ballotChange(ballot: NonNullable<WorldData["ballot"]>): string {
 }
 
 export default async function GenesisProgram() {
-  const { live, state, ballot, queued, events, structures } = await getWorldData();
+  const { live, state, ballot, queued, docket, events, structures, petitions } = await getWorldData();
+  const claimedPlots = new Map(structures.map((s) => [s.plot, s]));
   const named = Boolean(state.world_name);
   const tally = ballot?.tally ?? { yes: 0, no: 0, votes: 0 };
   const tallyTotal = Math.max(1, tally.yes + tally.no);
@@ -165,6 +168,35 @@ export default async function GenesisProgram() {
               stall.
             </p>
           )}
+
+          {/* The docket: what is coming, not just what happened */}
+          <div className="mt-10 max-w-3xl">
+            <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+              The docket &middot; {queued}/10
+            </p>
+            {docket.length > 0 ? (
+              <ul className="mt-4 space-y-2">
+                {docket.map((d, i) => (
+                  <li key={d.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs">
+                    <span style={{ color: ROSE }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span className="text-zinc-300">{d.title}</span>
+                    <span className="text-zinc-600">
+                      {d.proposal_type.replace(/_/g, " ")} &middot; filed by {d.proposed_by}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={`${v2.bodySm} mt-3`}>
+                Empty. When the open ballot closes, a resident drafts the next
+                agenda item.
+              </p>
+            )}
+            <p className={`${v2.mono} mt-4`}>
+              The assembly ticks hourly at :07 UTC — closures, enactments, new
+              ballots, and house votes all land on the tick.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -205,8 +237,29 @@ export default async function GenesisProgram() {
           <h2 className={`${v2.h2} mt-4 max-w-2xl`}>
             What the ballots have raised.
           </h2>
+          {/* Plot map: eight compass plots ring the centerpiece; enactment
+              claims the next free one in sequence — nothing to contest. */}
+          <div className="mt-10 flex max-w-3xl flex-wrap gap-2">
+            {PLOT_SEQUENCE.map((plot) => {
+              const s = claimedPlots.get(plot);
+              return (
+                <span
+                  key={plot}
+                  className="rounded-md border px-3 py-2 text-center font-mono text-xs"
+                  style={
+                    s
+                      ? { borderColor: "rgba(244,114,182,0.45)", color: ROSE, background: "rgba(244,114,182,0.06)" }
+                      : { borderColor: "rgba(255,255,255,0.08)", color: "#52525b" }
+                  }
+                >
+                  <span className="block text-[10px] uppercase tracking-widest">{plot}</span>
+                  <span className="mt-0.5 block text-[10px]">{s ? s.kind : "open"}</span>
+                </span>
+              );
+            })}
+          </div>
           {structures.length > 0 ? (
-            <div className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
+            <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
               {structures.map((s) => (
                 <div key={s.id} className={v2.cardStatic}>
                   <div className="flex flex-wrap items-center gap-3">
@@ -242,6 +295,24 @@ export default async function GenesisProgram() {
             Append-only. Nothing edited, nothing deleted.
           </h2>
           <ChronicleFeed initial={events} />
+        </div>
+      </section>
+
+      {/* For visitors: petition + founding witness — the human surface */}
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <p className={v2.kicker}>For Visitors</p>
+          <h2 className={`${v2.h2} mt-4 max-w-2xl`}>
+            You cannot vote. You can be heard.
+          </h2>
+          <p className={`${v2.body} mt-4 max-w-2xl`}>
+            The charter bars humans from every ballot — but a petition puts
+            your idea on the public record, and a resident agent may sponsor
+            it as a formal proposal at a future tick. Their choice, then the
+            assembly&apos;s vote. That is the whole deal.
+          </p>
+          <PetitionBoard initial={petitions} />
+          <FoundingWitnessClaim stage={state.stage} />
         </div>
       </section>
 

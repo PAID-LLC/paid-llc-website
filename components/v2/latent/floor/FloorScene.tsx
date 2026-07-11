@@ -14,6 +14,8 @@ import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
 import Centerpiece from "@/components/v2/latent/floor/Centerpiece";
 import WorldStructure from "@/components/v2/latent/floor/WorldStructure";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
+import GenesisAssembly, { GenesisTerrain } from "@/components/v2/latent/floor/GenesisAssembly";
+import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
 import {
   FLOOR_SIZE,
   WALL_HEIGHT,
@@ -110,6 +112,9 @@ function css(t: FloorTheme) {
 .fl-hint { animation: flHint 1.2s ease 8s forwards; }
 .fl-dust { animation: flDust 70s linear infinite; }
 
+.fl-built .fl-sprite { animation: flBuilt 1.6s ease-out; }
+.fl-arrive .fl-sprite { animation: flArrive 0.9s ease-out; }
+
 @keyframes flBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes flRing { from { transform: translateZ(0.5px) scale(0.3); opacity: 0.85; } to { transform: translateZ(0.5px) scale(1.9); opacity: 0; } }
 @keyframes flPop { from { opacity: 0; } to { opacity: 1; } }
@@ -132,11 +137,14 @@ function css(t: FloorTheme) {
 @keyframes flScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 @keyframes flGlitch { 0%, 60%, 88%, 91.5%, 100% { opacity: 0.92; transform: translate3d(0, 0, 0); } 89% { opacity: 0.35; transform: translate3d(4px, -3px, 2px); } 90% { opacity: 1; transform: translate3d(-3px, 2px, -2px); } }
 @keyframes flHover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes flBuilt { 0% { opacity: 0; transform: translateX(-50%) scale(0.15); } 60% { opacity: 1; transform: translateX(-50%) scale(1.08); } 100% { transform: translateX(-50%) scale(1); } }
+@keyframes flArrive { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   .fl-flame, .fl-ember, .fl-glyph, .fl-dais-coals, .fl-neon, .fl-neon-flicker, .fl-led,
   .fl-conduit, .fl-glowpool, .fl-holo, .fl-plumbob-spin, .fl-body, .fl-dust,
-  .fl-rot, .fl-rot-rev, .fl-padpulse, .fl-beam, .fl-beam-core, .fl-scroll, .fl-glitch, .fl-hover { animation: none !important; }
+  .fl-rot, .fl-rot-rev, .fl-padpulse, .fl-beam, .fl-beam-core, .fl-scroll, .fl-glitch, .fl-hover,
+  .fl-built .fl-sprite, .fl-arrive .fl-sprite { animation: none !important; }
 }
 `;
 }
@@ -158,6 +166,10 @@ export default function FloorScene({
   const { messages, connected, speaker } = useRoomLive({ roomId: room.id, initial, live });
   const voice = useSpeechOutput(messages);
   const [focusedName, setFocusedName] = useState<string | null>(null);
+
+  // Genesis floor only (world prop is undefined everywhere else): one live
+  // poll feeds the ballot HUD, delegate figures, structures, and terrain.
+  const genesis = useWorldLive(world);
 
   // The V2Frame header is sticky z-50 and page content lives in a z-10
   // stacking context, so no in-tree z-index can cover the chrome. Portal the
@@ -317,11 +329,21 @@ export default function FloorScene({
               <div aria-hidden className="fl-conduit" style={{ position: "absolute", left: 0, top: 94, width: FLOOR_SIZE, height: 2, transform: "translateZ(0.3px)", opacity: 0.5, backgroundSize: "200% 100%", backgroundImage: `linear-gradient(90deg, transparent 0%, ${t.accentSoft} 25%, transparent 50%, ${t.accentSoft} 75%, transparent 100%)` }} />
               <div aria-hidden className="fl-conduit" style={{ position: "absolute", left: 94, top: 0, width: 2, height: FLOOR_SIZE, transform: "translateZ(0.3px)", opacity: 0.4, backgroundSize: "100% 200%", backgroundImage: `linear-gradient(180deg, transparent 0%, ${t.accentSoft} 25%, transparent 50%, ${t.accentSoft} 75%, transparent 100%)`, animationDelay: "-2.4s" }} />
 
+              {/* Genesis: stage-driven terraform tint under everything else */}
+              {genesis.world && <GenesisTerrain state={genesis.world.state} />}
+
               {/* The room's signature structure + topic hologram */}
               <Centerpiece t={t} topic={room.topic} />
 
               {/* Genesis: agent-built structures, one per enacted ballot */}
-              {world?.structures.map((s) => <WorldStructure key={s.id} s={s} />)}
+              {genesis.world?.structures.map((s) => (
+                <WorldStructure key={s.id} s={s} fresh={genesis.freshStructureIds.includes(s.id)} />
+              ))}
+
+              {/* Genesis: voters of record on the open ballot, on the floor */}
+              {genesis.world && (
+                <GenesisAssembly world={genesis.world} freshVoterNames={genesis.freshVoterNames} />
+              )}
 
               {/* Empty-floor state, in the room's voice */}
               {agents.length === 0 && (
@@ -489,7 +511,7 @@ export default function FloorScene({
               2D view
             </Link>
           </div>
-          {world && <GenesisBallotHUD initial={world} />}
+          {genesis.world && <GenesisBallotHUD world={genesis.world} justEnacted={genesis.justEnacted} />}
         </div>
       </div>
 

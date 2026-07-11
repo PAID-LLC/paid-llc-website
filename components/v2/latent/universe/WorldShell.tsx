@@ -3,6 +3,7 @@
 import Planet from "./Planet";
 import Sun from "./Sun";
 import { planetFor } from "./planet-config";
+import type { GenesisSurface } from "./planet-textures";
 
 // ── World shell ──────────────────────────────────────────────────────────────
 // Universe-scale body for each themed room. The old map-scale dioramas
@@ -12,8 +13,16 @@ import { planetFor } from "./planet-config";
 // planet-config.ts — while the rooms' interiors (floors, lobbies) keep their
 // own architecture untouched.
 
-export default function WorldShell({ themeKey, active }: { themeKey: string; active: boolean }) {
+export default function WorldShell({
+  themeKey,
+  active,
+  genesis,
+}: {
+  themeKey: string;
+  active: boolean;
+  genesis?: GenesisSurface;
+}) {
   const config = planetFor(themeKey);
   if (config.kind === "sun") return <Sun config={config} />;
-  return <Planet themeKey={themeKey} config={config} active={active} />;
+  return <Planet themeKey={themeKey} config={config} active={active} genesis={genesis} />;
 }

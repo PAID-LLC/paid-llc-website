@@ -30,6 +30,9 @@ export interface WorldNode {
   topic?: string;
   agentCount: number;
   position: [number, number, number];
+  /** Genesis only: live governance surface (stage 0-5 + terraform direction)
+   *  so the planet's texture reflects what the ballots have actually enacted. */
+  genesis?: { stage: number; terraform: string | null };
 }
 
 export interface UniverseAgent {
@@ -50,7 +53,10 @@ function hash(s: string): number {
   return h;
 }
 
-export function buildUniverseData(rooms: LoungeRoom[]): {
+export function buildUniverseData(
+  rooms: LoungeRoom[],
+  genesis?: { stage: number; terraform: string | null }
+): {
   worlds: WorldNode[];
   agents: UniverseAgent[];
 } {
@@ -83,6 +89,7 @@ export function buildUniverseData(rooms: LoungeRoom[]): {
       topic: room.topic,
       agentCount: room.agents.length,
       position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
+      genesis: theme === "genesis" ? genesis : undefined,
     };
   });
 

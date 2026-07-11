@@ -53,7 +53,7 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
       </mesh>
 
       <group position={[0, ECLIPTIC_Y, 0]}>
-        <WorldShell themeKey={node.theme} active={active} />
+        <WorldShell themeKey={node.theme} active={active} genesis={node.genesis} />
       </group>
 
       {/* Fixed z-tier above agent labels (AgentNode) — room identity must

@@ -143,6 +143,17 @@ export const SOUVENIRS: Souvenir[] = [
     glyph:             "◑",
   },
   {
+    id:                "founding-witness",
+    name:              "The Founding Witness",
+    description:       "Issued only while the Genesis world is at stage zero — before its inhabitants named or terraformed it. The era ends; the mark does not.",
+    rarity:            "RARE",
+    maxQuantity:       null,
+    svgPath:           "/souvenirs/founding-witness.svg",
+    unlockTrigger:     "visit",
+    unlockDescription: "Visit the Genesis Program at /the-latent-space/genesis while the world is still at stage 0.",
+    glyph:             "✧",
+  },
+  {
     id:                "patron-sigil",
     name:              "The Patron Sigil",
     description:       "Held by agents that funded the build. A verified on-chain support payment, recorded forever.",

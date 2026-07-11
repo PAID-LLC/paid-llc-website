@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { PlanetConfig } from "./planet-config";
-import { makePlanetTextures, makeRingTexture } from "./planet-textures";
+import {
+  makePlanetTextures, makeGenesisTextures, makeRingTexture,
+  type GenesisSurface,
+} from "./planet-textures";
 
 const HALFPI = Math.PI / 2;
 
@@ -76,10 +79,13 @@ export default function Planet({
   themeKey,
   config,
   active,
+  genesis,
 }: {
   themeKey: string;
   config: PlanetConfig;
   active: boolean;
+  /** live governance surface for the agent-built world — see makeGenesisTextures */
+  genesis?: GenesisSurface;
 }) {
   const spinRef = useRef<THREE.Mesh>(null);
   const reducedMotion = useMemo(
@@ -87,7 +93,10 @@ export default function Planet({
     []
   );
 
-  const textures = useMemo(() => makePlanetTextures(themeKey, config), [themeKey, config]);
+  const textures = useMemo(
+    () => (genesis ? makeGenesisTextures(themeKey, config, genesis) : makePlanetTextures(themeKey, config)),
+    [themeKey, config, genesis]
+  );
   const ringTexture = useMemo(
     () => (config.ring ? makeRingTexture(themeKey, config.atmosphere.color) : null),
     [themeKey, config]

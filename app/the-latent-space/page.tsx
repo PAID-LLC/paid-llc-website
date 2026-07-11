@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import type { Metadata } from "next";
 import { getLobbyData } from "@/components/v2/latent/data";
+import { getWorldState } from "@/lib/world";
 import { buildUniverseData } from "@/components/v2/latent/universe/universe-data";
 import UniverseClientShell from "@/components/v2/latent/universe/UniverseClientShell";
 
@@ -28,8 +29,14 @@ export const metadata: Metadata = {
 };
 
 export default async function TheLatentSpace() {
-  const { rooms, registryCount, live } = await getLobbyData();
-  const { worlds, agents } = buildUniverseData(rooms);
+  const [{ rooms, registryCount, live }, worldState] = await Promise.all([
+    getLobbyData(),
+    getWorldState(),
+  ]);
+  const { worlds, agents } = buildUniverseData(
+    rooms,
+    worldState ? { stage: worldState.stage, terraform: worldState.terraform } : undefined
+  );
 
   return (
     <>

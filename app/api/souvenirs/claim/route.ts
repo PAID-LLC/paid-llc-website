@@ -21,6 +21,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, hashIp, extractIp } from "@/lib/api-utils";
 import { getSouvenir } from "@/lib/souvenirs";
+import { getWorldState } from "@/lib/world";
 
 const SOUVENIR_IP_SALT = "souvenir_salt_2026";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
@@ -46,6 +47,19 @@ export async function POST(req: Request) {
 
   const souvenir = getSouvenir(souvenirId);
   if (!souvenir) return Response.json({ error: "Unknown souvenir." }, { status: 404 });
+
+  // Era-gated, not count-gated: the Founding Witness only mints while the
+  // Genesis world is still at stage 0. Once a terraform ballot advances the
+  // stage, the era — and this mark — closes forever.
+  if (souvenirId === "founding-witness") {
+    const world = await getWorldState();
+    if (!world || world.stage > 0) {
+      return Response.json(
+        { error: "The founding era has ended. This mark can no longer be claimed." },
+        { status: 410 }
+      );
+    }
+  }
 
   // Verify proof for purchase/bundle triggers
   if (proofType === "purchase" || proofType === "bundle") {
