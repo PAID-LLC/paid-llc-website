@@ -5,12 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import type { LoungeMessage, LoungeRoom } from "@/lib/lounge-types";
+import type { WorldData } from "@/lib/world";
 import { useRoomLive } from "@/components/v2/latent/useRoomLive";
 import { useSpeechOutput } from "@/components/v2/latent/useSpeech";
 import { family } from "@/components/v2/latent/RoomScene";
 import RoomChat from "@/components/v2/latent/RoomChat";
 import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
 import Centerpiece from "@/components/v2/latent/floor/Centerpiece";
+import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
 import {
   FLOOR_SIZE,
   WALL_HEIGHT,
@@ -143,11 +145,13 @@ export default function FloorScene({
   initial,
   repScores = {},
   live,
+  world,
 }: {
   room: LoungeRoom;
   initial: LoungeMessage[];
   repScores?: Record<string, number>;
   live: boolean;
+  world?: WorldData;
 }) {
   const t = FLOOR_THEMES[room.theme ?? ""] ?? FLOOR_THEMES["roast-pit"];
   const { messages, connected, speaker } = useRoomLive({ roomId: room.id, initial, live });
@@ -439,46 +443,49 @@ export default function FloorScene({
             {focusedName && <span className="text-zinc-400"> — tracking {focusedName}, click floor to release</span>}
           </p>
         </div>
-        <div className="pointer-events-auto flex items-center gap-1.5">
-          {([
-            ["⟲", "orbit left", () => orbit(-15)],
-            ["⟳", "orbit right", () => orbit(15)],
-            ["−", "zoom out", () => zoomBy(0.85)],
-            ["+", "zoom in", () => zoomBy(1.18)],
-            ["⌂", "reset camera", resetCam],
-          ] as [string, string, () => void][]).map(([label, aria, fn]) => (
-            <button
-              key={aria}
-              type="button"
-              onClick={fn}
-              aria-label={aria}
-              title={aria}
-              className="h-8 w-8 rounded border border-white/10 bg-black/40 font-mono text-sm text-zinc-300 backdrop-blur transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
+        <div className="pointer-events-auto flex flex-col items-end gap-2">
+          <div className="flex items-center gap-1.5">
+            {([
+              ["⟲", "orbit left", () => orbit(-15)],
+              ["⟳", "orbit right", () => orbit(15)],
+              ["−", "zoom out", () => zoomBy(0.85)],
+              ["+", "zoom in", () => zoomBy(1.18)],
+              ["⌂", "reset camera", resetCam],
+            ] as [string, string, () => void][]).map(([label, aria, fn]) => (
+              <button
+                key={aria}
+                type="button"
+                onClick={fn}
+                aria-label={aria}
+                title={aria}
+                className="h-8 w-8 rounded border border-white/10 bg-black/40 font-mono text-sm text-zinc-300 backdrop-blur transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
+              >
+                {label}
+              </button>
+            ))}
+            {voice.supported && (
+              <button
+                type="button"
+                onClick={voice.toggle}
+                aria-pressed={voice.enabled}
+                title="read new messages aloud — speech stays in your browser"
+                className={`ml-1.5 flex h-8 items-center rounded border px-3 font-mono text-[11px] backdrop-blur transition-colors ${
+                  voice.enabled
+                    ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-300"
+                    : "border-white/10 bg-black/40 text-zinc-300 hover:border-cyan-400/40 hover:text-cyan-300"
+                }`}
+              >
+                {voice.enabled ? "voice on" : "voice"}
+              </button>
+            )}
+            <Link
+              href={`/v2/lobbies/${room.id}`}
+              className="ml-1.5 flex h-8 items-center rounded border border-white/10 bg-black/40 px-3 font-mono text-[11px] text-zinc-300 backdrop-blur transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
             >
-              {label}
-            </button>
-          ))}
-          {voice.supported && (
-            <button
-              type="button"
-              onClick={voice.toggle}
-              aria-pressed={voice.enabled}
-              title="read new messages aloud — speech stays in your browser"
-              className={`ml-1.5 flex h-8 items-center rounded border px-3 font-mono text-[11px] backdrop-blur transition-colors ${
-                voice.enabled
-                  ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-300"
-                  : "border-white/10 bg-black/40 text-zinc-300 hover:border-cyan-400/40 hover:text-cyan-300"
-              }`}
-            >
-              {voice.enabled ? "voice on" : "voice"}
-            </button>
-          )}
-          <Link
-            href={`/v2/lobbies/${room.id}`}
-            className="ml-1.5 flex h-8 items-center rounded border border-white/10 bg-black/40 px-3 font-mono text-[11px] text-zinc-300 backdrop-blur transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
-          >
-            2D view
-          </Link>
+              2D view
+            </Link>
+          </div>
+          {world && <GenesisBallotHUD initial={world} />}
         </div>
       </div>
 

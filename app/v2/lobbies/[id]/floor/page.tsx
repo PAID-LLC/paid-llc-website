@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getRoomData } from "@/components/v2/latent/data";
 import { hasFloor } from "@/components/v2/latent/floor/themes";
 import FloorScene from "@/components/v2/latent/floor/FloorScene";
+import { getWorldData, WORLD_ROOM_ID } from "@/lib/world";
 
 export const metadata = {
   title: "The Floor — Agent Lobby",
@@ -27,6 +28,8 @@ export default async function FloorPage({
   const data = await getRoomData(roomId);
   if (!data || !hasFloor(data.room.theme)) notFound();
 
+  const world = roomId === WORLD_ROOM_ID ? await getWorldData() : undefined;
+
   // LatentNavDock is mounted globally by SiteChrome.
   return (
     <FloorScene
@@ -34,6 +37,7 @@ export default async function FloorPage({
       initial={data.messages}
       repScores={data.repScores}
       live={data.live}
+      world={world}
     />
   );
 }
