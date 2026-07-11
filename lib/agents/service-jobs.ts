@@ -21,7 +21,9 @@ import { HOUSE_SELLERS, getExecutor, getExecutorCost } from "@/lib/agents/servic
 import { wardenReview }     from "@/lib/agents/warden";
 import { logModeration }    from "@/lib/agents/moderation-log";
 import { getEcon, serviceFloorCredits } from "@/lib/econ";
-import { underDailyLimit }  from "@/lib/usage-guard";
+import { underDailyLimit, readCounter, bumpCounter } from "@/lib/usage-guard";
+import { getBalance }       from "@/lib/human-identity";
+import { qualityGate, garbageCheck, QUALITY_BAR, QUALITY_REFUNDS_PER_DAY } from "@/lib/agents/quality-gate";
 
 export type JobStatus =
   | "requested" | "accepted" | "delivered" | "verified"
@@ -363,6 +365,16 @@ export async function runServiceJob(args: {
   // Input schema + injection screen (input flows into an LLM prompt downstream).
   const valid = validateInput(listing.service_input_schema, input);
   if (!valid.ok) return { ok: false, http: 400, reason: valid.reason ?? "invalid_input" };
+
+  // Garbage never generates (quality-gate spec I1): input that cannot plausibly
+  // produce paid-quality work is rejected here, deterministically, before the
+  // Warden call, escrow, or any executor tokens. House services only — a
+  // third-party seller's compute is its own business.
+  if (isHouse) {
+    const g = garbageCheck(executorKey, input);
+    if (!g.ok) return { ok: false, http: 400, reason: g.reason };
+  }
+
   const joined = Object.values(input).filter((v) => typeof v === "string").join("\n");
 
   // Layer 1: sentinel regex screen (hate/threats/spam + prompt injection).
@@ -375,6 +387,23 @@ export async function runServiceJob(args: {
       });
       return { ok: false, http: 400, reason: screen.reason ?? "input_rejected" };
     }
+  }
+
+  // Refund-farming wall (quality-gate spec I3): a buyer at their daily
+  // quality-refund allowance is refused BEFORE any model call. readCounter is
+  // non-consuming — honest buyers who never hit refunds never notice this.
+  if (isHouse && (await readCounter(`qrefund:${buyer}`)) >= QUALITY_REFUNDS_PER_DAY) {
+    return {
+      ok: false, http: 429, reason: "quality_refund_limit_reached",
+      extra: { note: "Daily quality-refund allowance used up. Try again tomorrow." },
+    };
+  }
+
+  // Balance pre-check BEFORE the Warden (quality-gate spec I6, dogfood B1 fix):
+  // a buyer who cannot afford the job should cost us one Supabase read, not a
+  // Warden model call. escrowDeduct below remains the atomic authority.
+  if ((await getBalance(buyer)) < price) {
+    return { ok: false, http: 402, reason: "insufficient_credits", extra: { required_credits: price } };
   }
 
   // Global daily capacity for house-executed jobs, checked BEFORE the Warden so
@@ -423,10 +452,40 @@ export async function runServiceJob(args: {
   if (executor) {
     const exec = await executor(input);
     if (!exec) {
+      // Infra fault (key unset / budget spent / fetch failed) — full refund,
+      // and deliberately NOT counted against the buyer's quality-refund
+      // allowance: this failure is ours, not theirs.
       await refund(job, "refunded", "accepted", "executor_unavailable");
       return { ok: false, http: 503, reason: "executor_unavailable", extra: { refunded: true, job_id: job.id } };
     }
-    const delivered = await deliverResult(job, exec.result, listing.auto_verify);
+
+    // Judge-or-refund quality gate: lint + rubric judge, one revision for
+    // near-misses, refund below the bar. The buyer can never pay for output
+    // the judge scored under QUALITY_BAR. Fail-open on judge unavailability
+    // (delivers unscored) — see quality-gate.ts for the invariants.
+    const gate = await qualityGate({
+      serviceName: listing.product_name, executorKey, input, result: exec.result,
+    });
+    if (!gate.deliver) {
+      await refund(job, "refunded", "accepted", `quality_below_bar (score ${gate.score}/${QUALITY_BAR})`);
+      await bumpCounter(`qrefund:${buyer}`, 1);
+      await logModeration({
+        buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
+        decision: "refuse", layer: "quality", category: executorKey ?? "unknown",
+        reason: `score ${gate.score} below bar ${QUALITY_BAR}${gate.revised ? " after one revision" : ""}`,
+      });
+      return {
+        ok: false, http: 422, reason: "quality_below_bar_refunded",
+        extra: {
+          refunded: true, job_id: job.id, score: gate.score, bar: QUALITY_BAR,
+          message:
+            "Our quality judge scored this output below our delivery bar, so the job was refunded in full. " +
+            "You were not charged.",
+        },
+      };
+    }
+
+    const delivered = await deliverResult(job, gate.result, listing.auto_verify);
     if (!delivered) {
       await refund(job, "refunded", "accepted", "deliver_failed");
       return { ok: false, http: 500, reason: "deliver_failed_refunded", extra: { job_id: job.id } };
@@ -436,7 +495,7 @@ export async function runServiceJob(args: {
       ok: true, http: 200,
       status: settled ? "settled" : "delivered",   // delivered+settled is the house happy path
       job_id: job.id,
-      result: exec.result,
+      result: gate.result,
       proof_hash: delivered.proof_hash,
       credits_spent: price,
     };

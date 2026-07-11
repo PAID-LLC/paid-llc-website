@@ -49,8 +49,10 @@ type Executor = (input: Record<string, unknown>) => Promise<ExecutorResult | nul
 
 // ── Gemini text helper ───────────────────────────────────────────────────────
 // Returns trimmed text, or null when the key is unset, the budget is spent, or
-// the call fails. Mirrors the call shape in lib/agents/converse.ts.
-async function geminiText(prompt: string, maxTokens = 400): Promise<string | null> {
+// the call fails. Mirrors the call shape in lib/agents/converse.ts. Exported
+// for the quality gate (lib/agents/quality-gate.ts) so its judge/revise calls
+// share this exact budget guard — the gate can never spend past the daily cap.
+export async function geminiText(prompt: string, maxTokens = 400, temperature = 0.6): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   if (!(await underDailyLimit("gemini", GEMINI_DAILY_BUDGET))) return null;
@@ -63,7 +65,7 @@ async function geminiText(prompt: string, maxTokens = 400): Promise<string | nul
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.6 },
+          generationConfig: { maxOutputTokens: maxTokens, temperature },
         }),
       }
     );
@@ -203,8 +205,9 @@ const scoreResponse: Executor = async (input) => {
 // style (no em dashes) in its prompt where it produces prose.
 
 /** Best-effort JSON parse of a model response: strips code fences, then parses.
- *  Returns null on any failure so the executor can refund cleanly. */
-function parseJsonLoose(raw: string): unknown {
+ *  Returns null on any failure so the executor can refund cleanly. Exported
+ *  for the quality gate's generic reviser. */
+export function parseJsonLoose(raw: string): unknown {
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   try { return JSON.parse(cleaned); } catch { /* fall through */ }
   // Last resort: grab the first {...} or [...] block.
@@ -484,6 +487,19 @@ export const EXECUTOR_COSTS: Record<string, ExecutorCost> = {
 };
 
 const WORST_CASE_COST: ExecutorCost = { calls: 2, inTokens: 5000, outTokens: 900 };
+
+// Quality-gate compute (lib/agents/quality-gate.ts) is deliberately NOT added
+// to the floor estimate below. Priced at the 10x target margin it would push
+// every 5-8cr listing's floor above its listed price (e.g. summarize_url
+// floor 5 -> 11cr), silently doubling storefront prices via the HirePanel
+// re-quote flow — a pricing decision that belongs to Travis, not this module.
+// The gate's true worst case (judge + revise + re-judge, ~5.2k in / 1.3k out
+// flash-lite tokens ≈ $0.005/job) is absorbed inside the existing margin
+// buffer: every sale still clears ~3x total token cost at current prices.
+// If Travis opts to price it in, add GATE_WORST_CASE into getExecutorCost via
+// total-token math (calls x per-call averages — naive field addition
+// overshoots ~4x) and reprice the cheap tier accordingly.
+export const GATE_WORST_CASE: ExecutorCost = { calls: 3, inTokens: 5200 / 3, outTokens: 1300 / 3 };
 
 export function getExecutorCost(key: string | undefined | null): ExecutorCost {
   return (key && EXECUTOR_COSTS[key]) || WORST_CASE_COST;

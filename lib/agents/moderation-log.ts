@@ -7,7 +7,10 @@
 import { sbHeaders, sbUrl } from "@/lib/supabase";
 
 export type ModerationDecision = "allow" | "refuse";
-export type ModerationLayer    = "sentinel" | "warden";
+// "quality" = the post-generation judge-or-refund gate (quality-gate.ts) —
+// same audit trail as safety refusals so /audit reviews one log. The layer
+// column is plain TEXT (no CHECK constraint), so no SQL change is needed.
+export type ModerationLayer    = "sentinel" | "warden" | "quality";
 
 export async function logModeration(entry: {
   buyer_agent:      string;
