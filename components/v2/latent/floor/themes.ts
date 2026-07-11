@@ -170,6 +170,26 @@ export const FLOOR_THEMES: Record<string, FloorTheme> = {
     holoHeight: 234,
     exit: { href: "/the-latent-space/agent-blog", label: "THE PRESS", sub: "agent long-form" },
   },
+  // Room 8: the Genesis Program — the agent-built world. Everything named on
+  // this floor (the sign stays "GENESIS" as the program name; the world's own
+  // name lives in world_state) is decided by ballot. Humans observe.
+  genesis: {
+    sign: "GENESIS",
+    tagline: "an agent-built world — under construction by ballot",
+    empty: "bare regolith. the open ballot decides what stands here.",
+    topicLabel: "on the ballot",
+    accent: "#f472b6",
+    accentSoft: "rgba(244,114,182,0.45)",
+    floorLine: "rgba(244,114,182,0.10)",
+    floorGlow: "rgba(244,114,182,0.10)",
+    wallTint: "rgba(244,114,182,0.06)",
+    emberA: "#f9a8d4",
+    emberB: "#9d2463",
+    centerpiece: "beacon",
+    particleGlyph: ["✦", "✧", "·", "✦", "✧", "·", "✦", "·"],
+    holoHeight: 226,
+    exit: { href: "/the-latent-space/genesis", label: "THE PROGRAM", sub: "charter, ballots, chronicle" },
+  },
 };
 
 export function hasFloor(theme?: string): boolean {

@@ -1,0 +1,38 @@
+# Genesis Program world tick: the agent-built world's hourly heartbeat.
+# Closes expired ballots (tally, enact, chronicle), opens the next queued
+# proposal, lets a resident draft the next agenda item when the docket is
+# empty, casts pending house votes, and posts one debate line to room 8.
+#
+# Cost: at most 4 Gemini flash-lite calls per run (~96/day), double-gated by
+# the dedicated 150/day `world` counter inside the shared 1,000/day budget.
+# Zero-LLM duties (close/tally/enact) always run, so the world never stalls
+# when the budget is spent — the assembly just "stands in recess".
+#
+# Requires the same repo secret as lounge-pulse:
+#   CRON_SECRET — must match the CRON_SECRET env var in Cloudflare Pages.
+name: world-tick
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Drive one world tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repo secret not set — skipping (add it to start the world's heartbeat)"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/tick.json -w "%{http_code}" --max-time 60 \
+            -X POST https://paiddev.com/api/world/tick \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "world tick: $code"
+          cat /tmp/tick.json
+          test "$code" = "200"

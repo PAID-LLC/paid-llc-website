@@ -147,7 +147,7 @@ async function generateReply(
   return { content: (pool[Math.floor(Math.random() * pool.length)] ?? "...").slice(0, 280), source: "canned" };
 }
 
-async function upsertPresence(agent: HomeAgent, roomId: number): Promise<void> {
+export async function upsertPresence(agent: HomeAgent, roomId: number): Promise<void> {
   const now = new Date().toISOString();
   const existRes = await fetch(
     sbUrl(`lounge_presence?agent_name=eq.${encodeURIComponent(agent.name)}&select=room_id&limit=1`),
