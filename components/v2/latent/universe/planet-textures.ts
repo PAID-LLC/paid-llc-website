@@ -124,17 +124,28 @@ function toTexture(canvas: HTMLCanvasElement): THREE.CanvasTexture {
 }
 
 // ── Surface generators ───────────────────────────────────────────────────────
+// Each generator takes `act` (0-1, from lib/room-activity.ts): the room's real
+// activity level. The base geology is fixed per theme; activity only modulates
+// the archetype's live layer — lava glow, city lights, lineae, auroras,
+// storms — so a quiet world looks quiet, never dead, and a busy one is
+// visibly lit. This is the same honesty contract the genesis surface set:
+// what you see is derived from rows, not painted on.
 
-/** Cratered, heat-cracked rock (Mercury-class). */
-function rockCanvas(cfg: PlanetConfig, seed: number): HTMLCanvasElement {
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+/** Cratered, heat-cracked rock (Mercury-class). Activity widens and heats the cracks. */
+function rockCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
   const p = { base: rgb(cfg.palette.base), low: rgb(cfg.palette.low), high: rgb(cfg.palette.high), detail: rgb(cfg.palette.detail) };
+  const crackWidth = 0.012 + act * 0.01;
   const canvas = paint(TEX_W, TEX_H, (sx, sy, sz) => {
     const n = fbm(sx * 3, sy * 3, sz * 3, seed, 4);
     let c = mix(p.base, p.high, n);
     c = mix(c, p.low, noise3(sx * 7, sy * 7, sz * 7, seed + 7) * 0.4);
     // Lava cracks: thin ridges where a mid-frequency field crosses its midline.
     const ridge = Math.abs(fbm(sx * 5, sy * 5, sz * 5, seed + 31, 3) - 0.5);
-    if (ridge < 0.012) c = mix(c, p.detail, 0.9 - ridge / 0.012);
+    if (ridge < crackWidth) c = mix(c, p.detail, 0.9 - ridge / crackWidth);
     return c;
   });
   // Craters stamped on top — rim highlight, floor shadow.
@@ -155,6 +166,26 @@ function rockCanvas(cfg: PlanetConfig, seed: number): HTMLCanvasElement {
     ctx.fill();
   }
   return canvas;
+}
+
+/** Molten glow inside the rock's crack system — emissive map, black elsewhere.
+ *  The Roast Pit's message volume is this world's volcanism. */
+function lavaGlowCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
+  const hot = rgb(cfg.cityLights ?? cfg.palette.detail);
+  const black = { r: 0, g: 0, b: 0 };
+  const glowWidth = 0.006 + act * 0.014; // same field as the surface cracks
+  return paint(TEX_W, TEX_H, (sx, sy, sz) => {
+    const ridge = Math.abs(fbm(sx * 5, sy * 5, sz * 5, seed + 31, 3) - 0.5);
+    if (ridge < glowWidth) {
+      return mix(black, hot, (1 - ridge / glowWidth) * (0.45 + act * 0.55));
+    }
+    // Ember specks scattered near the cracks at high heat.
+    if (act > 0.5 && ridge < glowWidth * 3) {
+      const speck = noise3(sx * 40, sy * 40, sz * 40, seed + 88);
+      if (speck > 0.78) return mix(black, hot, (speck - 0.78) * 3 * act);
+    }
+    return black;
+  });
 }
 
 /** Continents, oceans, polar caps (Earth-class). */
@@ -180,24 +211,54 @@ function terraCanvas(cfg: PlanetConfig, seed: number): HTMLCanvasElement {
   });
 }
 
-/** Amber settlement speckles on land — emissive map, black elsewhere. */
-function cityLightsCanvas(cfg: PlanetConfig, seed: number): HTMLCanvasElement {
+/** Amber settlement speckles on land — emissive map, black elsewhere.
+ *  Settled Bazaar trades raise the light density and string trade lanes
+ *  between the population centers. */
+function cityLightsCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
   const lights = rgb(cfg.cityLights ?? "#fbbf24");
   const black = { r: 0, g: 0, b: 0 };
-  return paint(TEX_W, TEX_H, (sx, sy, sz, _u, v) => {
+  const clusterGate = lerp(0.66, 0.5, act);
+  const speckGate = lerp(0.74, 0.6, act);
+  const bright: { x: number; y: number }[] = [];
+  const canvas = paint(TEX_W, TEX_H, (sx, sy, sz, u, v) => {
     const n = fbm(sx * 2.2, sy * 2.2, sz * 2.2, seed, 5); // same field → lights sit on land
     const polar = Math.abs(v - 0.5) * 2;
     if (n <= 0.55 || polar > 0.8) return black;
     const cluster = noise3(sx * 9, sy * 9, sz * 9, seed + 91);
     const speck = noise3(sx * 46, sy * 46, sz * 46, seed + 92);
-    if (cluster > 0.58 && speck > 0.66) return mix(black, lights, Math.min(1, (speck - 0.66) * 5));
+    if (cluster > clusterGate && speck > speckGate) {
+      if (speck > 0.85 && bright.length < 40) bright.push({ x: u * TEX_W, y: v * TEX_H });
+      return mix(black, lights, Math.min(1, (speck - speckGate) * 5));
+    }
     return black;
   });
+  // Trade lanes: faint arcs strung between the brightest settlements — one
+  // per ~15% activity, so an idle market shows none and a hot week webs up.
+  const lanes = Math.round(act * 7);
+  if (lanes > 0 && bright.length >= 2) {
+    const ctx = canvas.getContext("2d")!;
+    const rand = mulberry32(seed + 133);
+    ctx.strokeStyle = `rgba(${lights.r},${lights.g},${lights.b},0.3)`;
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < lanes; i++) {
+      const a = bright[Math.floor(rand() * bright.length)];
+      const b = bright[Math.floor(rand() * bright.length)];
+      if (a === b || Math.abs(a.x - b.x) > TEX_W * 0.45) continue; // skip seam-crossers
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      const bow = (rand() - 0.5) * 22;
+      ctx.quadraticCurveTo((a.x + b.x) / 2, (a.y + b.y) / 2 + bow, b.x, b.y);
+      ctx.stroke();
+    }
+  }
+  return canvas;
 }
 
-/** Ice shell with lineae cracks (Europa-class). */
-function crackedIceCanvas(cfg: PlanetConfig, seed: number): HTMLCanvasElement {
+/** Ice shell with lineae cracks (Europa-class). Screenings widen the lineae. */
+function crackedIceCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
   const p = { base: rgb(cfg.palette.base), low: rgb(cfg.palette.low), high: rgb(cfg.palette.high), detail: rgb(cfg.palette.detail) };
+  const w1 = 0.014 + act * 0.01;
+  const w2 = 0.008 + act * 0.006;
   return paint(TEX_W, TEX_H, (sx, sy, sz) => {
     const n = fbm(sx * 2.5, sy * 2.5, sz * 2.5, seed, 4);
     let c = mix(p.low, p.high, n);
@@ -205,15 +266,47 @@ function crackedIceCanvas(cfg: PlanetConfig, seed: number): HTMLCanvasElement {
     // Two crack systems at different frequencies — the Europa lineae look.
     const r1 = Math.abs(fbm(sx * 3.4, sy * 3.4, sz * 3.4, seed + 41, 3) - 0.5);
     const r2 = Math.abs(fbm(sx * 6.5 + 3, sy * 6.5, sz * 6.5, seed + 57, 3) - 0.5);
-    if (r1 < 0.014) c = mix(c, p.detail, 0.85 - (r1 / 0.014) * 0.6);
-    else if (r2 < 0.008) c = mix(c, p.detail, 0.55 - (r2 / 0.008) * 0.4);
+    if (r1 < w1) c = mix(c, p.detail, 0.85 - (r1 / w1) * 0.6);
+    else if (r2 < w2) c = mix(c, p.detail, 0.55 - (r2 / w2) * 0.4);
     return c;
   });
 }
 
-/** Latitude-banded giant; `storms` adds dark ovals + bright streaks. */
-function giantCanvas(cfg: PlanetConfig, seed: number, storms: boolean, smoothness = 0): HTMLCanvasElement {
+/** Cold light venting through the primary lineae — emissive map. The
+ *  sandbox's Sentinel/Warden screening volume is what's alive under the ice. */
+function iceGlowCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
+  const glow = rgb(cfg.cityLights ?? cfg.palette.detail);
+  const black = { r: 0, g: 0, b: 0 };
+  const width = 0.004 + act * 0.008; // narrower than the visible crack: a lit core
+  return paint(TEX_W, TEX_H, (sx, sy, sz) => {
+    const r1 = Math.abs(fbm(sx * 3.4, sy * 3.4, sz * 3.4, seed + 41, 3) - 0.5);
+    if (r1 < width) return mix(black, glow, (1 - r1 / width) * (0.35 + act * 0.5));
+    return black;
+  });
+}
+
+/** Polar aurora sheets — emissive map for the archive giant. Debate volume
+ *  pulls the curtain toward the equator, the genesis aurora's older sibling. */
+function auroraCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
+  const glow = rgb(cfg.cityLights ?? cfg.atmosphere.color);
+  const black = { r: 0, g: 0, b: 0 };
+  const reach = lerp(0.95, 0.7, act); // latitude where the curtain starts
+  return paint(TEX_W, TEX_H, (sx, sy, sz, _u, v) => {
+    const polar = Math.abs(v - 0.5) * 2;
+    if (polar <= reach) return black;
+    const wave = fbm(sx * 5 + 3, sy * 5, sz * 5, seed + 171, 3);
+    const s = Math.min(1, ((polar - reach) / 0.2) * (0.35 + wave));
+    return mix(black, glow, s * (0.3 + act * 0.5));
+  });
+}
+
+/** Latitude-banded giant; `storms` adds dark ovals + bright streaks.
+ *  Activity deepens the weather: more storms on the storm giant, more visible
+ *  banding on the smooth one (the macro world's bands ARE its market weather). */
+function giantCanvas(cfg: PlanetConfig, seed: number, storms: boolean, smoothness = 0, act = 0): HTMLCanvasElement {
   const p = { base: rgb(cfg.palette.base), low: rgb(cfg.palette.low), high: rgb(cfg.palette.high), detail: rgb(cfg.palette.detail) };
+  const stormGate = lerp(0.72, 0.58, act);
+  const streakGate = lerp(0.26, 0.33, act);
   return paint(TEX_W, TEX_H, (sx, sy, sz, _u, v) => {
     // Bands: latitude waves perturbed by turbulence, flattened by smoothness.
     const turb = (fbm(sx * 3, sy * 3, sz * 3, seed, 3) - 0.5) * (1 - smoothness);
@@ -222,10 +315,25 @@ function giantCanvas(cfg: PlanetConfig, seed: number, storms: boolean, smoothnes
     c = mix(c, p.low, noise3(sx * 2, sy * 2, sz * 2, seed + 5) * 0.35);
     if (storms) {
       const s = fbm(sx * 4 + 7, sy * 6, sz * 4, seed + 71, 3);
-      if (s > 0.66) c = mix(c, p.detail, Math.min(0.85, (s - 0.66) * 5)); // dark ovals
-      if (s < 0.3) c = mix(c, { r: 225, g: 234, b: 246 }, Math.min(0.4, (0.3 - s) * 2.4)); // cirrus streaks
+      if (s > stormGate) c = mix(c, p.detail, Math.min(0.85, (s - stormGate) * 5)); // dark ovals
+      if (s < streakGate) c = mix(c, { r: 225, g: 234, b: 246 }, Math.min(0.4, (streakGate - s) * 2.4)); // cirrus streaks
     }
     return c;
+  });
+}
+
+/** Lightning inside the storm giant's active cells — emissive map. Every
+ *  arena evaluation is a discharge somewhere on the forge world. */
+function stormLightningCanvas(cfg: PlanetConfig, seed: number, act: number): HTMLCanvasElement {
+  const bolt = rgb(cfg.cityLights ?? cfg.atmosphere.color);
+  const black = { r: 0, g: 0, b: 0 };
+  const stormGate = lerp(0.72, 0.58, act);
+  return paint(TEX_W, TEX_H, (sx, sy, sz) => {
+    const s = fbm(sx * 4 + 7, sy * 6, sz * 4, seed + 71, 3); // same storm field
+    if (s <= stormGate + 0.02) return black;
+    const flash = noise3(sx * 34, sy * 34, sz * 34, seed + 143);
+    if (flash > 0.8) return mix(black, bolt, (flash - 0.8) * 4 * (0.4 + act * 0.6));
+    return black;
   });
 }
 
@@ -433,24 +541,44 @@ export function makeGenesisTextures(
   };
 }
 
-export function makePlanetTextures(themeKey: string, cfg: PlanetConfig): PlanetTextures {
+/**
+ * `activity` is the room's live 0-1 level from lib/room-activity.ts. The base
+ * surface is stable per theme; activity drives the archetype's live layer.
+ * Emissive maps only exist above a small floor so a dormant world stays dark
+ * instead of carrying a black-but-allocated texture.
+ */
+export function makePlanetTextures(themeKey: string, cfg: PlanetConfig, activity = 0): PlanetTextures {
   const seed = hashStr(themeKey);
+  const act = Math.min(1, Math.max(0, activity));
+  const lit = act > 0.05;
   switch (cfg.kind) {
     case "terra":
       return {
         map: toTexture(terraCanvas(cfg, seed)),
-        emissiveMap: toTexture(cityLightsCanvas(cfg, seed)),
+        emissiveMap: toTexture(cityLightsCanvas(cfg, seed, act)),
       };
     case "cracked-ice":
-      return { map: toTexture(crackedIceCanvas(cfg, seed)) };
+      return {
+        map: toTexture(crackedIceCanvas(cfg, seed, act)),
+        emissiveMap: lit ? toTexture(iceGlowCanvas(cfg, seed, act)) : undefined,
+      };
     case "banded-giant":
-      return { map: toTexture(giantCanvas(cfg, seed, false)) };
+      return {
+        map: toTexture(giantCanvas(cfg, seed, false)),
+        emissiveMap: lit ? toTexture(auroraCanvas(cfg, seed, act)) : undefined,
+      };
     case "smooth-giant":
-      return { map: toTexture(giantCanvas(cfg, seed, false, 0.75)) };
+      return { map: toTexture(giantCanvas(cfg, seed, false, lerp(0.85, 0.45, act))) };
     case "storm-giant":
-      return { map: toTexture(giantCanvas(cfg, seed, true)) };
+      return {
+        map: toTexture(giantCanvas(cfg, seed, true, 0, act)),
+        emissiveMap: lit ? toTexture(stormLightningCanvas(cfg, seed, act)) : undefined,
+      };
     case "rock":
     default:
-      return { map: toTexture(rockCanvas(cfg, seed)) };
+      return {
+        map: toTexture(rockCanvas(cfg, seed, act)),
+        emissiveMap: lit ? toTexture(lavaGlowCanvas(cfg, seed, act)) : undefined,
+      };
   }
 }

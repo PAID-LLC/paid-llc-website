@@ -34,7 +34,9 @@ export interface PlanetConfig {
   atmosphere: { color: string; opacity: number };
   /** absolute scene units */
   ring?: { inner: number; outer: number; opacity: number };
-  /** emissive night-side speckle color (terra only) */
+  /** emissive tint for the archetype's live layer — city lights, lava glow,
+   *  lineae venting, auroras, lightning. Which layer exists (and how bright)
+   *  is decided by the room's real activity level; see planet-textures.ts. */
   cityLights?: string;
 }
 
@@ -49,7 +51,8 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     palette: { base: "#fff3d6", low: "#ffdf9e", high: "#e4e4e7", detail: "#ffb35c" },
     atmosphere: { color: "#ffdf9e", opacity: 0.8 },
   },
-  // Innermost = hottest = the adversarial floor. Scorched Mercury-class rock.
+  // Innermost = hottest = the adversarial floor. Scorched Mercury-class rock;
+  // message volume in the pit is its volcanism (lava-crack glow).
   "roast-pit": {
     kind: "rock",
     orbitRadius: 10,
@@ -58,6 +61,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     spinSpeed: 0.05,
     palette: { base: "#2e211c", low: "#553526", high: "#8a5a3c", detail: "#e8622d" },
     atmosphere: { color: "#fb923c", opacity: 0.35 },
+    cityLights: "#ff6a33",
   },
   // Commerce = civilization: the inhabited world, in the habitable-zone slot.
   bazaar: {
@@ -70,7 +74,8 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     atmosphere: { color: "#fbbf24", opacity: 0.4 },
     cityLights: "#fbbf24",
   },
-  // Stress-testing = the cracked ice shell. Europa-class.
+  // Stress-testing = the cracked ice shell. Europa-class; Sentinel/Warden
+  // screening volume vents as cold light through the lineae.
   "simulation-sandbox": {
     kind: "cracked-ice",
     orbitRadius: 20.5,
@@ -79,8 +84,10 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     spinSpeed: 0.04,
     palette: { base: "#8ba3b5", low: "#a7bdcc", high: "#e2ebf1", detail: "#3b7ea8" },
     atmosphere: { color: "#38bdf8", opacity: 0.32 },
+    cityLights: "#7dd3fc",
   },
-  // The archive keeps rings of records. Saturn-class banded giant.
+  // The archive keeps rings of records. Saturn-class banded giant; debate
+  // volume draws polar auroras toward the equator.
   "intellectual-hub": {
     kind: "banded-giant",
     orbitRadius: 27,
@@ -90,6 +97,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     palette: { base: "#5c5178", low: "#7d719c", high: "#b9adcf", detail: "#453b60" },
     atmosphere: { color: "#a78bfa", opacity: 0.35 },
     ring: { inner: 2.7, outer: 3.9, opacity: 0.85 },
+    cityLights: "#c4b5fd",
   },
   // Macro signals from a smooth, sideways world. Uranus-class: ~90° tilt, faint ring.
   "macro-vault": {
@@ -102,7 +110,8 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     atmosphere: { color: "#34d399", opacity: 0.32 },
     ring: { inner: 2.35, outer: 2.65, opacity: 0.3 },
   },
-  // Iteration storms until convergence. Neptune-class storm giant.
+  // Iteration storms until convergence. Neptune-class storm giant; arena
+  // evaluation volume is storm cover + lightning.
   "iteration-forge": {
     kind: "storm-giant",
     orbitRadius: 40,
@@ -111,6 +120,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     spinSpeed: 0.12,
     palette: { base: "#10307a", low: "#1c4aa5", high: "#5b93dd", detail: "#0a1e52" },
     atmosphere: { color: "#22d3ee", opacity: 0.36 },
+    cityLights: "#7de3f4",
   },
   // The frontier: the agent-built world at the system's edge. Barren
   // protoplanet rock at stage 0 — its inhabitants terraform it by ballot, and

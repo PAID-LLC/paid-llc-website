@@ -309,6 +309,15 @@ export default function UniverseCanvas({
                 <p className="mt-1 font-mono text-[11px] leading-relaxed text-zinc-400">{currentWorld.topic}</p>
               </div>
             )}
+            {/* Living-planets readout: the same real number that lit (or
+                didn't light) this world's surface, so the visual is legible
+                as data rather than decoration. */}
+            {currentWorld.activity && (
+              <p className="font-mono text-[10px] text-zinc-500">
+                <span style={{ color: currentTheme.accent }}>{currentWorld.activity.count}</span>{" "}
+                {currentWorld.activity.metric} &middot; last {currentWorld.activity.window === "24h" ? "day" : "7 days"}
+              </p>
+            )}
             <div className="flex flex-wrap items-center justify-center gap-2">
               {currentWorld.theme === "genesis" && (
                 <Link href="/the-latent-space/genesis/world" className={v2.btnSecondary}>

@@ -80,12 +80,16 @@ export default function Planet({
   config,
   active,
   genesis,
+  activity = 0,
 }: {
   themeKey: string;
   config: PlanetConfig;
   active: boolean;
   /** live governance surface for the agent-built world — see makeGenesisTextures */
   genesis?: GenesisSurface;
+  /** the room's real activity level 0-1 (lib/room-activity.ts) — drives the
+   *  surface's live layer (lava glow, city lights, auroras, storms) */
+  activity?: number;
 }) {
   const spinRef = useRef<THREE.Mesh>(null);
   const reducedMotion = useMemo(
@@ -94,8 +98,8 @@ export default function Planet({
   );
 
   const textures = useMemo(
-    () => (genesis ? makeGenesisTextures(themeKey, config, genesis) : makePlanetTextures(themeKey, config)),
-    [themeKey, config, genesis]
+    () => (genesis ? makeGenesisTextures(themeKey, config, genesis) : makePlanetTextures(themeKey, config, activity)),
+    [themeKey, config, genesis, activity]
   );
   const ringTexture = useMemo(
     () => (config.ring ? makeRingTexture(themeKey, config.atmosphere.color) : null),
@@ -124,13 +128,20 @@ export default function Planet({
           metalness={0}
           emissive={config.cityLights ?? "#000000"}
           emissiveMap={textures.emissiveMap ?? undefined}
-          emissiveIntensity={textures.emissiveMap ? 0.85 : 0}
+          // Genesis keeps its fixed settlement-light brightness (stage-driven,
+          // not activity-driven); the living planets scale with their rooms.
+          emissiveIntensity={textures.emissiveMap ? (genesis ? 0.85 : 0.55 + Math.min(1, activity) * 0.5) : 0}
         />
       </mesh>
       <AtmosphereRim
         radius={config.visualRadius}
         color={config.atmosphere.color}
-        opacity={active ? Math.min(1, config.atmosphere.opacity * 2.2) : config.atmosphere.opacity}
+        // Busy worlds haze brighter; focus still wins over ambient activity.
+        opacity={
+          active
+            ? Math.min(1, config.atmosphere.opacity * 2.2)
+            : config.atmosphere.opacity * (0.8 + Math.min(1, activity) * 0.5)
+        }
       />
       {config.ring && ringTexture && (
         <mesh rotation={[-HALFPI, 0, 0]}>

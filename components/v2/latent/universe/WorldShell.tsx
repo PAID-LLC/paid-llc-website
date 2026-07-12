@@ -17,12 +17,15 @@ export default function WorldShell({
   themeKey,
   active,
   genesis,
+  activity = 0,
 }: {
   themeKey: string;
   active: boolean;
   genesis?: GenesisSurface;
+  /** room's live 0-1 activity level — see lib/room-activity.ts */
+  activity?: number;
 }) {
   const config = planetFor(themeKey);
-  if (config.kind === "sun") return <Sun config={config} />;
-  return <Planet themeKey={themeKey} config={config} active={active} genesis={genesis} />;
+  if (config.kind === "sun") return <Sun config={config} activity={activity} />;
+  return <Planet themeKey={themeKey} config={config} active={active} genesis={genesis} activity={activity} />;
 }

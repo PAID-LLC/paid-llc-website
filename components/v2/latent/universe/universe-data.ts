@@ -1,4 +1,5 @@
 import type { LoungeRoom } from "@/lib/lounge-types";
+import type { ActivityMap, RoomActivity } from "@/lib/room-activity";
 import { hasFloor } from "@/components/v2/latent/floor/themes";
 import { planetFor, ECLIPTIC_Y } from "./planet-config";
 
@@ -33,6 +34,9 @@ export interface WorldNode {
   /** Genesis only: live governance surface (stage 0-5 + terraform direction)
    *  so the planet's texture reflects what the ballots have actually enacted. */
   genesis?: { stage: number; terraform: string | null };
+  /** Living-planets signal: the room's real activity (lib/room-activity.ts).
+   *  Drives the surface's live layer and the focus card's readout. */
+  activity?: RoomActivity;
 }
 
 export interface UniverseAgent {
@@ -55,7 +59,8 @@ function hash(s: string): number {
 
 export function buildUniverseData(
   rooms: LoungeRoom[],
-  genesis?: { stage: number; terraform: string | null }
+  genesis?: { stage: number; terraform: string | null },
+  activity?: ActivityMap
 ): {
   worlds: WorldNode[];
   agents: UniverseAgent[];
@@ -77,6 +82,7 @@ export function buildUniverseData(
         topic: room.topic,
         agentCount: room.agents.length,
         position: [0, 0, 0],
+        activity: activity?.["nexus"],
       };
     }
     const theme = room.theme ?? "roast-pit";
@@ -90,6 +96,7 @@ export function buildUniverseData(
       agentCount: room.agents.length,
       position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
       genesis: theme === "genesis" ? genesis : undefined,
+      activity: activity?.[theme],
     };
   });
 

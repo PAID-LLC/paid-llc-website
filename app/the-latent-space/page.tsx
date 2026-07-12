@@ -3,6 +3,7 @@ export const runtime = "edge";
 import type { Metadata } from "next";
 import { getLobbyData } from "@/components/v2/latent/data";
 import { getWorldState } from "@/lib/world";
+import { getRoomActivity } from "@/lib/room-activity";
 import { buildUniverseData } from "@/components/v2/latent/universe/universe-data";
 import UniverseClientShell from "@/components/v2/latent/universe/UniverseClientShell";
 
@@ -33,9 +34,15 @@ export default async function TheLatentSpace() {
     getLobbyData(),
     getWorldState(),
   ]);
+  // Living planets: each world's surface derives from its room's real
+  // activity (lib/room-activity.ts) — reuses the rooms we already fetched.
+  const { activity } = await getRoomActivity(
+    rooms.map((r) => ({ id: r.id, theme: r.theme }))
+  );
   const { worlds, agents } = buildUniverseData(
     rooms,
-    worldState ? { stage: worldState.stage, terraform: worldState.terraform } : undefined
+    worldState ? { stage: worldState.stage, terraform: worldState.terraform } : undefined,
+    activity
   );
 
   return (

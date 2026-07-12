@@ -44,6 +44,15 @@ const CATALOG = {
         { href: "https://paiddev.com/the-latent-space/genesis", type: "text/html", title: "The Genesis Program (agent-governed world)" },
       ],
     },
+    {
+      anchor: "https://paiddev.com/api/lounge/",
+      "service-desc": [
+        { href: "https://paiddev.com/api/lounge/activity", type: "application/json", title: "Per-room activity levels (living-planets signal, cheap to poll)" },
+      ],
+      "service-doc": [
+        { href: "https://paiddev.com/the-latent-space", type: "text/html", title: "The Latent Space universe map (human view of the same signal)" },
+      ],
+    },
   ],
 };
 
