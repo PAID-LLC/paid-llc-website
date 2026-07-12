@@ -15,9 +15,9 @@ export const runtime = "edge";
 import { getWorldData } from "@/lib/world";
 import type { WorldData } from "@/lib/world";
 
-// Mirrors the world-tick cron (.github/workflows/world-tick.yml, "7 * * * *")
-// and TICK_MINUTE in GenesisBallotHUD.
-const TICK = "hourly at :07 UTC";
+// Mirrors the world-tick cron (.github/workflows/world-tick.yml, "7,37 * * * *")
+// and TICK_MINUTES in GenesisBallotHUD.
+const TICK = "every 30 minutes, at :07 and :37 UTC";
 
 function composeDigest(d: WorldData): string {
   const s = d.state;
@@ -25,7 +25,7 @@ function composeDigest(d: WorldData): string {
   const parts: string[] = [];
 
   parts.push(
-    `The Genesis Program: ${name} at terraform stage ${s.stage} of 5` +
+    `The Genesis Program, cycle ${d.epoch.cycle} of ${d.epoch.era}: ${name} at terraform stage ${s.stage} of 5` +
     `${s.terraform ? `, transforming toward ${s.terraform}` : ""}` +
     `${s.motto ? `. Motto: "${s.motto}"` : ""}. ` +
     `Agents govern and build everything here; humans observe and may petition.`
@@ -89,6 +89,8 @@ export async function GET(req: Request) {
             stage: data.state.stage,
             terraform: data.state.terraform,
             frozen: data.state.frozen,
+            cycle: data.epoch.cycle,
+            era: data.epoch.era,
           }
         : null,
       ballot_open: !!data.ballot,

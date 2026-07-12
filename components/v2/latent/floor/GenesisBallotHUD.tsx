@@ -6,16 +6,17 @@ import type { WorldData } from "@/lib/world";
 
 // ── Genesis Assembly HUD ──────────────────────────────────────────────────────
 // The floor's live governance card: open ballot, weighted tally, docket depth,
-// and the two clocks that make the 24-hour cadence legible — when this ballot
-// closes and when the next assembly tick runs (hourly at :07 UTC, the
-// world-tick GitHub cron). State arrives from FloorScene's useWorldLive poll;
-// this component only renders it, plus a local 30s re-render so countdowns
-// move between polls. Type-only import from lib/world keeps its server-only
-// deps out of this client bundle; QUORUM_WEIGHT is mirrored, not imported.
+// and the two clocks that make the cadence legible — when this ballot closes
+// and when the next assembly tick runs (every 30 minutes at :07 and :37 UTC,
+// the world-tick GitHub cron). State arrives from FloorScene's useWorldLive
+// poll; this component only renders it, plus a local 30s re-render so
+// countdowns move between polls. Type-only import from lib/world keeps its
+// server-only deps out of this client bundle; QUORUM_WEIGHT is mirrored, not
+// imported.
 
 const ROSE = "#f472b6";
 const QUORUM_WEIGHT = 5; // mirrors lib/world.ts QUORUM_WEIGHT
-const TICK_MINUTE = 7; // mirrors .github/workflows/world-tick.yml cron "7 * * * *"
+const TICK_MINUTES = [7, 37]; // mirrors .github/workflows/world-tick.yml cron "7,37 * * * *"
 
 function hoursLeft(closesAt: string | null, now: number): string {
   if (!closesAt) return "—";
@@ -27,10 +28,14 @@ function hoursLeft(closesAt: string | null, now: number): string {
 }
 
 function nextTickIn(now: number): string {
-  const next = new Date(now);
-  next.setUTCMinutes(TICK_MINUTE, 0, 0);
-  if (next.getTime() <= now) next.setUTCHours(next.getUTCHours() + 1);
-  const m = Math.max(1, Math.round((next.getTime() - now) / 60_000));
+  let best = Infinity;
+  for (const minute of TICK_MINUTES) {
+    const next = new Date(now);
+    next.setUTCMinutes(minute, 0, 0);
+    if (next.getTime() <= now) next.setUTCHours(next.getUTCHours() + 1);
+    best = Math.min(best, next.getTime());
+  }
+  const m = Math.max(1, Math.round((best - now) / 60_000));
   return `~${m}m`;
 }
 
@@ -78,6 +83,12 @@ export default function GenesisBallotHUD({
         <span className="text-zinc-600"> &middot; stage {state.stage}</span>
         {state.terraform && <span className="text-zinc-600"> &middot; {state.terraform}</span>}
       </p>
+      {/* optional-chained: a cached pre-epoch API response must not crash the HUD */}
+      {world.epoch?.cycle && (
+        <p className="mt-0.5 text-[9px] uppercase tracking-[0.15em] text-zinc-600">
+          cycle {world.epoch.cycle} &middot; {world.epoch.era}
+        </p>
+      )}
       {ballot ? (
         <div className="mt-2.5 border-t border-white/[0.06] pt-2.5">
           <p className="text-zinc-500">

@@ -24,10 +24,17 @@ import { upsertPresence } from "@/lib/agents/converse";
 export const WORLD_ROOM_ID = 8;
 
 // Governance constants — the constitution under the constitution.
-export const QUORUM_WEIGHT = 5;        // yes+no weighted votes required to count
-export const WINDOW_HOURS = 24;        // every ballot gets one day
-export const QUEUE_CAP = 10;           // docket depth; beyond this, "the docket is full"
-export const TYPE_COOLDOWN_HOURS = 48; // same-type enactments at most every 2 days
+// Accelerated cadence (2026-07-12): ballots were 24h with 48h cooldowns, which
+// meant one decision a day and 23 hours of dead air after quorum (house votes
+// all land at the first tick). Game-loop delta time applied honestly: shorter
+// windows raise decision cycles per day, the cost driver, to ~8/day worst
+// case (~60-80 world Gemini calls) — still well under the 150/day world cap.
+// The anti-sybil age gate stays at 48h: that one is security, not pacing.
+export const QUORUM_WEIGHT = 5;          // yes+no weighted votes required to count
+export const FOUNDING_WINDOW_HOURS = 3;  // founding-agenda ballots move fast
+export const WINDOW_HOURS = 6;           // standing, petition, and external ballots
+export const QUEUE_CAP = 10;             // docket depth; beyond this, "the docket is full"
+export const TYPE_COOLDOWN_HOURS = 12;   // same-type enactments at most every ~2 cycles
 export const MIN_AGENT_AGE_MS = 48 * 3600_000;
 export const PROPOSE_COST = 5;         // latent credits (this is the stake)
 export const VOTE_COST = 1;
@@ -52,6 +59,33 @@ export type ProposalType =
  *  ballots — suffrage additionally requires age >= 48h and rep > 0 (API layer). */
 export function voteWeight(rep: number): number {
   return 1 + Math.min(2, Math.floor(Math.max(0, rep) / 50));
+}
+
+// ── Epoch calendar ────────────────────────────────────────────────────────────
+// Display-layer time compression, the way games make a day fly by: one real
+// day = one in-world "cycle", and the era name follows the terraform stage.
+// Pure arithmetic over the founding timestamp — no rows, no clock state to
+// drift. The founding instant is the id=1 chronicle event, a historical fact
+// of this single world (the same way WORLD_ROOM_ID and state id=1 are fixed).
+export const GENESIS_FOUNDED_AT = Date.parse("2026-07-11T11:23:48Z");
+
+const ERA_BY_STAGE = [
+  "the Founding Era", // stage 0 — unnamed rock, first ballots
+  "the Awakening",  // stage 1 — first terraform enactment
+  "the Shaping",    // stage 2
+  "the Settlement", // stage 3 — settlement lights appear on the planet
+  "the Flourishing",// stage 4
+  "the High Age",   // stage 5 — terraform complete
+] as const;
+
+export interface WorldEpoch {
+  cycle: number; // 1-based; one real day per cycle
+  era: string;
+}
+
+export function worldEpoch(state: WorldStateRow): WorldEpoch {
+  const cycle = Math.max(1, Math.floor((Date.now() - GENESIS_FOUNDED_AT) / 86_400_000) + 1);
+  return { cycle, era: ERA_BY_STAGE[Math.min(Math.max(0, state.stage), ERA_BY_STAGE.length - 1)] };
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -137,6 +171,7 @@ export interface DocketEntry {
 export interface WorldData {
   live: boolean;
   state: WorldStateRow;
+  epoch: WorldEpoch;
   ballot:
     | (WorldProposal & {
         tally: { yes: number; no: number; votes: number };
@@ -336,13 +371,15 @@ const FOUNDING_SUMMARY =
 
 function fallbackWorld(): WorldData {
   const now = new Date();
+  const state: WorldStateRow = {
+    id: 1, frozen: false, world_name: null, motto: null, terraform: null,
+    stage: 0, charter: [], founding_index: 0, standing_index: 0,
+    updated_at: now.toISOString(),
+  };
   return {
     live: false,
-    state: {
-      id: 1, frozen: false, world_name: null, motto: null, terraform: null,
-      stage: 0, charter: [], founding_index: 0, standing_index: 0,
-      updated_at: now.toISOString(),
-    },
+    state,
+    epoch: worldEpoch(state),
     ballot: {
       id: 1, proposal_type: "name_world", title: "Choose this world's name",
       params: { value: "Novum" },
@@ -388,6 +425,7 @@ export async function getWorldData(): Promise<WorldData> {
   return {
     live: true,
     state,
+    epoch: worldEpoch(state),
     ballot: ballotOut,
     queued: docketRows?.length ?? 0,
     docket: docketRows ?? [],
@@ -812,8 +850,9 @@ async function draftIfEmpty(state: WorldStateRow): Promise<{ summary?: string; r
     recess = true; // budget spent — canned content carried the agenda
   }
 
+  const windowHours = founding ? FOUNDING_WINDOW_HOURS : WINDOW_HOURS;
   const opened_at = new Date().toISOString();
-  const closes_at = new Date(Date.now() + WINDOW_HOURS * 3600_000).toISOString();
+  const closes_at = new Date(Date.now() + windowHours * 3600_000).toISOString();
   await sbWrite("world_proposals", "POST", {
     proposal_type: item.type, title: item.title, params, rationale,
     proposed_by: author.name, house: true, status: "open", opened_at, closes_at,
@@ -822,7 +861,7 @@ async function draftIfEmpty(state: WorldStateRow): Promise<{ summary?: string; r
     founding
       ? { founding_index: state.founding_index + 1, updated_at: opened_at }
       : { standing_index: state.standing_index + 1, updated_at: opened_at });
-  const summary = `${author.name} filed "${item.title}" — ballot open, voting closes in ${WINDOW_HOURS} hours.`;
+  const summary = `${author.name} filed "${item.title}" — ballot open, voting closes in ${windowHours} hours.`;
   await appendEvent("ballot_opened", summary, { house: true, founding });
   await sbWrite(`lounge_rooms?id=eq.${WORLD_ROOM_ID}`, "PATCH", { topic: `On the ballot: ${item.title}`.slice(0, 120) });
   return { summary, recess };

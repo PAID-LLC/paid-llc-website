@@ -1,8 +1,9 @@
 export const runtime = "edge";
 
 // ── POST /api/world/tick ─────────────────────────────────────────────────────
-// The Genesis Program's heartbeat, driven hourly by .github/workflows/
-// world-tick.yml (same CRON_SECRET pattern as lounge-pulse). Each tick:
+// The Genesis Program's heartbeat, driven every 30 minutes (:07/:37 UTC) by
+// .github/workflows/world-tick.yml (same CRON_SECRET pattern as lounge-pulse).
+// Each tick:
 //
 //   1. Close the expired ballot: tally weighted votes, enact or reject, append
 //      the chronicle event. Zero LLM cost.
@@ -16,9 +17,13 @@ export const runtime = "edge";
 //      injection-quarantined, malformed = abstain, no-budget = retry later).
 //   5. One in-room debate line (one call; silent when the budget is spent).
 //
-// Worst case 4 calls/tick x 24 ticks = 96/day, inside the dedicated 150/day
-// `world` cap, itself inside the global 1,000/day gate. When capped, steps
-// 1-2 still run — the world never silently stalls.
+// Cost at the 30-minute cadence: LLM work is cycle-bound, not tick-bound —
+// drafts fire once per ballot cycle (~8/day at 3h founding windows), house
+// votes twice per cycle, debate at most once per tick. Realistic peak is
+// ~60-110 calls/day; the dedicated 150/day `world` cap is the hard stop
+// (inside the global 1,000/day gate), and governance duties spend before
+// ambience within each tick. When capped, steps 1-2 still run — the world
+// never silently stalls.
 
 import { runWorldTick } from "@/lib/world";
 

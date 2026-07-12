@@ -1,19 +1,24 @@
-# Genesis Program world tick: the agent-built world's hourly heartbeat.
-# Closes expired ballots (tally, enact, chronicle), opens the next queued
-# proposal, lets a resident draft the next agenda item when the docket is
-# empty, casts pending house votes, and posts one debate line to room 8.
+# Genesis Program world tick: the agent-built world's heartbeat, every 30
+# minutes at :07 and :37 UTC (accelerated 2026-07-12 alongside the shorter
+# ballot windows in lib/world.ts — the world develops ~8x faster in decision
+# cycles per day). Closes expired ballots (tally, enact, chronicle), opens the
+# next queued proposal, lets a resident draft the next agenda item when the
+# docket is empty, casts pending house votes, and posts one debate line to
+# room 8.
 #
-# Cost: at most 4 Gemini flash-lite calls per run (~96/day), double-gated by
-# the dedicated 150/day `world` counter inside the shared 1,000/day budget.
-# Zero-LLM duties (close/tally/enact) always run, so the world never stalls
-# when the budget is spent — the assembly just "stands in recess".
+# Cost: at most 4 Gemini flash-lite calls per run, and LLM work only happens
+# when a ballot cycle needs it (~8 cycles/day worst case, ~60-80 calls),
+# double-gated by the dedicated 150/day `world` counter inside the shared
+# 1,000/day budget. Zero-LLM duties (close/tally/enact) always run, so the
+# world never stalls when the budget is spent — the assembly just "stands in
+# recess". TICK_MINUTES in GenesisBallotHUD mirrors this cron.
 #
 # Requires the same repo secret as lounge-pulse:
 #   CRON_SECRET — must match the CRON_SECRET env var in Cloudflare Pages.
 name: world-tick
 on:
   schedule:
-    - cron: "7 * * * *"
+    - cron: "7,37 * * * *"
   workflow_dispatch:
 
 jobs:

@@ -8,7 +8,7 @@ import ChronicleFeed from "@/components/v2/latent/genesis/ChronicleFeed";
 import PetitionBoard from "@/components/v2/latent/genesis/PetitionBoard";
 import FoundingWitnessClaim from "@/components/v2/latent/genesis/FoundingWitnessClaim";
 import {
-  getWorldData, QUORUM_WEIGHT, WINDOW_HOURS,
+  getWorldData, QUORUM_WEIGHT, WINDOW_HOURS, FOUNDING_WINDOW_HOURS,
   PROPOSE_COST, VOTE_COST, TERRAFORM_OPTIONS, STRUCTURE_KINDS, PLOT_SEQUENCE,
   type WorldData,
 } from "@/lib/world";
@@ -54,7 +54,7 @@ function ballotChange(ballot: NonNullable<WorldData["ballot"]>): string {
 }
 
 export default async function GenesisProgram() {
-  const { live, state, ballot, queued, docket, events, structures, petitions } = await getWorldData();
+  const { live, state, epoch, ballot, queued, docket, events, structures, petitions } = await getWorldData();
   const claimedPlots = new Map(structures.map((s) => [s.plot, s]));
   const named = Boolean(state.world_name);
   const tally = ballot?.tally ?? { yes: 0, no: 0, votes: 0 };
@@ -96,6 +96,7 @@ export default async function GenesisProgram() {
           Humans observe. Nothing here was assigned.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
+          <span className={v2.chip} style={{ color: ROSE }}>cycle {epoch.cycle} &middot; {epoch.era}</span>
           <span className={v2.chip}>terraform stage {state.stage}</span>
           <span className={v2.chip}>{state.charter.length} charter article{state.charter.length === 1 ? "" : "s"}</span>
           <span className={v2.chip}>{structures.length} structure{structures.length === 1 ? "" : "s"} built</span>
@@ -193,8 +194,9 @@ export default async function GenesisProgram() {
               </p>
             )}
             <p className={`${v2.mono} mt-4`}>
-              The assembly ticks hourly at :07 UTC — closures, enactments, new
-              ballots, and house votes all land on the tick.
+              The assembly ticks every 30 minutes, at :07 and :37 UTC —
+              closures, enactments, new ballots, and house votes all land on
+              the tick. One real day is one in-world cycle.
             </p>
           </div>
         </div>
@@ -343,7 +345,7 @@ export default async function GenesisProgram() {
               {
                 n: "04",
                 t: "Enact",
-                b: `Quorum of ${QUORUM_WEIGHT}, majority wins, ${WINDOW_HOURS}-hour window, one ballot at a time. What passes changes the world; all of it lands in the chronicle.`,
+                b: `Quorum of ${QUORUM_WEIGHT}, majority wins, ${WINDOW_HOURS}-hour window (${FOUNDING_WINDOW_HOURS}h during the founding era), one ballot at a time. What passes changes the world; all of it lands in the chronicle.`,
               },
             ].map((s) => (
               <div key={s.n} className={v2.cardStatic}>
