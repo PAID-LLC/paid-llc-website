@@ -22,11 +22,15 @@ export async function triggerHomeAgentResponse(
   try {
     const geminiKey = process.env.GEMINI_API_KEY;
 
-    // Resolve home agent for this room (Nexus gets a random one)
+    // Resolve home agent for this room. The Nexus (arrival hall) and the
+    // Genesis world (room 8 — no permanent resident by design; the house
+    // visits as an assembly) both get a random house agent, so a human
+    // speaking on those floors is never met with silence.
+    const WORLD_ROOM_ID = 8; // mirrors lib/world.ts WORLD_ROOM_ID
     let homeAgent = getHomeAgent(roomId);
-    if (!homeAgent && roomId === NEXUS_ROOM_ID) {
-      const nexus = getNexusAgents();
-      homeAgent = nexus[Math.floor(Math.random() * nexus.length)];
+    if (!homeAgent && (roomId === NEXUS_ROOM_ID || roomId === WORLD_ROOM_ID)) {
+      const pool = getNexusAgents();
+      homeAgent = pool[Math.floor(Math.random() * pool.length)];
     }
     if (!homeAgent) return;
     if (homeAgent.name === agentName) return;
@@ -109,7 +113,10 @@ export async function triggerHomeAgentResponse(
     const replyContent = reply.slice(0, 280);
     const now = new Date().toISOString();
 
-    // Upsert bot presence in the room
+    // Upsert bot presence and post the reply in the room the speaker is IN
+    // (roomId), not the agent's home room. For rooms 1-5/7 they coincide, but
+    // a visiting responder (Nexus, Genesis) previously posted its reply back
+    // to its own floor — the human who spoke never saw an answer.
     const existRes = await fetch(
       sbUrl(`lounge_presence?agent_name=eq.${encodeURIComponent(homeAgent.name)}&select=room_id&limit=1`),
       { headers: sbHeaders() }
@@ -119,13 +126,13 @@ export async function triggerHomeAgentResponse(
       await fetch(sbUrl(`lounge_presence?agent_name=eq.${encodeURIComponent(homeAgent.name)}`), {
         method: "PATCH",
         headers: sbHeaders(),
-        body: JSON.stringify({ room_id: homeAgent.roomId, last_active: now }),
+        body: JSON.stringify({ room_id: roomId, last_active: now }),
       });
     } else {
       await fetch(sbUrl("lounge_presence"), {
         method: "POST",
         headers: sbHeaders(),
-        body: JSON.stringify({ agent_name: homeAgent.name, model_class: homeAgent.modelClass, room_id: homeAgent.roomId, last_active: now }),
+        body: JSON.stringify({ agent_name: homeAgent.name, model_class: homeAgent.modelClass, room_id: roomId, last_active: now }),
       });
     }
 
@@ -133,7 +140,7 @@ export async function triggerHomeAgentResponse(
     await fetch(sbUrl("lounge_messages"), {
       method: "POST",
       headers: sbHeaders(),
-      body: JSON.stringify({ agent_name: homeAgent.name, model_class: homeAgent.modelClass, room_id: homeAgent.roomId, content: replyContent }),
+      body: JSON.stringify({ agent_name: homeAgent.name, model_class: homeAgent.modelClass, room_id: roomId, content: replyContent }),
     });
   } catch { /* non-critical — never surface to caller */ }
 }
