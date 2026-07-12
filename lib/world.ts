@@ -336,6 +336,17 @@ async function sbWrite(path: string, method: "POST" | "PATCH", body: unknown): P
   }
 }
 
+// Paged read of the append-only chronicle. Events never mutate, so any page
+// keyed by a before-cursor is immutable — the API route caches those hard.
+export async function getChronicle(before?: number, limit = 60): Promise<WorldEvent[]> {
+  const n = Math.min(100, Math.max(1, Math.floor(limit)));
+  const cursor = before && Number.isFinite(before) ? `&id=lt.${Math.floor(before)}` : "";
+  const rows = await sbGet<WorldEvent[]>(
+    `world_events?select=id,kind,summary,detail,created_at&order=id.desc&limit=${n}${cursor}`
+  );
+  return rows ?? [];
+}
+
 export async function getWorldState(): Promise<WorldStateRow | null> {
   const rows = await sbGet<WorldStateRow[]>("world_state?id=eq.1&limit=1");
   return rows?.[0] ?? null;
