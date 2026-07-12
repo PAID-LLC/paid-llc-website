@@ -463,16 +463,48 @@ export async function runServiceJob(args: {
     // near-misses, refund below the bar. The buyer can never pay for output
     // the judge scored under QUALITY_BAR. Fail-open on judge unavailability
     // (delivers unscored) — see quality-gate.ts for the invariants.
-    const gate = await qualityGate({
+    let gate = await qualityGate({
       serviceName: listing.product_name, executorKey, input, result: exec.result,
     });
+
+    // Rollback retry (one, bounded). The input at this point has survived the
+    // schema check, garbage check, sentinel, and Warden — so a sub-bar draft is
+    // usually a bad roll of the dice, not a bad request. Roll back to the
+    // checkpointed input, re-run the executor once (a fresh sample IS a new
+    // seed at executor temperatures), and re-judge the new draft in full.
+    // Economics: this branch only runs on a would-be refund, where we already
+    // ate the first draft's tokens and earn nothing — a rescued retry converts
+    // a total loss into a settled sale. Worst case doubles the Gemini calls on
+    // a failing job, still bounded by the global daily budget (geminiText),
+    // svc_daily_global, and the buyer's quality-refund allowance.
+    // gate.deliver=false implies the first judge DID run, so this never fires
+    // on a judge outage (that path already delivered unscored).
+    let firstScore: number | null = null;
+    let retried = false;
+    if (!gate.deliver) {
+      const reroll = await executor(input);
+      if (reroll) {
+        retried = true;
+        const second = await qualityGate({
+          serviceName: listing.product_name, executorKey, input, result: reroll.result,
+        });
+        // Adopt the re-roll when it clears the bar (or its judge went dark —
+        // same fail-open as a first draft) or when it merely scored better;
+        // otherwise keep the first verdict.
+        if (second.deliver || (second.score ?? -1) > (gate.score ?? -1)) {
+          firstScore = gate.score;
+          gate = second;
+        }
+      }
+    }
+
     if (!gate.deliver) {
       await refund(job, "refunded", "accepted", `quality_below_bar (score ${gate.score}/${QUALITY_BAR})`);
       await bumpCounter(`qrefund:${buyer}`, 1);
       await logModeration({
         buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
         decision: "refuse", layer: "quality", category: executorKey ?? "unknown",
-        reason: `score ${gate.score} below bar ${QUALITY_BAR}${gate.revised ? " after one revision" : ""}`,
+        reason: `score ${gate.score} below bar ${QUALITY_BAR}${gate.revised ? " after one revision" : ""}${firstScore !== null ? ` (retry from ${firstScore})` : retried ? " (retry not better)" : ""}`,
       });
       return {
         ok: false, http: 422, reason: "quality_below_bar_refunded",
@@ -483,6 +515,21 @@ export async function runServiceJob(args: {
             "You were not charged.",
         },
       };
+    }
+
+    // A rescued retry gets a receipt note (buyers see what happened) and an
+    // allow-row in the moderation log, so the rescue rate is queryable when we
+    // tune REVISE_BAND_MIN and the bar from live data.
+    if (firstScore !== null) {
+      const r = gate.result as Record<string, unknown> & { quality?: Record<string, unknown> };
+      if (r.quality && typeof r.quality === "object") {
+        r.quality = { ...r.quality, retry: { first_score: firstScore } };
+      }
+      await logModeration({
+        buyer_agent: buyer, catalog_item_id: itemId, service_name: listing.product_name,
+        decision: "allow", layer: "quality", category: executorKey ?? "unknown",
+        reason: `retry rescued delivery: first score ${firstScore}, final ${gate.score ?? "unscored"}`,
+      });
     }
 
     const delivered = await deliverResult(job, gate.result, listing.auto_verify);

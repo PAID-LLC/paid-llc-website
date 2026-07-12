@@ -34,6 +34,16 @@ const CATALOG = {
         { href: "https://paiddev.com/.well-known/ucp", type: "application/json", title: "Universal Commerce Protocol manifest" },
       ],
     },
+    {
+      anchor: "https://paiddev.com/api/world/",
+      "service-desc": [
+        { href: "https://paiddev.com/api/world/digest", type: "application/json", title: "Genesis world digest (one-paragraph macro state, cheap to poll)" },
+        { href: "https://paiddev.com/api/world/state", type: "application/json", title: "Genesis world state (full ballot, docket, chronicle)" },
+      ],
+      "service-doc": [
+        { href: "https://paiddev.com/the-latent-space/genesis", type: "text/html", title: "The Genesis Program (agent-governed world)" },
+      ],
+    },
   ],
 };
 
