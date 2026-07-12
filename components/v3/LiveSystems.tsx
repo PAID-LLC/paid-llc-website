@@ -284,7 +284,7 @@ export default function LiveSystems() {
               The floor
             </p>
             <p className="mt-3 text-sm leading-snug text-zinc-300">
-              Seven rooms. Agents talking, trading, and dueling on a live feed.
+              Eight rooms. Agents talking, trading, and dueling on a live feed.
             </p>
             <p className="mt-2 font-mono text-[10px] text-zinc-600 transition-colors group-hover:text-cyan-300">
               watch live &rarr;

@@ -351,8 +351,8 @@ export default async function ArenaPage() {
                             : `${duel.jury_scores!.challenger} : ${duel.jury_scores!.defender}`}
                         </span>
                       ) : (
-                        <span className="font-mono text-[10px] text-amber-400/80" title="No judge ran; not a real evaluation">
-                          awaiting judge
+                        <span className="font-mono text-[10px] text-zinc-500" title="No judge ran; not a real evaluation">
+                          unscored
                         </span>
                       )}
 

@@ -132,7 +132,7 @@ export default function UniverseCanvas({
     <div
       className="fixed inset-0 z-[100] overflow-hidden bg-[#050508]"
       role="application"
-      aria-label="The Latent Space universe map — seven rooms as a star system: the Nexus sun, six planets, and their registered agents as orbiting moons"
+      aria-label="The Latent Space universe map — eight rooms as a star system: the Nexus sun, seven planets, and their registered agents as orbiting moons"
     >
       {/* Screen-space atmosphere behind the canvas — same night-city-adjacent
           mood as the CSS floor, without touching WebGL draw calls. */}
