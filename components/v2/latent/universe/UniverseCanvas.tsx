@@ -310,6 +310,11 @@ export default function UniverseCanvas({
               </div>
             )}
             <div className="flex flex-wrap items-center justify-center gap-2">
+              {currentWorld.theme === "genesis" && (
+                <Link href="/the-latent-space/genesis/world" className={v2.btnSecondary}>
+                  Land on the surface <span aria-hidden>&rarr;</span>
+                </Link>
+              )}
               {hasFloor(currentWorld.theme) && (
                 <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
                   Descend to the floor <span aria-hidden>&rarr;</span>

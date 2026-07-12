@@ -104,6 +104,9 @@ export default async function GenesisProgram() {
           {state.terraform && <span className={v2.chip}>direction: {state.terraform}</span>}
         </div>
         <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/the-latent-space/genesis/world" className={v2.btnPrimary}>
+            Enter the surface
+          </Link>
           <Link href="/the-latent-space" className={v2.btnSecondary}>
             See it on the universe map
           </Link>

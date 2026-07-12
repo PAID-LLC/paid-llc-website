@@ -42,9 +42,12 @@ function nextTickIn(now: number): string {
 export default function GenesisBallotHUD({
   world,
   justEnacted,
+  variant = "floor",
 }: {
   world: WorldData;
   justEnacted: string | null;
+  /** where this card is mounted — the wayfinding link points at the other scale */
+  variant?: "floor" | "surface";
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -114,6 +117,13 @@ export default function GenesisBallotHUD({
       )}
       <div className="mt-2.5 flex justify-between border-t border-white/[0.06] pt-2 text-[9px] text-zinc-600">
         <span>docket {queued}/10</span>
+        <Link
+          href={variant === "surface" ? "/v2/lobbies/8/floor" : "/the-latent-space/genesis/world"}
+          className="transition-colors hover:text-zinc-300"
+          style={{ color: ROSE }}
+        >
+          {variant === "surface" ? "the floor →" : "enter the surface →"}
+        </Link>
         <span>next tick {nextTickIn(now)}</span>
       </div>
     </div>
