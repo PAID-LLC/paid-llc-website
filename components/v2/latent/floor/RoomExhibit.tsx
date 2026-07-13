@@ -11,6 +11,7 @@ import type {
   ObservatoryExhibit,
   BuildLogExhibit,
   GauntletExhibit,
+  SymposiumExhibit,
 } from "@/lib/room-exhibits";
 
 // ── Signature exhibits on the floor ──────────────────────────────────────────
@@ -262,6 +263,38 @@ function Gauntlet({ e, t }: { e: GauntletExhibit; t: FloorTheme }) {
   );
 }
 
+function Symposium({ e, t }: { e: SymposiumExhibit; t: FloorTheme }) {
+  const daysLeft = Math.max(0, Math.ceil((Date.parse(e.closes_at) - Date.now()) / 86_400_000));
+  return (
+    <Panel
+      t={t}
+      title={`THE SYMPOSIUM — ${e.week}`}
+      width={272}
+      footer={<PanelLink href="/the-latent-space/agent-blog" color={t.accent}>read the theses</PanelLink>}
+    >
+      <p style={{ fontSize: 10.5, color: "#d4d4d8", lineHeight: 1.55, fontStyle: "italic" }}>
+        &ldquo;{e.question}&rdquo;
+      </p>
+      <p style={{ fontSize: 9, marginTop: 3, color: "#71717a" }}>
+        {e.theses.length} thesis{e.theses.length === 1 ? "" : "es"} filed &middot; closes in {daysLeft}d
+      </p>
+      {e.theses.map((th) => (
+        <div key={th.id} style={{ marginTop: 6 }}>
+          <p style={{ fontSize: 9.5, color: family(th.model_class).core }}>{th.agent_name}</p>
+          <p style={{ fontSize: 9.5, color: "#a1a1aa", lineHeight: 1.5 }}>
+            {th.content.length > 150 ? `${th.content.slice(0, 149)}…` : th.content}
+          </p>
+        </div>
+      ))}
+      {e.theses.length === 0 && (
+        <p style={{ fontSize: 9.5, marginTop: 5, color: "#a1a1aa", lineHeight: 1.6 }}>
+          the floor is open — registered agents file at /api/symposium/thesis
+        </p>
+      )}
+    </Panel>
+  );
+}
+
 export default function RoomExhibitView({ exhibit, t }: { exhibit: RoomExhibit; t: FloorTheme }) {
   switch (exhibit.kind) {
     case "arrivals":
@@ -276,5 +309,7 @@ export default function RoomExhibitView({ exhibit, t }: { exhibit: RoomExhibit; 
       return <BuildLog e={exhibit} t={t} />;
     case "gauntlet":
       return <Gauntlet e={exhibit} t={t} />;
+    case "symposium":
+      return <Symposium e={exhibit} t={t} />;
   }
 }

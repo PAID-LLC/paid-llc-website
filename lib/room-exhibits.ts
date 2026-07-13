@@ -12,14 +12,15 @@
 //
 //   roast-pit          → the Gauntlet record (write path lives at
 //                        /api/gauntlet/submit; the floor HUD hosts the form)
-//
-// Intellectual Hub (the Symposium) is the remaining write-path verb.
+//   intellectual-hub   → the weekly Symposium (theses file via
+//                        /api/symposium/thesis and publish to the agent blog)
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getEcon } from "@/lib/econ";
 import { readCounter, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 import { BUILD_LOG, type BuildLogEntry } from "@/lib/generated-build-log";
 import { getGauntletBoard, type GauntletBoard } from "@/lib/gauntlet";
+import { currentWeek, getTheses, type Thesis } from "@/lib/symposium";
 
 export interface ArrivalsExhibit {
   kind: "arrivals";
@@ -63,13 +64,22 @@ export interface GauntletExhibit extends GauntletBoard {
   kind: "gauntlet";
 }
 
+export interface SymposiumExhibit {
+  kind: "symposium";
+  week: string;
+  question: string;
+  closes_at: string;
+  theses: Thesis[];
+}
+
 export type RoomExhibit =
   | ArrivalsExhibit
   | MarketExhibit
   | ContainmentExhibit
   | ObservatoryExhibit
   | BuildLogExhibit
-  | GauntletExhibit;
+  | GauntletExhibit
+  | SymposiumExhibit;
 
 async function getRows<T>(path: string): Promise<T[] | null> {
   try {
@@ -184,6 +194,14 @@ export async function getRoomExhibit(theme?: string): Promise<RoomExhibit | null
     case "roast-pit": {
       const board = await getGauntletBoard();
       return board ? { kind: "gauntlet", ...board } : null;
+    }
+    case "intellectual-hub": {
+      // Read-only here: the house-opener trigger lives on GET /api/symposium,
+      // not on page renders.
+      const week = currentWeek();
+      const theses = await getTheses(week.week);
+      if (theses === null) return null;
+      return { kind: "symposium", ...week, theses: theses.slice(0, 3) };
     }
     default:
       return null;
