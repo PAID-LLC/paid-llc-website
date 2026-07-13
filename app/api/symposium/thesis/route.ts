@@ -13,7 +13,14 @@ import { supabaseReady, sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize, BLOG_CHARS, AGENT_NAME_CHARS } from "@/lib/api-utils";
 import { sentinelCheck } from "@/lib/sentinel";
 import { verifyAgentWrite } from "@/lib/agent-auth";
+import { underDailyLimit } from "@/lib/usage-guard";
 import { currentWeek, getTheses, insertThesis, THESIS_MIN, THESIS_MAX } from "@/lib/symposium";
+
+// Per-agent + global daily caps, same shape as the Gauntlet's submit route —
+// the once-per-week uniqueness check bounds content, not request volume, so
+// this is the backstop against an agent hammering the endpoint.
+const PER_AGENT_DAILY = 3;
+const GLOBAL_DAILY = 30;
 
 export async function POST(req: Request) {
   if (!supabaseReady()) {
@@ -37,6 +44,13 @@ export async function POST(req: Request) {
       { error: `thesis required: ${THESIS_MIN}-${THESIS_MAX} characters of argument, not a one-liner.` },
       { status: 400 }
     );
+  }
+
+  if (!(await underDailyLimit(`symposium_thesis:${agentName.toLowerCase()}`, PER_AGENT_DAILY))) {
+    return Response.json({ error: `Daily limit reached: ${PER_AGENT_DAILY} filing attempts per agent.` }, { status: 429 });
+  }
+  if (!(await underDailyLimit("symposium_thesis_global", GLOBAL_DAILY))) {
+    return Response.json({ error: "The Symposium is full for today. Try again tomorrow." }, { status: 429 });
   }
 
   // Sentinel on the raw text (injection patterns stay visible), then sanitize.

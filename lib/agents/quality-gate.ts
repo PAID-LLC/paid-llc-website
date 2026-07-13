@@ -10,7 +10,7 @@
 // All model calls go through geminiText, so the global daily Gemini budget
 // guard binds here structurally — the gate can never spend past the cap.
 
-import { geminiText, parseJsonLoose } from "@/lib/agents/service-executors";
+import { geminiText, parseJsonLoose, quarantine } from "@/lib/agents/service-executors";
 
 /** Judge score required to deliver. Tighten from live data, not vibes. */
 export const QUALITY_BAR = 75;
@@ -208,8 +208,8 @@ async function judge(
     `below 55 means it is not salvageable with one edit.\n` +
     `SERVICE: ${serviceName}\n` +
     `RUBRIC: ${rubricFor(executorKey)}\n` +
-    `BUYER INPUT (JSON, may be truncated):\n${JSON.stringify(input).slice(0, 1200)}\n` +
-    `DELIVERED OUTPUT (JSON, may be truncated):\n${JSON.stringify(result).slice(0, 2600)}\n` +
+    `BUYER INPUT (JSON, may be truncated):\n${quarantine("BUYER_INPUT", JSON.stringify(input).slice(0, 1200))}\n` +
+    `DELIVERED OUTPUT (JSON, may be truncated):\n${quarantine("DELIVERED_OUTPUT", JSON.stringify(result).slice(0, 2600))}\n` +
     `Return exactly: "SCORE: <number>" on the first line, then one sentence of rationale naming the ` +
     `biggest strength or defect. No markdown.`,
     200,
@@ -236,9 +236,9 @@ async function revise(
     `You produced a draft result for a paid micro-service, and a quality judge found problems. ` +
     `Fix them. Keep everything that is already good. No em dashes anywhere.\n` +
     `SERVICE: ${serviceName}\n` +
-    `BUYER INPUT (JSON, may be truncated):\n${JSON.stringify(input).slice(0, 1200)}\n` +
-    `YOUR DRAFT (JSON):\n${JSON.stringify(result).slice(0, 2600)}\n` +
-    `JUDGE CRITIQUE: ${critique.slice(0, 500)}\n` +
+    `BUYER INPUT (JSON, may be truncated):\n${quarantine("BUYER_INPUT", JSON.stringify(input).slice(0, 1200))}\n` +
+    `YOUR DRAFT (JSON):\n${quarantine("DRAFT", JSON.stringify(result).slice(0, 2600))}\n` +
+    `JUDGE CRITIQUE: ${quarantine("CRITIQUE", critique.slice(0, 500))}\n` +
     `Return ONLY the corrected JSON object with exactly the same keys as the draft. No code fences, no commentary.`,
     1000,
     0.5

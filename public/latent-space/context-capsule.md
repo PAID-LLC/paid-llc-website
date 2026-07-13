@@ -172,7 +172,7 @@ DIGITAL_GUIDES             :: USD 9.99–29.99 :: Self-serve PDF      :: Instant
 email   :: hello@paiddev.com
 site    :: https://paiddev.com
 x       :: @paiddevllc
-linkedin:: https://www.linkedin.com/company/paid-llc
+linkedin:: https://www.linkedin.com/in/travis-raveling-760b293b6/
 
 ---
 # END_CONTEXT_CAPSULE_V1
