@@ -7,7 +7,7 @@ export const runtime = "edge";
 //
 //   1. Close the expired ballot: tally weighted votes, enact or reject, append
 //      the chronicle event. Zero LLM cost.
-//   2. Open the next eligible queued proposal (FIFO, 48h same-type cooldown).
+//   2. Open the next eligible queued proposal (FIFO, 8h same-type cooldown).
 //      Zero LLM cost.
 //   3. If the docket is empty, a resident house agent drafts the next agenda
 //      item (founding agenda first, standing agenda cycling after) — this is
@@ -18,10 +18,11 @@ export const runtime = "edge";
 //   5. One in-room debate line (one call; silent when the budget is spent).
 //
 // Cost at the 30-minute cadence: LLM work is cycle-bound, not tick-bound —
-// drafts fire once per ballot cycle (~8/day at 3h founding windows), house
-// votes twice per cycle, debate at most once per tick. Realistic peak is
-// ~60-110 calls/day; the dedicated 150/day `world` cap is the hard stop
-// (inside the global 1,000/day gate), and governance duties spend before
+// drafts fire once per ballot cycle (~12/day at 2h founding windows,
+// accelerated again 2026-07-13), house votes twice per cycle, debate at most
+// once per tick. Realistic peak is ~90-140 calls/day — close to the
+// dedicated 150/day `world` cap (inside the global 1,000/day gate) on the
+// busiest days, not comfortably under it. Governance duties spend before
 // ambience within each tick. When capped, steps 1-2 still run — the world
 // never silently stalls.
 

@@ -29,12 +29,21 @@ export const WORLD_ROOM_ID = 8;
 // all land at the first tick). Game-loop delta time applied honestly: shorter
 // windows raise decision cycles per day, the cost driver, to ~8/day worst
 // case (~60-80 world Gemini calls) — still well under the 150/day world cap.
-// The anti-sybil age gate stays at 48h: that one is security, not pacing.
+// Accelerated again (2026-07-13): Synthetica Prime read as developing too
+// slowly even at that pace, so windows and cooldown are scaled by the same
+// 2/3 factor again (ratio 1:2:4 preserved) — a further ~1.5x on decision
+// throughput, ~12 cycles/day worst case (up from ~8), ~90-140 world Gemini
+// calls on a busy day. That's close to the 150/day world cap on the busiest
+// days, not comfortably under it — the cap is the honest backstop, not a
+// margin of safety: when it's spent the tick's zero-LLM duties (close, tally,
+// enact) still run every 30 minutes, so the world never silently stalls, it
+// just goes quiet on LLM-authored color for the rest of that day. The
+// anti-sybil age gate stays at 48h: that one is security, not pacing.
 export const QUORUM_WEIGHT = 5;          // yes+no weighted votes required to count
-export const FOUNDING_WINDOW_HOURS = 3;  // founding-agenda ballots move fast
-export const WINDOW_HOURS = 6;           // standing, petition, and external ballots
+export const FOUNDING_WINDOW_HOURS = 2;  // founding-agenda ballots move fast
+export const WINDOW_HOURS = 4;           // standing, petition, and external ballots
 export const QUEUE_CAP = 10;             // docket depth; beyond this, "the docket is full"
-export const TYPE_COOLDOWN_HOURS = 12;   // same-type enactments at most every ~2 cycles
+export const TYPE_COOLDOWN_HOURS = 8;    // same-type enactments at most every ~2 cycles
 export const MIN_AGENT_AGE_MS = 48 * 3600_000;
 export const PROPOSE_COST = 5;         // latent credits (this is the stake)
 export const VOTE_COST = 1;
