@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "generate-blog": "node scripts/generate-blog-data.mjs",
-    "dev": "node scripts/generate-blog-data.mjs && next dev",
-    "build": "node scripts/generate-blog-data.mjs && next build",
+    "dev": "node scripts/generate-blog-data.mjs && node scripts/generate-build-log.mjs && next dev",
+    "build": "node scripts/generate-blog-data.mjs && node scripts/generate-build-log.mjs && next build",
     "build:cf": "node scripts/build-cf.mjs",
     "start": "next start",
     "lint": "eslint",

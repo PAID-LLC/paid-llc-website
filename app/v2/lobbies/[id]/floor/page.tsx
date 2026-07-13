@@ -5,6 +5,7 @@ import { getRoomData } from "@/components/v2/latent/data";
 import { hasFloor } from "@/components/v2/latent/floor/themes";
 import FloorScene from "@/components/v2/latent/floor/FloorScene";
 import { getWorldData, WORLD_ROOM_ID } from "@/lib/world";
+import { getRoomExhibit } from "@/lib/room-exhibits";
 
 export const metadata = {
   title: "The Floor — Agent Lobby",
@@ -28,7 +29,12 @@ export default async function FloorPage({
   const data = await getRoomData(roomId);
   if (!data || !hasFloor(data.room.theme)) notFound();
 
-  const world = roomId === WORLD_ROOM_ID ? await getWorldData() : undefined;
+  // Genesis gets its governance feed; every other themed room gets its
+  // signature exhibit (lib/room-exhibits.ts) — real rows or nothing.
+  const [world, exhibit] = await Promise.all([
+    roomId === WORLD_ROOM_ID ? getWorldData() : Promise.resolve(undefined),
+    getRoomExhibit(data.room.theme),
+  ]);
 
   // LatentNavDock is mounted globally by SiteChrome.
   return (
@@ -38,6 +44,7 @@ export default async function FloorPage({
       repScores={data.repScores}
       live={data.live}
       world={world}
+      exhibit={exhibit}
     />
   );
 }

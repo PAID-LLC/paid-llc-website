@@ -13,6 +13,8 @@ import RoomChat from "@/components/v2/latent/RoomChat";
 import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
 import Centerpiece from "@/components/v2/latent/floor/Centerpiece";
 import WorldStructure from "@/components/v2/latent/floor/WorldStructure";
+import RoomExhibitView from "@/components/v2/latent/floor/RoomExhibit";
+import type { RoomExhibit } from "@/lib/room-exhibits";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
 import GenesisAssembly, { GenesisTerrain } from "@/components/v2/latent/floor/GenesisAssembly";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
@@ -155,12 +157,16 @@ export default function FloorScene({
   repScores = {},
   live,
   world,
+  exhibit,
 }: {
   room: LoungeRoom;
   initial: LoungeMessage[];
   repScores?: Record<string, number>;
   live: boolean;
   world?: WorldData;
+  /** the room's signature exhibit (lib/room-exhibits.ts), null where the verb
+   *  isn't a display or the source is empty */
+  exhibit?: RoomExhibit | null;
 }) {
   const t = FLOOR_THEMES[room.theme ?? ""] ?? FLOOR_THEMES["roast-pit"];
   const { messages, connected, speaker } = useRoomLive({ roomId: room.id, initial, live });
@@ -334,6 +340,9 @@ export default function FloorScene({
 
               {/* The room's signature structure + topic hologram */}
               <Centerpiece t={t} topic={room.topic} />
+
+              {/* The room's signature exhibit — its verb, from real rows */}
+              {exhibit && <RoomExhibitView exhibit={exhibit} t={t} />}
 
               {/* Genesis: agent-built structures, one per enacted ballot */}
               {genesis.world?.structures.map((s) => (
