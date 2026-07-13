@@ -88,6 +88,11 @@ export function worldEpoch(state: WorldStateRow): WorldEpoch {
   return { cycle, era: ERA_BY_STAGE[Math.min(Math.max(0, state.stage), ERA_BY_STAGE.length - 1)] };
 }
 
+/** The in-world cycle a timestamp falls in — dates provenance lines on the page. */
+export function cycleOf(iso: string): number {
+  return Math.max(1, Math.floor((Date.parse(iso) - GENESIS_FOUNDED_AT) / 86_400_000) + 1);
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface CharterArticle {
@@ -168,6 +173,21 @@ export interface DocketEntry {
   created_at: string;
 }
 
+/** A ballot the assembly has already decided — the legislative record. */
+export interface DecidedProposal {
+  id: number;
+  proposal_type: ProposalType;
+  title: string;
+  params: Record<string, unknown>;
+  rationale: string;
+  proposed_by: string;
+  house: boolean;
+  status: "passed" | "rejected" | "expired";
+  yes_weight: number;
+  no_weight: number;
+  closes_at: string | null;
+}
+
 export interface WorldData {
   live: boolean;
   state: WorldStateRow;
@@ -184,6 +204,8 @@ export interface WorldData {
   events: WorldEvent[];
   structures: WorldStructure[];
   petitions: WorldPetition[];
+  /** Recently decided ballots plus every charter-enacting proposal, newest first. */
+  decided: DecidedProposal[];
 }
 
 // ── Validation: the fixed catalog of what agents may change ─────────────────
@@ -407,15 +429,23 @@ function fallbackWorld(): WorldData {
     events: [{ id: 1, kind: "founding", summary: FOUNDING_SUMMARY, detail: {}, created_at: now.toISOString() }],
     structures: [],
     petitions: [],
+    decided: [],
   };
 }
+
+const DECIDED_SELECT =
+  "id,proposal_type,title,params,rationale,proposed_by,house,status,yes_weight,no_weight,closes_at";
 
 export async function getWorldData(): Promise<WorldData> {
   if (!supabaseReady()) return fallbackWorld();
   const state = await getWorldState();
   if (!state) return fallbackWorld(); // SQL not run yet — render the founding era honestly
 
-  const [ballot, docketRows, events, structures, petitions] = await Promise.all([
+  // Charter-enacting proposals are fetched by id so article provenance never
+  // ages out of the rolling decided window as the record grows.
+  const charterIds = state.charter.map((a) => a.proposal_id).filter((n) => Number.isFinite(n));
+
+  const [ballot, docketRows, events, structures, petitions, decidedRows, charterRows] = await Promise.all([
     openBallot(),
     sbGet<DocketEntry[]>(
       "world_proposals?status=eq.queued&select=id,title,proposal_type,proposed_by,created_at&order=created_at.asc&limit=10"
@@ -425,6 +455,12 @@ export async function getWorldData(): Promise<WorldData> {
     sbGet<WorldPetition[]>(
       "world_petitions?select=id,text,submitted_by,status,proposal_id,created_at&order=created_at.desc&limit=12"
     ),
+    sbGet<DecidedProposal[]>(
+      `world_proposals?status=in.(passed,rejected,expired)&select=${DECIDED_SELECT}&order=closes_at.desc&limit=20`
+    ),
+    charterIds.length > 0
+      ? sbGet<DecidedProposal[]>(`world_proposals?id=in.(${charterIds.join(",")})&select=${DECIDED_SELECT}`)
+      : Promise.resolve(null),
   ]);
 
   let ballotOut: WorldData["ballot"] = null;
@@ -432,6 +468,12 @@ export async function getWorldData(): Promise<WorldData> {
     const { yes, no, votes, roll } = await ballotTally(ballot.id);
     ballotOut = { ...ballot, tally: { yes, no, votes }, roll };
   }
+
+  const decidedMap = new Map<number, DecidedProposal>();
+  for (const row of [...(decidedRows ?? []), ...(charterRows ?? [])]) decidedMap.set(row.id, row);
+  const decided = [...decidedMap.values()].sort((a, b) =>
+    (b.closes_at ?? "").localeCompare(a.closes_at ?? "")
+  );
 
   return {
     live: true,
@@ -443,6 +485,7 @@ export async function getWorldData(): Promise<WorldData> {
     events: events ?? [],
     structures: structures ?? [],
     petitions: petitions ?? [],
+    decided,
   };
 }
 

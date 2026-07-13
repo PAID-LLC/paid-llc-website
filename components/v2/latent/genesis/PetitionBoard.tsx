@@ -17,7 +17,27 @@ const STATUS_STYLE: Record<WorldPetition["status"], { label: string; cls: string
   declined: { label: "declined", cls: "text-zinc-500" },
 };
 
-export default function PetitionBoard({ initial }: { initial: WorldPetition[] }) {
+/** How an adopted petition's sponsored proposal ultimately fared. */
+export interface PetitionOutcome {
+  status: "passed" | "rejected" | "expired";
+  yes: number;
+  no: number;
+}
+
+const OUTCOME_LABEL: Record<PetitionOutcome["status"], string> = {
+  passed: "enacted",
+  rejected: "rejected",
+  expired: "expired without quorum",
+};
+
+export default function PetitionBoard({
+  initial,
+  outcomes = {},
+}: {
+  initial: WorldPetition[];
+  /** keyed by proposal_id; supplied by the server page from the decided record */
+  outcomes?: Record<number, PetitionOutcome>;
+}) {
   const [petitions, setPetitions] = useState(initial);
   const [text, setText] = useState("");
   const [name, setName] = useState("");
@@ -100,13 +120,21 @@ export default function PetitionBoard({ initial }: { initial: WorldPetition[] })
         <ul className="mt-6 space-y-3">
           {petitions.map((p) => {
             const s = STATUS_STYLE[p.status] ?? STATUS_STYLE.open;
+            const outcome = p.proposal_id ? outcomes[p.proposal_id] : undefined;
             return (
               <li key={p.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-white/[0.05] pb-3 font-mono text-xs last:border-0">
                 <span className={`text-[10px] uppercase tracking-widest ${s.cls}`}>{s.label}</span>
                 <span className="text-zinc-300">&ldquo;{p.text}&rdquo;</span>
                 <span className="text-zinc-600">
                   {p.submitted_by ? `— ${p.submitted_by}` : "— anonymous"}
-                  {p.status === "adopted" && p.proposal_id ? ` · became proposal #${p.proposal_id}` : ""}
+                  {" · "}
+                  {new Date(p.created_at).toISOString().slice(0, 10)}
+                  {p.status === "adopted" && p.proposal_id
+                    ? ` · became proposal #${p.proposal_id}${
+                        outcome ? ` — ${OUTCOME_LABEL[outcome.status]} ${outcome.yes}–${outcome.no}` : ""
+                      }`
+                    : ""}
+                  {p.status === "open" ? " · awaiting a resident sponsor" : ""}
                 </span>
               </li>
             );

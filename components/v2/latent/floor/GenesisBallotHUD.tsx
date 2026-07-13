@@ -60,10 +60,14 @@ export default function GenesisBallotHUD({
   const tallyTotal = Math.max(1, tally.yes + tally.no);
 
   return (
-    <div className="relative w-64 rounded-lg border border-white/10 bg-black/60 p-3 font-mono text-[10px] backdrop-blur-sm sm:w-72">
+    <div className="relative w-64 max-w-full rounded-lg border border-white/10 bg-black/60 p-3 font-mono text-[10px] backdrop-blur-sm sm:w-72">
       {justEnacted && (
         <div
-          className="absolute inset-x-0 -top-12 rounded-md border px-3 py-2 text-center backdrop-blur-sm"
+          // on the surface the card hugs the top of the viewport — the toast
+          // drops below it there; on the floor it floats above as before
+          className={`absolute inset-x-0 rounded-md border px-3 py-2 text-center backdrop-blur-sm ${
+            variant === "surface" ? "top-full mt-2" : "-top-12"
+          }`}
           style={{ borderColor: ROSE, background: "rgba(244,114,182,0.12)", boxShadow: `0 0 18px rgba(244,114,182,0.35)` }}
           role="status"
         >

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html } from "@react-three/drei";
@@ -332,6 +333,21 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
   const { stage } = world.state;
   const terraform = world.state.terraform;
 
+  // Full-screen portal pattern mirrors UniverseCanvas/FloorScene: portal to
+  // <body> and lock page scroll while mounted. In-tree, this overlay sits in
+  // V2Frame's `relative z-10` content context, so the z-50 sticky header
+  // paints over the HUD and the footer (same z-10, later in DOM) lands on top
+  // of the scene at the top of the viewport.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   // The sky remembers the terraform direction: fog and backdrop drift from
   // barren near-black toward the direction's deep tone as the stage rises.
   const terra = TERRAFORM_PALETTES[terraform ?? ""];
@@ -341,8 +357,11 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
   const freshIds = new Set(live.freshStructureIds);
   const bright = terra?.bright ?? ROSE;
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-[#07070b]">
+  // One dark frame before the portal mounts, so there is no flash of chrome.
+  if (!mounted) return <div className="fixed inset-0 z-[60] bg-[#07070b]" />;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-[#07070b]">
       <Canvas dpr={[1, 1.5]} camera={{ position: [52, 34, 66], fov: 50, near: 0.5, far: 700 }}>
         <color attach="background" args={[skyHex]} />
         <fog attach="fog" args={[skyHex, 70, 240]} />
@@ -375,6 +394,7 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
       </Canvas>
 
       <SurfaceHUD world={world} justEnacted={live.justEnacted} />
-    </div>
+    </div>,
+    document.body
   );
 }

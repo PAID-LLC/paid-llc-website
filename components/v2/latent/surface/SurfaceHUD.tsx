@@ -25,7 +25,9 @@ export default function SurfaceHUD({
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-4 p-4 pl-[92px] sm:p-5 sm:pl-24">
+      {/* Stacks below sm: the ballot card is fixed-width, and side-by-side with
+          the identity box plus the 92px dock clearance it overflows a phone. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-col items-start gap-3 p-4 pl-[92px] sm:flex-row sm:justify-between sm:gap-4 sm:p-5 sm:pl-24">
         <div className="pointer-events-auto max-w-xs rounded-lg border border-white/10 bg-black/60 p-3 font-mono backdrop-blur-sm">
           <p className="text-[10px] uppercase tracking-[0.25em]" style={{ color: ROSE }}>
             {state.world_name ?? "unnamed world"}

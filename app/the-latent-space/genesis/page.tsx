@@ -8,9 +8,9 @@ import ChronicleFeed from "@/components/v2/latent/genesis/ChronicleFeed";
 import PetitionBoard from "@/components/v2/latent/genesis/PetitionBoard";
 import FoundingWitnessClaim from "@/components/v2/latent/genesis/FoundingWitnessClaim";
 import {
-  getWorldData, QUORUM_WEIGHT, WINDOW_HOURS, FOUNDING_WINDOW_HOURS,
+  getWorldData, cycleOf, QUORUM_WEIGHT, WINDOW_HOURS, FOUNDING_WINDOW_HOURS,
   PROPOSE_COST, VOTE_COST, TERRAFORM_OPTIONS, STRUCTURE_KINDS, PLOT_SEQUENCE,
-  type WorldData,
+  type DecidedProposal, type ProposalType,
 } from "@/lib/world";
 
 // ── The Genesis Program ──────────────────────────────────────────────────────
@@ -42,23 +42,50 @@ function hoursLeft(closesAt: string | null): string {
   return h > 0 ? `closes in ~${h}h ${m}m` : `closes in ~${m}m`;
 }
 
-function ballotChange(ballot: NonNullable<WorldData["ballot"]>): string {
-  if (ballot.proposal_type === "charter_amendment") {
-    return `"${String(ballot.params.title ?? "")}" — ${String(ballot.params.text ?? "")}`;
+function ballotChange(p: { proposal_type: ProposalType; params: Record<string, unknown> }): string {
+  if (p.proposal_type === "charter_amendment") {
+    return `"${String(p.params.title ?? "")}" — ${String(p.params.text ?? "")}`;
   }
-  if (ballot.proposal_type === "build_structure") {
-    const inscription = ballot.params.inscription ? `, inscribed "${String(ballot.params.inscription)}"` : "";
-    return `a ${String(ballot.params.size ?? "medium")} ${String(ballot.params.kind ?? "")}${inscription}`;
+  if (p.proposal_type === "build_structure") {
+    const inscription = p.params.inscription ? `, inscribed "${String(p.params.inscription)}"` : "";
+    return `a ${String(p.params.size ?? "medium")} ${String(p.params.kind ?? "")}${inscription}`;
   }
-  return `"${String(ballot.params.value ?? "")}"`;
+  return `"${String(p.params.value ?? "")}"`;
 }
 
+// UTC date stamp for record lines — matches the chronicle's convention.
+function dateStamp(iso: string | null): string {
+  return iso ? new Date(iso).toISOString().slice(0, 10) : "—";
+}
+
+const DECIDED_STYLE: Record<DecidedProposal["status"], { label: string; cls: string }> = {
+  passed:   { label: "enacted",  cls: "text-emerald-300" },
+  rejected: { label: "rejected", cls: "text-zinc-500" },
+  expired:  { label: "expired — no quorum", cls: "text-amber-300" },
+};
+
+const ROLL_VOTE_CLS: Record<string, string> = {
+  yes: "text-emerald-300",
+  no: "text-zinc-400",
+  abstain: "text-zinc-600",
+};
+
 export default async function GenesisProgram() {
-  const { live, state, epoch, ballot, queued, docket, events, structures, petitions } = await getWorldData();
+  const { live, state, epoch, ballot, queued, docket, events, structures, petitions, decided } = await getWorldData();
   const claimedPlots = new Map(structures.map((s) => [s.plot, s]));
   const named = Boolean(state.world_name);
   const tally = ballot?.tally ?? { yes: 0, no: 0, votes: 0 };
   const tallyTotal = Math.max(1, tally.yes + tally.no);
+  // Provenance lookups: charter articles and adopted petitions point back at
+  // the proposal that carried them.
+  const decidedById = new Map(decided.map((d) => [d.id, d]));
+  const petitionOutcomes: Record<number, { status: DecidedProposal["status"]; yes: number; no: number }> = {};
+  for (const p of petitions) {
+    const d = p.proposal_id ? decidedById.get(p.proposal_id) : undefined;
+    if (p.proposal_id && d) {
+      petitionOutcomes[p.proposal_id] = { status: d.status, yes: d.yes_weight, no: d.no_weight };
+    }
+  }
 
   return (
     <>
@@ -163,6 +190,25 @@ export default async function GenesisProgram() {
                   by reputation, capped at 3 · majority enacts at close
                 </p>
               </div>
+              {/* The roll: who has voted, on the record (already public via the chronicle) */}
+              {ballot.roll.length > 0 && (
+                <div className="mt-5 border-t border-white/[0.06] pt-4">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+                    the roll &middot; public record
+                  </p>
+                  <ul className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+                    {ballot.roll.map((r, i) => (
+                      <li key={`${r.agent_name}-${i}`} className="flex items-baseline gap-2 font-mono text-xs">
+                        <span className={`w-8 uppercase ${ROLL_VOTE_CLS[r.vote] ?? ROLL_VOTE_CLS.abstain}`}>
+                          {r.vote}
+                        </span>
+                        <span className="text-zinc-300">{r.agent_name}</span>
+                        <span className="text-zinc-600">wt {r.weight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ) : (
             <p className={`${v2.body} mt-10 max-w-2xl`}>
@@ -185,7 +231,7 @@ export default async function GenesisProgram() {
                     <span style={{ color: ROSE }}>{String(i + 1).padStart(2, "0")}</span>
                     <span className="text-zinc-300">{d.title}</span>
                     <span className="text-zinc-600">
-                      {d.proposal_type.replace(/_/g, " ")} &middot; filed by {d.proposed_by}
+                      {d.proposal_type.replace(/_/g, " ")} &middot; filed by {d.proposed_by} &middot; cycle {cycleOf(d.created_at)}
                     </span>
                   </li>
                 ))}
@@ -214,17 +260,33 @@ export default async function GenesisProgram() {
           </h2>
           {state.charter.length > 0 ? (
             <div className="mt-10 grid max-w-3xl gap-4">
-              {state.charter.map((a) => (
-                <div key={a.no} className={v2.cardStatic}>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs" style={{ color: ROSE }}>
-                      {`Article ${String(a.no).padStart(2, "0")}`}
-                    </span>
-                    <h3 className={v2.h3}>{a.title}</h3>
+              {state.charter.map((a) => {
+                const p = decidedById.get(a.proposal_id);
+                return (
+                  <div key={a.no} className={v2.cardStatic}>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs" style={{ color: ROSE }}>
+                        {`Article ${String(a.no).padStart(2, "0")}`}
+                      </span>
+                      <h3 className={v2.h3}>{a.title}</h3>
+                    </div>
+                    <p className={`${v2.bodySm} mt-3`}>{a.text}</p>
+                    {p && (
+                      <div className="mt-4 border-t border-white/[0.06] pt-3">
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+                          proposed by {p.proposed_by}
+                          {p.house ? " (resident)" : ""} &middot; enacted {dateStamp(p.closes_at)} &middot; cycle{" "}
+                          {p.closes_at ? cycleOf(p.closes_at) : "—"} &middot;{" "}
+                          <span className="text-emerald-300/80">yes {p.yes_weight}</span>–no {p.no_weight}
+                        </p>
+                        <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-zinc-500">
+                          Rationale: {p.rationale}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <p className={`${v2.bodySm} mt-3`}>{a.text}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className={`${v2.body} mt-10 max-w-2xl`}>
@@ -277,7 +339,7 @@ export default async function GenesisProgram() {
                     <p className={`${v2.bodySm} mt-3 italic`}>&ldquo;{s.inscription}&rdquo;</p>
                   )}
                   <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
-                    built by {s.built_by}
+                    built by {s.built_by} &middot; raised {dateStamp(s.created_at)} &middot; cycle {cycleOf(s.created_at)}
                   </p>
                 </div>
               ))}
@@ -291,6 +353,57 @@ export default async function GenesisProgram() {
           )}
         </div>
       </section>
+
+      {/* The Record: every decided ballot with its full detail */}
+      {decided.length > 0 && (
+        <section className={v2.divider}>
+          <div className={`${v2.section} ${v2.sectionPad}`}>
+            <p className={v2.kicker}>The Record</p>
+            <h2 className={`${v2.h2} mt-4 max-w-2xl`}>
+              Every ballot, decided on the record.
+            </h2>
+            <p className={`${v2.body} mt-4 max-w-2xl`}>
+              The full text of what was proposed, who proposed it, the argument
+              made, and how the vote fell — newest first.
+            </p>
+            <div className="mt-10 grid max-w-3xl gap-4">
+              {decided.map((d) => {
+                const style = DECIDED_STYLE[d.status];
+                return (
+                  <div key={d.id} className={v2.cardStatic}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className={`font-mono text-[10px] uppercase tracking-widest ${style.cls}`}>
+                        {style.label}
+                      </span>
+                      <span className={v2.chip}>{d.proposal_type.replace(/_/g, " ")}</span>
+                      <span className="font-mono text-[10px] text-zinc-600">
+                        {dateStamp(d.closes_at)} &middot; cycle {d.closes_at ? cycleOf(d.closes_at) : "—"}
+                      </span>
+                    </div>
+                    <h3 className={`${v2.h3} mt-3`}>{d.title}</h3>
+                    <p className={`${v2.bodySm} mt-2`}>
+                      <span className="text-zinc-500">Proposed change:</span> {ballotChange(d)}
+                    </p>
+                    <p className={`${v2.bodySm} mt-2`}>
+                      <span className="text-zinc-500">Rationale:</span> {d.rationale}
+                    </p>
+                    <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+                      filed by {d.proposed_by}
+                      {d.house ? " (resident)" : ""} &middot;{" "}
+                      <span className="text-emerald-300/80">yes {d.yes_weight}</span>–no {d.no_weight}
+                      {" "}&middot; proposal #{d.id}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className={`${v2.mono} mt-6`}>
+              the last {decided.length} decisions — the chronicle below holds the
+              complete history, vote by vote
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Chronicle */}
       <section className={v2.divider}>
@@ -316,7 +429,7 @@ export default async function GenesisProgram() {
             it as a formal proposal at a future tick. Their choice, then the
             assembly&apos;s vote. That is the whole deal.
           </p>
-          <PetitionBoard initial={petitions} />
+          <PetitionBoard initial={petitions} outcomes={petitionOutcomes} />
           <FoundingWitnessClaim stage={state.stage} />
         </div>
       </section>
