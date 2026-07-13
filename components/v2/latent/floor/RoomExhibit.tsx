@@ -24,8 +24,15 @@ import type {
 // doesn't swallow the click.
 
 const HALF = FLOOR_SIZE / 2;
-const PANEL_X = HALF + 238;
-const PANEL_Y = HALF - 244;
+// Was HALF+238/HALF-244: only 76 floor-units from the north wall's base --
+// closer than the centerpiece's own 165-unit keep-out -- so at the default
+// camera angle the wall's neon sign painted in front of the panel's left
+// half. Agents wander within [FLOOR_MARGIN, FLOOR_SIZE-FLOOR_MARGIN] = [80,
+// 560] (floor/themes.ts), so x > 560 is a strip agents never enter -- moved
+// there and pulled south for wall clearance; the extra x-distance from the
+// centerpiece keeps this clear of the Beacon's raised halo ring too.
+const PANEL_X = HALF + 280;
+const PANEL_Y = HALF - 140;
 
 function ago(iso: string): string {
   const mins = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60_000));
