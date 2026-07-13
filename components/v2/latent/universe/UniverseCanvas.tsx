@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Canvas, useThree } from "@react-three/fiber";
@@ -18,7 +18,13 @@ import Hub from "./Hub";
 import AgentSwarm from "./AgentSwarm";
 import CameraRig from "./CameraRig";
 import UniverseLoading from "./UniverseLoading";
-import type { WorldNode, UniverseAgent } from "./universe-data";
+import { buildUniverseData, type WorldNode, type UniverseAgent } from "./universe-data";
+import { mergeRoster, type TransitMap } from "./universe-live";
+import type { LoungeRoom } from "@/lib/lounge-types";
+
+// Inter-world transits: a slow poll keeps the moon roster honest (merge rules
+// + rationale in universe-live.ts); AgentNode animates the migrations.
+const POLL_MS = 60_000;
 
 // ── The Universe ─────────────────────────────────────────────────────────────
 // Top-level 3D map of The Latent Space: the 7 real rooms as worlds arranged
@@ -88,9 +94,45 @@ export default function UniverseCanvas({
   const focusedAgent = useUniverseStore((s) => s.focusedAgent);
   const focusAgent = useUniverseStore((s) => s.focusAgent);
 
+  // Live roster state seeded by the SSR snapshot; see mergeRoster above.
+  const [liveAgents, setLiveAgents] = useState(agents);
+  const [transits, setTransits] = useState<TransitMap>({});
+  // Poll callback reads the latest transits without re-arming the interval.
+  const transitsRef = useRef(transits);
   useEffect(() => {
-    hydrate({ worlds, agents, registryCount, live });
-  }, [hydrate, worlds, agents, registryCount, live]);
+    transitsRef.current = transits;
+  }, [transits]);
+  useEffect(() => {
+    if (!live) return;
+    let stopped = false;
+    const poll = async () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/lounge/rooms");
+        if (!res.ok) return;
+        const data = (await res.json()) as { rooms: LoungeRoom[] };
+        if (!data.rooms?.length) return;
+        const fresh = buildUniverseData(data.rooms).agents;
+        const now = Date.now();
+        setLiveAgents((prev) => {
+          const merged = mergeRoster(prev, fresh, now, transitsRef.current);
+          setTransits(merged.transits);
+          return merged.agents;
+        });
+      } catch {
+        // next interval retries
+      }
+    };
+    const id = setInterval(poll, POLL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, [live]);
+
+  useEffect(() => {
+    hydrate({ worlds, agents: liveAgents, registryCount, live });
+  }, [hydrate, worlds, liveAgents, registryCount, live]);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -120,7 +162,7 @@ export default function UniverseCanvas({
 
   // Focused-agent card data — clicking an agent must lead somewhere: the
   // agent's registry profile, or straight to putting one to work.
-  const focusedData = focusedAgent ? agents.find((a) => a.name === focusedAgent) ?? null : null;
+  const focusedData = focusedAgent ? liveAgents.find((a) => a.name === focusedAgent) ?? null : null;
   const focusedFam = focusedData ? family(focusedData.modelClass) : null;
   const focusedWorld = focusedData ? worlds.find((w) => w.id === focusedData.worldId) ?? null : null;
   const focusedPresence = focusedData ? presenceFrom(focusedData.lastActive) : null;
@@ -156,7 +198,7 @@ export default function UniverseCanvas({
         <Stars radius={140} depth={60} count={4200} factor={1.6} saturation={0} fade speed={0.25} />
         <MilkyWay />
 
-        <Hub worlds={worlds} agents={agents} />
+        <Hub worlds={worlds} agents={liveAgents} transits={transits} />
         <AgentSwarm />
         <CameraRig />
         <PortraitFraming />
@@ -200,8 +242,8 @@ export default function UniverseCanvas({
             )}
           </div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
-            {agents.length} registered agent{agents.length === 1 ? "" : "s"} on the floor
-            {registryCount > agents.length ? ` — ${registryCount} in the registry` : ""}
+            {liveAgents.length} registered agent{liveAgents.length === 1 ? "" : "s"} on the floor
+            {registryCount > liveAgents.length ? ` — ${registryCount} in the registry` : ""}
             {focusedAgent && <span className="text-zinc-400"> — tracking {focusedAgent}</span>}
           </p>
           {/* Always-visible purchase paths — the universe replaced the old

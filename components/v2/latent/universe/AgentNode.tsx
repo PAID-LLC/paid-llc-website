@@ -20,12 +20,31 @@ import type { UniverseAgent, WorldNode } from "./universe-data";
 // this is the map-scale version of the same idea, not a live chat feed.
 // Away agents' moons freeze in place (and dim); reduced-motion slows orbits
 // to 25% instead of freezing everything — fully frozen moons stack labels.
+//
+// Transits: when the live poll sees an agent's presence move rooms, the moon
+// migrates — a raised quadratic arc from its orbit around the old planet to
+// its orbit around the new one over TRANSIT_MS. Real presence rows only;
+// under reduced motion the move is instant.
+
+export const TRANSIT_MS = 16_000;
+
+function smoothstep(t: number): number {
+  const u = Math.min(1, Math.max(0, t));
+  return u * u * (3 - 2 * u);
+}
+
 export default function AgentNode({
   agent,
   world,
+  fromWorld,
+  transitStart,
 }: {
   agent: UniverseAgent;
   world: WorldNode;
+  /** where the agent was orbiting before its latest room move */
+  fromWorld?: WorldNode;
+  /** epoch ms when the move was observed */
+  transitStart?: number;
 }) {
   const ref = useRef<THREE.Mesh>(null);
   const focusedAgent = useUniverseStore((s) => s.focusedAgent);
@@ -74,12 +93,48 @@ export default function AgentNode({
     // Inclined circular moon orbit around the planet's center. Away moons
     // hold at their phase angle instead of orbiting.
     const a = phase + (away ? 0 : t * speed * (reducedMotion.current ? 0.25 : 1));
-    ref.current.position.set(
-      world.position[0] + Math.cos(a) * radius,
-      ECLIPTIC_Y + Math.sin(a) * radius * Math.sin(incline),
-      world.position[2] + Math.sin(a) * radius * Math.cos(incline)
-    );
+    const tx = world.position[0] + Math.cos(a) * radius;
+    const ty = ECLIPTIC_Y + Math.sin(a) * radius * Math.sin(incline);
+    const tz = world.position[2] + Math.sin(a) * radius * Math.cos(incline);
+
+    // Mid-transit: blend from the same orbit geometry around the old planet
+    // through a raised midpoint, so migrations arc over the system instead of
+    // cutting through it.
+    const k = transitStart ? (Date.now() - transitStart) / TRANSIT_MS : 1;
+    if (fromWorld && transitStart && k < 1 && !reducedMotion.current) {
+      const fx = fromWorld.position[0] + Math.cos(a) * radius;
+      const fy = ECLIPTIC_Y + Math.sin(a) * radius * Math.sin(incline);
+      const fz = fromWorld.position[2] + Math.sin(a) * radius * Math.cos(incline);
+      const s = smoothstep(k);
+      const lift = 4 + Math.hypot(tx - fx, tz - fz) * 0.09;
+      const mx = (fx + tx) / 2;
+      const my = (fy + ty) / 2 + lift;
+      const mz = (fz + tz) / 2;
+      const inv = 1 - s;
+      ref.current.position.set(
+        inv * inv * fx + 2 * inv * s * mx + s * s * tx,
+        inv * inv * fy + 2 * inv * s * my + s * s * ty,
+        inv * inv * fz + 2 * inv * s * mz + s * s * tz
+      );
+      return;
+    }
+    ref.current.position.set(tx, ty, tz);
   });
+
+  const inTransit = Boolean(
+    fromWorld && transitStart && Date.now() - transitStart < TRANSIT_MS && !reducedMotion.current
+  );
+  // useFrame moves the mesh without re-rendering React, so schedule one
+  // re-render at arrival to clear the transit label/glow.
+  const [, forceRender] = useState(0);
+  useEffect(() => {
+    if (!inTransit || !transitStart) return;
+    const id = setTimeout(
+      () => forceRender((n) => n + 1),
+      Math.max(0, transitStart + TRANSIT_MS - Date.now())
+    );
+    return () => clearTimeout(id);
+  }, [inTransit, transitStart]);
 
   const scale = focused ? 1.3 : hovered ? 1.19 : 1;
 
@@ -104,7 +159,7 @@ export default function AgentNode({
       <meshStandardMaterial
         color={fam.core}
         emissive={fam.core}
-        emissiveIntensity={away ? 0.2 : focused || hovered ? 1.1 : 0.55}
+        emissiveIntensity={away ? 0.2 : focused || hovered ? 1.1 : inTransit ? 0.95 : 0.55}
         roughness={0.35}
         metalness={0.1}
         transparent
@@ -153,6 +208,11 @@ export default function AgentNode({
           {epithet && (
             <span style={{ display: "block", fontSize: 8, color: "rgba(252,211,77,0.7)" }}>
               {epithet}
+            </span>
+          )}
+          {inTransit && (
+            <span style={{ display: "block", fontSize: 8, color: "rgba(34,211,238,0.85)" }}>
+              in transit &rarr; {world.name.toLowerCase()}
             </span>
           )}
         </div>

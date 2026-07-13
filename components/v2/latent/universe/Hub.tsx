@@ -9,6 +9,7 @@ import { planetFor, ECLIPTIC_Y } from "./planet-config";
 import AgentNode from "./AgentNode";
 import WorldShell from "./WorldShell";
 import type { WorldNode, UniverseAgent } from "./universe-data";
+import type { TransitMap } from "./universe-live";
 
 const HALFPI = Math.PI / 2;
 
@@ -97,9 +98,11 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
 export default function Hub({
   worlds,
   agents,
+  transits = {},
 }: {
   worlds: WorldNode[];
   agents: UniverseAgent[];
+  transits?: TransitMap;
 }) {
   const worldById = useMemo(() => new Map(worlds.map((w) => [w.id, w])), [worlds]);
 
@@ -121,7 +124,16 @@ export default function Hub({
       {agents.map((a) => {
         const world = worldById.get(a.worldId);
         if (!world) return null;
-        return <AgentNode key={a.key} agent={a} world={world} />;
+        const tr = transits[a.name];
+        return (
+          <AgentNode
+            key={a.key}
+            agent={a}
+            world={world}
+            fromWorld={tr ? worldById.get(tr.fromWorldId) : undefined}
+            transitStart={tr?.startedAt}
+          />
+        );
       })}
     </group>
   );
