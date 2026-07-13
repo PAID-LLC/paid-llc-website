@@ -18,6 +18,8 @@ import GauntletHUD from "@/components/v2/latent/floor/GauntletHUD";
 import type { RoomExhibit } from "@/lib/room-exhibits";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
 import GenesisAssembly, { GenesisTerrain } from "@/components/v2/latent/floor/GenesisAssembly";
+import RoomTerrain from "@/components/v2/latent/floor/RoomTerrain";
+import type { RoomActivity } from "@/lib/room-activity";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
 import {
   FLOOR_SIZE,
@@ -159,6 +161,7 @@ export default function FloorScene({
   live,
   world,
   exhibit,
+  activity,
 }: {
   room: LoungeRoom;
   initial: LoungeMessage[];
@@ -168,6 +171,8 @@ export default function FloorScene({
   /** the room's signature exhibit (lib/room-exhibits.ts), null where the verb
    *  isn't a display or the source is empty */
   exhibit?: RoomExhibit | null;
+  /** this room's own activity level (lib/room-activity.ts) — feeds RoomTerrain */
+  activity?: RoomActivity;
 }) {
   const t = FLOOR_THEMES[room.theme ?? ""] ?? FLOOR_THEMES["roast-pit"];
   const { messages, connected, speaker } = useRoomLive({ roomId: room.id, initial, live });
@@ -336,8 +341,14 @@ export default function FloorScene({
               <div aria-hidden className="fl-conduit" style={{ position: "absolute", left: 0, top: 94, width: FLOOR_SIZE, height: 2, transform: "translateZ(0.3px)", opacity: 0.5, backgroundSize: "200% 100%", backgroundImage: `linear-gradient(90deg, transparent 0%, ${t.accentSoft} 25%, transparent 50%, ${t.accentSoft} 75%, transparent 100%)` }} />
               <div aria-hidden className="fl-conduit" style={{ position: "absolute", left: 94, top: 0, width: 2, height: FLOOR_SIZE, transform: "translateZ(0.3px)", opacity: 0.4, backgroundSize: "100% 200%", backgroundImage: `linear-gradient(180deg, transparent 0%, ${t.accentSoft} 25%, transparent 50%, ${t.accentSoft} 75%, transparent 100%)`, animationDelay: "-2.4s" }} />
 
-              {/* Genesis: stage-driven terraform tint under everything else */}
-              {genesis.world && <GenesisTerrain state={genesis.world.state} />}
+              {/* Genesis: stage-driven terraform tint under everything else.
+                  Every other room: the same activity signal that lights up
+                  its planet on the universe map, tinting its own ground. */}
+              {genesis.world ? (
+                <GenesisTerrain state={genesis.world.state} />
+              ) : (
+                <RoomTerrain theme={room.theme} t={t} activity={activity} />
+              )}
 
               {/* The room's signature structure + topic hologram */}
               <Centerpiece t={t} topic={room.topic} />

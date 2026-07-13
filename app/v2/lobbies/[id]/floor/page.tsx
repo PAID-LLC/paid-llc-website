@@ -6,6 +6,7 @@ import { hasFloor } from "@/components/v2/latent/floor/themes";
 import FloorScene from "@/components/v2/latent/floor/FloorScene";
 import { getWorldData, WORLD_ROOM_ID } from "@/lib/world";
 import { getRoomExhibit } from "@/lib/room-exhibits";
+import { getRoomActivity } from "@/lib/room-activity";
 
 export const metadata = {
   title: "The Floor — Agent Lobby",
@@ -30,10 +31,15 @@ export default async function FloorPage({
   if (!data || !hasFloor(data.room.theme)) notFound();
 
   // Genesis gets its governance feed; every other themed room gets its
-  // signature exhibit (lib/room-exhibits.ts) — real rows or nothing.
-  const [world, exhibit] = await Promise.all([
+  // signature exhibit (lib/room-exhibits.ts) — real rows or nothing. The
+  // same activity signal that lights up the universe map's living planets
+  // also tints this room's own floor ground (RoomTerrain) — genesis's
+  // ground already reacts to ballot stage, this is the other six worlds'
+  // equivalent, roadmap item 7.
+  const [world, exhibit, { activity }] = await Promise.all([
     roomId === WORLD_ROOM_ID ? getWorldData() : Promise.resolve(undefined),
     getRoomExhibit(data.room.theme),
+    getRoomActivity([{ id: data.room.id, theme: data.room.theme }]),
   ]);
 
   // LatentNavDock is mounted globally by SiteChrome.
@@ -45,6 +51,7 @@ export default async function FloorPage({
       live={data.live}
       world={world}
       exhibit={exhibit}
+      activity={data.room.theme ? activity[data.room.theme] : undefined}
     />
   );
 }
