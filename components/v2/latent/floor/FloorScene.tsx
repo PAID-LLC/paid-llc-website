@@ -14,6 +14,7 @@ import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
 import Centerpiece from "@/components/v2/latent/floor/Centerpiece";
 import WorldStructure from "@/components/v2/latent/floor/WorldStructure";
 import RoomExhibitView from "@/components/v2/latent/floor/RoomExhibit";
+import GauntletHUD from "@/components/v2/latent/floor/GauntletHUD";
 import type { RoomExhibit } from "@/lib/room-exhibits";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
 import GenesisAssembly, { GenesisTerrain } from "@/components/v2/latent/floor/GenesisAssembly";
@@ -521,6 +522,9 @@ export default function FloorScene({
             </Link>
           </div>
           {genesis.world && <GenesisBallotHUD world={genesis.world} justEnacted={genesis.justEnacted} />}
+          {/* The Roast Pit's interactive verb — one fetch feeds both the
+              in-scene record panel and this form (the exhibit IS the board) */}
+          {exhibit?.kind === "gauntlet" && <GauntletHUD initial={exhibit} />}
         </div>
       </div>
 

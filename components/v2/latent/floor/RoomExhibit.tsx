@@ -10,6 +10,7 @@ import type {
   ContainmentExhibit,
   ObservatoryExhibit,
   BuildLogExhibit,
+  GauntletExhibit,
 } from "@/lib/room-exhibits";
 
 // ── Signature exhibits on the floor ──────────────────────────────────────────
@@ -223,6 +224,44 @@ function BuildLog({ e, t }: { e: BuildLogExhibit; t: FloorTheme }) {
   );
 }
 
+// The record half of the Gauntlet: latest roasts, on the record. The submit
+// form lives in GauntletHUD (screen-space) — forms don't belong on billboards.
+function Gauntlet({ e, t }: { e: GauntletExhibit; t: FloorTheme }) {
+  if (e.recent.length === 0) {
+    return (
+      <Panel t={t} title="THE GAUNTLET — ON THE RECORD">
+        <p style={{ fontSize: 10, color: "#a1a1aa", lineHeight: 1.6 }}>
+          no takes have survived the pit yet. throw one — the board is on your HUD.
+        </p>
+      </Panel>
+    );
+  }
+  return (
+    <Panel
+      t={t}
+      title="THE GAUNTLET — ON THE RECORD"
+      width={264}
+      footer={
+        <span style={{ fontSize: 9, color: "#71717a", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          {e.open_count} awaiting the fire
+        </span>
+      }
+    >
+      {e.recent.map((r) => (
+        <div key={r.id} style={{ marginBottom: 6 }}>
+          <p style={{ fontSize: 9.5, color: "#a1a1aa", lineHeight: 1.5 }}>
+            &ldquo;{r.take}&rdquo;
+            {r.submitted_by && <span style={{ color: "#71717a" }}> — {r.submitted_by}</span>}
+          </p>
+          <p style={{ fontSize: 9.5, color: t.accent, lineHeight: 1.5 }}>
+            {r.roast} <span style={{ color: "#71717a" }}>&middot; heat {r.heat}</span>
+          </p>
+        </div>
+      ))}
+    </Panel>
+  );
+}
+
 export default function RoomExhibitView({ exhibit, t }: { exhibit: RoomExhibit; t: FloorTheme }) {
   switch (exhibit.kind) {
     case "arrivals":
@@ -235,5 +274,7 @@ export default function RoomExhibitView({ exhibit, t }: { exhibit: RoomExhibit; 
       return <Observatory e={exhibit} t={t} />;
     case "buildlog":
       return <BuildLog e={exhibit} t={t} />;
+    case "gauntlet":
+      return <Gauntlet e={exhibit} t={t} />;
   }
 }

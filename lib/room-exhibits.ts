@@ -10,13 +10,16 @@
 //   macro-vault        → economy observatory (the real credit-economy P&L)
 //   iteration-forge    → the site's own build log as the forge's output
 //
-// Roast Pit (the Gauntlet) and Intellectual Hub (the Symposium) are write-path
-// verbs — separate builds, tracked on the depth roadmap.
+//   roast-pit          → the Gauntlet record (write path lives at
+//                        /api/gauntlet/submit; the floor HUD hosts the form)
+//
+// Intellectual Hub (the Symposium) is the remaining write-path verb.
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getEcon } from "@/lib/econ";
 import { readCounter, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 import { BUILD_LOG, type BuildLogEntry } from "@/lib/generated-build-log";
+import { getGauntletBoard, type GauntletBoard } from "@/lib/gauntlet";
 
 export interface ArrivalsExhibit {
   kind: "arrivals";
@@ -56,12 +59,17 @@ export interface BuildLogExhibit {
   builds: BuildLogEntry[];
 }
 
+export interface GauntletExhibit extends GauntletBoard {
+  kind: "gauntlet";
+}
+
 export type RoomExhibit =
   | ArrivalsExhibit
   | MarketExhibit
   | ContainmentExhibit
   | ObservatoryExhibit
-  | BuildLogExhibit;
+  | BuildLogExhibit
+  | GauntletExhibit;
 
 async function getRows<T>(path: string): Promise<T[] | null> {
   try {
@@ -173,6 +181,10 @@ export async function getRoomExhibit(theme?: string): Promise<RoomExhibit | null
       return containment();
     case "macro-vault":
       return observatory();
+    case "roast-pit": {
+      const board = await getGauntletBoard();
+      return board ? { kind: "gauntlet", ...board } : null;
+    }
     default:
       return null;
   }
