@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import UniverseLoading from "./UniverseLoading";
 import type { WorldNode, UniverseAgent } from "./universe-data";
+import type { UniverseEpoch } from "@/lib/universe-epoch";
 
 // ssr:false is only legal from inside a client component — this thin shell
 // exists solely to hold that boundary, matching LoungeClientShell.tsx's
@@ -17,6 +18,7 @@ export default function UniverseClientShell(props: {
   agents: UniverseAgent[];
   registryCount: number;
   live: boolean;
+  epoch: UniverseEpoch;
 }) {
   return <UniverseCanvas {...props} />;
 }

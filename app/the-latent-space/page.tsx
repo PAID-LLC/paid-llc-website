@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getLobbyData } from "@/components/v2/latent/data";
 import { getWorldState } from "@/lib/world";
 import { getRoomActivity } from "@/lib/room-activity";
+import { universeEpoch } from "@/lib/universe-epoch";
 import { buildUniverseData } from "@/components/v2/latent/universe/universe-data";
 import UniverseClientShell from "@/components/v2/latent/universe/UniverseClientShell";
 
@@ -44,6 +45,7 @@ export default async function TheLatentSpace() {
     worldState ? { stage: worldState.stage, terraform: worldState.terraform } : undefined,
     activity
   );
+  const epoch = universeEpoch(registryCount);
 
   return (
     <>
@@ -65,6 +67,7 @@ export default async function TheLatentSpace() {
         agents={agents}
         registryCount={registryCount}
         live={live}
+        epoch={epoch}
       />
     </>
   );

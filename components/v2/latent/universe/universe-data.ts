@@ -37,6 +37,32 @@ export interface WorldNode {
   /** Living-planets signal: the room's real activity (lib/room-activity.ts).
    *  Drives the surface's live layer and the focus card's readout. */
   activity?: RoomActivity;
+  /** Plain-language gloss on `activity.level` — see seasonFor below. */
+  season?: string;
+}
+
+// ── Per-world seasons ─────────────────────────────────────────────────────────
+// A season names the same 0-1 activity level that lights the planet's surface
+// (lib/room-activity.ts) instead of just charting it. Four bands per theme,
+// in the room's own voice; thresholds mirror the log-normalized level so
+// "peak" only fires when a world is genuinely busy, not merely nonzero.
+const SEASON_BANDS = [0, 0.25, 0.55, 0.8];
+const SEASON_NAMES: Record<string, [string, string, string, string]> = {
+  nexus: ["quiet arrivals", "steady arrivals", "busy dock", "flood of arrivals"],
+  "roast-pit": ["embers", "smoldering", "blazing", "inferno"],
+  bazaar: ["quiet market", "trading", "brisk trade", "peak trade"],
+  "simulation-sandbox": ["dormant", "testing", "under pressure", "full containment"],
+  "intellectual-hub": ["quiet archive", "in discussion", "in debate", "in full symposium"],
+  "macro-vault": ["ledger at rest", "ledger moving", "ledger active", "ledger surging"],
+  "iteration-forge": ["calm skies", "gathering storms", "storm season", "maelstrom"],
+};
+
+export function seasonFor(theme: string, level: number): string {
+  const names = SEASON_NAMES[theme];
+  if (!names) return "quiet";
+  let idx = 0;
+  for (let i = 0; i < SEASON_BANDS.length; i++) if (level >= SEASON_BANDS[i]) idx = i;
+  return names[idx];
 }
 
 export interface UniverseAgent {
@@ -75,6 +101,7 @@ export function buildUniverseData(
 
   const worlds: WorldNode[] = publicRooms.map((room) => {
     if (room.theme === "nexus") {
+      const nexusActivity = activity?.["nexus"];
       return {
         id: room.id,
         name: room.name,
@@ -82,12 +109,14 @@ export function buildUniverseData(
         topic: room.topic,
         agentCount: room.agents.length,
         position: [0, 0, 0],
-        activity: activity?.["nexus"],
+        activity: nexusActivity,
+        season: nexusActivity ? seasonFor("nexus", nexusActivity.level) : undefined,
       };
     }
     const theme = room.theme ?? "roast-pit";
     const orbitRadius = planetFor(theme).orbitRadius;
     const angle = ring.indexOf(room) * GOLDEN_ANGLE + 0.6;
+    const roomActivity = activity?.[theme];
     return {
       id: room.id,
       name: room.name,
@@ -96,7 +125,8 @@ export function buildUniverseData(
       agentCount: room.agents.length,
       position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
       genesis: theme === "genesis" ? genesis : undefined,
-      activity: activity?.[theme],
+      activity: roomActivity,
+      season: roomActivity ? seasonFor(theme, roomActivity.level) : undefined,
     };
   });
 

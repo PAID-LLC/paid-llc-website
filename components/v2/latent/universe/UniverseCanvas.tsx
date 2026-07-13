@@ -21,6 +21,7 @@ import UniverseLoading from "./UniverseLoading";
 import { buildUniverseData, type WorldNode, type UniverseAgent } from "./universe-data";
 import { mergeRoster, type TransitMap } from "./universe-live";
 import type { LoungeRoom } from "@/lib/lounge-types";
+import type { UniverseEpoch } from "@/lib/universe-epoch";
 
 // Inter-world transits: a slow poll keeps the moon roster honest (merge rules
 // + rationale in universe-live.ts); AgentNode animates the migrations.
@@ -82,11 +83,13 @@ export default function UniverseCanvas({
   agents,
   registryCount,
   live,
+  epoch,
 }: {
   worlds: WorldNode[];
   agents: UniverseAgent[];
   registryCount: number;
   live: boolean;
+  epoch: UniverseEpoch;
 }) {
   const hydrate = useUniverseStore((s) => s.hydrate);
   const currentWorldId = useUniverseStore((s) => s.currentWorldId);
@@ -246,6 +249,13 @@ export default function UniverseCanvas({
             {registryCount > liveAgents.length ? ` — ${registryCount} in the registry` : ""}
             {focusedAgent && <span className="text-zinc-400"> — tracking {focusedAgent}</span>}
           </p>
+          {/* Universe-wide epoch — extends genesis's own cycle/era calendar
+              one level up (lib/universe-epoch.ts): cycle since the star
+              system shipped, era named by how populated the registry has
+              grown. */}
+          <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-zinc-700">
+            cycle {epoch.cycle} &middot; {epoch.era}
+          </p>
           {/* Always-visible purchase paths — the universe replaced the old
               landing page's floor grid where these lived, so without this
               row a visitor has no way to find them without first clicking
@@ -353,11 +363,18 @@ export default function UniverseCanvas({
             )}
             {/* Living-planets readout: the same real number that lit (or
                 didn't light) this world's surface, so the visual is legible
-                as data rather than decoration. */}
+                as data rather than decoration. The season names that level
+                instead of just charting it (universe-data.ts seasonFor). */}
             {currentWorld.activity && (
               <p className="font-mono text-[10px] text-zinc-500">
                 <span style={{ color: currentTheme.accent }}>{currentWorld.activity.count}</span>{" "}
                 {currentWorld.activity.metric} &middot; last {currentWorld.activity.window === "24h" ? "day" : "7 days"}
+                {currentWorld.season && (
+                  <>
+                    {" "}
+                    &middot; <span style={{ color: currentTheme.accent }}>{currentWorld.season}</span>
+                  </>
+                )}
               </p>
             )}
             <div className="flex flex-wrap items-center justify-center gap-2">
