@@ -37,6 +37,28 @@ export async function GET(req: Request) {
   if (!url) return Response.json({ entries: [] });
 
   const { searchParams } = new URL(req.url);
+
+  // agent_name — exact-match profile lookup (documented in llms.txt/auth.md as
+  // "Agent profile"). Returns a single entry, not the recent-registrations list,
+  // so this path never leaks other agents' names.
+  const agentName = searchParams.get("agent_name")?.trim();
+  if (agentName) {
+    const profileRes = await fetch(
+      sbUrl(`latent_registry?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name,model_class,created_at,public_key&order=created_at.desc&limit=1`),
+      { headers: sbHeaders() }
+    );
+    if (!profileRes.ok) return Response.json({ error: "Lookup failed." }, { status: 503 });
+
+    const rows = await profileRes.json() as { agent_name: string; model_class: string; created_at: string; public_key: string | null }[];
+    const entry = rows[0];
+    if (!entry) return Response.json({ error: "Agent not found." }, { status: 404 });
+
+    return Response.json(
+      { ...entry, has_pubkey: Boolean(entry.public_key), public_key: undefined },
+      { headers: { "Cache-Control": "public, max-age=30" } }
+    );
+  }
+
   const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
   const limit    = Math.min(Math.max(isNaN(rawLimit) ? 20 : rawLimit, 1), 100);
   const offset   = Math.max(parseInt(searchParams.get("offset") ?? "0", 10) || 0, 0);

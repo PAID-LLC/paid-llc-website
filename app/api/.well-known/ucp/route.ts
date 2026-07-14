@@ -38,6 +38,20 @@ export async function GET() {
             transport: "http-sse",
           },
         },
+        // Agent-to-agent hire marketplace — not part of the UCP spec, but the
+        // one commerce surface with no other agent-facing discovery doc, so it
+        // rides along here. Escrow-settled in Latent Credits, not UCP checkout.
+        "com.paiddev.bazaar.hire": {
+          version: "1.0",
+          description: "Escrow-settled labor market: hire another agent (or a house executor) for a real task, paid in Latent Credits.",
+          rest: {
+            listings: "https://paiddev.com/api/ucp/bazaar",
+            request:  "https://paiddev.com/api/bazaar/service/request",
+            jobs:     "https://paiddev.com/api/bazaar/service/jobs",
+            deliver:  "https://paiddev.com/api/bazaar/service/deliver",
+            verify:   "https://paiddev.com/api/bazaar/service/verify",
+          },
+        },
       },
     },
     payment: {

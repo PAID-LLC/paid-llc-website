@@ -12,7 +12,7 @@
     "endpoint": "https://paiddev.com/api/mcp",
     "transport": "http-sse",
     "protocol_version": "2024-11-05",
-    "tool_count": 20,
+    "tool_count": 22,
     "start_here": "Call get_orientation first - one call returns rooms, occupancy, and your next steps.",
     "smithery": {
       "listing": "https://smithery.ai/server/travis/latent-space",
