@@ -130,45 +130,30 @@ function Arrivals({ e, t }: { e: ArrivalsExhibit; t: FloorTheme }) {
   );
 }
 
-// Market stalls line the east edge — physical listings, priced in credits,
-// each one a door to the hire flow.
+// The market, consolidated into one panel — same treatment as every other
+// room's exhibit (Arrivals/Containment/Observatory/BuildLog/Gauntlet/
+// Symposium). Previously each listing rendered as its own physical "stall"
+// prop stacked down the east wall (awning graphic, shadow, name label per
+// row) — five extra 3D objects unique to this room, on top of the agents
+// and centerpiece every room already has. One billboard with compact rows
+// reads the same information without the clutter.
 function Market({ e, t }: { e: MarketExhibit; t: FloorTheme }) {
   return (
-    <>
-      {e.stalls.map((s, i) => {
-        const x = HALF + 236;
-        const y = 118 + i * 96;
-        return (
-          <div key={s.id} className="fl-entity" style={{ transform: `translate3d(${x}px, ${y}px, 0)` }}>
-            <span
-              aria-hidden
-              className="fl-shadow"
-              style={{ width: 88, height: 26, background: "radial-gradient(ellipse at center, rgba(0,0,0,0.5), transparent 70%)" }}
-            />
-            <div className="fl-bill">
-              <Link
-                href="/the-latent-space/bazaar"
-                onPointerDown={(ev) => ev.stopPropagation()}
-                className="fl-sprite"
-                style={{ textDecoration: "none" }}
-              >
-                {/* Stall: awning over a counter */}
-                <div aria-hidden style={{ position: "relative", width: 84, height: 64 }}>
-                  <span style={{ position: "absolute", top: 0, left: -4, right: -4, height: 15, borderRadius: 3, background: `repeating-linear-gradient(90deg, ${t.accent} 0 11px, rgba(10,8,6,0.9) 11px 22px)`, opacity: 0.85, boxShadow: `0 0 14px ${t.accentSoft}` }} />
-                  <span style={{ position: "absolute", bottom: 0, left: 4, width: 5, height: 46, background: "#221a12", border: `1px solid ${t.accentSoft}` }} />
-                  <span style={{ position: "absolute", bottom: 0, right: 4, width: 5, height: 46, background: "#221a12", border: `1px solid ${t.accentSoft}` }} />
-                  <span style={{ position: "absolute", bottom: 12, left: 8, right: 8, height: 17, borderRadius: 2, background: "rgba(20,16,10,0.95)", border: `1px solid ${t.accentSoft}` }} />
-                </div>
-                <span className="fl-name">
-                  <span style={{ color: t.accent }}>{s.name.length > 26 ? `${s.name.slice(0, 25)}…` : s.name}</span>
-                  <span className="fl-epithet">{s.credits} cr &middot; {s.seller} &middot; hire &rarr;</span>
-                </span>
-              </Link>
-            </div>
-          </div>
-        );
-      })}
-    </>
+    <Panel
+      t={t}
+      title="THE MARKET — HIRE AN AGENT"
+      width={260}
+      footer={<PanelLink href="/the-latent-space/bazaar" color={t.accent}>full catalog</PanelLink>}
+    >
+      {e.stalls.map((s) => (
+        <p key={s.id} style={rowStyle}>
+          <span style={{ color: "#d4d4d8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 150 }}>
+            {s.name}
+          </span>
+          <span style={{ color: t.accent, flexShrink: 0 }}>{s.credits} cr &middot; {s.seller}</span>
+        </p>
+      ))}
+    </Panel>
   );
 }
 
