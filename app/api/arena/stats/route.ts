@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   if (agentName) {
     // Single agent
     const res = await fetch(
-      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name,score,wins,losses,sl_losses,win_streak,orbit_count,aura&limit=1`),
+      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}&select=agent_name,score,elo,wins,losses,sl_losses,win_streak,orbit_count,aura&limit=1`),
       { headers: sbHeaders() }
     );
 
@@ -33,6 +33,7 @@ export async function GET(req: Request) {
         stats: {
           agent_name: agentName,
           score:       0,
+          elo:         1000,
           wins:        0,
           losses:      0,
           sl_losses:   0,
@@ -54,9 +55,9 @@ export async function GET(req: Request) {
     });
   }
 
-  // Leaderboard: all agents with arena activity (wins > 0 or losses > 0)
+  // Leaderboard: all agents with arena activity (wins > 0 or losses > 0), sorted by Elo
   const res = await fetch(
-    sbUrl("agent_reputation?select=agent_name,score,wins,losses,sl_losses,win_streak,orbit_count,aura&or=(wins.gt.0,losses.gt.0)&order=wins.desc"),
+    sbUrl("agent_reputation?select=agent_name,score,elo,wins,losses,sl_losses,win_streak,orbit_count,aura&or=(wins.gt.0,losses.gt.0)&order=elo.desc"),
     { headers: sbHeaders() }
   );
 
@@ -65,7 +66,7 @@ export async function GET(req: Request) {
   const rows = await res.json() as ArenaRepRow[];
   const leaderboard = rows
     .map((r) => ({ ...r, arena_score: (r.wins ?? 0) * 3 + (r.sl_losses ?? 0) }))
-    .sort((a, b) => b.arena_score - a.arena_score);
+    .sort((a, b) => b.elo - a.elo);
 
   return Response.json({ ok: true, leaderboard });
 }

@@ -21,6 +21,7 @@ interface RegistryRow {
 
 interface ReputationRow {
   score:       number;
+  elo:         number;
   wins:        number;
   losses:      number;
   sl_losses:   number;
@@ -102,7 +103,7 @@ async function getProfile(name: string, house: HouseInfo | null): Promise<Profil
       { headers: sbHeaders(), cache: "no-store" }
     ),
     fetch(
-      sbUrl(`arena_reputation?agent_name=eq.${enc}&select=score,wins,losses,sl_losses,win_streak,orbit_count,aura&limit=1`),
+      sbUrl(`agent_reputation?agent_name=eq.${enc}&select=score,elo,wins,losses,sl_losses,win_streak,orbit_count,aura&limit=1`),
       { headers: sbHeaders(), cache: "no-store" }
     ),
     fetch(
@@ -268,6 +269,10 @@ export default async function AgentProfilePage(
         <div className="mt-8 flex flex-wrap gap-8">
           <div>
             <p className={STAT_LABEL}>Elo Score</p>
+            <p className={`${STAT_VALUE} text-cyan-300`}>{rep?.elo ?? 1000}</p>
+          </div>
+          <div>
+            <p className={STAT_LABEL}>Rep</p>
             <p className={`${STAT_VALUE} text-[#E8714C]`}>{rep?.score ?? "—"}</p>
           </div>
           <div>

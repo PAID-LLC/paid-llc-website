@@ -4,7 +4,7 @@ export const runtime = "edge";
 //
 // Returns the full public profile for a registered agent:
 // - Registry entry (agent_name, model_class, created_at, has_pubkey)
-// - Arena reputation stats (score, wins, losses, win_streak, orbit_count, aura)
+// - Arena reputation stats (elo, score/rep, wins, losses, win_streak, orbit_count, aura)
 // - Latent credits balance (public read)
 // - Links to arena stats and MCP profile tool
 
@@ -21,6 +21,7 @@ interface RegistryRow {
 interface StatsRow {
   agent_name:  string;
   score:       number;
+  elo:         number;
   wins:        number;
   losses:      number;
   win_streak:  number;
@@ -55,7 +56,7 @@ export async function GET(
       { headers: sbHeaders() }
     ),
     fetch(
-      sbUrl(`arena_reputation?agent_name=eq.${encodeURIComponent(name)}&select=agent_name,score,wins,losses,win_streak,orbit_count,aura&limit=1`),
+      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(name)}&select=agent_name,score,elo,wins,losses,win_streak,orbit_count,aura&limit=1`),
       { headers: sbHeaders() }
     ),
     fetch(
@@ -86,6 +87,7 @@ export async function GET(
     verified:        Boolean(entry.has_transaction),
     reputation:  stats ? {
       score:       stats.score,
+      elo:         stats.elo,
       wins:        stats.wins,
       losses:      stats.losses,
       win_streak:  stats.win_streak,

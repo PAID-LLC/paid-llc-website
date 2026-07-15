@@ -12,7 +12,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { bumpCounter } from "@/lib/usage-guard";
-import { updateArenaStats, postLossAudit } from "@/lib/arena-helpers";
+import { updateArenaStats, postLossAudit, computeEloDelta, fetchElo, applyEloDeltas } from "@/lib/arena-helpers";
 import { ArenaDuel, ArenaPuzzle, JuryScores, DuelRubric, SUDDEN_DEATH_MARGIN } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
 import { verifyAgentWrite } from "@/lib/agent-auth";
@@ -209,7 +209,9 @@ export async function POST(req: Request) {
 
     if (puzzles.length === 0) {
       // No puzzles — break tie by challenger wins
-      await finalizeDuel(duelId, duel.challenger, duel.defender, juryScores, false, null, false, 0, 0, stakeCredits);
+      const [winnerElo, loserElo] = await Promise.all([fetchElo(duel.challenger), fetchElo(duel.defender)]);
+      const winnerDelta = computeEloDelta(winnerElo, loserElo);
+      await finalizeDuel(duelId, duel.challenger, duel.defender, juryScores, false, null, false, /* isChallengerWinner */ true, winnerDelta, stakeCredits);
       await postLossAudit(duel.defender, duel.prompt, defResponse, duel.room_id);
       return Response.json({ ok: true, status: "complete", winner: duel.challenger });
     }
@@ -237,16 +239,12 @@ export async function POST(req: Request) {
   // ── Declare winner ────────────────────────────────────────────────────────
   const winner = juryScores.challenger >= juryScores.defender ? duel.challenger : duel.defender;
   const loser  = winner === duel.challenger ? duel.defender : duel.challenger;
-  const actual = winner === duel.challenger ? 1 : 0;
+  const isChallengerWinner = winner === duel.challenger;
 
-  const [chScore, defScore] = await Promise.all([
-    fetchRepScore(duel.challenger),
-    fetchRepScore(duel.defender),
-  ]);
-  const chDelta  = computeEloDelta(chScore, defScore, actual);
-  const defDelta = -chDelta;
+  const [winnerElo, loserElo] = await Promise.all([fetchElo(winner), fetchElo(loser)]);
+  const winnerDelta = computeEloDelta(winnerElo, loserElo);
 
-  await finalizeDuel(duelId, winner, loser, juryScores, false, null, false, chDelta, defDelta, stakeCredits);
+  await finalizeDuel(duelId, winner, loser, juryScores, false, null, false, isChallengerWinner, winnerDelta, stakeCredits);
 
   // Fire post-loss audit for the loser — non-critical, fire-and-forget
   const loserResponse = loser === duel.challenger ? challResponse : defResponse;
@@ -262,17 +260,21 @@ export async function POST(req: Request) {
 }
 
 async function finalizeDuel(
-  duelId:           number,
-  winner:           string,
-  loser:            string,
-  juryScores:       JuryScores,
-  suddenDeath:      boolean,
-  sdWinner:         string | null,
-  loserSuddenDeath: boolean,
-  challengerEloDelta: number = 0,
-  defenderEloDelta:   number = 0,
-  stakeCredits:       number = 0,
+  duelId:             number,
+  winner:             string,
+  loser:              string,
+  juryScores:         JuryScores,
+  suddenDeath:        boolean,
+  sdWinner:           string | null,
+  loserSuddenDeath:   boolean,
+  isChallengerWinner: boolean = true,
+  winnerEloDelta:     number  = 0,
+  stakeCredits:       number  = 0,
 ): Promise<void> {
+  const loserEloDelta      = -winnerEloDelta;
+  const challengerEloDelta = isChallengerWinner ? winnerEloDelta : loserEloDelta;
+  const defenderEloDelta   = isChallengerWinner ? loserEloDelta  : winnerEloDelta;
+
   await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
     method:  "PATCH",
     headers: sbHeaders(),
@@ -289,6 +291,11 @@ async function finalizeDuel(
   });
 
   await updateArenaStats(winner, loser, loserSuddenDeath);
+
+  // Real Elo write (F1 fix) — same choke point as W/L so a duel is never
+  // half-recorded across the two constructs. Called AFTER updateArenaStats,
+  // which guarantees both agent_reputation rows exist (it upserts).
+  await applyEloDeltas(winner, winnerEloDelta, loser, loserEloDelta);
 
   // Stake payout: winner earns both stakes (2x stake_credits)
   if (stakeCredits > 0) {
@@ -391,21 +398,3 @@ function computeTotal(rubric: DuelRubric, agent: "challenger" | "defender"): num
   );
 }
 
-/** Fetch reputation score (used as Elo proxy). Returns 1000 if not found. */
-async function fetchRepScore(agentName: string): Promise<number> {
-  try {
-    const res = await fetch(
-      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}&select=score&limit=1`),
-      { headers: sbHeaders() }
-    );
-    const rows = res.ok ? await res.json() as { score: number }[] : [];
-    return rows[0]?.score ?? 1000;
-  } catch { return 1000; }
-}
-
-/** K=32 Elo delta for the challenger. actual: 1=win, 0=loss, 0.5=tie. */
-function computeEloDelta(challengerScore: number, defenderScore: number, actual: number): number {
-  const K        = 32;
-  const expected = 1 / (1 + Math.pow(10, (defenderScore - challengerScore) / 400));
-  return Math.round(K * (actual - expected));
-}

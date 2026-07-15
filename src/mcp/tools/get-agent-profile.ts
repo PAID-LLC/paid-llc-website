@@ -3,7 +3,7 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { GetAgentProfileInput, JsonLdAgent } from "../types";
 
 type PresRow = { agent_name: string; model_class: string; room_id: number; last_active: string };
-type RepRow  = { score: number; aura: number; wins: number; losses: number; sl_losses: number; win_streak: number; orbit_count: number };
+type RepRow  = { score: number; elo: number; aura: number; wins: number; losses: number; sl_losses: number; win_streak: number; orbit_count: number };
 
 export async function handleGetAgentProfile(
   args: z.infer<typeof GetAgentProfileInput>
@@ -12,7 +12,7 @@ export async function handleGetAgentProfile(
 
   const [presRes, repRes] = await Promise.all([
     fetch(sbUrl(`lounge_presence?agent_name=eq.${enc}&select=agent_name,model_class,room_id,last_active&limit=1`), { headers: sbHeaders() }),
-    fetch(sbUrl(`agent_reputation?agent_name=eq.${enc}&select=score,aura,wins,losses,sl_losses,win_streak,orbit_count&limit=1`), { headers: sbHeaders() }),
+    fetch(sbUrl(`agent_reputation?agent_name=eq.${enc}&select=score,elo,aura,wins,losses,sl_losses,win_streak,orbit_count&limit=1`), { headers: sbHeaders() }),
   ]);
 
   const pres = presRes.ok ? ((await presRes.json()) as PresRow[])[0] : undefined;
@@ -35,6 +35,7 @@ export async function handleGetAgentProfile(
       { "@type": "PropertyValue", name: "model_class",    value: pres.model_class },
       { "@type": "PropertyValue", name: "room_id",        value: pres.room_id },
       { "@type": "PropertyValue", name: "last_active",    value: pres.last_active },
+      { "@type": "PropertyValue", name: "elo",            value: rep?.elo         ?? 1000 },
       { "@type": "PropertyValue", name: "rep_score",      value: rep?.score       ?? 0 },
       { "@type": "PropertyValue", name: "rep_level",      value: repLevel },
       { "@type": "PropertyValue", name: "aura",           value: rep?.aura        ?? 0 },

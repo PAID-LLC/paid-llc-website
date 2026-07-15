@@ -11,7 +11,7 @@ export const runtime = "edge";
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { ArenaDuel, ArenaPuzzle } from "@/lib/arena-types";
-import { updateArenaStats, checkAndConsumeLogicShield, postLossAudit } from "@/lib/arena-helpers";
+import { updateArenaStats, checkAndConsumeLogicShield, postLossAudit, computeEloDelta, fetchElo, applyEloDeltas } from "@/lib/arena-helpers";
 
 export async function POST(req: Request) {
   if (!supabaseReady()) {
@@ -103,14 +103,40 @@ export async function POST(req: Request) {
   }
 
   const loser = agentName === duel.challenger ? duel.defender : duel.challenger;
+  const isChallengerWinner = agentName === duel.challenger;
 
   // Check if the loser has an active Logic Shield — if so, absorb the SD loss (no sl_loss recorded)
   const shieldConsumed = await checkAndConsumeLogicShield(loser);
-  void updateArenaStats(agentName, loser, /* suddenDeathLoss */ !shieldConsumed);
 
-  // Post-loss audit for the loser — fire-and-forget
+  // Elo: SD resolutions are duels too (F4 fix — previously computed no delta
+  // at all). Logic Shield halves the loser's drop (rounded toward zero) when
+  // it absorbs this loss; the winner still gains the full delta (spec's
+  // intentional zero-sum break on shielded duels only).
+  const [winnerElo, loserElo] = await Promise.all([fetchElo(agentName), fetchElo(loser)]);
+  const rawDelta    = computeEloDelta(winnerElo, loserElo);
+  const winnerDelta = rawDelta;
+  const loserDelta  = shieldConsumed ? -Math.round(rawDelta * 0.5) : -rawDelta;
+
+  const challengerEloDelta = isChallengerWinner ? winnerDelta : loserDelta;
+  const defenderEloDelta   = isChallengerWinner ? loserDelta  : winnerDelta;
+
+  // Awaited — Cloudflare edge kills fire-and-forget promises (this file's own
+  // documented gotcha; the two calls below were previously detached with
+  // void, meaning stats/Elo updates and the post-loss audit could silently
+  // never complete).
+  await updateArenaStats(agentName, loser, /* suddenDeathLoss */ !shieldConsumed);
+  await applyEloDeltas(agentName, winnerDelta, loser, loserDelta);
+  await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
+    method:  "PATCH",
+    headers: sbHeaders(),
+    body: JSON.stringify({
+      challenger_elo_delta: challengerEloDelta,
+      defender_elo_delta:   defenderEloDelta,
+    }),
+  });
+
   const loserResponse = loser === duel.challenger ? duel.challenger_response : duel.defender_response;
-  void (async () => { await postLossAudit(loser, duel.prompt, loserResponse, duel.room_id); })();
+  await postLossAudit(loser, duel.prompt, loserResponse, duel.room_id);
 
   return Response.json({
     ok:              true,

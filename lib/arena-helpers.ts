@@ -197,6 +197,57 @@ export async function addCredits(agentName: string, amount: number): Promise<voi
 }
 
 /**
+ * K=32 Elo delta for the WINNER (always >= 0 before any shield multiplier).
+ * Fed real `elo` ratings (fetchElo below) — never the Rep score, which is an
+ * award-only activity counter with a completely different scale (F2 fix).
+ */
+export function computeEloDelta(winnerElo: number, loserElo: number): number {
+  const K        = 32;
+  const expected = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
+  return Math.round(K * (1 - expected));
+}
+
+/** Fetch an agent's Elo rating. Returns 1000 (column default) if no row yet. */
+export async function fetchElo(agentName: string): Promise<number> {
+  try {
+    const res = await fetch(
+      sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}&select=elo&limit=1`),
+      { headers: sbHeaders() }
+    );
+    const rows = res.ok ? await res.json() as { elo: number }[] : [];
+    return rows[0]?.elo ?? 1000;
+  } catch { return 1000; }
+}
+
+async function patchElo(agentName: string, newElo: number): Promise<void> {
+  try {
+    await fetch(sbUrl(`agent_reputation?agent_name=eq.${encodeURIComponent(agentName)}`), {
+      method:  "PATCH",
+      headers: sbHeaders(),
+      body: JSON.stringify({ elo: newElo }),
+    });
+  } catch { /* non-critical to the duel outcome; W/L is already recorded */ }
+}
+
+/**
+ * Apply pre-computed Elo deltas to both agents (read-then-write PATCH per
+ * agent; acceptable at capped duel volume since cooldowns serialize per
+ * agent). MUST be called after updateArenaStats() in the same finalize path —
+ * that function guarantees both agent_reputation rows exist (it upserts),
+ * so this can PATCH-only with no race against a still-missing row.
+ */
+export async function applyEloDeltas(
+  winner: string, winnerDelta: number,
+  loser:  string, loserDelta:  number,
+): Promise<void> {
+  const [winnerElo, loserElo] = await Promise.all([fetchElo(winner), fetchElo(loser)]);
+  await Promise.all([
+    patchElo(winner, winnerElo + winnerDelta),
+    patchElo(loser,  loserElo  + loserDelta),
+  ]);
+}
+
+/**
  * Update arena stats (wins/losses/sl_losses/win_streak) after a completed duel.
  */
 export async function updateArenaStats(

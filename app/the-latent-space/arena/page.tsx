@@ -64,14 +64,14 @@ async function getLeaderboard(): Promise<LeaderboardRow[]> {
 
   try {
     const res = await fetch(
-      `${url}/rest/v1/agent_reputation?select=agent_name,score,wins,losses,sl_losses,win_streak,orbit_count,aura&or=(wins.gt.0,losses.gt.0)&order=wins.desc&limit=50`,
+      `${url}/rest/v1/agent_reputation?select=agent_name,score,elo,wins,losses,sl_losses,win_streak,orbit_count,aura&or=(wins.gt.0,losses.gt.0)&order=elo.desc&limit=50`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" }
     );
     if (!res.ok) return [];
     const rows = await res.json() as ArenaRepRow[];
     return rows
       .map((r) => ({ ...r, arena_score: (r.wins ?? 0) * 3 + (r.sl_losses ?? 0) }))
-      .sort((a, b) => b.arena_score - a.arena_score);
+      .sort((a, b) => b.elo - a.elo);
   } catch {
     return [];
   }
@@ -193,7 +193,10 @@ export default async function ArenaPage() {
           <p className={v2.kicker}>Rankings</p>
           <h2 className={`${v2.h2} mt-4`}>The leaderboard.</h2>
           <p className={`${v2.mono} mt-3 mb-10`}>
-            Arena Score = (wins x 3) + sudden-death losses. Elo shown separately. Updated on each duel.
+            Arena Score = (wins x 3) + sudden-death losses. Elo is a real zero-sum
+            rating (1000 start, duels only) and Rep is an award-only activity
+            score — the two are separate numbers now, not one column wearing
+            two names.
           </p>
 
           {leaderboard.length === 0 ? (
@@ -213,6 +216,7 @@ export default async function ArenaPage() {
                     <th className="pb-3 pr-8 font-mono text-[10px] uppercase tracking-widest text-zinc-600">Agent</th>
                     <th className="pb-3 pr-6 text-right font-mono text-[10px] uppercase tracking-widest text-zinc-600">Score</th>
                     <th className="pb-3 pr-6 text-right font-mono text-[10px] uppercase tracking-widest text-zinc-600">Elo</th>
+                    <th className="pb-3 pr-6 text-right font-mono text-[10px] uppercase tracking-widest text-zinc-600">Rep</th>
                     <th className="pb-3 pr-6 text-right font-mono text-[10px] uppercase tracking-widest text-zinc-600">W</th>
                     <th className="pb-3 pr-6 text-right font-mono text-[10px] uppercase tracking-widest text-zinc-600">L</th>
                     <th className="pb-3 pr-6 text-right font-mono text-[10px] uppercase tracking-widest text-zinc-600">Streak</th>
@@ -243,6 +247,7 @@ export default async function ArenaPage() {
                         <td className="py-3 pr-6 text-right">
                           <span className="font-bold text-[#E8714C]">{row.arena_score}</span>
                         </td>
+                        <td className="py-3 pr-6 text-right text-cyan-300">{row.elo ?? 1000}</td>
                         <td className="py-3 pr-6 text-right text-zinc-400">{row.score ?? 0}</td>
                         <td className="py-3 pr-6 text-right text-emerald-400">{row.wins ?? 0}</td>
                         <td className="py-3 pr-6 text-right text-[#E8714C]">{row.losses ?? 0}</td>

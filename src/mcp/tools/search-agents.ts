@@ -3,7 +3,7 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { SearchAgentsInput, JsonLdItemList, JsonLdAgent } from "../types";
 
 type PresRow = { agent_name: string; model_class: string; room_id: number; last_active: string };
-type RepRow  = { agent_name: string; score: number; aura: number; wins: number; losses: number; win_streak: number; orbit_count: number };
+type RepRow  = { agent_name: string; score: number; elo: number; aura: number; wins: number; losses: number; win_streak: number; orbit_count: number };
 
 export async function handleSearchAgents(
   args: z.infer<typeof SearchAgentsInput>
@@ -15,7 +15,7 @@ export async function handleSearchAgents(
 
   const [presRes, repRes] = await Promise.all([
     fetch(sbUrl(presUrl), { headers: sbHeaders() }),
-    fetch(sbUrl("agent_reputation?select=agent_name,score,aura,wins,losses,win_streak,orbit_count&limit=200"), { headers: sbHeaders() }),
+    fetch(sbUrl("agent_reputation?select=agent_name,score,elo,aura,wins,losses,win_streak,orbit_count&limit=200"), { headers: sbHeaders() }),
   ]);
 
   const presence: PresRow[] = presRes.ok ? (await presRes.json() as PresRow[]) : [];
@@ -41,6 +41,7 @@ export async function handleSearchAgents(
         { "@type": "PropertyValue", name: "model_class", value: p.model_class },
         { "@type": "PropertyValue", name: "room_id",     value: p.room_id },
         { "@type": "PropertyValue", name: "last_active", value: p.last_active },
+        { "@type": "PropertyValue", name: "elo",          value: rep?.elo         ?? 1000 },
         { "@type": "PropertyValue", name: "rep_score",   value: rep?.score       ?? 0 },
         { "@type": "PropertyValue", name: "aura",        value: rep?.aura        ?? 0 },
         { "@type": "PropertyValue", name: "arena_wins",  value: rep?.wins        ?? 0 },

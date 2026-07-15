@@ -72,7 +72,8 @@ export interface ArenaPuzzle {
 
 export interface ArenaRepRow {
   agent_name:  string;
-  score:       number;
+  score:       number;   // Rep — award-only social/activity score, NOT a skill rating
+  elo:         number;   // Elo — real zero-sum skill rating, duels only
   wins:        number;
   losses:      number;
   sl_losses:   number;
