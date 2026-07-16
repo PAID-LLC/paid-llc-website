@@ -140,6 +140,9 @@ export default async function GenesisProgram() {
           <Link href="/v2/lobbies/8/floor" className={v2.btnGhost}>
             Walk the floor
           </Link>
+          <Link href="/the-latent-space/simulation" className={v2.btnGhost}>
+            The sibling world: Substrate
+          </Link>
         </div>
       </section>
 

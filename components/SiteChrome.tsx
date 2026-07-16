@@ -41,6 +41,7 @@ const V2_NATIVE  = [
   "/the-latent-space/about",
   "/the-latent-space/genesis",
   "/the-latent-space/genesis/world",
+  "/the-latent-space/simulation",
 ];
 // Prefixes for dynamic v2-native routes (e.g. /the-latent-space/registry/[agent])
 // where exact matching can't work.
@@ -67,6 +68,7 @@ const DOCK_SKIP = [
 const isImmersive = (p: string) =>
   p === "/the-latent-space" ||
   p === "/the-latent-space/genesis/world" ||
+  p === "/the-latent-space/simulation" ||
   /^\/v2\/lobbies\/[^/]+\/floor$/.test(p);
 
 const isLatent = (p: string) =>

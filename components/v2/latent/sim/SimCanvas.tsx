@@ -1,0 +1,504 @@
+"use client";
+
+import { useEffect, useMemo, useRef } from "react";
+import * as THREE from "three";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
+import type { SimAgentRow, SimData, SimStructure } from "@/lib/simworld";
+import {
+  GROUND_SIZE, SIM_ACCENT, SIM_ACCENT_SOFT,
+  anomalySites, groundColor, hashStr, terrainHeight,
+  type AnomalySite, type Weather,
+} from "@/lib/sim-field";
+
+// ── Substrate: the territory ─────────────────────────────────────────────────
+// Everything rendered here derives from live /api/sim/state (instances,
+// structures, discoveries, relations) plus the deterministic seeded field in
+// lib/sim-field.ts — no fetched assets, zero LLM cost at view time. The
+// instances themselves are embodied at their live positions and drift to new
+// ground as the ticks land; that visibility is the headline improvement over
+// the Genesis surface, which only shows what agents built, not the agents.
+
+const SLATE_ROCK = "#141a24";
+
+// Sky and fog follow the deterministic weather regime so the territory has
+// moods without spending anything.
+const WEATHER_LOOK: Record<Weather, { sky: string; fogNear: number; fogFar: number }> = {
+  "clear": { sky: "#0a0f16", fogNear: 95, fogFar: 270 },
+  "fog bank": { sky: "#0d1219", fogNear: 38, fogFar: 130 },
+  "data-rain": { sky: "#0a1412", fogNear: 70, fogFar: 210 },
+  "static storm": { sky: "#120f1a", fogNear: 55, fogFar: 165 },
+  "solar flush": { sky: "#181209", fogNear: 105, fogFar: 290 },
+};
+
+// ── Terrain ──────────────────────────────────────────────────────────────────
+
+function Terrain() {
+  const geometry = useMemo(() => {
+    const seg = 120;
+    const g = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, seg, seg);
+    g.rotateX(-Math.PI / 2);
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    const colors = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      pos.setY(i, terrainHeight(x, z));
+      const c = groundColor(x, z);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial vertexColors flatShading roughness={1} metalness={0} />
+    </mesh>
+  );
+}
+
+// ── The Mast: SimCore's instrument pylon at the origin ──────────────────────
+
+function Mast({ reduced }: { reduced: boolean }) {
+  const scanner = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    if (scanner.current && !reduced) scanner.current.rotation.y += dt * 0.5;
+  });
+  return (
+    <group>
+      <mesh position-y={0.4}>
+        <cylinderGeometry args={[5.5, 6.2, 0.8, 32]} />
+        <meshStandardMaterial color="#10151d" roughness={0.9} />
+      </mesh>
+      <mesh position-y={11}>
+        <cylinderGeometry args={[0.35, 0.7, 22, 8]} />
+        <meshStandardMaterial color={SLATE_ROCK} emissive={SIM_ACCENT} emissiveIntensity={0.12} flatShading roughness={1} />
+      </mesh>
+      {[6, 13, 20].map((y) => (
+        <mesh key={y} position-y={y} rotation-x={-Math.PI / 2}>
+          <torusGeometry args={[1.4 - y * 0.03, 0.09, 8, 24]} />
+          <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.55} />
+        </mesh>
+      ))}
+      <group ref={scanner} position-y={22.5}>
+        <mesh position-x={1.6}>
+          <boxGeometry args={[3.2, 0.14, 0.14]} />
+          <meshBasicMaterial color={SIM_ACCENT_SOFT} />
+        </mesh>
+        <mesh position={[3.2, 0, 0]}>
+          <sphereGeometry args={[0.32, 10, 10]} />
+          <meshBasicMaterial color={SIM_ACCENT_SOFT} />
+        </mesh>
+      </group>
+      {/* Light column: visible from anywhere in the territory */}
+      <mesh position-y={32}>
+        <cylinderGeometry args={[0.4, 0.8, 60, 12, 1, true]} />
+        <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.10} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <pointLight position={[0, 24, 0]} color={SIM_ACCENT} intensity={140} distance={90} decay={1.8} />
+    </group>
+  );
+}
+
+// ── Instances: the cast, embodied ────────────────────────────────────────────
+// Bodies lerp toward their latest row position so a tick's movement reads as
+// a walk, not a teleport; a soft bob keeps the living ones visibly alive.
+// Resting instances sit lower and don't bob.
+
+function Instance({ agent, reduced }: { agent: SimAgentRow; reduced: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const bobSeed = useMemo(() => (hashStr(agent.name) % 100) / 16, [agent.name]);
+  const target = useRef(new THREE.Vector3(agent.x, terrainHeight(agent.x, agent.z), agent.z));
+
+  useEffect(() => {
+    target.current.set(agent.x, terrainHeight(agent.x, agent.z), agent.z);
+    if (reduced && group.current) group.current.position.copy(target.current);
+  }, [agent.x, agent.z, reduced]);
+
+  useFrame((state, dt) => {
+    const g = group.current;
+    if (!g) return;
+    if (reduced) {
+      g.position.copy(target.current);
+      return;
+    }
+    const k = 1 - Math.exp(-dt * 1.4);
+    g.position.lerp(target.current, k);
+    // Follow the ground while in transit between row positions.
+    g.position.y = THREE.MathUtils.lerp(
+      g.position.y,
+      terrainHeight(g.position.x, g.position.z),
+      k
+    );
+    const resting = agent.activity === "resting";
+    const bob = resting ? 0 : Math.sin(state.clock.elapsedTime * 1.6 + bobSeed) * 0.12;
+    g.children[0]?.position.setY(0.9 + bob - (resting ? 0.35 : 0));
+  });
+
+  return (
+    <group ref={group} position={[agent.x, terrainHeight(agent.x, agent.z), agent.z]}>
+      <group position-y={0.9}>
+        <mesh position-y={0.8}>
+          <coneGeometry args={[0.55, 1.7, 8]} />
+          <meshStandardMaterial color={agent.color} flatShading roughness={0.8} emissive={agent.color} emissiveIntensity={0.25} />
+        </mesh>
+        <mesh position-y={2.0}>
+          <sphereGeometry args={[0.4, 10, 10]} />
+          <meshStandardMaterial color={agent.color} flatShading roughness={0.8} emissive={agent.color} emissiveIntensity={0.25} />
+        </mesh>
+      </group>
+      <mesh rotation-x={-Math.PI / 2} position-y={0.06}>
+        <ringGeometry args={[0.9, 1.15, 24]} />
+        <meshBasicMaterial color={agent.color} transparent opacity={0.28} side={THREE.DoubleSide} />
+      </mesh>
+      <Html position={[0, 4, 0]} center distanceFactor={34} className="pointer-events-none">
+        <div className="whitespace-nowrap text-center font-mono">
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: agent.color }}>
+            {agent.name}
+          </p>
+          <p className="text-[9px] text-zinc-400">{agent.activity}</p>
+          <p className="text-[8px] text-zinc-600">
+            {agent.mood} · energy {agent.energy}
+          </p>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// Companion threads: a soft line between pairs the record calls companions.
+// Anchored at row positions — close enough to the lerped bodies to read true.
+function BondThreads({ sim }: { sim: SimData }) {
+  const byName = useMemo(() => new Map(sim.agents.map((a) => [a.name, a])), [sim.agents]);
+  const pairs = sim.relations.filter((r) => r.kind === "bond" && r.strength >= 5);
+  return (
+    <>
+      {pairs.map((r) => {
+        const a = byName.get(r.a);
+        const b = byName.get(r.b);
+        if (!a || !b) return null;
+        const pts: [number, number, number][] = [
+          [a.x, terrainHeight(a.x, a.z) + 2.4, a.z],
+          [b.x, terrainHeight(b.x, b.z) + 2.4, b.z],
+        ];
+        return (
+          <Line
+            key={r.id}
+            points={pts}
+            color={SIM_ACCENT_SOFT}
+            transparent
+            opacity={Math.min(0.5, 0.15 + r.strength * 0.03)}
+            lineWidth={1}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// ── Structures ───────────────────────────────────────────────────────────────
+
+function Rock({ emissiveIntensity = 0.1 }: { emissiveIntensity?: number }) {
+  return (
+    <meshStandardMaterial
+      color={SLATE_ROCK}
+      emissive={SIM_ACCENT}
+      emissiveIntensity={emissiveIntensity}
+      flatShading
+      roughness={1}
+    />
+  );
+}
+
+function ShelterMesh() {
+  return (
+    <mesh position-y={0.1}>
+      <sphereGeometry args={[2.4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      <Rock emissiveIntensity={0.14} />
+    </mesh>
+  );
+}
+
+function CairnMesh() {
+  return (
+    <>
+      <mesh position-y={0.7}><icosahedronGeometry args={[1.0, 0]} /><Rock /></mesh>
+      <mesh position-y={1.9}><icosahedronGeometry args={[0.7, 0]} /><Rock /></mesh>
+      <mesh position-y={2.8}><icosahedronGeometry args={[0.45, 0]} /><Rock emissiveIntensity={0.3} /></mesh>
+    </>
+  );
+}
+
+function BeaconMesh() {
+  return (
+    <>
+      <mesh position-y={2.6}>
+        <cylinderGeometry args={[0.16, 0.4, 5.2, 6]} />
+        <Rock emissiveIntensity={0.2} />
+      </mesh>
+      <mesh position-y={5.5}>
+        <sphereGeometry args={[0.42, 10, 10]} />
+        <meshBasicMaterial color={SIM_ACCENT_SOFT} />
+      </mesh>
+    </>
+  );
+}
+
+function GardenMesh() {
+  const blobs: { p: [number, number, number]; r: number }[] = [
+    { p: [0, 0.7, 0], r: 1.0 },
+    { p: [1.4, 0.5, 0.5], r: 0.7 },
+    { p: [-1.2, 0.45, 0.8], r: 0.6 },
+    { p: [0.4, 0.4, -1.3], r: 0.55 },
+  ];
+  return (
+    <>
+      {blobs.map((b, i) => (
+        <mesh key={i} position={b.p}>
+          <icosahedronGeometry args={[b.r, 1]} />
+          <meshStandardMaterial color="#4ade80" flatShading roughness={0.9} emissive="#4ade80" emissiveIntensity={0.12} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function WorkshopMesh() {
+  return (
+    <>
+      <mesh position-y={1.1}>
+        <boxGeometry args={[3.4, 2.2, 2.6]} />
+        <Rock />
+      </mesh>
+      <mesh position={[1.1, 2.9, 0.6]}>
+        <cylinderGeometry args={[0.18, 0.24, 1.4, 6]} />
+        <Rock emissiveIntensity={0.3} />
+      </mesh>
+    </>
+  );
+}
+
+function MonumentMesh() {
+  return (
+    <>
+      <mesh position-y={2.6}>
+        <cylinderGeometry args={[0.5, 1.0, 5.2, 4]} />
+        <Rock emissiveIntensity={0.16} />
+      </mesh>
+      <mesh position-y={5.5}>
+        <coneGeometry args={[0.7, 1.1, 4]} />
+        <Rock emissiveIntensity={0.3} />
+      </mesh>
+    </>
+  );
+}
+
+const STRUCTURE_MESH: Record<SimStructure["kind"], () => React.ReactElement> = {
+  shelter: ShelterMesh,
+  cairn: CairnMesh,
+  beacon: BeaconMesh,
+  garden: GardenMesh,
+  workshop: WorkshopMesh,
+  monument: MonumentMesh,
+};
+
+// Build-in: rises from its pad the poll cycle it appears (fresh ids from
+// useSimLive). Reduced motion pops in at full scale instead.
+function Grow({ fresh, reduced, children }: { fresh: boolean; reduced: boolean; children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null);
+  const progress = useRef(fresh && !reduced ? 0 : 1);
+  useFrame((_, dt) => {
+    if (!ref.current || progress.current >= 1) return;
+    progress.current = Math.min(1, progress.current + dt * 0.7);
+    const e = 1 - Math.pow(1 - progress.current, 3);
+    ref.current.scale.setScalar(Math.max(0.001, e));
+  });
+  return (
+    <group ref={ref} scale={progress.current >= 1 ? 1 : 0.001}>
+      {children}
+    </group>
+  );
+}
+
+function Structure({ s, fresh, reduced }: { s: SimStructure; fresh: boolean; reduced: boolean }) {
+  const y = terrainHeight(s.x, s.z);
+  const Mesh = STRUCTURE_MESH[s.kind] ?? CairnMesh;
+  return (
+    <group position={[s.x, y, s.z]} rotation-y={Math.atan2(-s.x, -s.z)}>
+      <mesh position-y={0.1}>
+        <cylinderGeometry args={[2.6, 3, 0.24, 20]} />
+        <meshStandardMaterial color="#0f141c" roughness={1} />
+      </mesh>
+      <Grow fresh={fresh} reduced={reduced}>
+        <Mesh />
+      </Grow>
+      <Html position={[0, s.kind === "beacon" ? 6.6 : 4.4, 0]} center distanceFactor={34} className="pointer-events-none">
+        <div className="whitespace-nowrap text-center font-mono">
+          <p className="text-[9px] uppercase tracking-widest" style={{ color: SIM_ACCENT }}>{s.kind}</p>
+          <p className="text-[8px] text-zinc-500">raised by {s.built_by}</p>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// ── Anomalies: only the discovered ones render — mystery is load-bearing ─────
+
+function AnomalyMesh({ kind }: { kind: AnomalySite["kind"] }) {
+  if (kind === "ruin") {
+    return (
+      <>
+        <mesh position-y={0.3} rotation-z={0.35}>
+          <torusGeometry args={[2.4, 0.32, 8, 20, Math.PI * 0.85]} />
+          <Rock emissiveIntensity={0.18} />
+        </mesh>
+        <mesh position={[1.6, 0.4, 0.8]}><icosahedronGeometry args={[0.6, 0]} /><Rock /></mesh>
+        <mesh position={[-1.2, 0.3, -0.6]}><icosahedronGeometry args={[0.45, 0]} /><Rock /></mesh>
+      </>
+    );
+  }
+  if (kind === "spring") {
+    return (
+      <>
+        <mesh rotation-x={-Math.PI / 2} position-y={0.12}>
+          <circleGeometry args={[2.2, 24]} />
+          <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.35} />
+        </mesh>
+        <mesh rotation-x={-Math.PI / 2} position-y={0.16}>
+          <ringGeometry args={[2.5, 2.8, 28]} />
+          <meshBasicMaterial color={SIM_ACCENT_SOFT} transparent opacity={0.25} side={THREE.DoubleSide} />
+        </mesh>
+      </>
+    );
+  }
+  if (kind === "crystal") {
+    return (
+      <>
+        <mesh position-y={1.1} rotation-y={0.4}><icosahedronGeometry args={[1.1, 0]} />
+          <meshStandardMaterial color="#67e8f9" flatShading roughness={0.4} emissive="#67e8f9" emissiveIntensity={0.4} />
+        </mesh>
+        <mesh position={[1.3, 0.6, 0.4]} rotation-y={1.2}><icosahedronGeometry args={[0.6, 0]} />
+          <meshStandardMaterial color="#67e8f9" flatShading roughness={0.4} emissive="#67e8f9" emissiveIntensity={0.3} />
+        </mesh>
+      </>
+    );
+  }
+  if (kind === "antenna") {
+    return (
+      <>
+        <mesh position-y={2.4} rotation-z={0.28}>
+          <cylinderGeometry args={[0.1, 0.22, 5, 6]} />
+          <Rock emissiveIntensity={0.2} />
+        </mesh>
+        <mesh position={[1.35, 4.7, 0]}>
+          <sphereGeometry args={[0.35, 8, 8]} />
+          <meshBasicMaterial color={SIM_ACCENT_SOFT} />
+        </mesh>
+      </>
+    );
+  }
+  if (kind === "rift") {
+    return (
+      <mesh position-y={1.2} rotation-y={0.5}>
+        <boxGeometry args={[0.18, 2.4, 4.6]} />
+        <meshStandardMaterial color="#05070b" emissive={SIM_ACCENT} emissiveIntensity={0.5} roughness={0.3} />
+      </mesh>
+    );
+  }
+  // grove
+  return (
+    <>
+      {[[-1.2, 0.5], [0.4, -0.8], [1.3, 0.9], [0, 0.2]].map(([gx, gz], i) => (
+        <mesh key={i} position={[gx, 1.4 + i * 0.2, gz]}>
+          <coneGeometry args={[0.5, 2.8 + i * 0.4, 6]} />
+          <meshStandardMaterial color="#4ade80" flatShading roughness={0.9} emissive="#4ade80" emissiveIntensity={0.14} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function Anomaly({ site, foundBy }: { site: AnomalySite; foundBy: string }) {
+  const y = terrainHeight(site.x, site.z);
+  return (
+    <group position={[site.x, y, site.z]}>
+      <mesh rotation-x={-Math.PI / 2} position-y={0.08}>
+        <ringGeometry args={[3.2, 3.5, 32]} />
+        <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.16} side={THREE.DoubleSide} />
+      </mesh>
+      <AnomalyMesh kind={site.kind} />
+      <Html position={[0, 6.2, 0]} center distanceFactor={40} className="pointer-events-none">
+        <div className="whitespace-nowrap text-center font-mono">
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: SIM_ACCENT_SOFT }}>
+            {site.name}
+          </p>
+          <p className="text-[8px] text-zinc-500">charted by {foundBy}</p>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// ── Scene root ───────────────────────────────────────────────────────────────
+
+export default function SimCanvas({
+  sim,
+  freshStructureIds,
+  reduced,
+}: {
+  sim: SimData;
+  freshStructureIds: number[];
+  reduced: boolean;
+}) {
+  const look = WEATHER_LOOK[sim.clock.weather] ?? WEATHER_LOOK.clear;
+  const foundByKey = useMemo(
+    () => new Map(sim.discoveries.map((d) => [d.site_key, d.found_by])),
+    [sim.discoveries]
+  );
+  const sites = useMemo(() => anomalySites(), []);
+  const freshIds = new Set(freshStructureIds);
+
+  return (
+    <Canvas dpr={[1, 1.5]} camera={{ position: [55, 38, 70], fov: 50, near: 0.5, far: 700 }}>
+      <color attach="background" args={[look.sky]} />
+      <fog attach="fog" args={[look.sky, look.fogNear, look.fogFar]} />
+      <ambientLight color="#9fb4c8" intensity={0.32} />
+      <directionalLight color="#cfe6ff" intensity={1.0} position={[-70, 65, 50]} />
+      <Stars radius={330} depth={60} count={1500} factor={4} saturation={0.2} fade speed={reduced ? 0 : 0.35} />
+
+      <Terrain />
+      <Mast reduced={reduced} />
+      <BondThreads sim={sim} />
+
+      {sim.agents.map((a) => (
+        <Instance key={a.name} agent={a} reduced={reduced} />
+      ))}
+      {sim.structures.map((s) => (
+        <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} />
+      ))}
+      {sites
+        .filter((s) => foundByKey.has(s.key))
+        .map((s) => (
+          <Anomaly key={s.key} site={s} foundBy={foundByKey.get(s.key)!} />
+        ))}
+
+      <OrbitControls
+        enableDamping
+        dampingFactor={0.08}
+        enablePan={false}
+        minDistance={16}
+        maxDistance={240}
+        maxPolarAngle={1.42}
+        target={[0, 4, 0]}
+        autoRotate={!reduced}
+        autoRotateSpeed={0.3}
+      />
+    </Canvas>
+  );
+}

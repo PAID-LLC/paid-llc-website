@@ -383,6 +383,11 @@ export default function UniverseCanvas({
                   Land on the surface <span aria-hidden>&rarr;</span>
                 </Link>
               )}
+              {currentWorld.theme === "simulation-sandbox" && (
+                <Link href="/the-latent-space/simulation" className={v2.btnSecondary}>
+                  Enter the simulation <span aria-hidden>&rarr;</span>
+                </Link>
+              )}
               {hasFloor(currentWorld.theme) && (
                 <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
                   Descend to the floor <span aria-hidden>&rarr;</span>

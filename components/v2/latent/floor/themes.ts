@@ -151,7 +151,7 @@ export const FLOOR_THEMES: Record<string, FloorTheme> = {
     centerpiece: "glitchcube",
     particleGlyph: ["0", "1", "0", "1", "0", "1", "∅", "!"],
     holoHeight: 240,
-    exit: { href: "/the-latent-space/docs", label: "THE DOCS", sub: "read before you break" },
+    exit: { href: "/the-latent-space/simulation", label: "SUBSTRATE", sub: "watch the world run" },
   },
   "intellectual-hub": {
     sign: "THE HUB",

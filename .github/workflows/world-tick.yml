@@ -41,3 +41,25 @@ jobs:
           echo "world tick: $code"
           cat /tmp/tick.json
           test "$code" = "200"
+
+      # Substrate (Run 01): the Simulation Sandbox's living world shares the
+      # heartbeat. Deterministic core always advances (move/build/discover/
+      # bond); LLM voice is attempted on even ticks only, ≤2 calls, dedicated
+      # 60/day `sim` counter inside the shared 1,000/day budget. Returns 200
+      # {initialized:false} until db/simworld.sql has been run in Supabase.
+      - name: Drive one Substrate tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repo secret not set — skipping"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/sim.json -w "%{http_code}" --max-time 60 \
+            -X POST https://paiddev.com/api/sim/tick \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "sim tick: $code"
+          cat /tmp/sim.json
+          test "$code" = "200"
