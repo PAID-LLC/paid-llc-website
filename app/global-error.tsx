@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { reloadOnceForChunkError } from "@/lib/chunk-error";
+
 export default function GlobalError({
   error,
   reset,
@@ -7,6 +10,15 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Same stale-manifest problem as app/error.tsx, one layer higher (errors
+  // thrown from the root layout itself land here instead).
+  const [reloading, setReloading] = useState(false);
+  useEffect(() => {
+    if (reloadOnceForChunkError(error)) setReloading(true);
+  }, [error]);
+
+  if (reloading) return <html><body /></html>;
+
   return (
     <html>
       <body style={{ padding: "48px 24px", fontFamily: "sans-serif", maxWidth: 600, margin: "0 auto" }}>
