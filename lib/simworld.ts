@@ -42,7 +42,10 @@ const MAX_STRUCTURES = 30;    // keeps the scene legible; builds stop, world doe
 // for voices, build tables, and goal pools (prompt material never hits the DB).
 
 export type SimAction =
-  | "rest" | "wander" | "seek" | "visit" | "build" | "tend" | "reflect" | "converge";
+  | "rest" | "wander" | "seek" | "visit" | "build" | "tend" | "reflect" | "converge" | "improve";
+
+/** 1 = fresh build, 2 = established, 3 = final form (structure-depth spec). */
+export const MAX_SIM_STRUCTURE_LEVEL = 3;
 
 export type StructureKind = "shelter" | "cairn" | "beacon" | "garden" | "workshop" | "monument";
 
@@ -185,6 +188,8 @@ export interface SimStructure {
   built_by: string;
   tick: number;
   created_at: string;
+  /** 1-3; absent until db/structure-levels.sql runs (renderer falls back to age). */
+  level?: number;
 }
 
 export type SimEventKind =
@@ -449,6 +454,7 @@ interface Candidate {
   targetName?: string; // agent or site name, for flavor + activity labels
   site?: AnomalySite;
   buildKind?: StructureKind;
+  improveTarget?: SimStructure;
 }
 
 const WEATHER_LINES: Record<Weather, string> = {
@@ -589,6 +595,23 @@ export async function runSimTick(): Promise<SimTickResult> {
           desc: `tend the ${tendable.kind} standing here`, targetName: tendable.kind,
         });
       }
+      // Reinforce own works: only offered once the level migration has run
+      // (pre-migration rows carry no level key), only to the builder, only
+      // below final form. Structure-depth spec, Part 1.
+      const improvable = structures.find(
+        (s) =>
+          s.built_by === agent.name &&
+          s.level !== undefined &&
+          (s.level ?? 1) < MAX_SIM_STRUCTURE_LEVEL &&
+          dist(agent.x, agent.z, s.x, s.z) < 12
+      );
+      if (improvable && agent.energy > 55) {
+        candidates.push({
+          action: "improve", weight: industry * 1.5,
+          desc: `reinforce the ${improvable.kind} standing here to its ${(improvable.level ?? 1) + 1 >= MAX_SIM_STRUCTURE_LEVEL ? "final" : "established"} form`,
+          improveTarget: improvable, targetName: improvable.kind,
+        });
+      }
       candidates.push({ action: "reflect", weight: solitude, desc: "stay put, watch the weather, and log what this place is becoming" });
     }
 
@@ -669,6 +692,23 @@ export async function runSimTick(): Promise<SimTickResult> {
         id: -1, kind: choice.buildKind, x: pos.x, z: pos.z, built_by: agent.name, tick,
         created_at: new Date().toISOString(),
       });
+    } else if (choice.action === "improve" && choice.improveTarget) {
+      const t = choice.improveTarget;
+      const level = Math.min(MAX_SIM_STRUCTURE_LEVEL, (t.level ?? 1) + 1);
+      agent.energy = Math.max(0, agent.energy - 12);
+      agent.activity = `reinforcing the ${t.kind}`;
+      const ok = await sbWrite(`sim_structures?id=eq.${t.id}`, "PATCH", { level });
+      if (ok) {
+        t.level = level; // later actors this tick see the new level
+        buildCount++;
+        kind = "build";
+        summary = `${agent.name} reinforces the ${t.kind} at (${Math.round(t.x)}, ${Math.round(t.z)}) to its ${
+          level >= MAX_SIM_STRUCTURE_LEVEL ? "final" : "established"
+        } form — work meant to outlast the run.`;
+        if (agent.goal_kind === "build") agent.goal_progress++;
+      } else {
+        summary = `${agent.name} works on the ${t.kind}, but the reinforcement doesn't hold this tick.`;
+      }
     } else if (choice.action === "tend") {
       agent.energy = Math.max(0, agent.energy - 6);
       agent.activity = `tending the ${choice.targetName ?? "ground"}`;

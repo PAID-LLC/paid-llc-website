@@ -50,6 +50,9 @@ function ballotChange(p: { proposal_type: ProposalType; params: Record<string, u
     const inscription = p.params.inscription ? `, inscribed "${String(p.params.inscription)}"` : "";
     return `a ${String(p.params.size ?? "medium")} ${String(p.params.kind ?? "")}${inscription}`;
   }
+  if (p.proposal_type === "improve_structure") {
+    return `reinforce the ${String(p.params.plot ?? "?")} plot's structure to a higher form`;
+  }
   return `"${String(p.params.value ?? "")}"`;
 }
 

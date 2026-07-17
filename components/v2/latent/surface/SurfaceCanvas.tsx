@@ -406,10 +406,14 @@ function Structure({ s, fresh, reduced, bright }: { s: WorldStructure; fresh: bo
   // Face the assembly, with a hash lean so the ring doesn't read stamped.
   const yaw = Math.atan2(-x, -z) + ((seed % 21) - 10) * 0.012;
   const k = SIZE_SCALE[s.size] ?? 1;
-  // Age drives visual maturity: enacted this cycle → established (2 days) →
-  // ancient (a week). When the engine grows a real level column, it replaces
-  // ageTier here and the tiered meshes are already waiting.
-  const tier = ageTier(s.created_at, 48, 168);
+  // Maturity is the max of two sources: age (patina accrues on its own —
+  // established at 2 days, ancient at a week) and the ballot-earned level
+  // from improve_structure enactments (db/structure-levels.sql). A reinforced
+  // structure jumps ahead of its age; an old one never regresses.
+  const tier = Math.max(
+    ageTier(s.created_at, 48, 168),
+    Math.min(2, Math.max(0, (s.level ?? 1) - 1))
+  );
   const labelY =
     s.kind === "spire" ? 12 * k : s.kind === "pavilion" ? 6.6 * k : s.kind === "arch" ? 4.6 * k : 3 * k;
 

@@ -561,9 +561,14 @@ function Structure({ s, fresh, reduced }: { s: SimStructure; fresh: boolean; red
   const y = terrainHeight(s.x, s.z);
   const Mesh = STRUCTURE_MESH[s.kind] ?? CairnMesh;
   const seed = detailSeed(`${s.built_by}:${s.id}`);
-  // Substrate runs at 2 world days per real day, so maturity lands fast:
-  // established after 12 real hours, ancient after 48.
-  const tier = ageTier(s.created_at, 12, 48);
+  // Maturity is the max of two sources: age (Substrate runs 2 world days per
+  // real day, so established at 12h, ancient at 48h) and the builder-earned
+  // level from improve actions (db/structure-levels.sql). Reinforced works
+  // jump ahead of their age; old ones never regress.
+  const tier = Math.max(
+    ageTier(s.created_at, 12, 48),
+    Math.min(2, Math.max(0, (s.level ?? 1) - 1))
+  );
   return (
     <group position={[s.x, y, s.z]} rotation-y={Math.atan2(-s.x, -s.z) + ((seed % 21) - 10) * 0.014}>
       <mesh position-y={0.1} receiveShadow>
