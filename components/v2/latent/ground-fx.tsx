@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { useFrame, useThree } from "@react-three/fiber";
+import { EffectComposer, Bloom, Noise, Vignette } from "@react-three/postprocessing";
 import { makeRimMaterial } from "./universe/Planet";
-import { makeMilkyWayTexture } from "./universe/planet-textures";
+import { makeMilkyWayTexture, makeRingTexture } from "./universe/planet-textures";
 
 // ── Ground-level scene FX ─────────────────────────────────────────────────────
 // Shared atmosphere kit for the two on-the-ground worlds — Synthetica Prime's
@@ -497,17 +497,535 @@ export function AuroraCurtain({
   );
 }
 
-// ── Bloom ────────────────────────────────────────────────────────────────────
-// The single biggest step toward the universe's finish: beacons, emissive
-// rings, and the star overhead pick up a real glow. Threshold sits above the
-// lit terrain's brightness — including the vertex-color accent flecks — so
-// the ground stays matte instead of blotching. Same library the v1 lounge has
-// shipped on since launch.
+// ── Rim mountains ────────────────────────────────────────────────────────────
+// A ring of jagged peaks past the playable ground, silhouetted against the
+// horizon glow band — the skyline the noise-lump rim never gave these worlds.
+// Pure visual set dressing outside the roam radius, so it can never disagree
+// with any server-side terrain math. Seamless around the circle because the
+// ridge noise samples on a circle in noise space, not on the raw angle.
 
-export function SceneBloom({ intensity = 0.7 }: { intensity?: number }) {
+function ringNoise(a: number, freq: number, seed: number): number {
+  return fbm2Circle(Math.cos(a) * freq, Math.sin(a) * freq, seed);
+}
+
+// Small local fbm over 2D so this file stays dependency-free of the two
+// scene-specific field modules (which belong to their scenes, not to FX).
+function vnoise(x: number, z: number, seed: number): number {
+  const ix = Math.floor(x), iz = Math.floor(z);
+  const fx = x - ix, fz = z - iz;
+  const sm = (t: number) => t * t * (3 - 2 * t);
+  const lat = (gx: number, gz: number) => {
+    let h = seed ^ Math.imul(gx, 374761393) ^ Math.imul(gz, 668265263);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+  const c00 = lat(ix, iz), c10 = lat(ix + 1, iz), c01 = lat(ix, iz + 1), c11 = lat(ix + 1, iz + 1);
+  const x0 = c00 + (c10 - c00) * sm(fx);
+  const x1 = c01 + (c11 - c01) * sm(fx);
+  return x0 + (x1 - x0) * sm(fz);
+}
+
+function fbm2Circle(x: number, z: number, seed: number): number {
+  let v = 0, amp = 0.5, f = 1;
+  for (let o = 0; o < 4; o++) {
+    v += amp * vnoise(x * f + 31, z * f + 17, seed + o * 101);
+    amp *= 0.5;
+    f *= 2;
+  }
+  return v;
+}
+
+export function RimMountains({
+  inner,
+  outer,
+  height = 60,
+  base = 6,
+  color,
+  seed = 1,
+}: {
+  inner: number;
+  outer: number;
+  height?: number;
+  base?: number;
+  color: string;
+  seed?: number;
+}) {
+  const geometry = useMemo(() => {
+    const SEG = 220;
+    const mid = (inner + outer) / 2;
+    const positions: number[] = [];
+    const index: number[] = [];
+    for (let i = 0; i <= SEG; i++) {
+      const a = (i / SEG) * Math.PI * 2;
+      // Ridged profile: big peaks carry the skyline, a second octave keeps it jagged.
+      const big = Math.pow(1 - Math.abs(2 * ringNoise(a, 2.3, seed) - 1), 1.5);
+      const jag = Math.pow(1 - Math.abs(2 * ringNoise(a, 7.1, seed + 55) - 1), 1.2);
+      const peak = base + (big * 0.75 + jag * 0.35) * height;
+      const cos = Math.cos(a), sin = Math.sin(a);
+      positions.push(cos * inner, -4, sin * inner);
+      positions.push(cos * mid, peak, sin * mid);
+      positions.push(cos * outer, peak * 0.3, sin * outer);
+      if (i < SEG) {
+        const r = i * 3;
+        index.push(r, r + 1, r + 3, r + 1, r + 4, r + 3);
+        index.push(r + 1, r + 2, r + 4, r + 2, r + 5, r + 4);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    g.setIndex(index);
+    g.computeVertexNormals();
+    return g;
+  }, [inner, outer, height, base, seed]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial color={color} flatShading roughness={1} metalness={0} />
+    </mesh>
+  );
+}
+
+// ── A sibling world in the sky ───────────────────────────────────────────────
+// The universe map's wow moment is a big lit body in frame. From the ground,
+// that's a banded gas giant looming past the horizon — lit by the same
+// directional light as the terrain, so its terminator agrees with the star.
+
+function makeGasTexture(a: string, b: string, dark: string, seed: number): THREE.CanvasTexture {
+  const w = 256, h = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  const ca = new THREE.Color(a), cb = new THREE.Color(b), cd = new THREE.Color(dark);
+  const img = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const warp = vnoise(x * 0.03, y * 0.05, seed) * 3.2;
+      const band = fbm2Circle(x * 0.004, y * 0.075 + warp, seed + 9);
+      const t = Math.min(1, Math.max(0, band * 1.5 - 0.2));
+      const c = new THREE.Color().lerpColors(ca, cb, t);
+      // Occasional dark belt.
+      const belt = Math.pow(1 - Math.abs(2 * vnoise(3, y * 0.055 + warp * 0.4, seed + 77) - 1), 6);
+      c.lerp(cd, belt * 0.7);
+      const i = (y * w + x) * 4;
+      img.data[i] = c.r * 255;
+      img.data[i + 1] = c.g * 255;
+      img.data[i + 2] = c.b * 255;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return new THREE.CanvasTexture(canvas);
+}
+
+export function SkyWorld({
+  position,
+  radius,
+  palette,
+  tint,
+  ring = false,
+  moon = true,
+  seed = 7,
+  reduced,
+}: {
+  position: [number, number, number];
+  radius: number;
+  palette: { a: string; b: string; dark: string };
+  tint: string;
+  ring?: boolean;
+  moon?: boolean;
+  seed?: number;
+  reduced: boolean;
+}) {
+  const texture = useMemo(
+    () => makeGasTexture(palette.a, palette.b, palette.dark, seed),
+    [palette, seed]
+  );
+  const ringTexture = useMemo(() => (ring ? makeRingTexture(`skyworld-${seed}`, tint) : null), [ring, tint, seed]);
+  const rim = useMemo(() => makeRimMaterial(tint, 0.75), [tint]);
+  useEffect(
+    () => () => {
+      texture.dispose();
+      ringTexture?.dispose();
+      rim.dispose();
+    },
+    [texture, ringTexture, rim]
+  );
+  const spin = useRef<THREE.Mesh>(null);
+  useFrame((_, dt) => {
+    if (spin.current && !reduced) spin.current.rotation.y += dt * 0.02;
+  });
+  return (
+    <group position={position} rotation-z={0.35}>
+      <mesh ref={spin}>
+        <sphereGeometry args={[radius, 40, 28]} />
+        {/* Faint self-luminous banding keeps the night side readable as a
+            world instead of a hole in the sky — these are living planets. */}
+        <meshStandardMaterial
+          map={texture}
+          roughness={0.95}
+          metalness={0}
+          fog={false}
+          emissive="#ffffff"
+          emissiveMap={texture}
+          emissiveIntensity={0.32}
+        />
+      </mesh>
+      <mesh material={rim} scale={radius * 1.12}>
+        <sphereGeometry args={[1, 28, 20]} />
+      </mesh>
+      {ring && ringTexture && (
+        <mesh rotation={[-Math.PI / 2 + 0.32, 0, 0]}>
+          <ringGeometry args={[radius * 1.45, radius * 2.25, 72]} />
+          <meshBasicMaterial map={ringTexture} transparent opacity={0.5} side={THREE.DoubleSide} depthWrite={false} fog={false} />
+        </mesh>
+      )}
+      {moon && (
+        <mesh position={[radius * 2.6, radius * 0.7, radius * 0.4]}>
+          <sphereGeometry args={[radius * 0.16, 16, 12]} />
+          <meshStandardMaterial color="#9aa3b2" roughness={1} fog={false} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// ── Cloud band ───────────────────────────────────────────────────────────────
+// A high, slowly circling belt of soft noise blobs — the sky stops being a
+// void between the stars and the ground.
+
+function makeCloudTexture(seed: number): THREE.CanvasTexture {
+  const w = 1024, h = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  const rand = mulberry(seed);
+  for (let i = 0; i < 90; i++) {
+    const x = rand() * w;
+    const y = h * (0.25 + rand() * 0.5);
+    const rx = 30 + rand() * 90;
+    const ry = 8 + rand() * 18;
+    const a = 0.03 + rand() * 0.05;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rx);
+    g.addColorStop(0, `rgba(255,255,255,${a})`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, ry / rx);
+    ctx.translate(-x, -y);
+    ctx.fillRect(x - rx, y - rx, rx * 2, rx * 2);
+    ctx.restore();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  return tex;
+}
+
+export function CloudBand({
+  color,
+  opacity = 0.5,
+  radius = 300,
+  y = 72,
+  height = 46,
+  reduced,
+}: {
+  color: string;
+  opacity?: number;
+  radius?: number;
+  y?: number;
+  height?: number;
+  reduced: boolean;
+}) {
+  const texA = useMemo(() => makeCloudTexture(0xc10d), []);
+  const texB = useMemo(() => makeCloudTexture(0xc10e), []);
+  useEffect(
+    () => () => {
+      texA.dispose();
+      texB.dispose();
+    },
+    [texA, texB]
+  );
+  const a = useRef<THREE.Mesh>(null);
+  const b = useRef<THREE.Mesh>(null);
+  useFrame((_, dt) => {
+    if (reduced) return;
+    if (a.current) a.current.rotation.y += dt * 0.004;
+    if (b.current) b.current.rotation.y -= dt * 0.0028;
+  });
+  const mat = (map: THREE.Texture, o: number) => (
+    <meshBasicMaterial map={map} color={color} transparent opacity={o} side={THREE.DoubleSide} depthWrite={false} fog={false} />
+  );
+  return (
+    <>
+      <mesh ref={a} position-y={y}>
+        <cylinderGeometry args={[radius, radius, height, 64, 1, true]} />
+        {mat(texA, opacity)}
+      </mesh>
+      <mesh ref={b} position-y={y + 18}>
+        <cylinderGeometry args={[radius * 1.12, radius * 1.12, height * 1.3, 64, 1, true]} />
+        {mat(texB, opacity * 0.6)}
+      </mesh>
+    </>
+  );
+}
+
+// ── Ground scatter ───────────────────────────────────────────────────────────
+// Instanced debris (matte rocks or emissive crystal shards) seeded around the
+// territory. One draw call each; deterministic so the field never reshuffles.
+// The scene passes its own terrainHeight so placement follows the real ground.
+
+export function ScatterField({
+  kind,
+  count,
+  area,
+  minRadius = 0,
+  excludeBands = [],
+  color,
+  heightFn,
+  seed,
+  castShadow = false,
+}: {
+  kind: "rocks" | "crystals";
+  count: number;
+  area: number;
+  minRadius?: number;
+  /** radial bands to keep clear (e.g. the genesis plot ring) */
+  excludeBands?: { r: number; w: number }[];
+  color: string;
+  heightFn: (x: number, z: number) => number;
+  seed: number;
+  castShadow?: boolean;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const placements = useMemo(() => {
+    const rand = mulberry(seed);
+    const out: { x: number; z: number; s: number; ry: number; sy: number }[] = [];
+    let guard = 0;
+    while (out.length < count && guard++ < count * 12) {
+      const a = rand() * Math.PI * 2;
+      const r = minRadius + Math.sqrt(rand()) * (area - minRadius);
+      if (excludeBands.some((b) => Math.abs(r - b.r) < b.w)) continue;
+      const s = kind === "rocks" ? 0.3 + rand() * 1.1 : 0.18 + rand() * 0.4;
+      out.push({
+        x: Math.cos(a) * r,
+        z: Math.sin(a) * r,
+        s,
+        ry: rand() * Math.PI * 2,
+        sy: kind === "crystals" ? 2.0 + rand() * 1.4 : 0.7 + rand() * 0.6,
+      });
+    }
+    return out;
+    // excludeBands is static per scene; identity churn shouldn't rebuild.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, count, area, minRadius, seed]);
+
+  useEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const dummy = new THREE.Object3D();
+    placements.forEach((p, i) => {
+      dummy.position.set(p.x, heightFn(p.x, p.z) + (kind === "crystals" ? p.s * p.sy * 0.4 : 0), p.z);
+      dummy.rotation.set(kind === "rocks" ? p.ry * 0.3 : 0, p.ry, 0);
+      dummy.scale.set(p.s, p.s * p.sy, p.s);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [placements, heightFn, kind]);
+
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, placements.length]} castShadow={castShadow}>
+      {kind === "rocks" ? <icosahedronGeometry args={[1, 0]} /> : <octahedronGeometry args={[1, 0]} />}
+      {kind === "rocks" ? (
+        <meshStandardMaterial color={color} flatShading roughness={1} metalness={0} />
+      ) : (
+        <meshStandardMaterial color={color} flatShading roughness={0.4} emissive={color} emissiveIntensity={0.55} />
+      )}
+    </instancedMesh>
+  );
+}
+
+// ── Cinematic descent ────────────────────────────────────────────────────────
+// The first four seconds: the camera falls from high orbit onto the default
+// framing, then hands over to OrbitControls for good. The universe map opens
+// with a drift; the surfaces open with a landing.
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+export function CinematicDescent({
+  from,
+  target,
+  duration = 4,
+  reduced,
+  onDone,
+}: {
+  from: [number, number, number];
+  target: [number, number, number];
+  duration?: number;
+  reduced: boolean;
+  onDone: () => void;
+}) {
+  const camera = useThree((s) => s.camera);
+  const anim = useRef<{ to: THREE.Vector3; t: number; done: boolean } | null>(null);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    if (reduced) {
+      onDoneRef.current();
+      anim.current = { to: camera.position.clone(), t: 1, done: true };
+      return;
+    }
+    anim.current = { to: camera.position.clone(), t: 0, done: false };
+    camera.position.set(...from);
+    camera.lookAt(...target);
+    // Mount-only: `from`/`target` are literals per scene.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFrame((_, dt) => {
+    const a = anim.current;
+    if (!a || a.done) return;
+    a.t = Math.min(1, a.t + dt / duration);
+    const e = easeInOut(a.t);
+    camera.position.set(
+      from[0] + (a.to.x - from[0]) * e,
+      from[1] + (a.to.y - from[1]) * e,
+      from[2] + (a.to.z - from[2]) * e
+    );
+    camera.lookAt(...target);
+    if (a.t >= 1) {
+      a.done = true;
+      onDoneRef.current();
+    }
+  });
+
+  return null;
+}
+
+// ── Small animated helpers ───────────────────────────────────────────────────
+
+/** Gentle scale pulse for beacon orbs and crystal tips. */
+export function Pulse({
+  speed = 2,
+  amp = 0.14,
+  phase = 0,
+  reduced,
+  children,
+}: {
+  speed?: number;
+  amp?: number;
+  phase?: number;
+  reduced: boolean;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (!ref.current || reduced) return;
+    ref.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * speed + phase) * amp);
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+/** Animated pool: a soft fill plus two counter-rotating ripple rings. */
+function makeRippleTexture(): THREE.CanvasTexture {
+  const s = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = s;
+  canvas.height = s;
+  const ctx = canvas.getContext("2d")!;
+  const rand = mulberry(0x11a9);
+  for (let i = 0; i < 9; i++) {
+    const r = 18 + i * 12 + rand() * 6;
+    ctx.beginPath();
+    ctx.arc(s / 2, s / 2, r, rand() * Math.PI * 2, Math.PI * (0.7 + rand() * 1.1));
+    ctx.strokeStyle = `rgba(255,255,255,${0.16 + rand() * 0.2})`;
+    ctx.lineWidth = 1.5 + rand() * 2;
+    ctx.stroke();
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+
+export function RippleDisc({
+  radius,
+  color,
+  y = 0.14,
+  reduced,
+}: {
+  radius: number;
+  color: string;
+  y?: number;
+  reduced: boolean;
+}) {
+  const texture = useMemo(() => makeRippleTexture(), []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  const a = useRef<THREE.Mesh>(null);
+  const b = useRef<THREE.Mesh>(null);
+  useFrame((_, dt) => {
+    if (reduced) return;
+    if (a.current) a.current.rotation.z += dt * 0.12;
+    if (b.current) b.current.rotation.z -= dt * 0.08;
+  });
+  return (
+    <group rotation-x={-Math.PI / 2} position-y={y}>
+      <mesh>
+        <circleGeometry args={[radius, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.3} depthWrite={false} />
+      </mesh>
+      <mesh ref={a} position-z={0.02}>
+        <circleGeometry args={[radius, 32]} />
+        <meshBasicMaterial map={texture} color={color} transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh ref={b} position-z={0.04} scale={0.7}>
+        <circleGeometry args={[radius, 32]} />
+        <meshBasicMaterial map={texture} color={color} transparent opacity={0.35} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Lightning for the static-storm regime: random double-strike sky flashes. */
+export function StormFlash({ color, reduced }: { color: string; reduced: boolean }) {
+  const light = useRef<THREE.HemisphereLight>(null);
+  const s = useRef({ next: 2.5, flash: 0, second: false });
+  useFrame((_, dt) => {
+    const st = s.current;
+    const l = light.current;
+    if (!l || reduced) return;
+    st.next -= dt;
+    if (st.next <= 0) {
+      st.flash = 1;
+      st.second = Math.random() < 0.45;
+      st.next = 4 + Math.random() * 8;
+    }
+    if (st.flash > 0) {
+      st.flash = Math.max(0, st.flash - dt * 6);
+      if (st.second && st.flash < 0.45) {
+        st.flash = 0.85;
+        st.second = false;
+      }
+    }
+    l.intensity = st.flash * 2.4;
+  });
+  return <hemisphereLight ref={light} args={[color, "#0a0a12", 0]} />;
+}
+
+// ── Filmic post stack ────────────────────────────────────────────────────────
+// Bloom for the emissives (threshold sits above lit terrain, including its
+// vertex-color accent flecks, so the ground stays matte), then a vignette and
+// a whisper of grain — the same finish language as the universe's screen-space
+// scanlines, applied in-scene. Same library the v1 lounge has shipped on.
+
+export function SceneFX({ bloom = 0.7 }: { bloom?: number }) {
   return (
     <EffectComposer>
-      <Bloom mipmapBlur luminanceThreshold={0.42} luminanceSmoothing={0.75} intensity={intensity} radius={0.7} />
+      <Bloom mipmapBlur luminanceThreshold={0.42} luminanceSmoothing={0.75} intensity={bloom} radius={0.7} />
+      <Vignette eskil={false} offset={0.26} darkness={0.58} />
+      <Noise premultiply opacity={0.05} />
     </EffectComposer>
   );
 }

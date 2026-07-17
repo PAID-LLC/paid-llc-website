@@ -8,13 +8,15 @@ import { OrbitControls, Stars, Html } from "@react-three/drei";
 import type { WorldData, WorldStructure } from "@/lib/world";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
 import {
-  AuroraCurtain, GroundMist, GroundSky, MilkyWayBackdrop, NexusStar,
-  ParticleField, SceneBloom, mixHex,
+  AuroraCurtain, CinematicDescent, CloudBand, GroundMist, GroundSky,
+  MilkyWayBackdrop, NexusStar, ParticleField, Pulse, RimMountains,
+  ScatterField, SceneFX, SkyWorld, mixHex,
 } from "@/components/v2/latent/ground-fx";
 import SurfaceHUD from "./SurfaceHUD";
 import {
   GROUND_SIZE, PLOT_RADIUS, SURFACE_SEED, COMPASS_PLOTS, TERRAFORM_PALETTES,
-  coverage, coverageThreshold, groundColor, mulberry32, plotPosition, terrainHeight,
+  coverage, coverageThreshold, groundColor, mulberry32, plotPosition, smoothstep,
+  terrainHeight,
 } from "./surface-field";
 
 // ── Synthetica Prime: the surface ────────────────────────────────────────────
@@ -46,7 +48,7 @@ function usePrefersReducedMotion(): boolean {
 
 function Terrain({ stage, terraform }: { stage: number; terraform: string | null }) {
   const geometry = useMemo(() => {
-    const seg = 110;
+    const seg = 150;
     const g = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, seg, seg);
     g.rotateX(-Math.PI / 2);
     const pos = g.attributes.position as THREE.BufferAttribute;
@@ -62,13 +64,36 @@ function Terrain({ stage, terraform }: { stage: number; terraform: string | null
     }
     g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     g.computeVertexNormals();
+    // Relief pass (visual only — heights untouched): steep faces darken toward
+    // cliff rock, high ridges catch a pale dusting. This is what separates
+    // "vertex-colored plane" from terrain that reads as geology.
+    const normal = g.attributes.normal as THREE.BufferAttribute;
+    const CLIFF = { r: 0.09, g: 0.055, b: 0.075 };
+    const DUST = { r: 0.62, g: 0.5, b: 0.56 };
+    for (let i = 0; i < pos.count; i++) {
+      const ny = normal.getY(i);
+      const h = pos.getY(i);
+      let r = colors[i * 3], gg = colors[i * 3 + 1], b = colors[i * 3 + 2];
+      const steep = smoothstep(0.86, 0.58, ny) * 0.72;
+      r += (CLIFF.r - r) * steep;
+      gg += (CLIFF.g - gg) * steep;
+      b += (CLIFF.b - b) * steep;
+      const dust = smoothstep(22, 46, h) * Math.max(0, (ny - 0.7) / 0.3) * 0.5;
+      r += (DUST.r - r) * dust;
+      gg += (DUST.g - gg) * dust;
+      b += (DUST.b - b) * dust;
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = gg;
+      colors[i * 3 + 2] = b;
+    }
+    g.attributes.color.needsUpdate = true;
     return g;
   }, [stage, terraform]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
-    <mesh geometry={geometry} receiveShadow={false}>
+    <mesh geometry={geometry} receiveShadow>
       <meshStandardMaterial vertexColors flatShading roughness={1} metalness={0} />
     </mesh>
   );
@@ -119,25 +144,28 @@ function Rock(props: { emissiveIntensity?: number }) {
   );
 }
 
-function SpireMesh({ k }: { k: number }) {
+function SpireMesh({ k, reduced }: { k: number; reduced: boolean }) {
   return (
     <>
-      <mesh position-y={2.4 * k}>
+      <mesh position-y={2.4 * k} castShadow>
         <cylinderGeometry args={[0.9 * k, 1.4 * k, 4.8 * k, 6]} />
         <Rock />
       </mesh>
-      <mesh position-y={6.4 * k}>
+      <mesh position-y={6.4 * k} castShadow>
         <cylinderGeometry args={[0.45 * k, 0.9 * k, 3.6 * k, 6]} />
         <Rock />
       </mesh>
-      <mesh position-y={9.2 * k}>
+      <mesh position-y={9.2 * k} castShadow>
         <cylinderGeometry args={[0.12 * k, 0.45 * k, 2.2 * k, 6]} />
         <Rock emissiveIntensity={0.16} />
       </mesh>
-      <mesh position-y={10.6 * k}>
-        <sphereGeometry args={[0.4 * k, 12, 12]} />
-        <meshBasicMaterial color={ROSE} />
-      </mesh>
+      <Pulse speed={1.6} amp={0.12} reduced={reduced}>
+        <mesh position-y={10.6 * k}>
+          <sphereGeometry args={[0.4 * k, 12, 12]} />
+          <meshBasicMaterial color={ROSE} />
+        </mesh>
+      </Pulse>
+      <pointLight position={[0, 10.6 * k, 0]} color={ROSE} intensity={26} distance={26 * k} decay={2} />
     </>
   );
 }
@@ -148,17 +176,17 @@ function PavilionMesh({ k }: { k: number }) {
   ];
   return (
     <>
-      <mesh position-y={0.25 * k}>
+      <mesh position-y={0.25 * k} castShadow>
         <boxGeometry args={[6 * k, 0.5 * k, 6 * k]} />
         <Rock />
       </mesh>
       {legs.map(([lx, lz], i) => (
-        <mesh key={i} position={[lx * k, 2.1 * k, lz * k]}>
+        <mesh key={i} position={[lx * k, 2.1 * k, lz * k]} castShadow>
           <cylinderGeometry args={[0.22 * k, 0.26 * k, 3.2 * k, 6]} />
           <Rock />
         </mesh>
       ))}
-      <mesh position-y={4.6 * k} rotation-y={Math.PI / 4}>
+      <mesh position-y={4.6 * k} rotation-y={Math.PI / 4} castShadow>
         <coneGeometry args={[4.6 * k, 2 * k, 4]} />
         <Rock emissiveIntensity={0.14} />
       </mesh>
@@ -168,7 +196,7 @@ function PavilionMesh({ k }: { k: number }) {
 
 function ArchMesh({ k }: { k: number }) {
   return (
-    <mesh position-y={0.2 * k}>
+    <mesh position-y={0.2 * k} castShadow>
       <torusGeometry args={[3 * k, 0.42 * k, 8, 24, Math.PI]} />
       <Rock emissiveIntensity={0.14} />
     </mesh>
@@ -186,7 +214,7 @@ function GardenMesh({ k, bright }: { k: number; bright: string }) {
   return (
     <>
       {blobs.map((b, i) => (
-        <mesh key={i} position={[b.p[0] * k, b.p[1] * k, b.p[2] * k]}>
+        <mesh key={i} position={[b.p[0] * k, b.p[1] * k, b.p[2] * k]} castShadow>
           <icosahedronGeometry args={[b.r * k, 1]} />
           <meshStandardMaterial color={bright} flatShading roughness={0.9} emissive={bright} emissiveIntensity={0.12} />
         </mesh>
@@ -231,7 +259,7 @@ function Structure({ s, fresh, reduced, bright }: { s: WorldStructure; fresh: bo
         {s.kind === "pavilion" ? <PavilionMesh k={k} /> :
          s.kind === "arch" ? <ArchMesh k={k} /> :
          s.kind === "garden" ? <GardenMesh k={k} bright={bright} /> :
-         <SpireMesh k={k} />}
+         <SpireMesh k={k} reduced={reduced} />}
       </Grow>
       <Html position={[0, labelY, 0]} center distanceFactor={30} className="pointer-events-none">
         <div className="whitespace-nowrap text-center font-mono">
@@ -279,7 +307,7 @@ function Assembly({ world }: { world: WorldData }) {
   const roll = world.ballot?.roll ?? [];
   return (
     <group>
-      <mesh position-y={0.3}>
+      <mesh position-y={0.3} castShadow receiveShadow>
         <cylinderGeometry args={[7, 7.6, 0.6, 48]} />
         <meshStandardMaterial color="#1a1218" roughness={0.9} />
       </mesh>
@@ -303,11 +331,11 @@ function Assembly({ world }: { world: WorldData }) {
         const color = VOTE_COLOR[r.vote] ?? VOTE_COLOR.abstain;
         return (
           <group key={`${r.agent_name}-${i}`} position={[x, 0.6, z]} rotation-y={Math.atan2(-x, -z)}>
-            <mesh position-y={0.8}>
+            <mesh position-y={0.8} castShadow>
               <coneGeometry args={[0.5, 1.6, 8]} />
               <meshStandardMaterial color={color} flatShading roughness={0.8} emissive={color} emissiveIntensity={0.22} />
             </mesh>
-            <mesh position-y={1.9}>
+            <mesh position-y={1.9} castShadow>
               <sphereGeometry args={[0.38, 10, 10]} />
               <meshStandardMaterial color={color} flatShading roughness={0.8} emissive={color} emissiveIntensity={0.22} />
             </mesh>
@@ -326,6 +354,8 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
   const world = live.world ?? initial;
   const { stage } = world.state;
   const terraform = world.state.terraform;
+  // Camera belongs to the descent until it lands, then to OrbitControls.
+  const [introDone, setIntroDone] = useState(false);
 
   // Full-screen portal pattern mirrors UniverseCanvas/FloorScene: portal to
   // <body> and lock page scroll while mounted. In-tree, this overlay sits in
@@ -361,6 +391,7 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#07070b]">
       <Canvas
+        shadows
         dpr={[1, 1.75]}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [52, 34, 66], fov: 50, near: 0.5, far: 700 }}
@@ -370,15 +401,42 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         <fog attach="fog" args={[horizonHex, 70, 240]} />
         <hemisphereLight args={[horizonHex, "#17101a", 0.5]} />
         <ambientLight color="#c4a2b4" intensity={0.22} />
-        <directionalLight color="#ffd9a0" intensity={1.15} position={[80, 60, -40]} />
+        {/* The key light casts real shadows — the single biggest "grounded"
+            cue a low-poly scene can have. Ortho bounds cover the full roam. */}
+        <directionalLight
+          color="#ffd9a0"
+          intensity={1.15}
+          position={[80, 60, -40]}
+          castShadow
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-left={-160}
+          shadow-camera-right={160}
+          shadow-camera-top={160}
+          shadow-camera-bottom={-160}
+          shadow-camera-near={10}
+          shadow-camera-far={400}
+          shadow-bias={-0.0004}
+          shadow-normalBias={0.5}
+        />
 
         {/* The sky, from the ground up: gradient dome, the universe's own milky
-            way, a denser starfield, and the Nexus itself burning in the
-            direction of the key light. */}
+            way, a denser starfield, the Nexus burning where the key light is,
+            a ringed sibling world looming opposite it, and a slow cloud belt. */}
         <GroundSky horizon={horizonHex} glow={bright} glowStrength={glowStrength} />
         <MilkyWayBackdrop />
         <Stars radius={320} depth={60} count={2600} factor={2.2} saturation={0.3} fade speed={reduced ? 0 : 0.3} />
         <NexusStar position={[245, 184, -122]} halo="#ffd9a0" tint={bright} radius={12} reduced={reduced} />
+        <SkyWorld
+          position={[-230, 95, 165]}
+          radius={26}
+          palette={{ a: "#16303e", b: "#3b6f86", dark: "#0b1720" }}
+          tint="#22d3ee"
+          ring
+          seed={8}
+          reduced={reduced}
+        />
+        <CloudBand color={mixHex(horizonHex, "#ffffff", 0.4)} opacity={0.4} reduced={reduced} />
+        <RimMountains inner={126} outer={205} height={64} color="#171016" seed={3} />
 
         <Terrain stage={stage} terraform={terraform} />
         <SettlementLights stage={stage} terraform={terraform} />
@@ -391,6 +449,33 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
           <OpenPlot key={p} plot={p} />
         ))}
 
+        {/* Ground truthing: scattered rock debris everywhere, plus emissive
+            growth crystals once a terraform direction is chosen. The plot ring
+            (r=40) stays clear so the ballot architecture keeps its stage. */}
+        <ScatterField
+          kind="rocks"
+          count={150}
+          area={118}
+          minRadius={14}
+          excludeBands={[{ r: PLOT_RADIUS, w: 7 }]}
+          color="#241a20"
+          heightFn={terrainHeight}
+          seed={0x9e1a}
+          castShadow
+        />
+        {terra && stage > 0 && (
+          <ScatterField
+            kind="crystals"
+            count={44}
+            area={105}
+            minRadius={16}
+            excludeBands={[{ r: PLOT_RADIUS, w: 7 }]}
+            color={bright}
+            heightFn={terrainHeight}
+            seed={0x9e1b}
+          />
+        )}
+
         {/* Atmosphere: drifting accent motes, low mist, and — once the assembly
             has voted the sky alive — the aurora the ballots paid for. */}
         <ParticleField mode="motes" color={terra ? bright : ROSE_SOFT} area={110} reduced={reduced} />
@@ -398,9 +483,17 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         {terraform === "aurora" && stage > 0 && (
           <AuroraCurtain color={bright} intensity={0.25 + Math.min(1, stage / 5) * 0.35} reduced={reduced} />
         )}
-        <SceneBloom />
+        <SceneFX />
 
+        <CinematicDescent
+          from={[150, 170, 190]}
+          target={[0, 3, 0]}
+          duration={4}
+          reduced={reduced}
+          onDone={() => setIntroDone(true)}
+        />
         <OrbitControls
+          enabled={introDone}
           enableDamping
           dampingFactor={0.08}
           enablePan={false}
@@ -408,7 +501,7 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
           maxDistance={Math.max(60, PLOT_RADIUS * 4.2)}
           maxPolarAngle={1.42}
           target={[0, 3, 0]}
-          autoRotate={!reduced}
+          autoRotate={!reduced && introDone}
           autoRotateSpeed={0.35}
         />
       </Canvas>
