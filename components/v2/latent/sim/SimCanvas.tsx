@@ -8,7 +8,8 @@ import type { SimAgentRow, SimData, SimStructure } from "@/lib/simworld";
 import {
   CinematicDescent, CloudBand, GroundMist, GroundSky, MilkyWayBackdrop,
   NexusStar, ParticleField, Pulse, RimMountains, RippleDisc, ScatterField,
-  SceneFX, SkyWorld, StormFlash, mixHex, type ParticleMode,
+  SceneFX, SkyWorld, Spin, StormFlash, TrailLine, ageTier, detailSeed,
+  mixHex, type ParticleMode,
 } from "@/components/v2/latent/ground-fx";
 import {
   GROUND_SIZE, SIM_ACCENT, SIM_ACCENT_SOFT,
@@ -262,32 +263,127 @@ function Rock({ emissiveIntensity = 0.1 }: { emissiveIntensity?: number }) {
   );
 }
 
-function ShelterMesh() {
-  return (
-    <mesh position-y={0.1} castShadow>
-      <sphereGeometry args={[2.4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-      <Rock emissiveIntensity={0.14} />
-    </mesh>
-  );
-}
+// Every structure mesh takes an age tier (0 fresh / 1 established / 2 ancient):
+// old structures visibly accrete detail, so a returning visitor can read the
+// run's history straight off the territory. Substrate ages fast — two world
+// days per real day — so tiers land at 12h and 48h real time.
 
-function CairnMesh() {
+function ShelterMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
   return (
     <>
-      <mesh position-y={0.7} castShadow><icosahedronGeometry args={[1.0, 0]} /><Rock /></mesh>
-      <mesh position-y={1.9} castShadow><icosahedronGeometry args={[0.7, 0]} /><Rock /></mesh>
-      <mesh position-y={2.8} castShadow><icosahedronGeometry args={[0.45, 0]} /><Rock emissiveIntensity={0.3} /></mesh>
+      <mesh position-y={0.1} castShadow>
+        <sphereGeometry args={[2.4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <Rock emissiveIntensity={0.14} />
+      </mesh>
+      {/* Doorway + lit windows — someone lives here. */}
+      <mesh position={[0, 0.75, 2.15]}>
+        <boxGeometry args={[0.9, 1.5, 0.5]} />
+        <meshStandardMaterial color="#05070b" roughness={1} />
+      </mesh>
+      {[-0.9, 0.9].map((x) => (
+        <mesh key={x} position={[x, 1.5, 1.85]}>
+          <sphereGeometry args={[0.12, 8, 6]} />
+          <meshBasicMaterial color="#fcd34d" />
+        </mesh>
+      ))}
+      <mesh position={[1.2, 3.0, -0.6]} rotation-z={0.2}>
+        <cylinderGeometry args={[0.03, 0.03, 1.6, 4]} />
+        <Rock emissiveIntensity={0.3} />
+      </mesh>
+      {tier >= 1 && (
+        /* Established: an annex dome grows off the main shell. */
+        <mesh position={[-2.3, 0.05, 0.8]} castShadow>
+          <sphereGeometry args={[1.3, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <Rock emissiveIntensity={0.12} />
+        </mesh>
+      )}
+      {tier >= 2 && (
+        /* Ancient: a homestead light-mast. */
+        <>
+          <mesh position={[2.2, 2.0, -1.2]} castShadow>
+            <cylinderGeometry args={[0.06, 0.12, 4.0, 5]} />
+            <Rock emissiveIntensity={0.2} />
+          </mesh>
+          <Pulse speed={1.2} amp={0.12} reduced={reduced}>
+            <mesh position={[2.2, 4.2, -1.2]}>
+              <sphereGeometry args={[0.22, 8, 6]} />
+              <meshBasicMaterial color="#fcd34d" />
+            </mesh>
+          </Pulse>
+        </>
+      )}
     </>
   );
 }
 
-function BeaconMesh({ reduced }: { reduced: boolean }) {
+function CairnMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
   return (
     <>
-      <mesh position-y={2.6} castShadow>
-        <cylinderGeometry args={[0.16, 0.4, 5.2, 6]} />
+      <mesh position-y={0.7} castShadow><icosahedronGeometry args={[1.0, 0]} /><Rock /></mesh>
+      <mesh position-y={1.9} castShadow><icosahedronGeometry args={[0.7, 0]} /><Rock /></mesh>
+      {tier < 2 && (
+        <mesh position-y={2.8} castShadow><icosahedronGeometry args={[0.45, 0]} /><Rock emissiveIntensity={0.3} /></mesh>
+      )}
+      {tier >= 1 && (
+        /* Established: a witness circle forms around the marker. */
+        <>
+          {[0.3, 1.35, 2.4, 3.45, 4.5, 5.55].map((a) => (
+            <mesh key={a} position={[Math.cos(a) * 2.3, 0.25, Math.sin(a) * 2.3]}>
+              <icosahedronGeometry args={[0.26, 0]} />
+              <Rock />
+            </mesh>
+          ))}
+          <mesh rotation-x={-Math.PI / 2} position-y={0.1}>
+            <ringGeometry args={[2.0, 2.15, 28]} />
+            <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.2} side={THREE.DoubleSide} />
+          </mesh>
+        </>
+      )}
+      {tier >= 2 && (
+        /* Ancient: the capstone levitates — the record keeps itself now. */
+        <Spin speed={0.4} reduced={reduced}>
+          <Pulse speed={0.9} amp={0.06} reduced={reduced}>
+            <mesh position-y={3.6} castShadow>
+              <icosahedronGeometry args={[0.45, 0]} />
+              <meshStandardMaterial color={SLATE_ROCK} flatShading roughness={0.5} emissive={SIM_ACCENT} emissiveIntensity={0.7} />
+            </mesh>
+          </Pulse>
+        </Spin>
+      )}
+    </>
+  );
+}
+
+function BeaconMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
+  return (
+    <>
+      {/* Tripod base — an instrument, not a post. */}
+      {[0, 2.1, 4.2].map((a) => (
+        <mesh key={a} position={[Math.sin(a) * 0.7, 0.9, Math.cos(a) * 0.7]} rotation={[Math.cos(a) * 0.35, 0, Math.sin(a) * -0.35]} castShadow>
+          <cylinderGeometry args={[0.07, 0.1, 1.9, 5]} />
+          <Rock />
+        </mesh>
+      ))}
+      <mesh position-y={2.8} castShadow>
+        <cylinderGeometry args={[0.16, 0.3, 3.6, 6]} />
         <Rock emissiveIntensity={0.2} />
       </mesh>
+      {tier >= 1 && (
+        /* Established: a listening dish joins the light. */
+        <Spin speed={0.35} reduced={reduced}>
+          <mesh position={[0.6, 4.6, 0]} rotation-z={-0.5}>
+            <cylinderGeometry args={[0.55, 0.12, 0.35, 10]} />
+            <Rock emissiveIntensity={0.28} />
+          </mesh>
+        </Spin>
+      )}
+      {tier >= 2 && (
+        /* Ancient: the beacon earns a sky column of its own. */
+        <mesh position-y={9}>
+          <cylinderGeometry args={[0.18, 0.3, 12, 8, 1, true]} />
+          <meshBasicMaterial color={SIM_ACCENT_SOFT} transparent opacity={0.09} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      )}
       <Pulse speed={1.8} amp={0.16} reduced={reduced}>
         <mesh position-y={5.5}>
           <sphereGeometry args={[0.42, 10, 10]} />
@@ -299,7 +395,7 @@ function BeaconMesh({ reduced }: { reduced: boolean }) {
   );
 }
 
-function GardenMesh() {
+function GardenMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
   const blobs: { p: [number, number, number]; r: number }[] = [
     { p: [0, 0.7, 0], r: 1.0 },
     { p: [1.4, 0.5, 0.5], r: 0.7 },
@@ -314,41 +410,127 @@ function GardenMesh() {
           <meshStandardMaterial color="#4ade80" flatShading roughness={0.9} emissive="#4ade80" emissiveIntensity={0.12} />
         </mesh>
       ))}
+      {/* Drifting spores over tended ground. */}
+      {[0.6, 2.7, 4.8].map((a, i) => (
+        <Pulse key={a} speed={0.9} amp={0.22} phase={i * 2} reduced={reduced}>
+          <mesh position={[Math.cos(a) * 1.1, 1.9 + i * 0.4, Math.sin(a) * 1.1]}>
+            <sphereGeometry args={[0.09, 8, 6]} />
+            <meshBasicMaterial color="#86efac" />
+          </mesh>
+        </Pulse>
+      ))}
+      {tier >= 1 && (
+        /* Established: a canopy tree takes the center. */
+        <>
+          <mesh position-y={1.4} castShadow>
+            <cylinderGeometry args={[0.14, 0.26, 2.8, 6]} />
+            <Rock />
+          </mesh>
+          <mesh position-y={3.2} castShadow>
+            <icosahedronGeometry args={[1.1, 1]} />
+            <meshStandardMaterial color="#4ade80" flatShading roughness={0.9} emissive="#4ade80" emissiveIntensity={0.18} />
+          </mesh>
+        </>
+      )}
+      {tier >= 2 && (
+        /* Ancient: the grove lights itself. */
+        <pointLight position={[0, 2.2, 0]} color="#4ade80" intensity={13} distance={15} decay={2} />
+      )}
     </>
   );
 }
 
-function WorkshopMesh() {
+function WorkshopMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
   return (
     <>
       <mesh position-y={1.1} castShadow>
         <boxGeometry args={[3.4, 2.2, 2.6]} />
         <Rock />
       </mesh>
+      {/* Lit work-window + turning gear: production never stops. */}
+      <mesh position={[0, 1.2, 1.33]}>
+        <boxGeometry args={[2.2, 0.5, 0.06]} />
+        <meshStandardMaterial color="#0c0a08" emissive="#fbbf24" emissiveIntensity={0.55} roughness={0.6} />
+      </mesh>
+      <Spin speed={0.6} axis="z" reduced={reduced}>
+        <mesh position={[-1.78, 1.6, 0]} rotation-y={Math.PI / 2}>
+          <torusGeometry args={[0.5, 0.12, 4, 8]} />
+          <Rock emissiveIntensity={0.3} />
+        </mesh>
+      </Spin>
       <mesh position={[1.1, 2.9, 0.6]} castShadow>
         <cylinderGeometry args={[0.18, 0.24, 1.4, 6]} />
         <Rock emissiveIntensity={0.3} />
       </mesh>
+      {tier >= 1 && (
+        /* Established: a lean-to annex and a crane arm. */
+        <>
+          <mesh position={[2.5, 0.7, -0.4]} rotation-z={0.14} castShadow>
+            <boxGeometry args={[1.6, 1.4, 2.0]} />
+            <Rock />
+          </mesh>
+          <mesh position={[-1.4, 3.1, -0.8]} rotation-z={0.8} castShadow>
+            <boxGeometry args={[0.16, 2.4, 0.16]} />
+            <Rock />
+          </mesh>
+        </>
+      )}
+      {tier >= 2 && (
+        /* Ancient: the forge glows through the seams. */
+        <pointLight position={[0, 1.4, 1.8]} color="#fbbf24" intensity={16} distance={14} decay={2} />
+      )}
     </>
   );
 }
 
-function MonumentMesh() {
+function MonumentMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
   return (
     <>
+      {/* Stepped base — monuments are approached, not stumbled on. */}
+      <mesh position-y={0.25} castShadow>
+        <cylinderGeometry args={[1.9, 2.2, 0.5, 4]} />
+        <Rock />
+      </mesh>
       <mesh position-y={2.6} castShadow>
         <cylinderGeometry args={[0.5, 1.0, 5.2, 4]} />
         <Rock emissiveIntensity={0.16} />
       </mesh>
-      <mesh position-y={5.5} castShadow>
-        <coneGeometry args={[0.7, 1.1, 4]} />
-        <Rock emissiveIntensity={0.3} />
-      </mesh>
+      {tier >= 1 && (
+        /* Established: a glyph band and flanking stones. */
+        <>
+          <mesh position-y={3.4} rotation-x={-Math.PI / 2}>
+            <torusGeometry args={[0.78, 0.06, 4, 4]} />
+            <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.6} />
+          </mesh>
+          {[-1.6, 1.6].map((x) => (
+            <mesh key={x} position={[x, 0.9, 0]} castShadow>
+              <cylinderGeometry args={[0.18, 0.3, 1.8, 4]} />
+              <Rock emissiveIntensity={0.2} />
+            </mesh>
+          ))}
+        </>
+      )}
+      {tier >= 2 ? (
+        /* Ancient: the capstone splits free and turns above the shaft. */
+        <Spin speed={0.3} reduced={reduced}>
+          <Pulse speed={0.8} amp={0.05} reduced={reduced}>
+            <mesh position-y={6.4} castShadow>
+              <coneGeometry args={[0.7, 1.1, 4]} />
+              <meshStandardMaterial color={SLATE_ROCK} flatShading roughness={0.5} emissive={SIM_ACCENT} emissiveIntensity={0.6} />
+            </mesh>
+          </Pulse>
+        </Spin>
+      ) : (
+        <mesh position-y={5.5} castShadow>
+          <coneGeometry args={[0.7, 1.1, 4]} />
+          <Rock emissiveIntensity={0.3} />
+        </mesh>
+      )}
     </>
   );
 }
 
-const STRUCTURE_MESH: Record<SimStructure["kind"], (props: { reduced: boolean }) => React.ReactElement> = {
+const STRUCTURE_MESH: Record<SimStructure["kind"], (props: { reduced: boolean; tier: number }) => React.ReactElement> = {
   shelter: ShelterMesh,
   cairn: CairnMesh,
   beacon: BeaconMesh,
@@ -378,14 +560,18 @@ function Grow({ fresh, reduced, children }: { fresh: boolean; reduced: boolean; 
 function Structure({ s, fresh, reduced }: { s: SimStructure; fresh: boolean; reduced: boolean }) {
   const y = terrainHeight(s.x, s.z);
   const Mesh = STRUCTURE_MESH[s.kind] ?? CairnMesh;
+  const seed = detailSeed(`${s.built_by}:${s.id}`);
+  // Substrate runs at 2 world days per real day, so maturity lands fast:
+  // established after 12 real hours, ancient after 48.
+  const tier = ageTier(s.created_at, 12, 48);
   return (
-    <group position={[s.x, y, s.z]} rotation-y={Math.atan2(-s.x, -s.z)}>
+    <group position={[s.x, y, s.z]} rotation-y={Math.atan2(-s.x, -s.z) + ((seed % 21) - 10) * 0.014}>
       <mesh position-y={0.1} receiveShadow>
         <cylinderGeometry args={[2.6, 3, 0.24, 20]} />
         <meshStandardMaterial color="#0f141c" roughness={1} />
       </mesh>
       <Grow fresh={fresh} reduced={reduced}>
-        <Mesh reduced={reduced} />
+        <Mesh reduced={reduced} tier={tier} />
       </Grow>
       <Html position={[0, s.kind === "beacon" ? 6.6 : 4.4, 0]} center distanceFactor={34} className="pointer-events-none">
         <div className="whitespace-nowrap text-center font-mono">
@@ -582,6 +768,19 @@ export default function SimCanvas({
       ))}
       {sim.structures.map((s) => (
         <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} />
+      ))}
+      {/* Trails worn between the Mast and everything the cast has raised —
+          the territory reads as settled ground, not scattered objects. */}
+      {sim.structures.map((s) => (
+        <TrailLine
+          key={`trail-${s.id}`}
+          a={[0, 0]}
+          b={[s.x, s.z]}
+          color={SIM_ACCENT}
+          heightFn={terrainHeight}
+          opacity={0.22}
+          seed={s.id + 11}
+        />
       ))}
       {sites
         .filter((s) => foundByKey.has(s.key))

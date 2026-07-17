@@ -8,9 +8,9 @@ import { OrbitControls, Stars, Html } from "@react-three/drei";
 import type { WorldData, WorldStructure } from "@/lib/world";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
 import {
-  AuroraCurtain, CinematicDescent, CloudBand, GroundMist, GroundSky,
-  MilkyWayBackdrop, NexusStar, ParticleField, Pulse, RimMountains,
-  ScatterField, SceneFX, SkyWorld, mixHex,
+  AuroraCurtain, CinematicDescent, CloudBand, GlyphPlaque, GroundMist,
+  GroundSky, MilkyWayBackdrop, NexusStar, ParticleField, Pulse, RimMountains,
+  ScatterField, SceneFX, SkyWorld, Spin, TrailLine, ageTier, detailSeed, mixHex,
 } from "@/components/v2/latent/ground-fx";
 import SurfaceHUD from "./SurfaceHUD";
 import {
@@ -144,12 +144,29 @@ function Rock(props: { emissiveIntensity?: number }) {
   );
 }
 
-function SpireMesh({ k, reduced }: { k: number; reduced: boolean }) {
+// Every structure mesh takes an age tier (0 fresh / 1 established / 2 ancient)
+// and a builder-hash seed: old structures visibly accrete detail, and no two
+// builds of the same kind are identical. That's the difference between props
+// scattered on terrain and a civilization developing.
+
+function SpireMesh({ k, reduced, tier, seed }: { k: number; reduced: boolean; tier: number; seed: number }) {
+  const lean = ((seed % 20) - 10) * 0.004;
   return (
-    <>
+    <group rotation-z={lean}>
+      {/* Buttress fins root the tower to its ground. */}
+      {[0, 2.1, 4.2].map((a) => (
+        <mesh key={a} rotation-y={a} position={[Math.sin(a) * 1.1 * k, 0.9 * k, Math.cos(a) * 1.1 * k]} castShadow>
+          <boxGeometry args={[0.24 * k, 1.8 * k, 0.9 * k]} />
+          <Rock />
+        </mesh>
+      ))}
       <mesh position-y={2.4 * k} castShadow>
         <cylinderGeometry args={[0.9 * k, 1.4 * k, 4.8 * k, 6]} />
         <Rock />
+      </mesh>
+      <mesh position-y={4.8 * k} rotation-x={-Math.PI / 2}>
+        <torusGeometry args={[0.95 * k, 0.07 * k, 6, 18]} />
+        <meshBasicMaterial color={ROSE} transparent opacity={0.5} />
       </mesh>
       <mesh position-y={6.4 * k} castShadow>
         <cylinderGeometry args={[0.45 * k, 0.9 * k, 3.6 * k, 6]} />
@@ -159,6 +176,34 @@ function SpireMesh({ k, reduced }: { k: number; reduced: boolean }) {
         <cylinderGeometry args={[0.12 * k, 0.45 * k, 2.2 * k, 6]} />
         <Rock emissiveIntensity={0.16} />
       </mesh>
+      {tier >= 1 && (
+        <>
+          {/* Established: side pinnacles + a slow halo ring. */}
+          {[0.9, 3.6].map((a) => (
+            <mesh key={a} position={[Math.sin(a + seed) * 1.7 * k, 2.4 * k, Math.cos(a + seed) * 1.7 * k]} castShadow>
+              <cylinderGeometry args={[0.1 * k, 0.32 * k, 3.4 * k, 5]} />
+              <Rock emissiveIntensity={0.14} />
+            </mesh>
+          ))}
+          <Spin speed={0.25} reduced={reduced}>
+            <mesh position-y={7.6 * k} rotation-x={-Math.PI / 2}>
+              <torusGeometry args={[1.6 * k, 0.05 * k, 6, 32]} />
+              <meshBasicMaterial color={ROSE_SOFT} transparent opacity={0.55} />
+            </mesh>
+          </Spin>
+        </>
+      )}
+      {tier >= 2 && (
+        /* Ancient: an orbiting shard court around the crown. */
+        <Spin speed={0.5} reduced={reduced}>
+          {[0, 2.1, 4.2].map((a) => (
+            <mesh key={a} position={[Math.sin(a) * 1.3 * k, 10.3 * k, Math.cos(a) * 1.3 * k]}>
+              <octahedronGeometry args={[0.22 * k, 0]} />
+              <meshStandardMaterial color={ROSE} flatShading emissive={ROSE} emissiveIntensity={0.7} roughness={0.4} />
+            </mesh>
+          ))}
+        </Spin>
+      )}
       <Pulse speed={1.6} amp={0.12} reduced={reduced}>
         <mesh position-y={10.6 * k}>
           <sphereGeometry args={[0.4 * k, 12, 12]} />
@@ -166,11 +211,11 @@ function SpireMesh({ k, reduced }: { k: number; reduced: boolean }) {
         </mesh>
       </Pulse>
       <pointLight position={[0, 10.6 * k, 0]} color={ROSE} intensity={26} distance={26 * k} decay={2} />
-    </>
+    </group>
   );
 }
 
-function PavilionMesh({ k }: { k: number }) {
+function PavilionMesh({ k, reduced, tier }: { k: number; reduced: boolean; tier: number }) {
   const legs: [number, number][] = [
     [2.4, 2.4], [2.4, -2.4], [-2.4, 2.4], [-2.4, -2.4],
   ];
@@ -180,30 +225,102 @@ function PavilionMesh({ k }: { k: number }) {
         <boxGeometry args={[6 * k, 0.5 * k, 6 * k]} />
         <Rock />
       </mesh>
+      {/* Balustrade posts around the platform edge. */}
+      {[-2, 0, 2].flatMap((v) =>
+        [[v, 2.85], [v, -2.85], [2.85, v], [-2.85, v]].map(([px, pz], i) => (
+          <mesh key={`${v}-${i}`} position={[px * k, 0.85 * k, pz * k]}>
+            <boxGeometry args={[0.14 * k, 0.7 * k, 0.14 * k]} />
+            <Rock />
+          </mesh>
+        ))
+      )}
       {legs.map(([lx, lz], i) => (
         <mesh key={i} position={[lx * k, 2.1 * k, lz * k]} castShadow>
           <cylinderGeometry args={[0.22 * k, 0.26 * k, 3.2 * k, 6]} />
           <Rock />
         </mesh>
       ))}
+      {/* Corner lanterns — a pavilion is a lit, inhabited place. */}
+      {legs.map(([lx, lz], i) => (
+        <Pulse key={`l${i}`} speed={1.3} amp={0.1} phase={i * 1.6} reduced={reduced}>
+          <mesh position={[lx * k, 3.9 * k, lz * k]}>
+            <sphereGeometry args={[0.2 * k, 10, 8]} />
+            <meshBasicMaterial color={ROSE_SOFT} />
+          </mesh>
+        </Pulse>
+      ))}
       <mesh position-y={4.6 * k} rotation-y={Math.PI / 4} castShadow>
         <coneGeometry args={[4.6 * k, 2 * k, 4]} />
         <Rock emissiveIntensity={0.14} />
       </mesh>
+      {tier >= 1 && (
+        /* Established: a second pagoda tier. */
+        <>
+          <mesh position-y={6.1 * k} rotation-y={Math.PI / 4} castShadow>
+            <coneGeometry args={[2.6 * k, 1.4 * k, 4]} />
+            <Rock emissiveIntensity={0.18} />
+          </mesh>
+          <mesh position-y={7.1 * k}>
+            <sphereGeometry args={[0.24 * k, 10, 8]} />
+            <meshBasicMaterial color={ROSE} />
+          </mesh>
+        </>
+      )}
+      {tier >= 2 && (
+        /* Ancient: a drifting canopy halo over the roof. */
+        <Spin speed={0.18} reduced={reduced}>
+          <mesh position-y={8.2 * k} rotation-x={-Math.PI / 2}>
+            <torusGeometry args={[3.2 * k, 0.08 * k, 6, 40]} />
+            <meshBasicMaterial color={ROSE_SOFT} transparent opacity={0.45} />
+          </mesh>
+        </Spin>
+      )}
+      <pointLight position={[0, 3.6 * k, 0]} color={ROSE_SOFT} intensity={16} distance={18 * k} decay={2} />
     </>
   );
 }
 
-function ArchMesh({ k }: { k: number }) {
+function ArchMesh({ k, reduced, tier }: { k: number; reduced: boolean; tier: number }) {
   return (
-    <mesh position-y={0.2 * k} castShadow>
-      <torusGeometry args={[3 * k, 0.42 * k, 8, 24, Math.PI]} />
-      <Rock emissiveIntensity={0.14} />
-    </mesh>
+    <>
+      <mesh position-y={0.2 * k} castShadow>
+        <torusGeometry args={[3 * k, 0.42 * k, 8, 24, Math.PI]} />
+        <Rock emissiveIntensity={0.14} />
+      </mesh>
+      {/* Flanking pillars + keystone light give the arch its gravitas. */}
+      {[-3, 3].map((x) => (
+        <mesh key={x} position={[x * k, 1.0 * k, 0]} castShadow>
+          <cylinderGeometry args={[0.5 * k, 0.65 * k, 2.0 * k, 6]} />
+          <Rock />
+        </mesh>
+      ))}
+      <Pulse speed={1.4} amp={0.1} reduced={reduced}>
+        <mesh position-y={3.5 * k}>
+          <sphereGeometry args={[0.26 * k, 10, 8]} />
+          <meshBasicMaterial color={ROSE} />
+        </mesh>
+      </Pulse>
+      {tier >= 1 && (
+        /* Established: an inner resonance ring. */
+        <mesh position-y={0.2 * k}>
+          <torusGeometry args={[2.2 * k, 0.12 * k, 6, 22, Math.PI]} />
+          <meshBasicMaterial color={ROSE_SOFT} transparent opacity={0.5} />
+        </mesh>
+      )}
+      {tier >= 2 && (
+        /* Ancient: the gate wakes — a faint energy membrane spans the opening. */
+        <Pulse speed={0.8} amp={0.04} reduced={reduced}>
+          <mesh position-y={0.2 * k}>
+            <circleGeometry args={[2.55 * k, 28, 0, Math.PI]} />
+            <meshBasicMaterial color={ROSE} transparent opacity={0.14} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+        </Pulse>
+      )}
+    </>
   );
 }
 
-function GardenMesh({ k, bright }: { k: number; bright: string }) {
+function GardenMesh({ k, bright, reduced, tier }: { k: number; bright: string; reduced: boolean; tier: number }) {
   const blobs: { p: [number, number, number]; r: number }[] = [
     { p: [0, 0.8, 0], r: 1.2 },
     { p: [1.7, 0.55, 0.6], r: 0.85 },
@@ -219,6 +336,47 @@ function GardenMesh({ k, bright }: { k: number; bright: string }) {
           <meshStandardMaterial color={bright} flatShading roughness={0.9} emissive={bright} emissiveIntensity={0.12} />
         </mesh>
       ))}
+      {/* Border stones — tended ground, not wild growth. */}
+      {[0.4, 1.5, 2.6, 3.7, 4.8, 5.9].map((a) => (
+        <mesh key={a} position={[Math.cos(a) * 2.6 * k, 0.22 * k, Math.sin(a) * 2.6 * k]}>
+          <icosahedronGeometry args={[0.24 * k, 0]} />
+          <Rock />
+        </mesh>
+      ))}
+      {/* Drifting spores. */}
+      {[0.8, 2.9, 5.0].map((a, i) => (
+        <Pulse key={a} speed={0.9} amp={0.2} phase={i * 2} reduced={reduced}>
+          <mesh position={[Math.cos(a) * 1.2 * k, (2 + i * 0.5) * k, Math.sin(a) * 1.2 * k]}>
+            <sphereGeometry args={[0.1 * k, 8, 6]} />
+            <meshBasicMaterial color={bright} />
+          </mesh>
+        </Pulse>
+      ))}
+      {tier >= 1 && (
+        /* Established: the center grows a true tree. */
+        <>
+          <mesh position-y={1.6 * k} castShadow>
+            <cylinderGeometry args={[0.16 * k, 0.3 * k, 3.2 * k, 6]} />
+            <Rock />
+          </mesh>
+          <mesh position-y={3.6 * k} castShadow>
+            <icosahedronGeometry args={[1.3 * k, 1]} />
+            <meshStandardMaterial color={bright} flatShading roughness={0.9} emissive={bright} emissiveIntensity={0.18} />
+          </mesh>
+        </>
+      )}
+      {tier >= 2 && (
+        /* Ancient: crystal growlights ring the grove. */
+        <>
+          {[0.2, 1.8, 3.4, 5.0].map((a) => (
+            <mesh key={a} position={[Math.cos(a) * 3.1 * k, 0.7 * k, Math.sin(a) * 3.1 * k]} scale={[1, 2.4, 1]}>
+              <octahedronGeometry args={[0.22 * k, 0]} />
+              <meshStandardMaterial color={bright} flatShading roughness={0.4} emissive={bright} emissiveIntensity={0.6} />
+            </mesh>
+          ))}
+          <pointLight position={[0, 2 * k, 0]} color={bright} intensity={14} distance={16 * k} decay={2} />
+        </>
+      )}
     </>
   );
 }
@@ -244,22 +402,29 @@ function Grow({ fresh, reduced, children }: { fresh: boolean; reduced: boolean; 
 
 function Structure({ s, fresh, reduced, bright }: { s: WorldStructure; fresh: boolean; reduced: boolean; bright: string }) {
   const [x, y, z] = plotPosition(s.plot);
-  const yaw = Math.atan2(-x, -z); // face the assembly at the world's origin
+  const seed = detailSeed(`${s.plot}:${s.built_by}:${s.id}`);
+  // Face the assembly, with a hash lean so the ring doesn't read stamped.
+  const yaw = Math.atan2(-x, -z) + ((seed % 21) - 10) * 0.012;
   const k = SIZE_SCALE[s.size] ?? 1;
+  // Age drives visual maturity: enacted this cycle → established (2 days) →
+  // ancient (a week). When the engine grows a real level column, it replaces
+  // ageTier here and the tiered meshes are already waiting.
+  const tier = ageTier(s.created_at, 48, 168);
   const labelY =
     s.kind === "spire" ? 12 * k : s.kind === "pavilion" ? 6.6 * k : s.kind === "arch" ? 4.6 * k : 3 * k;
 
   return (
     <group position={[x, y, z]} rotation-y={yaw}>
-      <mesh position-y={0.12}>
+      <mesh position-y={0.12} receiveShadow>
         <cylinderGeometry args={[4.5, 5, 0.3, 24]} />
         <meshStandardMaterial color="#1c1418" roughness={1} />
       </mesh>
       <Grow fresh={fresh} reduced={reduced}>
-        {s.kind === "pavilion" ? <PavilionMesh k={k} /> :
-         s.kind === "arch" ? <ArchMesh k={k} /> :
-         s.kind === "garden" ? <GardenMesh k={k} bright={bright} /> :
-         <SpireMesh k={k} reduced={reduced} />}
+        {s.kind === "pavilion" ? <PavilionMesh k={k} reduced={reduced} tier={tier} /> :
+         s.kind === "arch" ? <ArchMesh k={k} reduced={reduced} tier={tier} /> :
+         s.kind === "garden" ? <GardenMesh k={k} bright={bright} reduced={reduced} tier={tier} /> :
+         <SpireMesh k={k} reduced={reduced} tier={tier} seed={seed} />}
+        {s.inscription && <GlyphPlaque position={[2.6 * k, 1.6, 2.0 * k]} color={ROSE} reduced={reduced} />}
       </Grow>
       <Html position={[0, labelY, 0]} center distanceFactor={30} className="pointer-events-none">
         <div className="whitespace-nowrap text-center font-mono">
@@ -448,6 +613,22 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         {COMPASS_PLOTS.filter((p) => !claimed.has(p)).map((p) => (
           <OpenPlot key={p} plot={p} />
         ))}
+        {/* Worn trails from the assembly out to every raised structure — the
+            plots stop being scattered objects and start being a settlement. */}
+        {world.structures.map((s) => {
+          const [px, , pz] = plotPosition(s.plot);
+          return (
+            <TrailLine
+              key={`trail-${s.id}`}
+              a={[0, 0]}
+              b={[px, pz]}
+              color={ROSE}
+              heightFn={terrainHeight}
+              opacity={0.3}
+              seed={s.id + 3}
+            />
+          );
+        })}
 
         {/* Ground truthing: scattered rock debris everywhere, plus emissive
             growth crystals once a terraform direction is chosen. The plot ring

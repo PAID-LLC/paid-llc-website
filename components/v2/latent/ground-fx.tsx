@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Line } from "@react-three/drei";
 import { EffectComposer, Bloom, Noise, Vignette } from "@react-three/postprocessing";
 import { makeRimMaterial } from "./universe/Planet";
 import { makeMilkyWayTexture, makeRingTexture } from "./universe/planet-textures";
@@ -1012,6 +1013,117 @@ export function StormFlash({ color, reduced }: { color: string; reduced: boolean
     l.intensity = st.flash * 2.4;
   });
   return <hemisphereLight ref={light} args={[color, "#0a0a12", 0]} />;
+}
+
+// ── Structure maturity helpers ───────────────────────────────────────────────
+// The rows already carry created_at and builder identity, so the renderer can
+// show a developing civilization without any engine or schema change: age
+// picks a visual tier (fresh build → established → ancient), the builder hash
+// varies proportions so no two structures of a kind are identical, and worn
+// trails connect everything back to the world's center. When a real `level`
+// column lands in the engines (see the structure-depth spec), it simply
+// replaces ageTier as the tier source — the visuals are already tiered.
+
+/** Deterministic per-structure seed from identity strings. */
+export function detailSeed(s: string): number {
+  return hashHex(s);
+}
+
+/** 0 = fresh, 1 = established, 2 = ancient — thresholds in hours. */
+export function ageTier(createdAt: string, t1Hours: number, t2Hours: number): 0 | 1 | 2 {
+  const ageH = (Date.now() - new Date(createdAt).getTime()) / 3.6e6;
+  if (!Number.isFinite(ageH)) return 0;
+  return ageH >= t2Hours ? 2 : ageH >= t1Hours ? 1 : 0;
+}
+
+/** Slow continuous rotation for halos, orbiting shards, gears. */
+export function Spin({
+  speed = 0.3,
+  axis = "y",
+  reduced,
+  children,
+}: {
+  speed?: number;
+  axis?: "x" | "y" | "z";
+  reduced: boolean;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    if (ref.current && !reduced) ref.current.rotation[axis] += dt * speed;
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+/** A worn trail between two ground points, following the terrain with a
+ *  gentle wander — settlements have paths; scattered objects don't. */
+export function TrailLine({
+  a,
+  b,
+  color,
+  heightFn,
+  opacity = 0.3,
+  wobble = 2.4,
+  seed = 1,
+}: {
+  a: [number, number];
+  b: [number, number];
+  color: string;
+  heightFn: (x: number, z: number) => number;
+  opacity?: number;
+  wobble?: number;
+  seed?: number;
+}) {
+  const points = useMemo(() => {
+    const dist = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const n = Math.max(8, Math.round(dist / 3));
+    const px = -(b[1] - a[1]) / dist;
+    const pz = (b[0] - a[0]) / dist;
+    const pts: [number, number, number][] = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const off = (vnoise(t * 6 + seed * 3.1, seed * 1.7, 0x77a1) - 0.5) * wobble * 2 * Math.sin(t * Math.PI);
+      const x = a[0] + (b[0] - a[0]) * t + px * off;
+      const z = a[1] + (b[1] - a[1]) * t + pz * off;
+      pts.push([x, heightFn(x, z) + 0.18, z]);
+    }
+    return pts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a[0], a[1], b[0], b[1], heightFn, wobble, seed]);
+  return (
+    <Line
+      points={points}
+      color={color}
+      transparent
+      opacity={opacity}
+      lineWidth={1.5}
+      dashed
+      dashSize={1.1}
+      gapSize={0.9}
+    />
+  );
+}
+
+/** Floating inscription plaque for structures that carry words. */
+export function GlyphPlaque({
+  position,
+  color,
+  reduced,
+}: {
+  position: [number, number, number];
+  color: string;
+  reduced: boolean;
+}) {
+  return (
+    <Pulse speed={1.1} amp={0.05} reduced={reduced}>
+      <group position={position} rotation-y={0.4}>
+        <mesh>
+          <boxGeometry args={[1.0, 0.65, 0.08]} />
+          <meshStandardMaterial color="#0c0a10" roughness={0.6} emissive={color} emissiveIntensity={0.45} />
+        </mesh>
+      </group>
+    </Pulse>
+  );
 }
 
 // ── Filmic post stack ────────────────────────────────────────────────────────
