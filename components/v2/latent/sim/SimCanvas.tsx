@@ -6,6 +6,10 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
 import type { SimAgentRow, SimData, SimStructure } from "@/lib/simworld";
 import {
+  GroundMist, GroundSky, MilkyWayBackdrop, NexusStar,
+  ParticleField, SceneBloom, mixHex, type ParticleMode,
+} from "@/components/v2/latent/ground-fx";
+import {
   GROUND_SIZE, SIM_ACCENT, SIM_ACCENT_SOFT,
   anomalySites, groundColor, hashStr, terrainHeight,
   type AnomalySite, type Weather,
@@ -21,14 +25,23 @@ import {
 
 const SLATE_ROCK = "#141a24";
 
-// Sky and fog follow the deterministic weather regime so the territory has
-// moods without spending anything.
-const WEATHER_LOOK: Record<Weather, { sky: string; fogNear: number; fogFar: number }> = {
-  "clear": { sky: "#0a0f16", fogNear: 95, fogFar: 270 },
-  "fog bank": { sky: "#0d1219", fogNear: 38, fogFar: 130 },
-  "data-rain": { sky: "#0a1412", fogNear: 70, fogFar: 210 },
-  "static storm": { sky: "#120f1a", fogNear: 55, fogFar: 165 },
-  "solar flush": { sky: "#181209", fogNear: 105, fogFar: 290 },
+// Sky, fog, horizon glow, and particle behavior all follow the deterministic
+// weather regime so the territory has moods without spending anything: motes
+// on a clear night, heavy mist in a fog bank, falling cyan points in data-rain,
+// jittering violet sparks in a static storm, rising embers in a solar flush.
+const WEATHER_LOOK: Record<
+  Weather,
+  {
+    sky: string; fogNear: number; fogFar: number;
+    glow: string; glowStrength: number;
+    mode: ParticleMode; particle: string; mist: number;
+  }
+> = {
+  "clear": { sky: "#0a0f16", fogNear: 95, fogFar: 270, glow: "#38bdf8", glowStrength: 0.3, mode: "motes", particle: "#7dd3fc", mist: 0.06 },
+  "fog bank": { sky: "#0d1219", fogNear: 38, fogFar: 130, glow: "#7dd3fc", glowStrength: 0.2, mode: "motes", particle: "#9fb4c8", mist: 0.17 },
+  "data-rain": { sky: "#0a1412", fogNear: 70, fogFar: 210, glow: "#34d399", glowStrength: 0.28, mode: "rain", particle: "#5eead4", mist: 0.08 },
+  "static storm": { sky: "#120f1a", fogNear: 55, fogFar: 165, glow: "#a78bfa", glowStrength: 0.38, mode: "sparks", particle: "#c4b5fd", mist: 0.07 },
+  "solar flush": { sky: "#181209", fogNear: 105, fogFar: 290, glow: "#fbbf24", glowStrength: 0.46, mode: "embers", particle: "#fcd34d", mist: 0.05 },
 };
 
 // ── Terrain ──────────────────────────────────────────────────────────────────
@@ -464,13 +477,36 @@ export default function SimCanvas({
   const sites = useMemo(() => anomalySites(), []);
   const freshIds = new Set(freshStructureIds);
 
+  // The horizon carries the weather's accent as a glow band; fog melts the
+  // terraces into it. A solar flush turns the star overhead warm and swollen.
+  const horizonHex = mixHex(look.sky, look.glow, 0.13);
+  const flush = sim.clock.weather === "solar flush";
+
   return (
-    <Canvas dpr={[1, 1.5]} camera={{ position: [55, 38, 70], fov: 50, near: 0.5, far: 700 }}>
+    <Canvas
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, powerPreference: "high-performance" }}
+      camera={{ position: [55, 38, 70], fov: 50, near: 0.5, far: 700 }}
+    >
       <color attach="background" args={[look.sky]} />
-      <fog attach="fog" args={[look.sky, look.fogNear, look.fogFar]} />
-      <ambientLight color="#9fb4c8" intensity={0.32} />
-      <directionalLight color="#cfe6ff" intensity={1.0} position={[-70, 65, 50]} />
-      <Stars radius={330} depth={60} count={1500} factor={4} saturation={0.2} fade speed={reduced ? 0 : 0.35} />
+      <fog attach="fog" args={[horizonHex, look.fogNear, look.fogFar]} />
+      <hemisphereLight args={[horizonHex, "#0e131b", 0.5]} />
+      <ambientLight color="#9fb4c8" intensity={0.2} />
+      <directionalLight color={flush ? "#ffe3b0" : "#cfe6ff"} intensity={1.0} position={[-70, 65, 50]} />
+
+      {/* The sky, from the ground up: gradient dome, the universe's milky way,
+          a denser starfield, and the Nexus burning where the key light is. */}
+      <GroundSky horizon={horizonHex} glow={look.glow} glowStrength={look.glowStrength} />
+      <MilkyWayBackdrop />
+      <Stars radius={330} depth={60} count={2600} factor={2.2} saturation={0.2} fade speed={reduced ? 0 : 0.3} />
+      <NexusStar
+        position={[-214, 199, 153]}
+        color={flush ? "#fff1cf" : "#f2f7ff"}
+        halo={flush ? "#fbbf24" : "#cfe6ff"}
+        tint={SIM_ACCENT}
+        radius={flush ? 13 : 10}
+        reduced={reduced}
+      />
 
       <Terrain />
       <Mast reduced={reduced} />
@@ -487,6 +523,11 @@ export default function SimCanvas({
         .map((s) => (
           <Anomaly key={s.key} site={s} foundBy={foundByKey.get(s.key)!} />
         ))}
+
+      {/* Weather made visible: the regime's particle field plus ground mist. */}
+      <ParticleField mode={look.mode} color={look.particle} area={125} reduced={reduced} />
+      <GroundMist color={mixHex(horizonHex, "#ffffff", 0.3)} opacity={look.mist} area={120} reduced={reduced} />
+      <SceneBloom />
 
       <OrbitControls
         enableDamping

@@ -93,6 +93,23 @@ export default function SimExperience({ initial }: { initial: SimData }) {
         <SimCanvas sim={sim} freshStructureIds={freshStructureIds} reduced={reduced} />
       </div>
 
+      {/* Screen-space finish — same scanline texture as the universe map, plus
+          a faint accent vignette rising from the ground line. Sits under the
+          Happenings pane (z-20) and the HUD (z-30). */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{
+          background: "radial-gradient(ellipse at 50% 118%, rgba(56,189,248,0.05), transparent 55%)",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10 opacity-40"
+        style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 3px)" }}
+      />
+
       {tab === "happenings" && (
         <div className="absolute inset-0 z-20 overflow-y-auto bg-[#07070b]/85 pl-[84px] backdrop-blur-md sm:pl-[92px]">
           <Happenings sim={sim} />

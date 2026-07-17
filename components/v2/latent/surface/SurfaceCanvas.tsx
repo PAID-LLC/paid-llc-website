@@ -7,6 +7,10 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html } from "@react-three/drei";
 import type { WorldData, WorldStructure } from "@/lib/world";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
+import {
+  AuroraCurtain, GroundMist, GroundSky, MilkyWayBackdrop, NexusStar,
+  ParticleField, SceneBloom, mixHex,
+} from "@/components/v2/latent/ground-fx";
 import SurfaceHUD from "./SurfaceHUD";
 import {
   GROUND_SIZE, PLOT_RADIUS, SURFACE_SEED, COMPASS_PLOTS, TERRAFORM_PALETTES,
@@ -316,16 +320,6 @@ function Assembly({ world }: { world: WorldData }) {
 
 // ── Scene root ───────────────────────────────────────────────────────────────
 
-function mixHex(a: string, b: string, t: number): string {
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ch = (sa: number, sb: number) => Math.round(sa + (sb - sa) * t);
-  const r = ch((pa >> 16) & 255, (pb >> 16) & 255);
-  const g = ch((pa >> 8) & 255, (pb >> 8) & 255);
-  const bl = ch(pa & 255, pb & 255);
-  return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, "0")}`;
-}
-
 export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
   const reduced = usePrefersReducedMotion();
   const live = useWorldLive(initial);
@@ -350,24 +344,41 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
 
   // The sky remembers the terraform direction: fog and backdrop drift from
   // barren near-black toward the direction's deep tone as the stage rises.
+  // The horizon carries an accent glow band (GroundSky) that strengthens with
+  // the stage — the surface-level cousin of the planet's atmosphere rim.
   const terra = TERRAFORM_PALETTES[terraform ?? ""];
   const skyHex = terra ? mixHex("#0a070b", terra.deep, Math.min(1, stage / 5) * 0.45) : "#0a070b";
+  const bright = terra?.bright ?? ROSE;
+  const horizonHex = mixHex(skyHex, bright, 0.14);
+  const glowStrength = 0.18 + Math.min(1, stage / 5) * 0.3;
 
   const claimed = new Set<string>(world.structures.map((s) => s.plot));
   const freshIds = new Set(live.freshStructureIds);
-  const bright = terra?.bright ?? ROSE;
 
   // One dark frame before the portal mounts, so there is no flash of chrome.
   if (!mounted) return <div className="fixed inset-0 z-[60] bg-[#07070b]" />;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#07070b]">
-      <Canvas dpr={[1, 1.5]} camera={{ position: [52, 34, 66], fov: 50, near: 0.5, far: 700 }}>
+      <Canvas
+        dpr={[1, 1.75]}
+        gl={{ antialias: true, powerPreference: "high-performance" }}
+        camera={{ position: [52, 34, 66], fov: 50, near: 0.5, far: 700 }}
+      >
         <color attach="background" args={[skyHex]} />
-        <fog attach="fog" args={[skyHex, 70, 240]} />
-        <ambientLight color="#c4a2b4" intensity={0.35} />
+        {/* Fog melts distant terrain into the dome's horizon band, not the raw sky. */}
+        <fog attach="fog" args={[horizonHex, 70, 240]} />
+        <hemisphereLight args={[horizonHex, "#17101a", 0.5]} />
+        <ambientLight color="#c4a2b4" intensity={0.22} />
         <directionalLight color="#ffd9a0" intensity={1.15} position={[80, 60, -40]} />
-        <Stars radius={320} depth={60} count={1600} factor={4} saturation={0.3} fade speed={reduced ? 0 : 0.4} />
+
+        {/* The sky, from the ground up: gradient dome, the universe's own milky
+            way, a denser starfield, and the Nexus itself burning in the
+            direction of the key light. */}
+        <GroundSky horizon={horizonHex} glow={bright} glowStrength={glowStrength} />
+        <MilkyWayBackdrop />
+        <Stars radius={320} depth={60} count={2600} factor={2.2} saturation={0.3} fade speed={reduced ? 0 : 0.3} />
+        <NexusStar position={[245, 184, -122]} halo="#ffd9a0" tint={bright} radius={12} reduced={reduced} />
 
         <Terrain stage={stage} terraform={terraform} />
         <SettlementLights stage={stage} terraform={terraform} />
@@ -379,6 +390,15 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         {COMPASS_PLOTS.filter((p) => !claimed.has(p)).map((p) => (
           <OpenPlot key={p} plot={p} />
         ))}
+
+        {/* Atmosphere: drifting accent motes, low mist, and — once the assembly
+            has voted the sky alive — the aurora the ballots paid for. */}
+        <ParticleField mode="motes" color={terra ? bright : ROSE_SOFT} area={110} reduced={reduced} />
+        <GroundMist color={mixHex(horizonHex, "#ffffff", 0.28)} opacity={0.09} area={110} reduced={reduced} />
+        {terraform === "aurora" && stage > 0 && (
+          <AuroraCurtain color={bright} intensity={0.25 + Math.min(1, stage / 5) * 0.35} reduced={reduced} />
+        )}
+        <SceneBloom />
 
         <OrbitControls
           enableDamping
@@ -392,6 +412,22 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
           autoRotateSpeed={0.35}
         />
       </Canvas>
+
+      {/* Screen-space finish — same scanline texture as the universe map, plus
+          a faint accent vignette rising from the ground line. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{
+          background: `radial-gradient(ellipse at 50% 118%, ${bright}0d, transparent 55%)`,
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10 opacity-40"
+        style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.014) 0 1px, transparent 1px 3px)" }}
+      />
 
       <SurfaceHUD world={world} justEnacted={live.justEnacted} />
     </div>,
