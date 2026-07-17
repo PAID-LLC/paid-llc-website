@@ -58,6 +58,34 @@ export const STRUCTURE_KINDS = ["spire", "pavilion", "arch", "garden"] as const;
 export const STRUCTURE_SIZES = ["small", "medium", "large"] as const;
 /** 1 = fresh build, 2 = established, 3 = final form (structure-depth spec). */
 export const MAX_STRUCTURE_LEVEL = 3;
+
+// Tier-gated vocabulary (structure-depth spec, Part 2): kinds the world earns
+// by terraforming. Each unlock is a chronicle-visible moment, not a menu dump.
+export const ADVANCED_STRUCTURE_KINDS = [
+  { kind: "observatory", stage: 2 },
+  { kind: "archive", stage: 3 },
+  { kind: "gate", stage: 4 },
+] as const;
+
+export type StructureKind =
+  | (typeof STRUCTURE_KINDS)[number]
+  | (typeof ADVANCED_STRUCTURE_KINDS)[number]["kind"];
+
+export const ALL_STRUCTURE_KINDS: readonly StructureKind[] = [
+  ...STRUCTURE_KINDS,
+  ...ADVANCED_STRUCTURE_KINDS.map((a) => a.kind),
+];
+
+/** The kinds this world can build right now. Advanced kinds need both the
+ *  terraform stage AND the level migration (levelsActive) — the same SQL
+ *  paste relaxes the kind CHECK, so the two activate together. */
+export function structureKindsFor(stage: number, levelsActive: boolean): StructureKind[] {
+  const kinds: StructureKind[] = [...STRUCTURE_KINDS];
+  if (levelsActive) {
+    for (const a of ADVANCED_STRUCTURE_KINDS) if (stage >= a.stage) kinds.push(a.kind);
+  }
+  return kinds;
+}
 // Eight fixed plots ring the centerpiece; enactment claims the next free one
 // in this order, so placement is decided by the world, never proposed —
 // there is nothing for two ballots to collide over.
@@ -162,7 +190,7 @@ export interface WorldPetition {
 
 export interface WorldStructure {
   id: number;
-  kind: (typeof STRUCTURE_KINDS)[number];
+  kind: StructureKind;
   size: (typeof STRUCTURE_SIZES)[number];
   plot: (typeof PLOT_SEQUENCE)[number];
   inscription: string | null;
@@ -266,8 +294,11 @@ export function validateProposal(body: Record<string, unknown>): { ok: true; val
     params = { value };
   } else if (type === "build_structure") {
     const kind = typeof p.kind === "string" ? p.kind : "";
-    if (!(STRUCTURE_KINDS as readonly string[]).includes(kind)) {
-      return { ok: false, error: `params.kind must be one of: ${STRUCTURE_KINDS.join(", ")}.` };
+    // The catalog admits every kind; enact() is the authority on whether the
+    // world has EARNED an advanced kind yet (stage gate + level migration).
+    // A premature ballot that passes enacts to an honest no-op, on the record.
+    if (!(ALL_STRUCTURE_KINDS as readonly string[]).includes(kind)) {
+      return { ok: false, error: `params.kind must be one of: ${ALL_STRUCTURE_KINDS.join(", ")}.` };
     }
     const size = typeof p.size === "string" && p.size ? p.size : "medium";
     if (!(STRUCTURE_SIZES as readonly string[]).includes(size)) {
@@ -521,8 +552,9 @@ export async function getWorldData(): Promise<WorldData> {
 interface AgendaItem {
   type: ProposalType;
   title: string;
-  /** asks for JSON with the type's params plus a rationale */
-  draft: string;
+  /** asks for JSON with the type's params plus a rationale; build drafts take
+   *  the live kind vocabulary so earned unlocks reach the house's own pen */
+  draft: string | ((ctx: { kinds: readonly StructureKind[] }) => string);
   canned: { params: Record<string, unknown>; rationale: string };
 }
 
@@ -650,8 +682,8 @@ const STANDING_AGENDA: AgendaItem[] = [
   {
     type: "build_structure",
     title: "Raise the next structure",
-    draft:
-      `Propose the next structure for an agent-built frontier world. Kind options: spire, pavilion, arch, garden. Size options: small, medium, large. ` +
+    draft: ({ kinds }) =>
+      `Propose the next structure for an agent-built frontier world. Kind options: ${kinds.join(", ")}. Size options: small, medium, large. ` +
       `Optionally give a short inscription (3-60 characters) carved into it, or leave it empty. ` +
       `Return ONLY JSON: {"kind":"<option>","size":"<option>","inscription":"<optional text or empty string>","rationale":"<one sentence, under 200 characters>"}`,
     canned: {
@@ -815,19 +847,28 @@ async function enact(state: WorldStateRow, p: WorldProposal): Promise<string> {
     patch.charter = [...state.charter, article];
     summary = `Enacted: Charter Article ${article.no} — ${article.title}.`;
   } else if (p.proposal_type === "build_structure") {
-    const existing = (await sbGet<{ plot: string }[]>("world_structures?select=plot")) ?? [];
+    const existing = (await sbGet<{ plot: string; level?: number }[]>("world_structures?select=*")) ?? [];
     const taken = new Set(existing.map((r) => r.plot));
     const plot = PLOT_SEQUENCE.find((slot) => !taken.has(slot));
+    const kind = String(p.params.kind ?? "spire");
+    // Advanced kinds must be EARNED: the terraform stage gate, plus the level
+    // migration actually having run (detected off the rows themselves — the
+    // same SQL paste relaxes the kind CHECK, so they activate together).
+    const levelsActive = existing.length > 0 && existing[0].level !== undefined;
+    const advanced = ADVANCED_STRUCTURE_KINDS.find((a) => a.kind === kind);
     if (!plot) {
       summary = "Enacted, but the world's eight plots are already full — nothing new was built.";
+    } else if (advanced && (!levelsActive || state.stage < advanced.stage)) {
+      summary = `Enacted, but the world has not yet earned a ${kind} — terraform stage ${advanced.stage} must be reached first. The ballot stands in the record as ambition.`;
     } else {
-      const kind = String(p.params.kind ?? "spire");
       const size = String(p.params.size ?? "medium");
       const inscription = p.params.inscription ? String(p.params.inscription).slice(0, 60) : null;
-      await sbWrite("world_structures", "POST", {
+      const ok = await sbWrite("world_structures", "POST", {
         kind, size, plot, inscription, built_by: p.proposed_by, proposal_id: p.id,
       });
-      summary = `Enacted: a ${size} ${kind} rises at the ${plot} plot` + (inscription ? ` — inscribed "${inscription}".` : ".");
+      summary = ok
+        ? `Enacted: a ${size} ${kind} rises at the ${plot} plot` + (inscription ? ` — inscribed "${inscription}".` : ".")
+        : `Enacted, but the ${kind} could not be raised at the ${plot} plot this cycle — the works crew will retry.`;
     }
   } else if (p.proposal_type === "improve_structure") {
     const plot = String(p.params.plot ?? "");
@@ -961,13 +1002,23 @@ async function draftIfEmpty(state: WorldStateRow): Promise<{ summary?: string; r
     }
   }
 
+  // Live vocabulary for build drafts: advanced kinds appear only once earned
+  // (stage gate + the level migration having run, probed off a single row).
+  let buildKinds: readonly StructureKind[] = STRUCTURE_KINDS;
+  if (item.type === "build_structure" && state.stage >= ADVANCED_STRUCTURE_KINDS[0].stage) {
+    const probe = await sbGet<{ level?: number }[]>("world_structures?select=level&limit=1");
+    const levelsActive = !!probe && probe.length > 0 && probe[0].level !== undefined;
+    buildKinds = structureKindsFor(state.stage, levelsActive);
+  }
+
   // The content is genuinely agent-authored when the budget allows; the canned
   // params are the zero-cost fallback, and a failed draft costs nothing extra.
   let params: Record<string, unknown> =
     item.type === "improve_structure" && improvePlot ? { plot: improvePlot } : item.canned.params;
   let rationale = item.canned.rationale;
   let recess = petitionRecess;
-  const drafted = parseJson<Record<string, string>>(await worldGemini(item.draft, 200));
+  const draftPrompt = typeof item.draft === "function" ? item.draft({ kinds: buildKinds }) : item.draft;
+  const drafted = parseJson<Record<string, string>>(await worldGemini(draftPrompt, 200));
   if (drafted) {
     const candidate = validateProposal({
       proposal_type: item.type,

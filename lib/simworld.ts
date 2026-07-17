@@ -47,7 +47,13 @@ export type SimAction =
 /** 1 = fresh build, 2 = established, 3 = final form (structure-depth spec). */
 export const MAX_SIM_STRUCTURE_LEVEL = 3;
 
-export type StructureKind = "shelter" | "cairn" | "beacon" | "garden" | "workshop" | "monument";
+export type StructureKind =
+  | "shelter" | "cairn" | "beacon" | "garden" | "workshop" | "monument"
+  // Structure-depth spec Part 2 — earned by collective milestones, not listed
+  // in any cast's base builds: relay (8+ structures), laboratory (6+
+  // discoveries, raised at a charted site), assembly-ring (one per run, at
+  // the Mast, after the first convergence).
+  | "relay" | "laboratory" | "assembly-ring";
 
 interface GoalDef { text: string; kind: string; target: number }
 
@@ -585,6 +591,42 @@ export async function runSimTick(): Promise<SimTickResult> {
           action: "build", weight: industry * 1.6,
           desc: `build a ${kind} where you stand`, buildKind: kind,
         });
+        // Earned vocabulary (structure-depth spec Part 2). Gated on the level
+        // key existing in rows — the same migration that adds it relaxes the
+        // kind CHECK, so offering these before it runs would insert-fail.
+        const levelsActive = structures.some((s) => s.level !== undefined);
+        if (levelsActive) {
+          const nearRelay = structures.some((s) => s.kind === "relay" && dist(agent.x, agent.z, s.x, s.z) < 45);
+          if (structures.length >= 8 && !nearRelay) {
+            candidates.push({
+              action: "build", weight: industry * 1.4,
+              desc: "build a relay here to knit the settlements into a network", buildKind: "relay",
+            });
+          }
+          const chartedNearby = sites.find(
+            (s) => found.has(s.key) && dist(agent.x, agent.z, s.x, s.z) < 20
+          );
+          if (
+            found.size >= 6 && chartedNearby &&
+            !structures.some((s) => s.kind === "laboratory" && dist(s.x, s.z, chartedNearby.x, chartedNearby.z) < 20)
+          ) {
+            candidates.push({
+              action: "build", weight: (curiosity + industry) * 0.9,
+              desc: `build a laboratory to study ${chartedNearby.name}`, buildKind: "laboratory",
+              targetName: chartedNearby.name,
+            });
+          }
+          if (
+            tick > CONVERGENCE_EVERY &&
+            !structures.some((s) => s.kind === "assembly-ring") &&
+            dist(agent.x, agent.z, 0, 0) < 14
+          ) {
+            candidates.push({
+              action: "build", weight: kinship * 1.6,
+              desc: "raise the assembly ring where the cast converges", buildKind: "assembly-ring",
+            });
+          }
+        }
       }
       const tendable = structures.find(
         (s) => (s.built_by === agent.name || s.kind === "garden") && dist(agent.x, agent.z, s.x, s.z) < 12
@@ -664,10 +706,14 @@ export async function runSimTick(): Promise<SimTickResult> {
       agent.energy = Math.max(0, agent.energy - 14);
       agent.activity = `raising a ${choice.buildKind}`;
       const pos = clampToRoam(agent.x, agent.z);
-      await sbWrite("sim_structures", "POST", {
+      const wrote = await sbWrite("sim_structures", "POST", {
         kind: choice.buildKind, x: Math.round(pos.x * 10) / 10, z: Math.round(pos.z * 10) / 10,
         built_by: agent.name, tick,
       });
+      if (!wrote) {
+        // The chronicle never claims a structure the table doesn't hold.
+        summary = `${agent.name} breaks ground for a ${choice.buildKind}, but the ground refuses it this tick.`;
+      } else {
       buildCount++;
       kind = "build";
       summary = `${agent.name} raises a ${choice.buildKind} at (${Math.round(pos.x)}, ${Math.round(pos.z)}) — the ${structures.length + 1}${ordinal(structures.length + 1)} structure of the run.`;
@@ -692,6 +738,7 @@ export async function runSimTick(): Promise<SimTickResult> {
         id: -1, kind: choice.buildKind, x: pos.x, z: pos.z, built_by: agent.name, tick,
         created_at: new Date().toISOString(),
       });
+      }
     } else if (choice.action === "improve" && choice.improveTarget) {
       const t = choice.improveTarget;
       const level = Math.min(MAX_SIM_STRUCTURE_LEVEL, (t.level ?? 1) + 1);

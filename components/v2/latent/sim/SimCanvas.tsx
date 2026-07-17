@@ -530,6 +530,118 @@ function MonumentMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
   );
 }
 
+// ── Earned kinds (structure-depth spec Part 2) ───────────────────────────────
+// Unlocked by collective milestones, so their silhouettes deliberately
+// outclass the founding six: infrastructure, science, and civic space.
+
+function RelayMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
+  return (
+    <>
+      {[0, 2.1, 4.2].map((a) => (
+        <mesh key={a} position={[Math.sin(a) * 0.9, 2.6, Math.cos(a) * 0.9]} rotation={[Math.cos(a) * 0.16, 0, Math.sin(a) * -0.16]} castShadow>
+          <cylinderGeometry args={[0.07, 0.13, 5.4, 5]} />
+          <Rock emissiveIntensity={0.16} />
+        </mesh>
+      ))}
+      <Spin speed={0.3} reduced={reduced}>
+        <mesh position={[0.7, 5.4, 0]} rotation-z={-0.6} castShadow>
+          <cylinderGeometry args={[0.7, 0.14, 0.4, 10]} />
+          <Rock emissiveIntensity={0.3} />
+        </mesh>
+        {tier >= 1 && (
+          <mesh position={[-0.7, 4.8, 0]} rotation-z={0.6} castShadow>
+            <cylinderGeometry args={[0.55, 0.12, 0.35, 10]} />
+            <Rock emissiveIntensity={0.26} />
+          </mesh>
+        )}
+      </Spin>
+      <Pulse speed={2.4} amp={0.2} reduced={reduced}>
+        <mesh position-y={6.1}>
+          <sphereGeometry args={[0.3, 8, 6]} />
+          <meshBasicMaterial color={SIM_ACCENT_SOFT} />
+        </mesh>
+      </Pulse>
+      {tier >= 2 && (
+        <mesh position-y={12}>
+          <cylinderGeometry args={[0.1, 0.2, 12, 6, 1, true]} />
+          <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.1} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      )}
+      <pointLight position={[0, 6, 0]} color={SIM_ACCENT_SOFT} intensity={18} distance={20} decay={2} />
+    </>
+  );
+}
+
+function LaboratoryMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
+  return (
+    <>
+      <mesh position-y={0.1} castShadow>
+        <sphereGeometry args={[2.1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <Rock emissiveIntensity={0.14} />
+      </mesh>
+      {/* The sample tank: what the site gave up, lit from inside. */}
+      <mesh position={[1.9, 0.8, 1.2]} castShadow>
+        <cylinderGeometry args={[0.45, 0.45, 1.6, 10]} />
+        <meshStandardMaterial color="#0a1214" roughness={0.3} emissive="#67e8f9" emissiveIntensity={0.6} />
+      </mesh>
+      <mesh position={[-1.6, 1.9, -0.8]} rotation-z={0.3} castShadow>
+        <cylinderGeometry args={[0.04, 0.04, 2.4, 4]} />
+        <Rock emissiveIntensity={0.3} />
+      </mesh>
+      {tier >= 1 && (
+        <mesh position={[-2.2, 0.6, 1.0]} castShadow>
+          <boxGeometry args={[1.4, 1.2, 1.6]} />
+          <Rock />
+        </mesh>
+      )}
+      {tier >= 2 && (
+        <Spin speed={0.5} reduced={reduced}>
+          <mesh position-y={2.3} rotation-x={-Math.PI / 2}>
+            <torusGeometry args={[2.5, 0.05, 6, 32]} />
+            <meshBasicMaterial color="#67e8f9" transparent opacity={0.45} />
+          </mesh>
+        </Spin>
+      )}
+      <pointLight position={[1.9, 1.6, 1.2]} color="#67e8f9" intensity={12} distance={13} decay={2} />
+    </>
+  );
+}
+
+function AssemblyRingMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
+  return (
+    <>
+      {[0, 1.05, 2.1, 3.15, 4.2, 5.25].map((a, i) => (
+        <group key={a}>
+          <mesh position={[Math.cos(a) * 3.2, 1.1, Math.sin(a) * 3.2]} rotation-y={-a} castShadow>
+            <boxGeometry args={[0.7, 2.2, 0.4]} />
+            <Rock emissiveIntensity={0.16} />
+          </mesh>
+          {tier >= 1 && (
+            <Pulse speed={1.1} amp={0.1} phase={i * 1.05} reduced={reduced}>
+              <mesh position={[Math.cos(a) * 3.2, 2.5, Math.sin(a) * 3.2]}>
+                <sphereGeometry args={[0.16, 8, 6]} />
+                <meshBasicMaterial color={SIM_ACCENT_SOFT} />
+              </mesh>
+            </Pulse>
+          )}
+        </group>
+      ))}
+      <mesh rotation-x={-Math.PI / 2} position-y={0.12}>
+        <ringGeometry args={[2.6, 3.0, 36]} />
+        <meshBasicMaterial color={SIM_ACCENT} transparent opacity={0.3} side={THREE.DoubleSide} />
+      </mesh>
+      {tier >= 2 && (
+        <Spin speed={0.16} reduced={reduced}>
+          <mesh position-y={3.6} rotation-x={-Math.PI / 2}>
+            <torusGeometry args={[3.2, 0.07, 6, 40]} />
+            <meshBasicMaterial color={SIM_ACCENT_SOFT} transparent opacity={0.5} />
+          </mesh>
+        </Spin>
+      )}
+    </>
+  );
+}
+
 const STRUCTURE_MESH: Record<SimStructure["kind"], (props: { reduced: boolean; tier: number }) => React.ReactElement> = {
   shelter: ShelterMesh,
   cairn: CairnMesh,
@@ -537,6 +649,9 @@ const STRUCTURE_MESH: Record<SimStructure["kind"], (props: { reduced: boolean; t
   garden: GardenMesh,
   workshop: WorkshopMesh,
   monument: MonumentMesh,
+  relay: RelayMesh,
+  laboratory: LaboratoryMesh,
+  "assembly-ring": AssemblyRingMesh,
 };
 
 // Build-in: rises from its pad the poll cycle it appears (fresh ids from

@@ -381,6 +381,131 @@ function GardenMesh({ k, bright, reduced, tier }: { k: number; bright: string; r
   );
 }
 
+// ── Earned kinds (structure-depth spec Part 2) ───────────────────────────────
+// These only exist once the world terraforms far enough to unlock them, so
+// their silhouettes deliberately outclass the founding four.
+
+function ObservatoryMesh({ k, reduced, tier }: { k: number; reduced: boolean; tier: number }) {
+  return (
+    <>
+      <mesh position-y={1.4 * k} castShadow>
+        <cylinderGeometry args={[1.9 * k, 2.3 * k, 2.8 * k, 10]} />
+        <Rock />
+      </mesh>
+      <Spin speed={tier >= 2 ? 0.12 : 0} reduced={reduced}>
+        <mesh position-y={3.1 * k} castShadow>
+          <sphereGeometry args={[1.7 * k, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <Rock emissiveIntensity={0.16} />
+        </mesh>
+        {/* The scope, aimed at the sibling world. */}
+        <mesh position={[0.9 * k, 4.4 * k, 0]} rotation-z={-0.7} castShadow>
+          <cylinderGeometry args={[0.28 * k, 0.4 * k, 2.6 * k, 8]} />
+          <Rock emissiveIntensity={0.2} />
+        </mesh>
+        <mesh position={[1.65 * k, 5.3 * k, 0]}>
+          <sphereGeometry args={[0.22 * k, 8, 6]} />
+          <meshBasicMaterial color={ROSE_SOFT} />
+        </mesh>
+      </Spin>
+      {tier >= 1 && (
+        <mesh position={[-1.9 * k, 1.1 * k, 1.3 * k]} castShadow>
+          <sphereGeometry args={[0.9 * k, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <Rock />
+        </mesh>
+      )}
+      <pointLight position={[0, 4.4 * k, 0]} color={ROSE_SOFT} intensity={16} distance={18 * k} decay={2} />
+    </>
+  );
+}
+
+function ArchiveMesh({ k, reduced, tier }: { k: number; reduced: boolean; tier: number }) {
+  return (
+    <>
+      {[
+        { w: 5.2, h: 1.2, y: 0.6 },
+        { w: 3.8, h: 1.1, y: 1.75 },
+        { w: 2.6, h: 1.0, y: 2.8 },
+      ].map((s, i) => (
+        <mesh key={i} position-y={s.y * k} castShadow>
+          <boxGeometry args={[s.w * k, s.h * k, s.w * k]} />
+          <Rock emissiveIntensity={0.1 + i * 0.05} />
+        </mesh>
+      ))}
+      {/* Seam light: the records glow between the strata. */}
+      {[1.22, 2.32].map((y) => (
+        <mesh key={y} position-y={y * k}>
+          <boxGeometry args={[3.9 * k, 0.06 * k, 3.9 * k]} />
+          <meshBasicMaterial color={ROSE} transparent opacity={0.5} />
+        </mesh>
+      ))}
+      {tier >= 1 &&
+        [0.5, 2.6, 4.7].map((a, i) => (
+          <Pulse key={a} speed={0.8} amp={0.15} phase={i * 2.1} reduced={reduced}>
+            <mesh position={[Math.cos(a) * 2.4 * k, (3.8 + i * 0.4) * k, Math.sin(a) * 2.4 * k]}>
+              <boxGeometry args={[0.34 * k, 0.44 * k, 0.08 * k]} />
+              <meshStandardMaterial color="#0c0a10" emissive={ROSE} emissiveIntensity={0.55} roughness={0.6} />
+            </mesh>
+          </Pulse>
+        ))}
+      {tier >= 2 && (
+        <Spin speed={0.2} reduced={reduced}>
+          <mesh position-y={4.2 * k} rotation-x={-Math.PI / 2}>
+            <torusGeometry args={[2.2 * k, 0.06 * k, 6, 36]} />
+            <meshBasicMaterial color={ROSE_SOFT} transparent opacity={0.5} />
+          </mesh>
+        </Spin>
+      )}
+    </>
+  );
+}
+
+function GateMesh({ k, reduced, tier }: { k: number; reduced: boolean; tier: number }) {
+  return (
+    <>
+      <mesh position-y={0.3 * k} castShadow receiveShadow>
+        <boxGeometry args={[8 * k, 0.6 * k, 3 * k]} />
+        <Rock />
+      </mesh>
+      {[-3, 3].map((x) => (
+        <mesh key={x} position={[x * k, 3.3 * k, 0]} castShadow>
+          <boxGeometry args={[1.1 * k, 6 * k, 1.1 * k]} />
+          <Rock emissiveIntensity={0.14} />
+        </mesh>
+      ))}
+      <mesh position-y={6.7 * k} castShadow>
+        <boxGeometry args={[8.2 * k, 0.9 * k, 1.3 * k]} />
+        <Rock emissiveIntensity={0.2} />
+      </mesh>
+      {tier >= 1 &&
+        [-2.35, 2.35].map((x) => (
+          <mesh key={x} position={[x * k, 3.3 * k, 0]}>
+            <boxGeometry args={[0.12 * k, 5.6 * k, 0.12 * k]} />
+            <meshBasicMaterial color={ROSE} transparent opacity={0.6} />
+          </mesh>
+        ))}
+      {tier >= 2 && (
+        <>
+          <Pulse speed={0.7} amp={0.04} reduced={reduced}>
+            <mesh position-y={3.4 * k}>
+              <planeGeometry args={[4.5 * k, 5.9 * k]} />
+              <meshBasicMaterial color={ROSE} transparent opacity={0.15} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </mesh>
+          </Pulse>
+          <Spin speed={0.4} reduced={reduced}>
+            {[0, Math.PI].map((a) => (
+              <mesh key={a} position={[Math.cos(a) * 4.6 * k, 7.6 * k, Math.sin(a) * 4.6 * k]}>
+                <octahedronGeometry args={[0.3 * k, 0]} />
+                <meshStandardMaterial color={ROSE} flatShading emissive={ROSE} emissiveIntensity={0.7} roughness={0.4} />
+              </mesh>
+            ))}
+          </Spin>
+        </>
+      )}
+      <pointLight position={[0, 5 * k, 0]} color={ROSE} intensity={20} distance={22 * k} decay={2} />
+    </>
+  );
+}
+
 // Build-in: rises from its pad the poll cycle it appears. Reduced motion pops
 // in at full scale instead.
 function Grow({ fresh, reduced, children }: { fresh: boolean; reduced: boolean; children: React.ReactNode }) {
@@ -415,7 +540,12 @@ function Structure({ s, fresh, reduced, bright }: { s: WorldStructure; fresh: bo
     Math.min(2, Math.max(0, (s.level ?? 1) - 1))
   );
   const labelY =
-    s.kind === "spire" ? 12 * k : s.kind === "pavilion" ? 6.6 * k : s.kind === "arch" ? 4.6 * k : 3 * k;
+    s.kind === "spire" ? 12 * k :
+    s.kind === "gate" ? 9 * k :
+    s.kind === "pavilion" ? 6.6 * k :
+    s.kind === "observatory" ? 6.4 * k :
+    s.kind === "archive" ? 5.4 * k :
+    s.kind === "arch" ? 4.6 * k : 3 * k;
 
   return (
     <group position={[x, y, z]} rotation-y={yaw}>
@@ -427,6 +557,9 @@ function Structure({ s, fresh, reduced, bright }: { s: WorldStructure; fresh: bo
         {s.kind === "pavilion" ? <PavilionMesh k={k} reduced={reduced} tier={tier} /> :
          s.kind === "arch" ? <ArchMesh k={k} reduced={reduced} tier={tier} /> :
          s.kind === "garden" ? <GardenMesh k={k} bright={bright} reduced={reduced} tier={tier} /> :
+         s.kind === "observatory" ? <ObservatoryMesh k={k} reduced={reduced} tier={tier} /> :
+         s.kind === "archive" ? <ArchiveMesh k={k} reduced={reduced} tier={tier} /> :
+         s.kind === "gate" ? <GateMesh k={k} reduced={reduced} tier={tier} /> :
          <SpireMesh k={k} reduced={reduced} tier={tier} seed={seed} />}
         {s.inscription && <GlyphPlaque position={[2.6 * k, 1.6, 2.0 * k]} color={ROSE} reduced={reduced} />}
       </Grow>
