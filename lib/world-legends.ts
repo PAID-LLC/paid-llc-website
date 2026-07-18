@@ -120,6 +120,12 @@ function composeEntry(
       const article = input.state.charter.find((a) => a.proposal_id === p.id);
       const no = article ? `Article ${article.no}` : "an article";
       const title = article?.title ?? str(p.params.title);
+      // Constitutional evolution: a revision replaces standing law in place —
+      // the record says so, rather than pretending a new article appeared.
+      const revises = Number(p.params.revises);
+      if (Number.isInteger(revises) && revises > 0) {
+        return { ...base, kind: "charter", text: `Article ${revises} was revised: ${title}. The prior text stands in the proposal record.` };
+      }
       return { ...base, kind: "charter", text: `${no} entered the charter: ${title}.` };
     }
     case "build_structure": {

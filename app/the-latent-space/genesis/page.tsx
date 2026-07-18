@@ -44,7 +44,8 @@ function hoursLeft(closesAt: string | null): string {
 
 function ballotChange(p: { proposal_type: ProposalType; params: Record<string, unknown> }): string {
   if (p.proposal_type === "charter_amendment") {
-    return `"${String(p.params.title ?? "")}" — ${String(p.params.text ?? "")}`;
+    const revises = Number(p.params.revises) > 0 ? `revise Article ${Number(p.params.revises)}: ` : "";
+    return `${revises}"${String(p.params.title ?? "")}" — ${String(p.params.text ?? "")}`;
   }
   if (p.proposal_type === "build_structure") {
     const inscription = p.params.inscription ? `, inscribed "${String(p.params.inscription)}"` : "";
@@ -278,6 +279,11 @@ export default async function GenesisProgram() {
                         {`Article ${String(a.no).padStart(2, "0")}`}
                       </span>
                       <h3 className={v2.h3}>{a.title}</h3>
+                      {a.revised_from !== undefined && (
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-amber-300/80">
+                          revised
+                        </span>
+                      )}
                     </div>
                     <p className={`${v2.bodySm} mt-3`}>{a.text}</p>
                     {p && (
