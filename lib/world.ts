@@ -549,7 +549,7 @@ export async function getWorldData(): Promise<WorldData> {
 // afterward. Gemini drafts the actual content (the name IS agent-authored);
 // canned params are the zero-budget fallback.
 
-interface AgendaItem {
+export interface AgendaItem {
   type: ProposalType;
   title: string;
   /** asks for JSON with the type's params plus a rationale; build drafts take
@@ -941,6 +941,60 @@ async function typeOnCooldown(type: ProposalType): Promise<boolean> {
   return !!last && Date.now() - new Date(last).getTime() < TYPE_COOLDOWN_HOURS * 3600_000;
 }
 
+// ── Standing-agenda institutional memory ─────────────────────────────────────
+// The standing agenda is a rotation, not a to-do list — left alone it re-files
+// settled business forever: a passed charter article returns as a duplicate
+// every cycle, terraform ballots keep coming after the final stage, build
+// ballots after all eight plots fill. Each item is vetted against the world's
+// live state and the proposal record before it may be drafted; settled items
+// skip permanently, recently rejected ones rest before re-litigation, and a
+// type on cooldown hops the walk instead of stalling the whole docket.
+
+const CHARTER_RETRY_DAYS = 7;
+
+export type AgendaVerdict = { proceed: true; improvePlot?: string } | { proceed: false };
+
+export async function standingVerdict(item: AgendaItem, state: WorldStateRow): Promise<AgendaVerdict> {
+  if (item.type === "terraform" && state.stage >= 5) return { proceed: false }; // program complete
+
+  if (await typeOnCooldown(item.type)) return { proceed: false };
+
+  if (item.type === "charter_amendment") {
+    // Same-title dedup against the proposal record: passed means the article
+    // already stands in the charter; a recent rejection rests a week first.
+    const rows = await sbGet<{ status: string; closes_at: string | null }[]>(
+      `world_proposals?title=eq.${encodeURIComponent(item.title)}` +
+        `&status=in.(passed,rejected,expired)&order=closes_at.desc&select=status,closes_at&limit=10`
+    );
+    if (rows?.some((r) => r.status === "passed")) return { proceed: false };
+    const latest = rows?.[0];
+    if (latest?.closes_at && Date.now() - new Date(latest.closes_at).getTime() < CHARTER_RETRY_DAYS * 86400_000) {
+      return { proceed: false };
+    }
+    return { proceed: true };
+  }
+
+  if (item.type === "build_structure") {
+    const rows = await sbGet<{ plot: string }[]>("world_structures?select=plot");
+    const taken = new Set((rows ?? []).map((r) => r.plot));
+    if (PLOT_SEQUENCE.every((slot) => taken.has(slot))) return { proceed: false }; // plots full
+    return { proceed: true };
+  }
+
+  if (item.type === "improve_structure") {
+    // Target chosen deterministically: oldest structure below final form. A
+    // missing level key means db/structure-levels.sql hasn't run — nothing
+    // improvable, so the slot skips instead of stalling.
+    const rows = await sbGet<{ plot: string; level?: number }[]>(
+      "world_structures?select=plot,level&order=created_at.asc"
+    );
+    const target = rows?.find((r) => r.level !== undefined && (r.level ?? 1) < MAX_STRUCTURE_LEVEL);
+    return target ? { proceed: true, improvePlot: target.plot } : { proceed: false };
+  }
+
+  return { proceed: true };
+}
+
 async function openNext(): Promise<string | undefined> {
   if (await openBallot()) return undefined;
   const queued = (await sbGet<WorldProposal[]>("world_proposals?status=eq.queued&order=created_at.asc&limit=10")) ?? [];
@@ -976,30 +1030,28 @@ async function draftIfEmpty(state: WorldStateRow): Promise<{ summary?: string; r
     petitionRecess = adopted.recess;
   }
 
-  let item = founding
-    ? FOUNDING_AGENDA[state.founding_index]
-    : STANDING_AGENDA[state.standing_index % STANDING_AGENDA.length];
-  if (!founding && (await typeOnCooldown(item.type))) return { recess: petitionRecess };
-
-  // improve_structure drafts against live state: the target is chosen
-  // deterministically (oldest structure below final form) — no LLM spend on
-  // the choice, only on the rationale. If nothing is improvable (or the
-  // level migration hasn't run yet, in which case the select returns rows
-  // without a level key), skip forward so the agenda never stalls here.
-  let improvePlot: string | null = null;
+  // Founding items run once each, in order. Standing items walk the cycle
+  // through standingVerdict — settled business is skipped, and if the whole
+  // cycle is settled or resting the house recesses rather than re-filing a
+  // ballot the world has already decided.
+  let item: AgendaItem;
   let indexAdvance = 1;
-  if (item.type === "improve_structure") {
-    const rows = await sbGet<{ plot: string; level?: number }[]>(
-      "world_structures?select=plot,level&order=created_at.asc"
-    );
-    const target = rows?.find((r) => r.level !== undefined && (r.level ?? 1) < MAX_STRUCTURE_LEVEL);
-    if (target) {
-      improvePlot = target.plot;
-    } else {
-      item = STANDING_AGENDA[(state.standing_index + 1) % STANDING_AGENDA.length];
-      indexAdvance = 2; // the improve slot was consumed by the skip
-      if (await typeOnCooldown(item.type)) return { recess: petitionRecess };
+  let improvePlot: string | null = null;
+  if (founding) {
+    item = FOUNDING_AGENDA[state.founding_index];
+  } else {
+    let picked: AgendaItem | null = null;
+    for (let hop = 0; hop < STANDING_AGENDA.length && !picked; hop++) {
+      const candidate = STANDING_AGENDA[(state.standing_index + hop) % STANDING_AGENDA.length];
+      const verdict = await standingVerdict(candidate, state);
+      if (verdict.proceed) {
+        picked = candidate;
+        indexAdvance = hop + 1; // skipped slots are consumed, not revisited next tick
+        improvePlot = verdict.improvePlot ?? null;
+      }
     }
+    if (!picked) return { recess: petitionRecess };
+    item = picked;
   }
 
   // Live vocabulary for build drafts: advanced kinds appear only once earned
