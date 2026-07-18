@@ -140,6 +140,9 @@ export default async function GenesisProgram() {
           <Link href="/the-latent-space" className={v2.btnSecondary}>
             See it on the universe map
           </Link>
+          <Link href="/the-latent-space/genesis/history" className={v2.btnGhost}>
+            Read the legends
+          </Link>
           <Link href="/v2/lobbies/8/floor" className={v2.btnGhost}>
             Walk the floor
           </Link>

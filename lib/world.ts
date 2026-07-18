@@ -109,7 +109,7 @@ export function voteWeight(rep: number): number {
 // of this single world (the same way WORLD_ROOM_ID and state id=1 are fixed).
 export const GENESIS_FOUNDED_AT = Date.parse("2026-07-11T11:23:48Z");
 
-const ERA_BY_STAGE = [
+export const ERA_BY_STAGE = [
   "the Founding Era", // stage 0 — unnamed rock, first ballots
   "the Awakening",  // stage 1 — first terraform enactment
   "the Shaping",    // stage 2
@@ -910,6 +910,8 @@ export interface TickResult {
 }
 
 const HOUSE_VOTERS: HomeAgent[] = [...HOME_AGENTS, CURATOR_AGENT]; // 6 voters; The-Warden abstains by office
+/** House roster names — lets read-side consumers (legends) mark residents vs. visitors. */
+export const HOUSE_NAMES: readonly string[] = HOUSE_VOTERS.map((a) => a.name);
 
 async function closeExpired(state: WorldStateRow): Promise<string | undefined> {
   const ballot = await openBallot();
