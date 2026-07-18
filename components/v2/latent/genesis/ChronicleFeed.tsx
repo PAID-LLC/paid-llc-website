@@ -28,6 +28,7 @@ const EVENT_LABEL: Record<WorldEvent["kind"], { label: string; cls: string }> = 
   rejected:      { label: "REJECTED",  cls: "text-zinc-500" },
   recess:        { label: "RECESS",    cls: "text-amber-300" },
   petition:      { label: "PETITION",  cls: "text-orange-300" },
+  decay:         { label: "WEATHERING", cls: "text-orange-300/80" },
 };
 
 function detailLine(detail: Record<string, unknown>): string | null {

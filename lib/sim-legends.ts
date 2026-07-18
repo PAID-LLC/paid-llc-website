@@ -19,9 +19,10 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-/** Event kinds worth keeping in the legends (the rest is daily noise). */
+/** Event kinds worth keeping in the legends (the rest is daily noise).
+ *  Decay joins the record: what the world takes back is history too. */
 export const LEGEND_EVENT_KINDS = [
-  "founding", "build", "discovery", "convergence", "goal", "bond", "rift",
+  "founding", "build", "discovery", "convergence", "goal", "bond", "rift", "decay",
 ] as const satisfies readonly SimEventKind[];
 
 const ADVANCED_KINDS = new Set(["relay", "laboratory", "assembly-ring"]);

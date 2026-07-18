@@ -25,6 +25,7 @@ const KIND_STYLE: Record<SimEvent["kind"], { label: string; cls: string }> = {
   weather:     { label: "WEATHER",     cls: "text-zinc-500" },
   convergence: { label: "CONVERGENCE", cls: "text-sky-400" },
   recess:      { label: "RECESS",      cls: "text-amber-300" },
+  decay:       { label: "WEATHERING",  cls: "text-orange-300/80" },
 };
 
 function stamp(e: SimEvent): string {

@@ -16,6 +16,7 @@ const BANNER_LABEL: Partial<Record<SimEvent["kind"], string>> = {
   bond: "BOND",
   rift: "RIFT",
   convergence: "CONVERGENCE",
+  decay: "WEATHERING",
 };
 
 // The storyteller's tell: where the current act sits on its drama curve.

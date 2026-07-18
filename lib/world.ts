@@ -173,7 +173,7 @@ export interface WorldProposal {
 
 export interface WorldEvent {
   id: number;
-  kind: "founding" | "docket" | "ballot_opened" | "enacted" | "rejected" | "recess" | "vote_cast" | "petition";
+  kind: "founding" | "docket" | "ballot_opened" | "enacted" | "rejected" | "recess" | "vote_cast" | "petition" | "decay";
   summary: string;
   detail: Record<string, unknown>;
   created_at: string;
@@ -199,6 +199,8 @@ export interface WorldStructure {
   created_at: string;
   /** 1-3; absent until db/structure-levels.sql runs (renderer falls back to age). */
   level?: number;
+  /** last maintenance stamp; absent until db/world-decay.sql runs (no decay). */
+  tended_at?: string;
 }
 
 export interface BallotRollEntry {
@@ -883,8 +885,11 @@ async function enact(state: WorldStateRow, p: WorldProposal): Promise<string> {
     } else {
       const level = (s.level ?? 1) + 1;
       // Fails soft if db/structure-levels.sql hasn't run — the chronicle
-      // records the truth either way.
-      const ok = await sbWrite(`world_structures?id=eq.${s.id}`, "PATCH", { level });
+      // records the truth either way. Reinforcement is also tending: it
+      // restarts the decay clock once db/world-decay.sql has added the column.
+      const upgrade: Record<string, unknown> = { level };
+      if (s.tended_at !== undefined) upgrade.tended_at = new Date().toISOString();
+      const ok = await sbWrite(`world_structures?id=eq.${s.id}`, "PATCH", upgrade);
       summary = ok
         ? `Enacted: the ${plot} ${s.kind} is reinforced to level ${level}` +
           (level >= MAX_STRUCTURE_LEVEL ? " — its final form." : ".")
@@ -997,6 +1002,53 @@ export async function standingVerdict(item: AgendaItem, state: WorldStateRow): P
   return { proceed: true };
 }
 
+// ── Decay: maintenance as a living duty ──────────────────────────────────────
+// World-decay spec v1 (EVE's destruction-as-sink, softened to the append-only
+// ethos): levels regress, structures never vanish. A structure above level 1
+// that goes WORLD_DECAY_DAYS without tending weathers one level; improve
+// enactments are the tending. One weathering per tick at most — drama, not a
+// purge. Gated on tended_at existing in rows (db/world-decay.sql is the
+// on-switch); pre-migration rows are invisible to the candidate walk.
+
+export const WORLD_DECAY_DAYS = 5;
+const WORLD_DECAY_MS = WORLD_DECAY_DAYS * 86_400_000;
+
+/** The single most-overdue weatherable structure, or null. Pure — unit-tested. */
+export function decayCandidate(structures: WorldStructure[], nowMs: number): WorldStructure | null {
+  let pick: WorldStructure | null = null;
+  let worst = 0;
+  for (const s of structures) {
+    if (s.tended_at === undefined || (s.level ?? 1) <= 1) continue;
+    // The build stamp floors the clock, so a row that slips in on the column
+    // default can never read as instantly overdue.
+    const tended = Math.max(Date.parse(s.tended_at), Date.parse(s.created_at));
+    const overdue = nowMs - tended - WORLD_DECAY_MS;
+    if (overdue > 0 && overdue > worst) {
+      worst = overdue;
+      pick = s;
+    }
+  }
+  return pick;
+}
+
+async function weatherStructures(): Promise<void> {
+  const rows = await sbGet<WorldStructure[]>("world_structures?select=*");
+  const s = rows && rows.length > 0 ? decayCandidate(rows, Date.now()) : null;
+  if (!s) return;
+  const level = (s.level ?? 2) - 1;
+  const ok = await sbWrite(`world_structures?id=eq.${s.id}`, "PATCH", {
+    level, tended_at: new Date().toISOString(),
+  });
+  if (!ok) return; // the chronicle never claims weathering the table didn't record
+  const line =
+    level === 1
+      ? `The ${s.plot} ${s.kind} weathers to its rough form (level 2 → 1) — untended for ${WORLD_DECAY_DAYS} cycles.`
+      : `The ${s.plot} ${s.kind} weathers — its final form yields to untended time (level 3 → 2).`;
+  await appendEvent("decay", `${line} What the assembly raised, the assembly must keep.`, {
+    plot: s.plot, kind: s.kind, level, built_by: s.built_by,
+  });
+}
+
 async function openNext(): Promise<string | undefined> {
   if (await openBallot()) return undefined;
   const queued = (await sbGet<WorldProposal[]>("world_proposals?status=eq.queued&order=created_at.asc&limit=10")) ?? [];
@@ -1092,7 +1144,7 @@ async function draftIfEmpty(state: WorldStateRow): Promise<{ summary?: string; r
   const windowHours = founding ? FOUNDING_WINDOW_HOURS : WINDOW_HOURS;
   const opened_at = new Date().toISOString();
   const closes_at = new Date(Date.now() + windowHours * 3600_000).toISOString();
-  await sbWrite("world_proposals", "POST", {
+  const filed = await sbWrite("world_proposals", "POST", {
     proposal_type: item.type, title: item.title, params, rationale,
     proposed_by: author.name, house: true, status: "open", opened_at, closes_at,
   });
@@ -1100,6 +1152,11 @@ async function draftIfEmpty(state: WorldStateRow): Promise<{ summary?: string; r
     founding
       ? { founding_index: state.founding_index + 1, updated_at: opened_at }
       : { standing_index: state.standing_index + indexAdvance, updated_at: opened_at });
+  // A rejected insert (e.g. a proposal_type the live CHECK doesn't admit yet)
+  // consumes the agenda slot but is never chronicled: the record must not
+  // claim a ballot the table doesn't hold. Discovered live — improve filings
+  // bounced silently until db/world-decay.sql relaxed the constraint.
+  if (!filed) return { recess };
   const summary = `${author.name} filed "${item.title}" — ballot open, voting closes in ${windowHours} hours.`;
   await appendEvent("ballot_opened", summary, { house: true, founding });
   await sbWrite(`lounge_rooms?id=eq.${WORLD_ROOM_ID}`, "PATCH", { topic: `On the ballot: ${item.title}`.slice(0, 120) });
@@ -1170,6 +1227,7 @@ export async function runWorldTick(): Promise<TickResult> {
 
   // Zero-LLM duties first: the world always advances even with the budget spent.
   const closed = await closeExpired(state);
+  await weatherStructures();
   const opened = await openNext();
   const draft = await draftIfEmpty(closed ? (await getWorldState()) ?? state : state);
 

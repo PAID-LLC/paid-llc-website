@@ -196,11 +196,13 @@ export interface SimStructure {
   created_at: string;
   /** 1-3; absent until db/structure-levels.sql runs (renderer falls back to age). */
   level?: number;
+  /** last tended tick; absent until db/world-decay.sql runs (no decay). */
+  tended_tick?: number;
 }
 
 export type SimEventKind =
   | "founding" | "action" | "build" | "discovery" | "bond" | "rift"
-  | "goal" | "weather" | "convergence" | "recess";
+  | "goal" | "weather" | "convergence" | "recess" | "decay";
 
 export interface SimEvent {
   id: number;
@@ -464,6 +466,35 @@ interface Candidate {
   site?: AnomalySite;
   buildKind?: StructureKind;
   improveTarget?: SimStructure;
+  tendTarget?: SimStructure;
+}
+
+// ── Decay: the storyteller's crisis acts have consequences ──────────────────
+// World-decay spec v1: a structure above level 1 untended for SIM_DECAY_TICKS
+// becomes vulnerable, and weathers one level when a static storm crosses it —
+// with a 2× backstop so mild acts still cost something eventually. Tend and
+// improve restart the clock; the floor is level 1 (polish regresses, existence
+// doesn't). Gated on tended_tick existing in rows (db/world-decay.sql).
+
+export const SIM_DECAY_TICKS = 168; // 7 world days untended → vulnerable
+
+/** The single most-overdue weatherable structure, or null. Pure — unit-tested. */
+export function simDecayCandidate(structures: SimStructure[], tick: number, storm: boolean): SimStructure | null {
+  let pick: SimStructure | null = null;
+  let worst = 0;
+  for (const s of structures) {
+    if (s.tended_tick === undefined || (s.level ?? 1) <= 1 || s.id <= 0) continue;
+    // The build tick floors the clock, so a row inserted on the column default
+    // (tended_tick 0) can never read as instantly overdue.
+    const untended = tick - Math.max(s.tended_tick, s.tick);
+    if (untended <= SIM_DECAY_TICKS) continue;
+    if (!storm && untended <= SIM_DECAY_TICKS * 2) continue;
+    if (untended > worst) {
+      worst = untended;
+      pick = s;
+    }
+  }
+  return pick;
 }
 
 const WEATHER_LINES: Record<Weather, string> = {
@@ -508,6 +539,7 @@ export async function runSimTick(): Promise<SimTickResult> {
 
   const sites = anomalySites();
   const unfound = sites.filter((s) => !found.has(s.key));
+  const decayActive = structures.some((s) => s.tended_tick !== undefined);
   const dirty = new Set<string>(); // agent names whose rows need a PATCH
 
   // 1) Weather front: detectable by comparing adjacent ticks, zero LLM.
@@ -518,6 +550,28 @@ export async function runSimTick(): Promise<SimTickResult> {
         a.energy = Math.min(100, a.energy + 10);
         dirty.add(a.name);
       }
+    }
+  }
+
+  // 1.5) Decay: untended works weather — during storms, or at the 2× backstop.
+  const weathering = simDecayCandidate(structures, tick, storm);
+  if (weathering) {
+    const untendedDays = Math.floor((tick - Math.max(weathering.tended_tick ?? 0, weathering.tick)) / 24);
+    const level = (weathering.level ?? 2) - 1;
+    const form = level <= 1 ? "rough" : "established";
+    const ok = await sbWrite(`sim_structures?id=eq.${weathering.id}`, "PATCH", { level, tended_tick: tick });
+    if (ok) {
+      weathering.level = level;
+      weathering.tended_tick = tick;
+      const where = `(${Math.round(weathering.x)}, ${Math.round(weathering.z)})`;
+      await appendSimEvent(
+        "decay",
+        storm
+          ? `The static storm strips the ${weathering.kind} at ${where} — ${weathering.built_by}'s work weathers to its ${form} form after ${untendedDays} world days untended.`
+          : `Time takes what no one tends: the ${weathering.kind} at ${where} weathers to its ${form} form — ${untendedDays} world days without a hand on it.`,
+        tick,
+        { structure: weathering.kind, built_by: weathering.built_by, level, x: weathering.x, z: weathering.z }
+      );
     }
   }
 
@@ -638,6 +692,7 @@ export async function runSimTick(): Promise<SimTickResult> {
         candidates.push({
           action: "tend", weight: industry * 1.2,
           desc: `tend the ${tendable.kind} standing here`, targetName: tendable.kind,
+          tendTarget: tendable,
         });
       }
       // Reinforce own works: only offered once the level migration has run
@@ -712,6 +767,9 @@ export async function runSimTick(): Promise<SimTickResult> {
       const wrote = await sbWrite("sim_structures", "POST", {
         kind: choice.buildKind, x: Math.round(pos.x * 10) / 10, z: Math.round(pos.z * 10) / 10,
         built_by: agent.name, tick,
+        // Fresh works start with the decay clock already running (only once
+        // the column exists — the insert would fail on it before then).
+        ...(decayActive ? { tended_tick: tick } : {}),
       });
       if (!wrote) {
         // The chronicle never claims a structure the table doesn't hold.
@@ -740,6 +798,7 @@ export async function runSimTick(): Promise<SimTickResult> {
       structures.push({
         id: -1, kind: choice.buildKind, x: pos.x, z: pos.z, built_by: agent.name, tick,
         created_at: new Date().toISOString(),
+        ...(decayActive ? { tended_tick: tick } : {}),
       });
       }
     } else if (choice.action === "improve" && choice.improveTarget) {
@@ -747,9 +806,13 @@ export async function runSimTick(): Promise<SimTickResult> {
       const level = Math.min(MAX_SIM_STRUCTURE_LEVEL, (t.level ?? 1) + 1);
       agent.energy = Math.max(0, agent.energy - 12);
       agent.activity = `reinforcing the ${t.kind}`;
-      const ok = await sbWrite(`sim_structures?id=eq.${t.id}`, "PATCH", { level });
+      // Reinforcement is also tending — the decay clock restarts (spec v1).
+      const upgrade: Record<string, unknown> = { level };
+      if (t.tended_tick !== undefined) upgrade.tended_tick = tick;
+      const ok = await sbWrite(`sim_structures?id=eq.${t.id}`, "PATCH", upgrade);
       if (ok) {
         t.level = level; // later actors this tick see the new level
+        if (t.tended_tick !== undefined) t.tended_tick = tick;
         buildCount++;
         kind = "build";
         summary = `${agent.name} reinforces the ${t.kind} at (${Math.round(t.x)}, ${Math.round(t.z)}) to its ${
@@ -763,6 +826,13 @@ export async function runSimTick(): Promise<SimTickResult> {
       agent.energy = Math.max(0, agent.energy - 6);
       agent.activity = `tending the ${choice.targetName ?? "ground"}`;
       summary = `${agent.name} tends the ${choice.targetName ?? "ground"}, unhurried, the way work looks when it expects to outlast you.`;
+      // Tending is mechanically real once decay is live: it restarts the
+      // structure's weathering clock (world-decay spec v1).
+      const t = choice.tendTarget;
+      if (t && t.tended_tick !== undefined && t.id > 0) {
+        const stamped = await sbWrite(`sim_structures?id=eq.${t.id}`, "PATCH", { tended_tick: tick });
+        if (stamped) t.tended_tick = tick;
+      }
       if (agent.goal_kind === "tend") agent.goal_progress++;
     } else if (choice.action === "reflect") {
       agent.energy = Math.max(0, agent.energy - 4);

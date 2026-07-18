@@ -32,6 +32,7 @@ const KIND_STYLE: Partial<Record<SimEventKind, { label: string; cls: string }>> 
   goal:        { label: "goal",        cls: "text-cyan-300" },
   bond:        { label: "bond",        cls: "text-rose-300" },
   rift:        { label: "rift",        cls: "text-zinc-500" },
+  decay:       { label: "weathering",  cls: "text-orange-300/80" },
 };
 
 export default async function SubstrateLegends() {
