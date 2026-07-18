@@ -149,22 +149,85 @@ export function seasonFor(tick: number): Season {
 }
 
 // ── Weather ──────────────────────────────────────────────────────────────────
-// One regime per 5-tick block (~2.5 real hours), hashed from the block index —
-// deterministic, so the scene and the engine always agree, and a weather
-// change is detectable by comparing adjacent ticks. Solar flush is the rare
-// good omen: every instance gets energy back.
+// One regime per 5-tick block (~2.5 real hours), deterministic over the block
+// index — the scene and the engine always agree, and a weather change is
+// detectable by comparing adjacent ticks. Solar flush is the rare good omen:
+// every instance gets energy back.
+//
+// From STORYTELLER_FROM_TICK the block's weather follows a drama curve
+// (RimWorld's storyteller — dynamic-agent-worlds reference map 2026-07-18):
+// twelve-block acts that run calm → building → crisis → aftermath, with the
+// act's own hash deciding whether the crisis actually breaks. Storms cluster
+// at act peaks and the flush lands right after, so HAPPENINGS reads as
+// tension and relief instead of dice rolls. Ticks before the cutover keep
+// the original uniform formula so the recorded chronicle and every
+// retroactive derivation (legends' Stormborn) stay true to what happened.
 
 export const WEATHER_KINDS = ["clear", "fog bank", "data-rain", "static storm", "solar flush"] as const;
 export type Weather = (typeof WEATHER_KINDS)[number];
 
+/** Act boundary comfortably past the live tick (24) when this shipped. */
+export const STORYTELLER_FROM_TICK = 60;
+/** 12 blocks × 5 ticks = 60 ticks = 2.5 world days per act. */
+export const ACT_BLOCKS = 12;
+
+export type StormFront = "calm" | "building" | "crisis" | "aftermath";
+
+/** Where the current act sits on its drama curve — the HUD's weather-sense. */
+export function stormFront(tick: number): StormFront {
+  if (tick < STORYTELLER_FROM_TICK) return "calm"; // the pre-storyteller era reads as calm
+  const idx = Math.floor(Math.max(0, tick) / 5) % ACT_BLOCKS;
+  if (idx <= 4) return "calm";
+  if (idx <= 8) return "building";
+  if (idx <= 10) return "crisis";
+  return "aftermath";
+}
+
+/** Roughly one act in three never breaks — its crisis peaks as weather, not violence. */
+function mildAct(block: number): boolean {
+  return lat2(Math.floor(block / ACT_BLOCKS), 13, SIM_SEED + 431) < 0.3;
+}
+
 export function weatherFor(tick: number): Weather {
   const block = Math.floor(Math.max(0, tick) / 5);
   const r = lat2(block, 7, SIM_SEED + 977);
-  if (r < 0.40) return "clear";
-  if (r < 0.62) return "fog bank";
-  if (r < 0.82) return "data-rain";
-  if (r < 0.95) return "static storm";
-  return "solar flush";
+
+  if (tick < STORYTELLER_FROM_TICK) {
+    // The founding era's original uniform formula, preserved verbatim.
+    if (r < 0.40) return "clear";
+    if (r < 0.62) return "fog bank";
+    if (r < 0.82) return "data-rain";
+    if (r < 0.95) return "static storm";
+    return "solar flush";
+  }
+
+  const mild = mildAct(block);
+  switch (stormFront(tick)) {
+    case "calm":
+      if (r < 0.55) return "clear";
+      if (r < 0.82) return "fog bank";
+      if (r < 0.94) return "data-rain";
+      return "solar flush";
+    case "building":
+      if (r < 0.3) return "clear";
+      if (r < 0.6) return "fog bank";
+      if (r < 0.9) return "data-rain";
+      return mild ? "fog bank" : "static storm";
+    case "crisis":
+      if (mild) {
+        if (r < 0.2) return "fog bank";
+        if (r < 0.85) return "data-rain";
+        return "clear";
+      }
+      if (r < 0.55) return "static storm";
+      if (r < 0.8) return "data-rain";
+      return "fog bank";
+    case "aftermath":
+      // Relief after the peak: the rare good omen is most likely here.
+      if (r < 0.45) return "solar flush";
+      if (r < 0.75) return "clear";
+      return "fog bank";
+  }
 }
 
 /** Every 48 ticks (once a real day) the cast converges on the Mast. */

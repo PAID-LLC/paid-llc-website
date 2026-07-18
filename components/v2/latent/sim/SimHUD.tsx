@@ -18,6 +18,14 @@ const BANNER_LABEL: Partial<Record<SimEvent["kind"], string>> = {
   convergence: "CONVERGENCE",
 };
 
+// The storyteller's tell: where the current act sits on its drama curve.
+const FRONT_SENSE: Record<SimData["clock"]["front"], { text: string; color: string }> = {
+  calm:      { text: "still air",           color: "#71717a" },
+  building:  { text: "pressure building",   color: "#fbbf24" },
+  crisis:    { text: "storm front overhead", color: "#c4b5fd" },
+  aftermath: { text: "the air clearing",    color: "#6ee7b7" },
+};
+
 export default function SimHUD({
   sim,
   justHappened,
@@ -44,6 +52,10 @@ export default function SimHUD({
           </div>
           <p className="mt-1 text-[10px] text-zinc-400">
             tick {clock.tick} &middot; day {clock.day} &middot; {clock.season} &middot; {clock.weather}
+          </p>
+          {/* ?? guards a cached pre-front API response in the deploy window */}
+          <p className="mt-0.5 text-[9px] uppercase tracking-[0.15em]" style={{ color: (FRONT_SENSE[clock.front] ?? FRONT_SENSE.calm).color }}>
+            {(FRONT_SENSE[clock.front] ?? FRONT_SENSE.calm).text}
           </p>
           <p className="mt-1.5 text-[10px] text-zinc-500">
             {sim.agents.length} instances &middot; {sim.discoveries.length}/10 anomalies &middot;{" "}

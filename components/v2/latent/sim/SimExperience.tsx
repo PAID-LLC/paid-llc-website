@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { SimData } from "@/lib/simworld";
 import { SIM_ACCENT } from "@/lib/sim-field";
+import { useLegendTitles } from "@/components/v2/latent/useLegendTitles";
 import { useSimLive } from "./useSimLive";
 import SimCanvas from "./SimCanvas";
 import SimHUD from "./SimHUD";
@@ -66,6 +67,9 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
 export default function SimExperience({ initial }: { initial: SimData }) {
   const reduced = usePrefersReducedMotion();
   const { sim, freshStructureIds, justHappened } = useSimLive(initial);
+  // What the record remembers: earned titles from the legends compiler, one
+  // cached fetch, shown on canvas labels and in the Happenings dossiers.
+  const titles = useLegendTitles("/api/sim/legends");
   const [tab, setTab] = useState<Tab>("surface");
 
   // ?tab=happenings deep-links the second tab; switching keeps the URL honest
@@ -99,7 +103,7 @@ export default function SimExperience({ initial }: { initial: SimData }) {
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#07070b]">
       <div className="absolute inset-0">
-        <SimCanvas sim={sim} freshStructureIds={freshStructureIds} reduced={reduced} />
+        <SimCanvas sim={sim} freshStructureIds={freshStructureIds} reduced={reduced} titles={titles} />
       </div>
 
       {/* Screen-space finish — same scanline texture as the universe map, plus
@@ -121,7 +125,7 @@ export default function SimExperience({ initial }: { initial: SimData }) {
 
       {tab === "happenings" && (
         <div className="absolute inset-0 z-20 overflow-y-auto bg-[#07070b]/85 pl-[84px] backdrop-blur-md sm:pl-[92px]">
-          <Happenings sim={sim} />
+          <Happenings sim={sim} titles={titles} />
         </div>
       )}
 

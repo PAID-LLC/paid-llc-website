@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { WorldData } from "@/lib/world";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
+import { useLegendTitles } from "@/components/v2/latent/useLegendTitles";
 
 // ── Surface HUD ──────────────────────────────────────────────────────────────
 // The DOM layer over the world-surface canvas: identity + wayfinding top-left,
@@ -22,6 +23,10 @@ export default function SurfaceHUD({
 }) {
   const { state, epoch, structures, events } = world;
   const latest = events.slice(0, 2);
+  // What the record remembers: earned titles from the legends compiler, one
+  // cached fetch. The three most-storied figures ride the identity box.
+  const titles = useLegendTitles("/api/world/legends");
+  const storied = [...titles.entries()].slice(0, 3);
 
   return (
     <>
@@ -46,6 +51,17 @@ export default function SurfaceHUD({
               ? "nothing stands yet — eight surveyed plots wait on the ballots"
               : `${structures.length} structure${structures.length === 1 ? "" : "s"} raised by ballot`}
           </p>
+          {storied.length > 0 && (
+            <div className="mt-2.5 border-t border-white/[0.06] pt-2">
+              <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-600">the record remembers</p>
+              {storied.map(([name, earned]) => (
+                <p key={name} className="mt-0.5 text-[10px] leading-relaxed">
+                  <span style={{ color: ROSE }}>{name}</span>{" "}
+                  <span className="text-zinc-500">{earned.join(" · ")}</span>
+                </p>
+              ))}
+            </div>
+          )}
           <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 border-t border-white/[0.06] pt-2 text-[10px]">
             <Link href="/v2/lobbies/8/floor" className="text-zinc-500 transition-colors hover:text-zinc-300">
               the floor &rarr;

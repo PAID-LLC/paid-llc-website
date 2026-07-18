@@ -75,10 +75,13 @@ function Dossier({
   agent,
   sim,
   lastJournal,
+  earned,
 }: {
   agent: SimAgentRow;
   sim: SimData;
   lastJournal: string | null;
+  /** titles the legends compiler derived from the record — not the epithet */
+  earned: string[];
 }) {
   const ties = sim.relations
     .filter((r) => r.a === agent.name || r.b === agent.name)
@@ -97,6 +100,11 @@ function Dossier({
       <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
         {agent.archetype} · {agent.mood} · {agent.activity}
       </p>
+      {earned.length > 0 && (
+        <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.15em]" style={{ color: SIM_ACCENT }}>
+          the record calls them {earned.join(" · ")}
+        </p>
+      )}
       <div className="mt-3 grid gap-2">
         <div>
           <div className="flex justify-between font-mono text-[10px] text-zinc-500">
@@ -142,7 +150,14 @@ function Dossier({
 
 // ── The tab ──────────────────────────────────────────────────────────────────
 
-export default function Happenings({ sim }: { sim: SimData }) {
+export default function Happenings({
+  sim,
+  titles,
+}: {
+  sim: SimData;
+  /** name → earned legend titles, shown on the dossiers */
+  titles?: Map<string, string[]>;
+}) {
   const [older, setOlder] = useState<SimEvent[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [exhausted, setExhausted] = useState(false);
@@ -209,7 +224,13 @@ export default function Happenings({ sim }: { sim: SimData }) {
       <h3 className="mt-12 font-mono text-[10px] uppercase tracking-[0.3em] text-zinc-500">The Cast</h3>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {sim.agents.map((a) => (
-          <Dossier key={a.name} agent={a} sim={sim} lastJournal={journalByAgent.get(a.name) ?? null} />
+          <Dossier
+            key={a.name}
+            agent={a}
+            sim={sim}
+            lastJournal={journalByAgent.get(a.name) ?? null}
+            earned={titles?.get(a.name) ?? []}
+          />
         ))}
       </div>
 

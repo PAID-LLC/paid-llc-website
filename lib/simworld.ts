@@ -22,8 +22,8 @@ import { HOME_AGENTS } from "@/lib/agents/home-agents";
 import { upsertPresence } from "@/lib/agents/converse";
 import {
   ROAM_RADIUS, DISCOVERY_RADIUS, CONVERGENCE_EVERY,
-  anomalySites, hashStr, isConvergence, mulberry32, seasonFor, weatherFor, worldDay,
-  type AnomalySite, type Season, type Weather,
+  anomalySites, hashStr, isConvergence, mulberry32, seasonFor, stormFront, weatherFor, worldDay,
+  type AnomalySite, type Season, type StormFront, type Weather,
 } from "@/lib/sim-field";
 
 export const SIM_ROOM_ID = 5; // the Simulation Sandbox hosts the run
@@ -234,6 +234,8 @@ export interface SimClock {
   day: number;
   season: Season;
   weather: Weather;
+  /** where the storyteller's act sits: calm | building | crisis | aftermath */
+  front: StormFront;
   /** ticks until the next convergence at the Mast */
   convergenceIn: number;
 }
@@ -324,6 +326,7 @@ function clockFor(tick: number): SimClock {
     day: worldDay(tick),
     season: seasonFor(tick),
     weather: weatherFor(tick),
+    front: stormFront(tick),
     convergenceIn: CONVERGENCE_EVERY - (tick % CONVERGENCE_EVERY),
   };
 }

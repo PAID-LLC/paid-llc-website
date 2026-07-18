@@ -151,7 +151,7 @@ function Mast({ reduced }: { reduced: boolean }) {
 // a walk, not a teleport; a soft bob keeps the living ones visibly alive.
 // Resting instances sit lower and don't bob.
 
-function Instance({ agent, reduced }: { agent: SimAgentRow; reduced: boolean }) {
+function Instance({ agent, reduced, title }: { agent: SimAgentRow; reduced: boolean; title: string | null }) {
   const group = useRef<THREE.Group>(null);
   const shard = useRef<THREE.Mesh>(null);
   const bobSeed = useMemo(() => (hashStr(agent.name) % 100) / 16, [agent.name]);
@@ -209,6 +209,12 @@ function Instance({ agent, reduced }: { agent: SimAgentRow; reduced: boolean }) 
           <p className="text-[10px] uppercase tracking-widest" style={{ color: agent.color }}>
             {agent.name}
           </p>
+          {/* What the record remembers, not what the casting assigned. */}
+          {title && (
+            <p className="text-[8px] uppercase tracking-[0.2em]" style={{ color: SIM_ACCENT_SOFT }}>
+              {title}
+            </p>
+          )}
           <p className="text-[9px] text-zinc-400">{agent.activity}</p>
           <p className="text-[8px] text-zinc-600">
             {agent.mood} · energy {agent.energy}
@@ -792,16 +798,82 @@ function Anomaly({ site, foundBy, reduced }: { site: AnomalySite; foundBy: strin
   );
 }
 
+// ── The uncharted shroud: fog of war over unknown ground ─────────────────────
+// Dark Forest pattern (dynamic-agent-worlds reference map 2026-07-18): the
+// territory exists as math, but only the ground the run has actually touched
+// reads as known. A terrain-conforming overlay darkens everything beyond
+// reach of the Mast, the structures, the charted anomalies, and the cast
+// itself — so every discovery visibly grows the map. Pure render-side: alpha
+// per vertex from distance to the nearest known point, recomputed only when
+// the known set changes (poll cadence, not frame rate).
+
+const SHROUD_SEGMENTS = 96;
+const SHROUD_CLEAR_R = 24; // fully known within this range of a known point
+const SHROUD_DARK_R = 52;  // fully uncharted beyond this range
+const SHROUD_MAX_ALPHA = 0.52;
+
+function UnchartedShroud({ sim }: { sim: SimData }) {
+  const sites = useMemo(() => anomalySites(), []);
+
+  const known = useMemo(() => {
+    const pts: [number, number][] = [[0, 0]]; // the Mast anchors known space
+    for (const s of sim.structures) pts.push([s.x, s.z]);
+    for (const a of sim.agents) pts.push([a.x, a.z]);
+    const found = new Set(sim.discoveries.map((d) => d.site_key));
+    for (const s of sites) if (found.has(s.key)) pts.push([s.x, s.z]);
+    return pts;
+  }, [sim.structures, sim.agents, sim.discoveries, sites]);
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, SHROUD_SEGMENTS, SHROUD_SEGMENTS);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 4);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      pos.setY(i, terrainHeight(x, z) + 0.5);
+      let nearest = Infinity;
+      for (const [kx, kz] of known) {
+        const d = Math.hypot(x - kx, z - kz);
+        if (d < nearest) nearest = d;
+      }
+      const t = Math.min(1, Math.max(0, (nearest - SHROUD_CLEAR_R) / (SHROUD_DARK_R - SHROUD_CLEAR_R)));
+      const alpha = t * t * (3 - 2 * t) * SHROUD_MAX_ALPHA;
+      // Deep blue-black, matching the night side of the sky dome.
+      colors[i * 4] = 0.02;
+      colors[i * 4 + 1] = 0.03;
+      colors[i * 4 + 2] = 0.05;
+      colors[i * 4 + 3] = alpha;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 4));
+    geo.computeVertexNormals();
+    return geo;
+  }, [known]);
+
+  // Dispose replaced geometries — the known set changes on live ticks.
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  return (
+    <mesh geometry={geometry} renderOrder={2}>
+      <meshBasicMaterial vertexColors transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
 // ── Scene root ───────────────────────────────────────────────────────────────
 
 export default function SimCanvas({
   sim,
   freshStructureIds,
   reduced,
+  titles,
 }: {
   sim: SimData;
   freshStructureIds: number[];
   reduced: boolean;
+  /** name → earned legend titles; the first one rides the canvas label */
+  titles?: Map<string, string[]>;
 }) {
   const look = WEATHER_LOOK[sim.clock.weather] ?? WEATHER_LOOK.clear;
   const foundByKey = useMemo(
@@ -880,11 +952,12 @@ export default function SimCanvas({
       {storm && <StormFlash color="#c4b5fd" reduced={reduced} />}
 
       <Terrain />
+      <UnchartedShroud sim={sim} />
       <Mast reduced={reduced} />
       <BondThreads sim={sim} />
 
       {sim.agents.map((a) => (
-        <Instance key={a.name} agent={a} reduced={reduced} />
+        <Instance key={a.name} agent={a} reduced={reduced} title={titles?.get(a.name)?.[0] ?? null} />
       ))}
       {sim.structures.map((s) => (
         <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} />
