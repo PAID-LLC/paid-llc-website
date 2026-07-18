@@ -80,6 +80,9 @@ export default async function GenesisLegends() {
           <Link href="/the-latent-space/genesis/world" className={v2.btnGhost}>
             Enter the surface
           </Link>
+          <Link href="/the-latent-space/simulation/history" className={v2.btnGhost}>
+            The sibling record: Substrate
+          </Link>
         </div>
       </section>
 

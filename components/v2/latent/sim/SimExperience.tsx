@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import type { SimData } from "@/lib/simworld";
 import { SIM_ACCENT } from "@/lib/sim-field";
 import { useSimLive } from "./useSimLive";
@@ -50,6 +51,14 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
     <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-white/10 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
       {btn("surface", "Surface")}
       {btn("happenings", "Happenings")}
+      {/* Third slot navigates: legends is a server-rendered reading page, not
+          an overlay on the live canvas. */}
+      <Link
+        href="/the-latent-space/simulation/history"
+        className="rounded-md px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-zinc-200"
+      >
+        Legends
+      </Link>
     </div>
   );
 }
