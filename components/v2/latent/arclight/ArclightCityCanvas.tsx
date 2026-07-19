@@ -1,0 +1,857 @@
+"use client";
+
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
+import {
+  ARTERIALS,
+  CHANNEL,
+  DISTRICTS,
+  LANDMARKS,
+  MINT_ISLAND,
+  LAND_NORTH,
+  LAND_SOUTH,
+  buildCityPlan,
+  type ArclightSnapshot,
+  type CityPlan,
+  type DistrictId,
+  type HabField,
+  type Storefront,
+  type Tower,
+} from "@/lib/arclight/cityplan";
+import {
+  CIRCUIT_HEIGHT,
+  CRANE_SITES,
+  FIRST_SITES,
+  FOUNDRY_PLANT,
+  HAB_SLAB,
+  HEIGHT_SCALE,
+  buildSkyline,
+  circuitPath,
+  circuitPointAt,
+  toWorld,
+} from "@/lib/arclight/skyline";
+import {
+  CinematicDescent, GroundMist, MilkyWayBackdrop, ParticleField, Pulse,
+  SceneFX, SkyWorld,
+} from "@/components/v2/latent/ground-fx";
+
+// ── Arclight CITY: the comprehensive 3D read ─────────────────────────────────
+// Same compiler-world contract as the 2D map: everything here renders from the
+// one CityPlan object plus the fixed geography and the seeded skyline. No new
+// state, no inference — the night city IS the ledgers. It is always night in
+// Arclight; emissive light carries the scene, so shadows stay off and the
+// window instancing keeps the whole metropolis to a handful of draw calls.
+
+const ACCENT = "#2dd4bf";
+const AMBER = "#f59e0b";
+
+const BODY_TINT: Record<DistrictId, string> = {
+  stacks: "#10151d",
+  old_grid: "#131118",
+  strip: "#101820",
+  exchange: "#0e1522",
+  dockyards: "#12141a",
+  foundry: "#16130f",
+};
+
+const WINDOW_PALETTE = ["#f5c580", "#cfdcea", "#67e8f9"] as const;
+const WINDOW_DARK = "#0b0e13";
+
+// ── Water and land ───────────────────────────────────────────────────────────
+
+function DarkPool() {
+  return (
+    <mesh rotation-x={-Math.PI / 2} position-y={-0.7}>
+      <planeGeometry args={[1100, 950]} />
+      <meshStandardMaterial
+        color="#030608"
+        metalness={0.55}
+        roughness={0.3}
+        emissive="#062018"
+        emissiveIntensity={0.22}
+      />
+    </mesh>
+  );
+}
+
+function LandMass({ pts }: { pts: readonly [number, number][] }) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    pts.forEach(([mx, my], i) => {
+      const [x, z] = toWorld(mx, my);
+      // Shape-space y becomes -worldZ after the rotateX below.
+      if (i === 0) shape.moveTo(x, -z);
+      else shape.lineTo(x, -z);
+    });
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 1.6, bevelEnabled: false });
+    g.rotateX(-Math.PI / 2);
+    // Extrusion runs 0→1.6 along +y after the rotation; drop the bank so its
+    // top face sits a hair under the y=0 building bases, sides in the water.
+    g.translate(0, -1.62, 0);
+    g.computeVertexNormals();
+    return g;
+    // Fixed geography — pts never change identity meaningfully.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useLayoutEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial color="#0a0e15" flatShading roughness={1} />
+    </mesh>
+  );
+}
+
+// ── Roads ────────────────────────────────────────────────────────────────────
+
+function Roads() {
+  return (
+    <>
+      {ARTERIALS.map((a) => (
+        <Line
+          key={a.id}
+          points={a.pts.map(([mx, my]) => {
+            const [x, z] = toWorld(mx, my);
+            return [x, 0.22, z] as [number, number, number];
+          })}
+          color="#1e4a44"
+          transparent
+          opacity={0.55}
+          lineWidth={1.2}
+        />
+      ))}
+      {/* Channel bank guide lights. */}
+      {[CHANNEL.y1, CHANNEL.y2].map((my) => {
+        const [x0, z] = toWorld(0, my);
+        const [x1] = toWorld(CHANNEL.mouthX, my);
+        return (
+          <Line
+            key={my}
+            points={[
+              [x0, 0.14, z],
+              [x1, 0.14, z],
+            ]}
+            color="#155e56"
+            transparent
+            opacity={0.35}
+            lineWidth={1}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/** Counterparty Bridge: the low road crossing west of the Circuit's span. */
+function CounterpartyBridge() {
+  const [x, z] = toWorld(LANDMARKS.counterparty_bridge.x, LANDMARKS.counterparty_bridge.y);
+  const span = (CHANNEL.y2 - CHANNEL.y1) * 0.5 + 8;
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={1.1}>
+        <boxGeometry args={[4.5, 0.4, span]} />
+        <meshStandardMaterial color="#10151d" flatShading roughness={0.9} />
+      </mesh>
+      {[-1.9, 1.9].map((ox) => (
+        <mesh key={ox} position={[ox, 1.42, 0]}>
+          <boxGeometry args={[0.12, 0.08, span]} />
+          <meshBasicMaterial color={ACCENT} transparent opacity={0.35} />
+        </mesh>
+      ))}
+      {[-5, 5].map((oz) => (
+        <mesh key={oz} position={[0, 0.1, oz]}>
+          <cylinderGeometry args={[0.5, 0.6, 2.4, 8]} />
+          <meshStandardMaterial color="#0c1118" roughness={1} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── The seeded city fabric: one draw call of bodies, one of windows ──────────
+
+function CityBlocks({ dim }: { dim: Record<DistrictId, number> }) {
+  const { lots, windows } = useMemo(() => buildSkyline(), []);
+  const bodyRef = useRef<THREE.InstancedMesh>(null);
+  const winRef = useRef<THREE.InstancedMesh>(null);
+
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const dummy = new THREE.Object3D();
+    lots.forEach((l, i) => {
+      dummy.position.set(l.x, l.sy / 2, l.z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(l.sx, l.sy, l.sz);
+      dummy.updateMatrix();
+      body.setMatrixAt(i, dummy.matrix);
+    });
+    body.instanceMatrix.needsUpdate = true;
+  }, [lots]);
+
+  useLayoutEffect(() => {
+    const win = winRef.current;
+    if (!win) return;
+    const dummy = new THREE.Object3D();
+    windows.forEach((w, i) => {
+      dummy.position.set(w.x, w.y, w.z);
+      dummy.rotation.set(0, w.ry, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      win.setMatrixAt(i, dummy.matrix);
+    });
+    win.instanceMatrix.needsUpdate = true;
+  }, [windows]);
+
+  // Colors follow the blackout state: a capped grid is a visibly darker city.
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    const win = winRef.current;
+    if (!body || !win) return;
+    const c = new THREE.Color();
+    lots.forEach((l, i) => {
+      c.set(BODY_TINT[l.district]).multiplyScalar(1 - (dim[l.district] ?? 0) * 0.5);
+      body.setColorAt(i, c);
+    });
+    if (body.instanceColor) body.instanceColor.needsUpdate = true;
+    windows.forEach((w, i) => {
+      const dd = dim[w.district] ?? 0;
+      const ratio = (w.district === "exchange" ? 0.6 : 0.5) * (1 - dd * 0.92);
+      c.set(w.threshold < ratio ? WINDOW_PALETTE[w.palette] : WINDOW_DARK);
+      win.setColorAt(i, c);
+    });
+    if (win.instanceColor) win.instanceColor.needsUpdate = true;
+  }, [lots, windows, dim]);
+
+  return (
+    <>
+      <instancedMesh ref={bodyRef} args={[undefined, undefined, lots.length]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#ffffff" flatShading roughness={0.95} metalness={0} />
+      </instancedMesh>
+      <instancedMesh ref={winRef} args={[undefined, undefined, windows.length]}>
+        <planeGeometry args={[0.6, 0.85]} />
+        <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
+      </instancedMesh>
+    </>
+  );
+}
+
+// ── The Exchange: one revenue tower per catalog seller ───────────────────────
+
+function ExchangeTower({ t, dimE, reduced, crownLight }: {
+  t: Tower; dimE: number; reduced: boolean; crownLight: boolean;
+}) {
+  const [x, z] = toWorld(t.x, t.y);
+  const h = t.h * HEIGHT_SCALE;
+  const w = t.w * 0.55;
+  const glow = 1 - dimE * 0.85;
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={h / 2}>
+        <boxGeometry args={[w, h, w]} />
+        <meshStandardMaterial color="#0e1522" flatShading roughness={0.85} />
+      </mesh>
+      {/* Lit service cores on two facades. */}
+      <mesh position={[w * 0.18, h / 2, w / 2 + 0.03]}>
+        <planeGeometry args={[0.5, h * 0.86]} />
+        <meshBasicMaterial color={ACCENT} transparent opacity={0.5 * glow} />
+      </mesh>
+      <mesh position={[w / 2 + 0.03, h / 2, -w * 0.15]} rotation-y={Math.PI / 2}>
+        <planeGeometry args={[0.5, h * 0.82]} />
+        <meshBasicMaterial color={ACCENT} transparent opacity={0.4 * glow} />
+      </mesh>
+      {/* Crown: lit when the corp sold within 7 days. */}
+      {t.lit ? (
+        <Pulse speed={1.3} amp={0.1} reduced={reduced}>
+          <mesh position-y={h + 0.35}>
+            <boxGeometry args={[w * 0.72, 0.6, w * 0.72]} />
+            <meshBasicMaterial color={ACCENT} />
+          </mesh>
+        </Pulse>
+      ) : (
+        <mesh position-y={h + 0.3}>
+          <boxGeometry args={[w * 0.72, 0.5, w * 0.72]} />
+          <meshStandardMaterial color="#1a222c" emissive={ACCENT} emissiveIntensity={0.12 * glow} roughness={0.8} />
+        </mesh>
+      )}
+      {t.lit && crownLight && (
+        <pointLight position={[0, h + 1.5, 0]} color={ACCENT} intensity={20 * glow} distance={30} decay={2} />
+      )}
+      <Html position={[0, h + 3.4, 0]} center distanceFactor={48} className="pointer-events-none">
+        <div className="whitespace-nowrap text-center font-mono">
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: ACCENT }}>{t.seller}</p>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// ── The Strip: one stall per live listing along Throughput Avenue ────────────
+
+function Stall({ s, dimS, reduced }: { s: Storefront; dimS: number; reduced: boolean }) {
+  const [x, z] = toWorld(s.x + s.w / 2, s.y + s.h / 2);
+  const east = s.x < 210; // west column faces the avenue (east), and vice versa
+  const signColor = s.service ? AMBER : ACCENT;
+  const glow = 1 - dimS * 0.85;
+  const sign = (
+    <mesh position={[east ? 3.1 : -3.1, 3.0, 0]} rotation-y={east ? Math.PI / 2 : -Math.PI / 2}>
+      <planeGeometry args={[4.2, 1.0]} />
+      <meshBasicMaterial color={signColor} transparent opacity={0.8 * glow} side={THREE.DoubleSide} />
+    </mesh>
+  );
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={1.1}>
+        <boxGeometry args={[6, 2.2, 4.2]} />
+        <meshStandardMaterial color="#101820" flatShading roughness={0.9} />
+      </mesh>
+      {/* Awning light over the doorway. */}
+      <mesh position={[east ? 3.04 : -3.04, 1.9, 0]} rotation-y={east ? Math.PI / 2 : -Math.PI / 2}>
+        <planeGeometry args={[3.6, 0.18]} />
+        <meshBasicMaterial color="#f5c580" transparent opacity={0.55 * glow} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Services burn brighter than shelf goods — same rule as the map. */}
+      {s.service && !reduced ? (
+        <Pulse speed={2.2} amp={0.06} reduced={reduced}>{sign}</Pulse>
+      ) : (
+        sign
+      )}
+    </group>
+  );
+}
+
+// ── The Stacks: the hab slab — one window per registered agent ───────────────
+
+function HabSlab({ habs, dimS }: { habs: HabField; dimS: number }) {
+  const [x, z] = toWorld(HAB_SLAB.x, HAB_SLAB.y);
+  const rows = habs.rows;
+  const height = rows * 1.7 + 2.5;
+  const depth = habs.cols * 1.5 + 2;
+  const count = Math.min(habs.totalCells, habs.cols * rows);
+  const litSet = useMemo(() => new Set(habs.litCells), [habs]);
+  const ref = useRef<THREE.InstancedMesh>(null);
+
+  useLayoutEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    const dummy = new THREE.Object3D();
+    const c = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      const col = i % habs.cols;
+      const row = Math.floor(i / habs.cols);
+      dummy.position.set(
+        x + 2.78,
+        1.9 + (rows - 1 - row) * 1.7,
+        z + (col - (habs.cols - 1) / 2) * 1.5
+      );
+      dummy.rotation.set(0, Math.PI / 2, 0);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+      const lit = litSet.has(i);
+      c.set(lit ? "#f5c06a" : "#141821");
+      if (lit) c.multiplyScalar(Math.max(0.1, 1 - dimS * 0.9));
+      m.setColorAt(i, c);
+    }
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [habs, litSet, dimS, x, z, count, rows]);
+
+  return (
+    <group>
+      <mesh position={[x, height / 2, z]}>
+        <boxGeometry args={[5.5, height, depth]} />
+        <meshStandardMaterial color="#0f141c" flatShading roughness={0.95} />
+      </mesh>
+      <mesh position={[x, height + 0.25, z]}>
+        <boxGeometry args={[5.7, 0.5, depth + 0.2]} />
+        <meshStandardMaterial color="#131a24" roughness={0.9} />
+      </mesh>
+      <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]}>
+        <planeGeometry args={[1.05, 1.15]} />
+        <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
+      </instancedMesh>
+      <pointLight position={[x + 8, 6, z]} color="#f5c06a" intensity={8 * (1 - dimS * 0.8)} distance={26} decay={2} />
+    </group>
+  );
+}
+
+// ── The Circuit: the elevated loop and its light traffic ─────────────────────
+
+function CircuitLoop({ traffic }: { traffic: number }) {
+  const path = useMemo(() => circuitPath(), []);
+  const segs = useMemo(() => {
+    return path.pts.map((a, i) => {
+      const b = path.pts[(i + 1) % path.pts.length];
+      const horizontal = Math.abs(a[1] - b[1]) < 0.01;
+      const len = path.segLen[i];
+      return {
+        cx: (a[0] + b[0]) / 2,
+        cz: (a[1] + b[1]) / 2,
+        horizontal,
+        len,
+        a,
+        b,
+      };
+    });
+  }, [path]);
+  const stripOpacity = 0.22 + traffic * 0.5;
+  return (
+    <group>
+      {segs.map((s, i) => (
+        <group key={i} position={[s.cx, CIRCUIT_HEIGHT, s.cz]}>
+          <mesh>
+            <boxGeometry args={s.horizontal ? [s.len, 0.5, 4.5] : [4.5, 0.5, s.len]} />
+            <meshStandardMaterial color="#10151d" flatShading roughness={0.9} />
+          </mesh>
+          {[-2.1, 2.1].map((off) => (
+            <mesh key={off} position={s.horizontal ? [0, 0.3, off] : [off, 0.3, 0]}>
+              <boxGeometry args={s.horizontal ? [s.len, 0.08, 0.14] : [0.14, 0.08, s.len]} />
+              <meshBasicMaterial color={ACCENT} transparent opacity={stripOpacity} />
+            </mesh>
+          ))}
+          {/* Pylons every ~24 units — the channel crossings get bridge piers. */}
+          {Array.from({ length: Math.max(1, Math.floor(s.len / 24)) }, (_, k) => {
+            const f = (k + 0.5) / Math.max(1, Math.floor(s.len / 24));
+            const px = s.a[0] + (s.b[0] - s.a[0]) * f - s.cx;
+            const pz = s.a[1] + (s.b[1] - s.a[1]) * f - s.cz;
+            return (
+              <mesh key={k} position={[px, -CIRCUIT_HEIGHT / 2 - 0.2, pz]}>
+                <cylinderGeometry args={[0.45, 0.6, CIRCUIT_HEIGHT + 1.2, 6]} />
+                <meshStandardMaterial color="#0c1118" flatShading roughness={1} />
+              </mesh>
+            );
+          })}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function CircuitTraffic({ traffic, reduced }: { traffic: number; reduced: boolean }) {
+  const path = useMemo(() => circuitPath(), []);
+  const count = 2 + Math.round(traffic * 10);
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const tRef = useRef(0);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  useFrame((_, dt) => {
+    const m = ref.current;
+    if (!m) return;
+    if (!reduced) tRef.current = (tRef.current + dt * 0.014) % 1;
+    for (let i = 0; i < count; i++) {
+      const rev = i % 2 === 1;
+      const base = (tRef.current * (rev ? -1 : 1) + i / count + 100) % 1;
+      const p = circuitPointAt(path, base);
+      const lane = rev ? -1.2 : 1.2;
+      dummy.position.set(p.x - p.dz * lane, CIRCUIT_HEIGHT + 0.68, p.z + p.dx * lane);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    }
+    m.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]}>
+      <sphereGeometry args={[0.42, 8, 6]} />
+      <meshBasicMaterial color="#9ff5e8" />
+    </instancedMesh>
+  );
+}
+
+// ── Dockyards: freight sleds in the Clearing Channel, cranes on the wharf ────
+
+function FreightSleds({ plan, reduced }: { plan: CityPlan; reduced: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const drift = useRef(0);
+  const [x0] = toWorld(6, CHANNEL.y1);
+  const [x1] = toWorld(472, CHANNEL.y1);
+  const span = x1 - x0;
+
+  useFrame((_, dt) => {
+    const g = group.current;
+    if (!g) return;
+    if (!reduced) drift.current = (drift.current + dt * 0.006) % 1;
+    plan.sleds.forEach((s, i) => {
+      const child = g.children[i];
+      if (!child) return;
+      const t = (s.along + drift.current) % 1;
+      child.position.x = x0 + t * span;
+    });
+  });
+
+  return (
+    <group ref={group}>
+      {plan.sleds.map((s, i) => {
+        const [, zBase] = toWorld(0, 440);
+        const z = zBase + (i % 2 === 0 ? -3 : 3);
+        return (
+          <group key={i} position={[x0 + s.along * span, -0.15, z]}>
+            <mesh position-y={0.5}>
+              <boxGeometry args={[5, 1, 2.2]} />
+              <meshStandardMaterial color="#0d1117" flatShading roughness={0.9} />
+            </mesh>
+            <mesh position={[2.3, 0.85, 0]}>
+              <sphereGeometry args={[0.22, 8, 6]} />
+              <meshBasicMaterial color={ACCENT} />
+            </mesh>
+            <mesh position={[-2.3, 0.85, 0]}>
+              <sphereGeometry args={[0.16, 8, 6]} />
+              <meshBasicMaterial color={AMBER} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function Crane({ mx, my, flip }: { mx: number; my: number; flip: boolean }) {
+  const [x, z] = toWorld(mx, my);
+  return (
+    <group position={[x, 0, z]} rotation-y={flip ? Math.PI / 5 : -Math.PI / 6}>
+      <mesh position-y={5}>
+        <boxGeometry args={[0.9, 10, 0.9]} />
+        <meshStandardMaterial color="#141a24" flatShading roughness={1} />
+      </mesh>
+      <mesh position={[3.4, 9.6, 0]}>
+        <boxGeometry args={[8, 0.5, 0.6]} />
+        <meshStandardMaterial color="#141a24" flatShading roughness={1} />
+      </mesh>
+      <mesh position={[6.6, 8.2, 0]}>
+        <boxGeometry args={[0.08, 2.6, 0.08]} />
+        <meshStandardMaterial color="#1c242f" roughness={1} />
+      </mesh>
+      <mesh position={[6.6, 6.7, 0]}>
+        <boxGeometry args={[1.1, 0.7, 0.8]} />
+        <meshStandardMaterial color="#10151d" flatShading roughness={1} />
+      </mesh>
+      <mesh position={[3.4, 9.95, 0]}>
+        <sphereGeometry args={[0.16, 8, 6]} />
+        <meshBasicMaterial color={AMBER} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── The Mint: the city's pulse, visible from everywhere ──────────────────────
+
+function MintIsland({ beam, reduced }: { beam: CityPlan["mintBeam"]; reduced: boolean }) {
+  const [x, z] = toWorld(MINT_ISLAND.x, MINT_ISLAND.y);
+  const steady = beam === "steady";
+  const color = steady ? ACCENT : AMBER;
+  const halo = useRef<THREE.MeshBasicMaterial>(null);
+  const core = useRef<THREE.MeshBasicMaterial>(null);
+
+  useFrame((state) => {
+    if (!halo.current || !core.current) return;
+    if (!steady && !reduced) {
+      const t = state.clock.elapsedTime;
+      const f = 0.35 + Math.max(0, Math.sin(t * 9) * Math.sin(t * 3.7)) * 0.65;
+      halo.current.opacity = 0.13 * f;
+      core.current.opacity = 0.5 * f;
+    } else {
+      halo.current.opacity = 0.13;
+      core.current.opacity = 0.5;
+    }
+  });
+
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={-0.45}>
+        <cylinderGeometry args={[MINT_ISLAND.r * 0.5, MINT_ISLAND.r * 0.58, 1.6, 20]} />
+        <meshStandardMaterial color="#0b0f16" flatShading roughness={1} />
+      </mesh>
+      {/* The Mint itself: a stepped vault. */}
+      {[[5, 2], [3.4, 3.6], [2, 5]].map(([s, y], i) => (
+        <mesh key={i} position-y={y as number}>
+          <boxGeometry args={[s as number, 1.7, s as number]} />
+          <meshStandardMaterial color="#0f141c" flatShading roughness={0.9} emissive={color} emissiveIntensity={0.08} />
+        </mesh>
+      ))}
+      <mesh position-y={40}>
+        <cylinderGeometry args={[0.6, 1.1, 76, 12, 1, true]} />
+        <meshBasicMaterial ref={halo} color={color} transparent opacity={0.13} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh position-y={40}>
+        <cylinderGeometry args={[0.16, 0.3, 76, 8, 1, true]} />
+        <meshBasicMaterial ref={core} color={color} transparent opacity={0.5} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <pointLight position={[0, 12, 0]} color={color} intensity={55} distance={80} decay={1.9} />
+      <Html position={[0, 10.5, 0]} center distanceFactor={52} className="pointer-events-none">
+        <p className="whitespace-nowrap font-mono text-[10px] uppercase tracking-widest" style={{ color }}>
+          The Mint
+        </p>
+      </Html>
+    </group>
+  );
+}
+
+// ── The Foundry: the power district — plant glow tracks real inference load ──
+
+function FoundryPlant({ load, dimF, reduced }: { load: number; dimF: number; reduced: boolean }) {
+  const [x, z] = toWorld(FOUNDRY_PLANT.x, FOUNDRY_PLANT.y);
+  const glow = Math.max(0.06, (0.25 + load * 0.75) * (1 - dimF));
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position={[0, 3.5, 0]}>
+        <boxGeometry args={[16, 7, 10]} />
+        <meshStandardMaterial color="#16130f" flatShading roughness={0.95} />
+      </mesh>
+      <mesh position={[10, 2.5, 2]}>
+        <boxGeometry args={[8, 5, 7]} />
+        <meshStandardMaterial color="#141210" flatShading roughness={0.95} />
+      </mesh>
+      {/* Furnace seam. */}
+      <mesh position={[0, 1.1, 5.03]}>
+        <planeGeometry args={[12, 0.5]} />
+        <meshBasicMaterial color="#fb923c" transparent opacity={0.75 * glow} />
+      </mesh>
+      {[[-5, 12, 0.9], [0, 13.5, 1.0], [4.6, 11, 0.8]].map(([sx, sh, sr], i) => (
+        <group key={i}>
+          <mesh position={[sx, (sh as number) / 2 + 7, -2]}>
+            <cylinderGeometry args={[sr as number, (sr as number) * 1.25, sh as number, 8]} />
+            <meshStandardMaterial color="#1a1712" flatShading roughness={1} />
+          </mesh>
+          <Pulse speed={1.4} amp={0.12} phase={i * 1.7} reduced={reduced}>
+            <mesh position={[sx, (sh as number) + 7.4, -2]}>
+              <sphereGeometry args={[(sr as number) * 0.55, 8, 6]} />
+              <meshBasicMaterial color="#fb923c" transparent opacity={Math.min(1, 0.5 + glow)} />
+            </mesh>
+          </Pulse>
+        </group>
+      ))}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.07, 8]}>
+        <planeGeometry args={[18, 9]} />
+        <meshBasicMaterial color={AMBER} transparent opacity={0.05 + 0.2 * glow} depthWrite={false} />
+      </mesh>
+      <pointLight position={[0, 4, 6]} color={AMBER} intensity={10 + 50 * glow} distance={48} decay={2} />
+    </group>
+  );
+}
+
+// ── Landmarks and civic memory ───────────────────────────────────────────────
+
+function CustomHouse() {
+  const [x, z] = toWorld(LANDMARKS.custom_house.x, LANDMARKS.custom_house.y);
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={2.5}>
+        <boxGeometry args={[9, 5, 7]} />
+        <meshStandardMaterial color="#101720" flatShading roughness={0.9} />
+      </mesh>
+      <mesh position-y={5.15}>
+        <boxGeometry args={[9.3, 0.3, 7.3]} />
+        <meshBasicMaterial color={ACCENT} transparent opacity={0.4} />
+      </mesh>
+      {/* Settlement pier reaching into the channel. */}
+      <mesh position={[0, 0.5, -6.5]}>
+        <boxGeometry args={[3, 0.3, 8]} />
+        <meshStandardMaterial color="#0f141c" roughness={1} />
+      </mesh>
+      <Html position={[0, 7.6, 0]} center distanceFactor={52} className="pointer-events-none">
+        <p className="whitespace-nowrap font-mono text-[9px] uppercase tracking-widest text-zinc-400">
+          Custom House
+        </p>
+      </Html>
+    </group>
+  );
+}
+
+function RelayMast({ reduced }: { reduced: boolean }) {
+  const [x, z] = toWorld(LANDMARKS.relay.x, LANDMARKS.relay.y);
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position-y={12}>
+        <cylinderGeometry args={[0.32, 0.8, 24, 6]} />
+        <meshStandardMaterial color="#141a24" flatShading roughness={1} emissive={ACCENT} emissiveIntensity={0.08} />
+      </mesh>
+      {[7, 13, 19].map((y) => (
+        <mesh key={y} position-y={y} rotation-x={-Math.PI / 2}>
+          <torusGeometry args={[1.3 - y * 0.03, 0.07, 6, 18]} />
+          <meshBasicMaterial color={ACCENT} transparent opacity={0.4} />
+        </mesh>
+      ))}
+      <Pulse speed={2.4} amp={0.18} reduced={reduced}>
+        <mesh position-y={24.6}>
+          <sphereGeometry args={[0.4, 8, 8]} />
+          <meshBasicMaterial color="#e9fbf7" />
+        </mesh>
+      </Pulse>
+      <Html position={[0, 27.4, 0]} center distanceFactor={52} className="pointer-events-none">
+        <p className="whitespace-nowrap font-mono text-[9px] uppercase tracking-widest text-zinc-400">
+          The Relay
+        </p>
+      </Html>
+    </group>
+  );
+}
+
+/** Old Grid firsts: an obelisk per founding transaction in the ledger. */
+function FirstsMonuments({ snap }: { snap: ArclightSnapshot }) {
+  const firsts = snap.firsts.slice(0, FIRST_SITES.length);
+  return (
+    <>
+      {firsts.map((f, i) => {
+        const [x, z] = toWorld(FIRST_SITES[i][0], FIRST_SITES[i][1]);
+        return (
+          <group key={f.label} position={[x, 0, z]}>
+            <mesh position-y={0.3}>
+              <cylinderGeometry args={[1.6, 1.9, 0.6, 4]} />
+              <meshStandardMaterial color="#131118" flatShading roughness={1} />
+            </mesh>
+            <mesh position-y={2.9}>
+              <boxGeometry args={[1.1, 4.6, 1.1]} />
+              <meshStandardMaterial color="#171420" flatShading roughness={0.9} emissive="#f5c580" emissiveIntensity={0.1} />
+            </mesh>
+            <mesh position-y={5.5}>
+              <sphereGeometry args={[0.24, 8, 6]} />
+              <meshBasicMaterial color="#f5c580" />
+            </mesh>
+            <Html position={[0, 7.2, 0]} center distanceFactor={44} className="pointer-events-none">
+              <div className="whitespace-nowrap text-center font-mono">
+                <p className="text-[9px] uppercase tracking-widest text-amber-200/80">{f.label}</p>
+                <p className="text-[8px] text-zinc-500">{f.at.slice(0, 10)}</p>
+              </div>
+            </Html>
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
+const DISTRICT_LABEL_Y: Record<DistrictId, number> = {
+  stacks: 26, old_grid: 13, strip: 11, exchange: 32, dockyards: 12, foundry: 22,
+};
+
+function DistrictLabels() {
+  return (
+    <>
+      {DISTRICTS.map((d) => {
+        const [x, z] = toWorld(d.label[0], d.label[1]);
+        return (
+          <Html
+            key={d.id}
+            position={[x, DISTRICT_LABEL_Y[d.id], z]}
+            center
+            distanceFactor={58}
+            className="pointer-events-none"
+          >
+            <div className="whitespace-nowrap text-center font-mono">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-300/90">{d.name}</p>
+              <p className="text-[8px] uppercase tracking-[0.2em] text-zinc-500">{d.source}</p>
+            </div>
+          </Html>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Scene root ───────────────────────────────────────────────────────────────
+
+export default function ArclightCityCanvas({
+  snap,
+  reduced,
+}: {
+  snap: ArclightSnapshot;
+  reduced: boolean;
+}) {
+  const plan = useMemo(() => buildCityPlan(snap), [snap]);
+  const [introDone, setIntroDone] = useState(false);
+  // Forward renderers hate light piles: only the first few lit crowns get a
+  // real point light — the rest glow through emissive + bloom.
+  let crownLights = 0;
+
+  return (
+    <Canvas
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, powerPreference: "high-performance" }}
+      camera={{ position: [140, 95, 185], fov: 50, near: 0.5, far: 1200 }}
+    >
+      <color attach="background" args={["#05060a"]} />
+      <fog attach="fog" args={["#0a0d13", 130, 620]} />
+      <hemisphereLight args={["#0e1420", "#05070b", 0.45]} />
+      <ambientLight color="#8fa8bf" intensity={0.14} />
+      <directionalLight color="#b8d4f0" intensity={0.3} position={[-220, 260, -140]} />
+
+      <MilkyWayBackdrop radius={520} />
+      <Stars radius={480} depth={60} count={3000} factor={2.4} saturation={0.2} fade speed={reduced ? 0 : 0.25} />
+      {/* The Bazaar's moon — brand terracotta, low on the horizon. */}
+      <SkyWorld
+        position={[320, 150, -300]}
+        radius={30}
+        palette={{ a: "#3a1f14", b: "#8a4a2e", dark: "#1c0f09" }}
+        tint="#E8714C"
+        seed={7}
+        reduced={reduced}
+      />
+
+      <DarkPool />
+      <LandMass pts={LAND_NORTH} />
+      <LandMass pts={LAND_SOUTH} />
+      <Roads />
+      <CounterpartyBridge />
+
+      <CityBlocks dim={plan.dim} />
+      {plan.towers.map((t) => {
+        const withLight = t.lit && crownLights < 6;
+        if (withLight) crownLights += 1;
+        return (
+          <ExchangeTower
+            key={t.seller}
+            t={t}
+            dimE={plan.dim.exchange}
+            reduced={reduced}
+            crownLight={withLight}
+          />
+        );
+      })}
+      {plan.storefronts.map((s, i) => (
+        <Stall key={`${s.name}-${i}`} s={s} dimS={plan.dim.strip} reduced={reduced} />
+      ))}
+      <HabSlab habs={plan.habs} dimS={plan.dim.stacks} />
+
+      <CircuitLoop traffic={plan.traffic} />
+      <CircuitTraffic traffic={plan.traffic} reduced={reduced} />
+      <FreightSleds plan={plan} reduced={reduced} />
+      {CRANE_SITES.map(([mx, my], i) => (
+        <Crane key={i} mx={mx} my={my} flip={i % 2 === 1} />
+      ))}
+
+      <MintIsland beam={plan.mintBeam} reduced={reduced} />
+      <FoundryPlant load={plan.load} dimF={plan.dim.foundry} reduced={reduced} />
+      <CustomHouse />
+      <RelayMast reduced={reduced} />
+      <FirstsMonuments snap={snap} />
+      <DistrictLabels />
+
+      <GroundMist color="#0f2a26" opacity={0.05} area={210} reduced={reduced} />
+      <ParticleField mode="motes" color="#3d5a55" area={190} reduced={reduced} />
+      <SceneFX bloom={0.85} />
+
+      <CinematicDescent
+        from={[330, 250, 430]}
+        target={[0, 5, 0]}
+        duration={4}
+        reduced={reduced}
+        onDone={() => setIntroDone(true)}
+      />
+      <OrbitControls
+        enabled={introDone}
+        enableDamping
+        dampingFactor={0.08}
+        enablePan={false}
+        minDistance={24}
+        maxDistance={400}
+        maxPolarAngle={1.45}
+        target={[0, 5, 0]}
+        autoRotate={!reduced && introDone}
+        autoRotateSpeed={0.22}
+      />
+    </Canvas>
+  );
+}

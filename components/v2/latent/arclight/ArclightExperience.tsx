@@ -9,17 +9,20 @@ import {
 } from "@/lib/arclight/cityplan";
 import type { ArclightLegends } from "@/lib/arclight/legends";
 import ArclightMap from "./ArclightMap";
+import ArclightCityCanvas from "./ArclightCityCanvas";
 import { useArclightLive } from "./useArclightLive";
 
-// ── The Arclight experience: MAP | LEDGER ────────────────────────────────────
+// ── The Arclight experience: CITY | MAP | LEDGER ─────────────────────────────
 // Full-screen portal pattern mirrors SimExperience: portal to <body>, lock
-// page scroll while mounted. MAP is the top-down city; LEDGER is the honest
-// readout — what each district compiles from, the settlement ticker, and the
-// corp legends. It is always night in Arclight.
+// page scroll while mounted. CITY is the comprehensive 3D world — the night
+// metropolis compiled from the same CityPlan as everything else; MAP is the
+// top-down transit read; LEDGER is the honest readout — what each district
+// compiles from, the settlement ticker, and the corp legends. It is always
+// night in Arclight.
 
 const ACCENT = "#2dd4bf";
 
-type Tab = "map" | "ledger";
+type Tab = "city" | "map" | "ledger";
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -47,6 +50,7 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   );
   return (
     <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-white/10 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
+      {btn("city", "City")}
       {btn("map", "Map")}
       {btn("ledger", "Ledger")}
       <Link
@@ -187,20 +191,19 @@ function Ledger({ snap, legends }: { snap: ArclightSnapshot; legends: ArclightLe
 export default function ArclightExperience({ initial }: { initial: ArclightSnapshot }) {
   const reduced = usePrefersReducedMotion();
   const snap = useArclightLive(initial);
-  const [tab, setTab] = useState<Tab>("map");
+  const [tab, setTab] = useState<Tab>("city");
   const [legends, setLegends] = useState<ArclightLegends | null>(null);
 
-  // ?tab=ledger deep-links the readout; switching keeps the URL honest.
+  // ?tab=map / ?tab=ledger deep-link the reads; CITY is the default.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "ledger") {
-      setTab("ledger");
-    }
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "ledger" || t === "map") setTab(t);
   }, []);
   const switchTab = (t: Tab) => {
     setTab(t);
     const url = new URL(window.location.href);
-    if (t === "ledger") url.searchParams.set("tab", "ledger");
-    else url.searchParams.delete("tab");
+    if (t === "city") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", t);
     window.history.replaceState(null, "", url.toString());
   };
 
@@ -232,11 +235,19 @@ export default function ArclightExperience({ initial }: { initial: ArclightSnaps
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#07070b]">
-      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-        <div className="aspect-[600/520] max-h-full w-full max-w-[860px]">
-          <ArclightMap snap={snap} reduced={reduced} />
-        </div>
+      {/* Base layer: the 3D city stays mounted across tab switches so the
+          camera and descent never replay. */}
+      <div className="absolute inset-0" data-testid="arclight-city">
+        <ArclightCityCanvas snap={snap} reduced={reduced} />
       </div>
+
+      {tab === "map" && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#07070b]/90 p-3 backdrop-blur-sm sm:p-6">
+          <div className="aspect-[600/520] max-h-full w-full max-w-[860px]">
+            <ArclightMap snap={snap} reduced={reduced} />
+          </div>
+        </div>
+      )}
 
       {/* Screen-space finish — scanlines plus a teal commerce vignette. */}
       <div
@@ -259,7 +270,7 @@ export default function ArclightExperience({ initial }: { initial: ArclightSnaps
         </div>
       )}
 
-      {tab === "map" && <Hud snap={snap} />}
+      {tab !== "ledger" && <Hud snap={snap} />}
 
       <TabBar tab={tab} onTab={switchTab} />
     </div>,

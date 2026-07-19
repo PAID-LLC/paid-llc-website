@@ -139,7 +139,7 @@ export const LANDMARKS = {
 
 // ── Deterministic RNG (lot-level jitter only) ────────────────────────────────
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a |= 0; a = (a + 0x6d2b79f5) | 0;
@@ -198,7 +198,7 @@ export interface CityPlan {
   traffic: number;
 }
 
-const TOWER_SLOTS: [number, number][] = [
+export const TOWER_SLOTS: [number, number][] = [
   [320, 140], [368, 140], [416, 140], [456, 152],
   [332, 188], [380, 188], [428, 192], [312, 232],
   [356, 236], [404, 236], [448, 244], [376, 272],
