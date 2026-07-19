@@ -393,6 +393,11 @@ export default function UniverseCanvas({
                   Land in the city <span aria-hidden>&rarr;</span>
                 </Link>
               )}
+              {currentWorld.theme === "intellectual-hub" && (
+                <Link href="/the-latent-space/palimpsest" className={v2.btnSecondary}>
+                  Descend to the ruins <span aria-hidden>&rarr;</span>
+                </Link>
+              )}
               {hasFloor(currentWorld.theme) && (
                 <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
                   Descend to the floor <span aria-hidden>&rarr;</span>
