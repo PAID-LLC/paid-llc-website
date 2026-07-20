@@ -114,4 +114,8 @@ if (fs.existsSync(notFoundDir)) {
 // lever available; if it isn't enough, the size growth is aggregate across
 // many past features, not one new file, and needs either the CF Workers
 // Paid plan (10 MiB cap) or real bundle-size investigation).
-run("npx @cloudflare/next-on-pages --skip-build --experimental-minify");
+// --custom-entrypoint: TEMPORARY diagnostic wrapper (worker-entry.js) that
+// captures console.error output on 5xx responses and ships it to Supabase
+// Storage — the only way to read the world-route render error without
+// Cloudflare log access. Remove with worker-entry.js once root-caused.
+run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --custom-entrypoint ./worker-entry.js");
