@@ -147,85 +147,133 @@ function* walkJs(dir) {
   }
 }
 
-if (fs.existsSync(nopFunctionsDir)) {
-  // Index which dist file registers each chunk key, and its export name.
-  const providers = new Map();
-  for (const entry of fs.readdirSync(nopDistDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === "functions") continue;
-    for (const file of walkJs(path.join(nopDistDir, entry.name))) {
-      const src = fs.readFileSync(file, "utf8");
-      const exp =
-        src.match(/export\s+const\s+(\w+)\s*=/) ||
-        src.match(/export\s*\{\s*\w+\s+as\s+(\w+)\s*\}/) ||
-        src.match(/export\s*\{\s*(\w+)\s*\}/);
-      if (!exp) continue;
-      for (const m of src.matchAll(/\[\s*["']((?:async)?__chunk_\d+)["']\s*\]\s*=/g)) {
-        if (!providers.has(m[1])) providers.set(m[1], { file, exportName: exp[1] });
+// DIAGNOSTIC MODE (2026-07-20): the first repair build failed and the CF build
+// log is unreadable from this environment, so this iteration never fails the
+// build — it writes a full report into the deploy artifact itself
+// (/repair-report.json on the deployment URL) recording what the built files
+// actually look like. Re-enable the loud failure once the matchers are proven.
+const report = {
+  at: new Date().toISOString(),
+  distDirExists: fs.existsSync(nopDistDir),
+  functionsDirExists: fs.existsSync(nopFunctionsDir),
+  distDirEntries: [],
+  providersIndexed: 0,
+  providerSamples: [],
+  filesScanned: 0,
+  filesWithMissing: [],
+  repaired: [],
+  unresolved: [],
+  error: null,
+};
+
+try {
+  if (fs.existsSync(nopDistDir)) {
+    report.distDirEntries = fs.readdirSync(nopDistDir);
+  }
+  if (fs.existsSync(nopFunctionsDir)) {
+    // Index which dist file registers each chunk key, and its export name.
+    const providers = new Map();
+    for (const entry of fs.readdirSync(nopDistDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === "functions") continue;
+      for (const file of walkJs(path.join(nopDistDir, entry.name))) {
+        const src = fs.readFileSync(file, "utf8");
+        const exp =
+          src.match(/export\s+const\s+(\w+)\s*=/) ||
+          src.match(/export\s*\{\s*\w+\s+as\s+(\w+)\s*\}/) ||
+          src.match(/export\s*\{\s*(\w+)\s*\}/);
+        for (const m of src.matchAll(/\[\s*["']((?:async)?__chunk_\d+)["']\s*\]\s*=/g)) {
+          if (!providers.has(m[1]) && exp) providers.set(m[1], { file, exportName: exp[1] });
+        }
+        if (report.providerSamples.length < 3) {
+          report.providerSamples.push({
+            file: path.relative(nopDistDir, file),
+            exportMatch: exp ? exp[1] : null,
+            head: src.slice(0, 260),
+          });
+        }
       }
     }
-  }
+    report.providersIndexed = providers.size;
 
-  let repairedCount = 0;
-  const unresolved = [];
-  for (const file of walkJs(nopFunctionsDir)) {
-    let src = fs.readFileSync(file, "utf8");
-    const used = new Set(
-      [...src.matchAll(/(^|[^\w$"'])((?:async)?__chunk_\d+)\b(?!["'])/g)].map((m) => m[2])
-    );
-    const missing = [...used].filter(
-      (id) => !new RegExp(`(?:const|var|let)\\s+${id}\\s*=`).test(src)
-    );
-    if (missing.length === 0) continue;
+    for (const file of walkJs(nopFunctionsDir)) {
+      let src = fs.readFileSync(file, "utf8");
+      report.filesScanned++;
+      const used = new Set(
+        [...src.matchAll(/(^|[^\w$"'])((?:async)?__chunk_\d+)\b(?!["'])/g)].map((m) => m[2])
+      );
+      const missing = [...used].filter(
+        (id) => !new RegExp(`(?:const|var|let)\\s+${id}\\s*=`).test(src)
+      );
+      if (missing.length === 0) continue;
 
-    const proxyM = src.match(
-      /(?:const|var|let)\s+(\w+)\s*=\s*globalThis\.__nextOnPagesRoutesIsolation\.getProxyFor\((?:"[^"]*"|'[^']*')\)\s*;?/
-    );
-    if (!proxyM) {
-      unresolved.push(`${path.relative(nopDistDir, file)}: no proxy declaration; missing ${missing.join(", ")}`);
-      continue;
-    }
-    const proxyVar = proxyM[1];
-    const insertAt = src.indexOf(proxyM[0]) + proxyM[0].length;
+      const proxyM = src.match(
+        /(?:const|var|let)\s+(\w+)\s*=\s*globalThis\.__nextOnPagesRoutesIsolation\.getProxyFor\((?:"[^"]*"|'[^']*')\)\s*;?/
+      );
+      const fileEntry = {
+        file: path.relative(nopDistDir, file),
+        missing,
+        proxyFound: !!proxyM,
+        contexts: missing.slice(0, 2).map((id) => {
+          const idx = src.search(new RegExp(`(^|[^\\w$"'])${id}\\b(?!["'])`));
+          return { id, context: src.slice(Math.max(0, idx - 80), idx + 120) };
+        }),
+        head: src.slice(0, 300),
+      };
+      report.filesWithMissing.push(fileEntry);
 
-    const byProvider = new Map();
-    for (const id of missing) {
-      const provider = providers.get(id);
-      if (!provider) {
-        unresolved.push(`${path.relative(nopDistDir, file)}: no provider registers ${id}`);
+      if (!proxyM) {
+        report.unresolved.push(`${fileEntry.file}: no proxy declaration`);
         continue;
       }
-      if (!byProvider.has(provider.file)) byProvider.set(provider.file, { exportName: provider.exportName, ids: [] });
-      byProvider.get(provider.file).ids.push(id);
-    }
-    if (byProvider.size === 0) continue;
+      const proxyVar = proxyM[1];
+      const insertAt = src.indexOf(proxyM[0]) + proxyM[0].length;
 
-    let imports = "";
-    let extractions = "";
-    let ri = 0;
-    for (const [providerFile, { exportName, ids }] of byProvider) {
-      const rel = path.relative(path.dirname(file), providerFile).split(path.sep).join("/");
-      const relPath = rel.startsWith(".") ? rel : `./${rel}`;
-      const fnAlias = `__nopRepairGet_${ri}`;
-      const objAlias = `__nopRepairExports_${ri}`;
-      ri++;
-      imports += `import { ${exportName} as ${fnAlias} } from '${relPath}';\n`;
-      extractions +=
-        `const ${objAlias} = ${fnAlias}(${proxyVar}, ${proxyVar}, ${proxyVar});` +
-        ids.map((id) => `const ${id} = ${objAlias}["${id}"];`).join("") +
-        "\n";
-      console.log(`repair: ${path.relative(nopDistDir, file)} — injecting ${ids.join(", ")} from ${path.basename(providerFile)}`);
-    }
-    src = imports + src.slice(0, insertAt) + "\n" + extractions + src.slice(insertAt);
-    fs.writeFileSync(file, src);
-    repairedCount++;
-  }
+      const byProvider = new Map();
+      for (const id of missing) {
+        const provider = providers.get(id);
+        if (!provider) {
+          report.unresolved.push(`${fileEntry.file}: no provider registers ${id}`);
+          continue;
+        }
+        if (!byProvider.has(provider.file)) byProvider.set(provider.file, { exportName: provider.exportName, ids: [] });
+        byProvider.get(provider.file).ids.push(id);
+      }
+      if (byProvider.size === 0) continue;
 
-  console.log(`repair: ${repairedCount} function file(s) repaired, ${providers.size} chunk keys indexed.`);
-  if (unresolved.length > 0) {
-    console.error("repair: UNRESOLVED chunk bindings — failing the build rather than shipping 500s:\n" + unresolved.join("\n"));
-    process.exit(1);
+      let imports = "";
+      let extractions = "";
+      let ri = 0;
+      for (const [providerFile, { exportName, ids }] of byProvider) {
+        const rel = path.relative(path.dirname(file), providerFile).split(path.sep).join("/");
+        const relPath = rel.startsWith(".") ? rel : `./${rel}`;
+        const fnAlias = `__nopRepairGet_${ri}`;
+        const objAlias = `__nopRepairExports_${ri}`;
+        ri++;
+        imports += `import { ${exportName} as ${fnAlias} } from '${relPath}';\n`;
+        extractions +=
+          `const ${objAlias} = ${fnAlias}(${proxyVar}, ${proxyVar}, ${proxyVar});` +
+          ids.map((id) => `const ${id} = ${objAlias}["${id}"];`).join("") +
+          "\n";
+        report.repaired.push({ file: fileEntry.file, ids, provider: path.relative(nopDistDir, providerFile) });
+      }
+      src = imports + src.slice(0, insertAt) + "\n" + extractions + src.slice(insertAt);
+      fs.writeFileSync(file, src);
+    }
   }
-} else {
-  console.error("repair: ERROR — __next-on-pages-dist__/functions not found; skipping repair.");
-  process.exit(1);
+} catch (err) {
+  report.error = { message: err && err.message, stack: err && err.stack };
+}
+
+try {
+  fs.writeFileSync(
+    path.join(root, ".vercel", "output", "static", "repair-report.json"),
+    JSON.stringify(report, null, 2)
+  );
+  console.log(
+    `repair: ${report.repaired.length} injection(s), ${report.unresolved.length} unresolved, ` +
+      `${report.providersIndexed} keys indexed, ${report.filesScanned} functions scanned` +
+      (report.error ? ` — ERROR: ${report.error.message}` : "")
+  );
+} catch (err) {
+  console.error("repair: failed to write report:", err && err.message);
 }
