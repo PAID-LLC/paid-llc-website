@@ -5,13 +5,8 @@ import type { PalimpsestState } from "./usePalimpsestLive";
 
 // ssr:false is only legal from inside a client component — this thin shell
 // holds that boundary for the Palimpsest experience, matching the other
-// world shells. The named chunk keeps this world's client graph in its own
-// webpack chunk: next-on-pages' chunk dedup was assigning a chunk shared by
-// exactly the arclight + palimpsest functions a broken placement, 500ing one
-// of the two world routes per build (HTML path only, RSC fine).
-const PalimpsestExperience = dynamic(
-  () => import(/* webpackChunkName: "palimpsest-world" */ "./PalimpsestExperience"),
-  {
+// world shells.
+const PalimpsestExperience = dynamic(() => import("./PalimpsestExperience"), {
   ssr: false,
   loading: () => (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#14100a]">
