@@ -46,7 +46,7 @@ function markResponse(res) {
   try {
     if (NO_BODY.has(res.status)) return res;
     const marked = new Response(res.body, res);
-    marked.headers.set("x-diag-entry", "v5");
+    marked.headers.set("x-diag-entry", "v6");
     return marked;
   } catch {
     return res;
@@ -127,21 +127,31 @@ const worker = {
             // keep going
           }
         };
+        // Every read in its own guard: v5 died right after "1-enter", so one
+        // of these innocent-looking accesses throws in this runtime. The ring
+        // lines go FIRST — they are the payload; env probes are secondary.
+        const probe = (fn) => {
+          try {
+            return ascii(String(fn()));
+          } catch (e) {
+            return "THREW:" + ascii(String(e && e.message)).slice(0, 80);
+          }
+        };
         H("x-diag-step", "1-enter");
-        H(
-          "x-diag-env",
-          JSON.stringify({
-            u: !!(env && env.SUPABASE_URL),
-            k: !!(env && env.SUPABASE_SERVICE_KEY),
-            wait: typeof (ctx && ctx.waitUntil),
-            penv: typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL),
-            hdr: diag,
-          })
-        );
-        H("x-diag-ring", `${ring.length} total, ${ring.length - before} this request`);
-        const lines = ring.slice(before).concat(ring.slice(before).length === 0 ? ring.slice(-3) : []);
-        lines.slice(0, 4).forEach((line, i) => H(`x-diag-log-${i}`, line));
-        H("x-diag-step", "3-ring");
+        H("x-diag-ring", probe(() => `${ring.length} total, ${ring.length - before} this request`));
+        for (let i = 0; i < 4; i++) {
+          H(`x-diag-log-${i}`, probe(() => {
+            const fresh = ring.slice(before);
+            const src = fresh.length > 0 ? fresh : ring.slice(-4);
+            return src[i] || "";
+          }));
+        }
+        H("x-diag-step", "2-ring-done");
+        H("x-diag-u", probe(() => !!env.SUPABASE_URL));
+        H("x-diag-k", probe(() => !!env.SUPABASE_SERVICE_KEY));
+        H("x-diag-wait", probe(() => typeof ctx.waitUntil));
+        H("x-diag-penv", probe(() => typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL)));
+        H("x-diag-step", "3-all-done");
       } catch {
         // diagnostics must never break the response
       }
