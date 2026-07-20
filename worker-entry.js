@@ -46,7 +46,7 @@ function markResponse(res) {
   try {
     if (NO_BODY.has(res.status)) return res;
     const marked = new Response(res.body, res);
-    marked.headers.set("x-diag-entry", "v2");
+    marked.headers.set("x-diag-entry", "v4");
     return marked;
   } catch {
     return res;
@@ -102,45 +102,57 @@ const worker = {
       });
     }
     const marked = markResponse(res);
-    // In-band diagnostics, only for requests that explicitly ask (x-diag-req: 1):
-    // env-binding presence (booleans only), ring state, and a live upload test
-    // with its result — so the capture chain can be debugged from one curl.
-    if (diag && marked !== res) {
-      try {
-        marked.headers.set(
-          "x-diag-env",
-          JSON.stringify({
-            u: !!env.SUPABASE_URL,
-            k: !!env.SUPABASE_SERVICE_KEY,
-            wait: typeof (ctx && ctx.waitUntil),
-            penv: typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL),
-          })
-        );
-        marked.headers.set("x-diag-ring", `${ring.length} total, ${ring.length - before} this request`);
-        marked.headers.set(
-          "x-diag-log",
-          encodeURIComponent(ring.slice(-3).join(" || ")).slice(0, 1800)
-        );
-        if (res.status >= 500) {
-          let uplResult = "no-env";
-          const u = env.SUPABASE_URL || (typeof process !== "undefined" && process.env && process.env.SUPABASE_URL);
-          const k = env.SUPABASE_SERVICE_KEY || (typeof process !== "undefined" && process.env && process.env.SUPABASE_SERVICE_KEY);
-          if (u && k) {
-            try {
-              const r = await fetch(`${u}/storage/v1/object/guides/errors/diag-${Date.now()}.json`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${k}`, "Content-Type": "application/json", "x-upsert": "true" },
-                body: JSON.stringify({ at: new Date().toISOString(), kind: "diag-header-test", logs: ring.slice(-10) }),
-              });
-              uplResult = `status-${r.status}`;
-            } catch (e) {
-              uplResult = `threw-${String(e && e.message).slice(0, 120)}`;
-            }
-          }
-          marked.headers.set("x-diag-upl", encodeURIComponent(uplResult));
+    // In-band diagnostics: ALWAYS on 5xx (the error page is public anyway and
+    // the x-diag-req gate cost a deploy cycle when the header went missing);
+    // on other statuses only when asked via header or ?xdiag=1. Step markers
+    // record how far this block gets if something throws.
+    let wantDiag = diag || (res && res.status >= 500);
+    try {
+      if (!wantDiag) wantDiag = new URL(request.url).searchParams.get("xdiag") === "1";
+    } catch {
+      // ignore
+    }
+    if (wantDiag && marked !== res) {
+      const H = (k, v) => {
+        try {
+          marked.headers.set(k, v);
+        } catch {
+          // keep going
         }
-      } catch {
-        // diagnostics must never break the response
+      };
+      H("x-diag-step", "1-enter");
+      H(
+        "x-diag-env",
+        JSON.stringify({
+          u: !!(env && env.SUPABASE_URL),
+          k: !!(env && env.SUPABASE_SERVICE_KEY),
+          wait: typeof (ctx && ctx.waitUntil),
+          penv: typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL),
+          hdr: diag,
+        })
+      );
+      H("x-diag-step", "2-env");
+      H("x-diag-ring", `${ring.length} total, ${ring.length - before} this request`);
+      H("x-diag-log", encodeURIComponent(ring.slice(-3).join(" || ")).slice(0, 1800));
+      H("x-diag-step", "3-ring");
+      if (res.status >= 500) {
+        let uplResult = "no-env";
+        try {
+          const u = (env && env.SUPABASE_URL) || (typeof process !== "undefined" && process.env && process.env.SUPABASE_URL);
+          const k = (env && env.SUPABASE_SERVICE_KEY) || (typeof process !== "undefined" && process.env && process.env.SUPABASE_SERVICE_KEY);
+          if (u && k) {
+            const r = await fetch(`${u}/storage/v1/object/guides/errors/diag-${Date.now()}.json`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${k}`, "Content-Type": "application/json", "x-upsert": "true" },
+              body: JSON.stringify({ at: new Date().toISOString(), kind: "diag-header-test", path: new URL(request.url).pathname, logs: ring.slice(-10) }),
+            });
+            uplResult = `status-${r.status}`;
+          }
+        } catch (e) {
+          uplResult = `threw-${String(e && e.message).slice(0, 120)}`;
+        }
+        H("x-diag-upl", encodeURIComponent(uplResult));
+        H("x-diag-step", "4-upl");
       }
     }
     return marked;
