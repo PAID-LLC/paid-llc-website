@@ -5,17 +5,20 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { Codex } from "@/lib/palimpsest/codex";
 import DigMap from "./DigMap";
+import PalimpsestRuinsCanvas from "./PalimpsestRuinsCanvas";
 import { usePalimpsestLive, type PalimpsestState } from "./usePalimpsestLive";
 
-// ── The Palimpsest experience: DIG | CODEX ───────────────────────────────────
-// Full-screen portal pattern per SimExperience/ArclightExperience. DIG is the
-// excavation map under fog of war; CODEX is the Recovered Record — the known
-// portion of a history that already exists in full. The world is still: no
-// weather, no decay, no tick. Only the diggers move.
+// ── The Palimpsest experience: RUINS | MAP | CODEX ───────────────────────────
+// Full-screen portal pattern per SimExperience/ArclightExperience. RUINS is
+// the comprehensive 3D world — the dune sea and the open digs, compiled from
+// the same history and excavation state as everything else; MAP is the
+// top-down fog-of-war read; CODEX is the Recovered Record — the known portion
+// of a history that already exists in full. The world is still: no weather,
+// no decay, no tick. Only the diggers move.
 
 const AMBER = "#d9a441";
 
-type Tab = "dig" | "codex";
+type Tab = "ruins" | "map" | "codex";
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -43,7 +46,8 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
   );
   return (
     <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-white/10 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
-      {btn("dig", "Dig")}
+      {btn("ruins", "Ruins")}
+      {btn("map", "Map")}
       {btn("codex", "Codex")}
       <Link
         href="/the-latent-space"
@@ -192,19 +196,19 @@ function CodexPane({ state, codex }: { state: PalimpsestState; codex: Codex | nu
 export default function PalimpsestExperience({ initial }: { initial: PalimpsestState }) {
   const reduced = usePrefersReducedMotion();
   const state = usePalimpsestLive(initial);
-  const [tab, setTab] = useState<Tab>("dig");
+  const [tab, setTab] = useState<Tab>("ruins");
   const [codex, setCodex] = useState<Codex | null>(null);
 
+  // ?tab=map / ?tab=codex deep-link the reads; RUINS is the default.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "codex") {
-      setTab("codex");
-    }
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "codex" || t === "map") setTab(t);
   }, []);
   const switchTab = (t: Tab) => {
     setTab(t);
     const url = new URL(window.location.href);
-    if (t === "codex") url.searchParams.set("tab", "codex");
-    else url.searchParams.delete("tab");
+    if (t === "ruins") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", t);
     window.history.replaceState(null, "", url.toString());
   };
 
@@ -236,11 +240,19 @@ export default function PalimpsestExperience({ initial }: { initial: PalimpsestS
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#14100a]">
-      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-        <div className="aspect-[600/520] max-h-full w-full max-w-[860px]">
-          <DigMap state={state} reduced={reduced} />
-        </div>
+      {/* Base layer: the 3D ruins stay mounted across tab switches so the
+          camera and descent never replay. */}
+      <div className="absolute inset-0" data-testid="palimpsest-ruins">
+        <PalimpsestRuinsCanvas state={state} reduced={reduced} />
       </div>
+
+      {tab === "map" && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#14100a]/90 p-3 backdrop-blur-sm sm:p-6">
+          <div className="aspect-[600/520] max-h-full w-full max-w-[860px]">
+            <DigMap state={state} reduced={reduced} />
+          </div>
+        </div>
+      )}
 
       {/* Dust vignette — amber, faint, still. */}
       <div
@@ -263,7 +275,7 @@ export default function PalimpsestExperience({ initial }: { initial: PalimpsestS
         </div>
       )}
 
-      {tab === "dig" && <Hud state={state} />}
+      {tab !== "codex" && <Hud state={state} />}
 
       <TabBar tab={tab} onTab={switchTab} />
     </div>,
