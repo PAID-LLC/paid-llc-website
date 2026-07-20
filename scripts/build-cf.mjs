@@ -265,10 +265,12 @@ try {
 }
 
 try {
-  fs.writeFileSync(
-    path.join(root, ".vercel", "output", "static", "repair-report.json"),
-    JSON.stringify(report, null, 2)
-  );
+  // Under /_next/static/ because next-on-pages' _routes.json sends every other
+  // path through the worker, which 404s unknown routes — /_next/static/* is
+  // excluded and served as a raw asset.
+  const reportDir = path.join(root, ".vercel", "output", "static", "_next", "static");
+  fs.mkdirSync(reportDir, { recursive: true });
+  fs.writeFileSync(path.join(reportDir, "repair-report.json"), JSON.stringify(report, null, 2));
   console.log(
     `repair: ${report.repaired.length} injection(s), ${report.unresolved.length} unresolved, ` +
       `${report.providersIndexed} keys indexed, ${report.filesScanned} functions scanned` +
