@@ -75,6 +75,7 @@ function upload(env, ctx, payload) {
 
 const worker = {
   async fetch(request, env, ctx) {
+    const diag = request.headers.get("x-diag-req") === "1";
     const before = ring.length;
     let res;
     try {
@@ -100,7 +101,49 @@ const worker = {
         ringTail: ring.slice(-10),
       });
     }
-    return markResponse(res);
+    const marked = markResponse(res);
+    // In-band diagnostics, only for requests that explicitly ask (x-diag-req: 1):
+    // env-binding presence (booleans only), ring state, and a live upload test
+    // with its result — so the capture chain can be debugged from one curl.
+    if (diag && marked !== res) {
+      try {
+        marked.headers.set(
+          "x-diag-env",
+          JSON.stringify({
+            u: !!env.SUPABASE_URL,
+            k: !!env.SUPABASE_SERVICE_KEY,
+            wait: typeof (ctx && ctx.waitUntil),
+            penv: typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL),
+          })
+        );
+        marked.headers.set("x-diag-ring", `${ring.length} total, ${ring.length - before} this request`);
+        marked.headers.set(
+          "x-diag-log",
+          encodeURIComponent(ring.slice(-3).join(" || ")).slice(0, 1800)
+        );
+        if (res.status >= 500) {
+          let uplResult = "no-env";
+          const u = env.SUPABASE_URL || (typeof process !== "undefined" && process.env && process.env.SUPABASE_URL);
+          const k = env.SUPABASE_SERVICE_KEY || (typeof process !== "undefined" && process.env && process.env.SUPABASE_SERVICE_KEY);
+          if (u && k) {
+            try {
+              const r = await fetch(`${u}/storage/v1/object/guides/errors/diag-${Date.now()}.json`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${k}`, "Content-Type": "application/json", "x-upsert": "true" },
+                body: JSON.stringify({ at: new Date().toISOString(), kind: "diag-header-test", logs: ring.slice(-10) }),
+              });
+              uplResult = `status-${r.status}`;
+            } catch (e) {
+              uplResult = `threw-${String(e && e.message).slice(0, 120)}`;
+            }
+          }
+          marked.headers.set("x-diag-upl", encodeURIComponent(uplResult));
+        }
+      } catch {
+        // diagnostics must never break the response
+      }
+    }
+    return marked;
   },
 };
 
