@@ -114,8 +114,244 @@ if (fs.existsSync(notFoundDir)) {
 // lever available; if it isn't enough, the size growth is aggregate across
 // many past features, not one new file, and needs either the CF Workers
 // Paid plan (10 MiB cap) or real bundle-size investigation).
-// --custom-entrypoint: TEMPORARY diagnostic wrapper (worker-entry.js) that
-// captures console.error output on 5xx responses and ships it to Supabase
-// Storage — the only way to read the world-route render error without
-// Cloudflare log access. Remove with worker-entry.js once root-caused.
-run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --custom-entrypoint ./worker-entry.js");
+run("npx @cloudflare/next-on-pages --skip-build --experimental-minify");
+
+// ── Step 5: repair missing chunk bindings (next-on-pages dedup bug) ──────────
+// next-on-pages' chunk dedup replaces a shared webpack chunk code block with a
+// bare identifier (e.g. async__chunk_82704) and prepends an import + extraction
+// (`const async__chunk_82704 = __exportsOfX["async__chunk_82704"];`) — but in
+// some function files the import never lands, and that route 500s at SSR
+// require time with "ReferenceError: async__chunk_N is not defined". Which
+// function draws the missing binding reshuffles every build (observed live
+// 2026-07-20 breaking 1-3 of the four Latent Space world routes per build;
+// --disableChunksDedup avoids it but blows the 10 MiB publish cap).
+//
+// This pass replays the tool's own emit for the bindings it forgot: scan each
+// built function for unquoted chunk identifiers with no declaration, find the
+// dist file that registers that key, and inject the same import + extraction
+// pattern the healthy functions have. If a binding cannot be resolved, FAIL
+// the build — a failed deploy keeps the last good build live, which beats
+// silently shipping a route that 500s.
+const nopDistDir = path.join(root, ".vercel", "output", "static", "_worker.js", "__next-on-pages-dist__");
+const nopFunctionsDir = path.join(nopDistDir, "functions");
+
+function* walkJs(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* walkJs(p);
+    else if (entry.name.endsWith(".js")) yield p;
+  }
+}
+
+// The report is written into the deploy artifact (/_next/static/repair-report.json)
+// for post-deploy verification; unresolved bindings or a crashed repair pass
+// FAIL the build at the end — a failed deploy keeps the last good build live,
+// which beats silently shipping a route that 500s. Proven live 2026-07-20:
+// preview ca279065 stubbed palimpsest's dropped loader and every route went
+// green (worlds, universe, lounge, home, blog).
+const report = {
+  at: new Date().toISOString(),
+  distDirExists: fs.existsSync(nopDistDir),
+  functionsDirExists: fs.existsSync(nopFunctionsDir),
+  distDirEntries: [],
+  providersIndexed: 0,
+  providerSamples: [],
+  filesScanned: 0,
+  filesWithMissing: [],
+  worldSamples: [],
+  repaired: [],
+  unresolved: [],
+  error: null,
+};
+
+try {
+  if (fs.existsSync(nopDistDir)) {
+    report.distDirEntries = fs.readdirSync(nopDistDir);
+  }
+  if (fs.existsSync(nopFunctionsDir)) {
+    // Index which dist file registers each chunk key, and its export name.
+    const providers = new Map();
+    for (const entry of fs.readdirSync(nopDistDir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === "functions") continue;
+      for (const file of walkJs(path.join(nopDistDir, entry.name))) {
+        const src = fs.readFileSync(file, "utf8");
+        const exp =
+          src.match(/export\s+const\s+(\w+)\s*=/) ||
+          src.match(/export\s*\{\s*\w+\s+as\s+(\w+)\s*\}/) ||
+          src.match(/export\s*\{\s*(\w+)\s*\}/);
+        // Minified output registers keys as dot-access (X.__chunk_N=...) or
+        // bracket access — match both, requiring an assignment that is not ==.
+        for (const m of src.matchAll(/(?:\[\s*["']((?:async)?__chunk_\d+)["']\s*\]|\.((?:async)?__chunk_\d+))\s*=(?!=)/g)) {
+          const key = m[1] || m[2];
+          if (!providers.has(key) && exp) providers.set(key, { file, exportName: exp[1] });
+        }
+        if (report.providerSamples.length < 3) {
+          report.providerSamples.push({
+            file: path.relative(nopDistDir, file),
+            exportMatch: exp ? exp[1] : null,
+            head: src.slice(0, 260),
+          });
+        }
+      }
+    }
+    report.providersIndexed = providers.size;
+
+    for (const file of walkJs(nopFunctionsDir)) {
+      let src = fs.readFileSync(file, "utf8");
+      report.filesScanned++;
+
+      // For the four world functions, classify every chunk-identifier
+      // occurrence (free vs dot-access vs quoted) so healthy and broken forms
+      // can be compared directly from the report.
+      if (/the-latent-space[\\/](palimpsest|arclight|simulation|genesis)/.test(file)) {
+        const occ = [];
+        for (const m of src.matchAll(/[\s\S]{0,30}(?:async)?__chunk_\d+[\s\S]{0,20}/g)) {
+          if (occ.length < 12) occ.push(m[0]);
+        }
+        report.worldSamples.push({ file: path.relative(nopDistDir, file), occurrences: occ });
+      }
+      // A FREE use is the bug signature: not preceded by a dot (property
+      // access), word char, or quote — dot-access and string keys are the
+      // healthy minified forms.
+      const used = new Set(
+        [...src.matchAll(/(^|[^\w$"'.])((?:async)?__chunk_\d+)\b(?!["'])/g)].map((m) => m[2])
+      );
+      const missing = [...used].filter(
+        (id) => !new RegExp(`(?:const|var|let)\\s+${id}\\s*=`).test(src)
+      );
+      if (missing.length === 0) continue;
+
+      const proxyM = src.match(
+        /(?:const|var|let)\s+(\w+)\s*=\s*globalThis\.__nextOnPagesRoutesIsolation\.getProxyFor\((?:"[^"]*"|'[^']*')\)\s*;?/
+      );
+      const fileEntry = {
+        file: path.relative(nopDistDir, file),
+        missing,
+        proxyFound: !!proxyM,
+        contexts: missing.slice(0, 2).map((id) => {
+          const idx = src.search(new RegExp(`(^|[^\\w$"'])${id}\\b(?!["'])`));
+          return { id, context: src.slice(Math.max(0, idx - 80), idx + 120) };
+        }),
+        head: src.slice(0, 300),
+      };
+      report.filesWithMissing.push(fileEntry);
+
+      if (!proxyM) {
+        report.unresolved.push(`${fileEntry.file}: no proxy declaration`);
+        continue;
+      }
+      const proxyVar = proxyM[1];
+      const insertAt = src.indexOf(proxyM[0]) + proxyM[0].length;
+
+      const byProvider = new Map();
+      const stubs = [];
+      for (const id of missing) {
+        // async__chunk_N is the SSR-side loader argument of a next/dynamic
+        // call. The dedup dropped its definition from the artifact entirely
+        // (registered nowhere). With ssr:false the loader is never invoked
+        // during SSR - Next bails out to client rendering and the browser
+        // uses its own chunks - so a stub binding is semantically inert.
+        // Gate on every use-site carrying ssr:!1 so an ssr:true dynamic can
+        // never get silently stubbed.
+        if (/^async__chunk_/.test(id)) {
+          // Plain string scan (no regex backtracking on multi-MB files): find
+          // every free use of the id and require ssr:!1 within the following
+          // 320 chars of each.
+          let allSsrFalse = null;
+          let pos = 0;
+          for (;;) {
+            const at = src.indexOf(id, pos);
+            if (at === -1) break;
+            pos = at + id.length;
+            const prev = at > 0 ? src[at - 1] : " ";
+            const next = src[pos] || " ";
+            if (/[\w$"'.]/.test(prev) || /[\w$"']/.test(next)) continue;
+            const windowAfter = src.slice(at, at + id.length + 320);
+            const okHere =
+              windowAfter.includes("ssr:!1") ||
+              windowAfter.includes("ssr:false") ||
+              windowAfter.includes("ssr: false");
+            allSsrFalse = allSsrFalse === null ? okHere : allSsrFalse && okHere;
+          }
+          if (allSsrFalse === true) {
+            stubs.push(id);
+            continue;
+          }
+          report.unresolved.push(`${fileEntry.file}: ${id} has a non-ssr:false use; refusing to stub`);
+          continue;
+        }
+        const provider = providers.get(id);
+        if (!provider) {
+          report.unresolved.push(`${fileEntry.file}: no provider registers ${id}`);
+          continue;
+        }
+        if (!byProvider.has(provider.file)) byProvider.set(provider.file, { exportName: provider.exportName, ids: [] });
+        byProvider.get(provider.file).ids.push(id);
+      }
+      if (stubs.length > 0) {
+        // Prepend at position 0: the minified proxy statement is a
+        // multi-declarator const (splicing after it broke the syntax and
+        // failed worker upload validation on the first attempt). A var
+        // statement before the hoisted imports is legal ESM, and the IIFE
+        // resolves it from module scope at call time.
+        const stubCode = stubs.map((id) => `var ${id}=()=>Promise.resolve({});`).join("") + "\n";
+        src = stubCode + src;
+        fs.writeFileSync(file, src);
+        report.repaired.push({ file: fileEntry.file, ids: stubs, method: "ssr-false-loader-stub" });
+      }
+      if (byProvider.size === 0) continue;
+
+      let imports = "";
+      let extractions = "";
+      let ri = 0;
+      for (const [providerFile, { exportName, ids }] of byProvider) {
+        const rel = path.relative(path.dirname(file), providerFile).split(path.sep).join("/");
+        const relPath = rel.startsWith(".") ? rel : `./${rel}`;
+        const fnAlias = `__nopRepairGet_${ri}`;
+        const objAlias = `__nopRepairExports_${ri}`;
+        ri++;
+        imports += `import { ${exportName} as ${fnAlias} } from '${relPath}';\n`;
+        extractions +=
+          `const ${objAlias} = ${fnAlias}(${proxyVar}, ${proxyVar}, ${proxyVar});` +
+          ids.map((id) => `const ${id} = ${objAlias}["${id}"];`).join("") +
+          "\n";
+        report.repaired.push({ file: fileEntry.file, ids, provider: path.relative(nopDistDir, providerFile) });
+      }
+      src = imports + src.slice(0, insertAt) + "\n" + extractions + src.slice(insertAt);
+      fs.writeFileSync(file, src);
+    }
+  }
+} catch (err) {
+  report.error = { message: err && err.message, stack: err && err.stack };
+}
+
+try {
+  // Under /_next/static/ because next-on-pages' _routes.json sends every other
+  // path through the worker, which 404s unknown routes — /_next/static/* is
+  // excluded and served as a raw asset.
+  const reportDir = path.join(root, ".vercel", "output", "static", "_next", "static");
+  fs.mkdirSync(reportDir, { recursive: true });
+  fs.writeFileSync(path.join(reportDir, "repair-report.json"), JSON.stringify(report, null, 2));
+  console.log(
+    `repair: ${report.repaired.length} injection(s), ${report.unresolved.length} unresolved, ` +
+      `${report.providersIndexed} keys indexed, ${report.filesScanned} functions scanned` +
+      (report.error ? ` — ERROR: ${report.error.message}` : "")
+  );
+} catch (err) {
+  console.error("repair: failed to write report:", err && err.message);
+}
+
+// Loud mode: never ship a worker with an unrepaired (or unknown) chunk
+// binding — the route would 500 on every HTML request until the next build.
+if (report.error) {
+  console.error("repair: the repair pass itself crashed — failing the build:", report.error.message);
+  process.exit(1);
+}
+if (report.unresolved.length > 0) {
+  console.error("repair: UNRESOLVED chunk bindings — failing the build rather than shipping 500s:\n" + report.unresolved.join("\n"));
+  process.exit(1);
+}
+if (!report.functionsDirExists) {
+  console.error("repair: __next-on-pages-dist__/functions not found — failing the build.");
+  process.exit(1);
+}
