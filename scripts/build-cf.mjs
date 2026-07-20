@@ -247,7 +247,25 @@ try {
       const insertAt = src.indexOf(proxyM[0]) + proxyM[0].length;
 
       const byProvider = new Map();
+      const stubs = [];
       for (const id of missing) {
+        // async__chunk_N is the SSR-side loader argument of a next/dynamic
+        // call. The dedup dropped its definition from the artifact entirely
+        // (registered nowhere). With ssr:false the loader is never invoked
+        // during SSR - Next bails out to client rendering and the browser
+        // uses its own chunks - so a stub binding is semantically inert.
+        // Gate on every use-site carrying ssr:!1 so an ssr:true dynamic can
+        // never get silently stubbed.
+        if (/^async__chunk_/.test(id)) {
+          const useContexts = [...src.matchAll(new RegExp(`[\\s\\S]{0,40}(?:^|[^\\w$"'.])${id}\\b(?!["'])[\\s\\S]{0,300}`, "g"))];
+          const allSsrFalse = useContexts.length > 0 && useContexts.every((m) => m[0].includes("ssr:!1") || m[0].includes("ssr: false") || m[0].includes("ssr:false"));
+          if (allSsrFalse) {
+            stubs.push(id);
+            continue;
+          }
+          report.unresolved.push(`${fileEntry.file}: ${id} has a non-ssr:false use; refusing to stub`);
+          continue;
+        }
         const provider = providers.get(id);
         if (!provider) {
           report.unresolved.push(`${fileEntry.file}: no provider registers ${id}`);
@@ -255,6 +273,13 @@ try {
         }
         if (!byProvider.has(provider.file)) byProvider.set(provider.file, { exportName: provider.exportName, ids: [] });
         byProvider.get(provider.file).ids.push(id);
+      }
+      if (stubs.length > 0) {
+        const proxyEnd = src.indexOf(proxyM[0]) + proxyM[0].length;
+        const stubCode = "\n" + stubs.map((id) => `var ${id}=()=>Promise.resolve({});`).join("") + "\n";
+        src = src.slice(0, proxyEnd) + stubCode + src.slice(proxyEnd);
+        fs.writeFileSync(file, src);
+        report.repaired.push({ file: fileEntry.file, ids: stubs, method: "ssr-false-loader-stub" });
       }
       if (byProvider.size === 0) continue;
 
