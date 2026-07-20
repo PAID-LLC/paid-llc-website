@@ -114,11 +114,7 @@ if (fs.existsSync(notFoundDir)) {
 // lever available; if it isn't enough, the size growth is aggregate across
 // many past features, not one new file, and needs either the CF Workers
 // Paid plan (10 MiB cap) or real bundle-size investigation).
-// --custom-entrypoint: TEMPORARY diagnostic wrapper (worker-entry.js) that
-// captures console.error output on 5xx responses and ships it to Supabase
-// Storage — the only way to read the world-route render error without
-// Cloudflare log access. Remove with worker-entry.js once root-caused.
-run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --custom-entrypoint ./worker-entry.js");
+run("npx @cloudflare/next-on-pages --skip-build --experimental-minify");
 
 // ── Step 5: repair missing chunk bindings (next-on-pages dedup bug) ──────────
 // next-on-pages' chunk dedup replaces a shared webpack chunk code block with a
@@ -147,11 +143,12 @@ function* walkJs(dir) {
   }
 }
 
-// DIAGNOSTIC MODE (2026-07-20): the first repair build failed and the CF build
-// log is unreadable from this environment, so this iteration never fails the
-// build — it writes a full report into the deploy artifact itself
-// (/repair-report.json on the deployment URL) recording what the built files
-// actually look like. Re-enable the loud failure once the matchers are proven.
+// The report is written into the deploy artifact (/_next/static/repair-report.json)
+// for post-deploy verification; unresolved bindings or a crashed repair pass
+// FAIL the build at the end — a failed deploy keeps the last good build live,
+// which beats silently shipping a route that 500s. Proven live 2026-07-20:
+// preview ca279065 stubbed palimpsest's dropped loader and every route went
+// green (worlds, universe, lounge, home, blog).
 const report = {
   at: new Date().toISOString(),
   distDirExists: fs.existsSync(nopDistDir),
@@ -342,4 +339,19 @@ try {
   );
 } catch (err) {
   console.error("repair: failed to write report:", err && err.message);
+}
+
+// Loud mode: never ship a worker with an unrepaired (or unknown) chunk
+// binding — the route would 500 on every HTML request until the next build.
+if (report.error) {
+  console.error("repair: the repair pass itself crashed — failing the build:", report.error.message);
+  process.exit(1);
+}
+if (report.unresolved.length > 0) {
+  console.error("repair: UNRESOLVED chunk bindings — failing the build rather than shipping 500s:\n" + report.unresolved.join("\n"));
+  process.exit(1);
+}
+if (!report.functionsDirExists) {
+  console.error("repair: __next-on-pages-dist__/functions not found — failing the build.");
+  process.exit(1);
 }
