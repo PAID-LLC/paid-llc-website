@@ -46,7 +46,7 @@ function markResponse(res) {
   try {
     if (NO_BODY.has(res.status)) return res;
     const marked = new Response(res.body, res);
-    marked.headers.set("x-diag-entry", "v4");
+    marked.headers.set("x-diag-entry", "v5");
     return marked;
   } catch {
     return res;
@@ -113,46 +113,37 @@ const worker = {
       // ignore
     }
     if (wantDiag && marked !== res) {
-      const H = (k, v) => {
-        try {
-          marked.headers.set(k, v);
-        } catch {
-          // keep going
-        }
-      };
-      H("x-diag-step", "1-enter");
-      H(
-        "x-diag-env",
-        JSON.stringify({
-          u: !!(env && env.SUPABASE_URL),
-          k: !!(env && env.SUPABASE_SERVICE_KEY),
-          wait: typeof (ctx && ctx.waitUntil),
-          penv: typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL),
-          hdr: diag,
-        })
-      );
-      H("x-diag-step", "2-env");
-      H("x-diag-ring", `${ring.length} total, ${ring.length - before} this request`);
-      H("x-diag-log", encodeURIComponent(ring.slice(-3).join(" || ")).slice(0, 1800));
-      H("x-diag-step", "3-ring");
-      if (res.status >= 500) {
-        let uplResult = "no-env";
-        try {
-          const u = (env && env.SUPABASE_URL) || (typeof process !== "undefined" && process.env && process.env.SUPABASE_URL);
-          const k = (env && env.SUPABASE_SERVICE_KEY) || (typeof process !== "undefined" && process.env && process.env.SUPABASE_SERVICE_KEY);
-          if (u && k) {
-            const r = await fetch(`${u}/storage/v1/object/guides/errors/diag-${Date.now()}.json`, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${k}`, "Content-Type": "application/json", "x-upsert": "true" },
-              body: JSON.stringify({ at: new Date().toISOString(), kind: "diag-header-test", path: new URL(request.url).pathname, logs: ring.slice(-10) }),
-            });
-            uplResult = `status-${r.status}`;
+      // Whole block belt-and-suspenders: v4 crashed the worker into a raw
+      // 1101 because encodeURIComponent threw on unpaired surrogates in a
+      // captured stack — evaluated OUTSIDE the per-header guard. Sanitize to
+      // plain ASCII instead (headers are the transport; they need no env),
+      // and never let diagnostics take down the response again.
+      try {
+        const ascii = (s) => String(s).replace(/[^\x20-\x7E]/g, "?");
+        const H = (k, v) => {
+          try {
+            marked.headers.set(k, ascii(v).slice(0, 1800));
+          } catch {
+            // keep going
           }
-        } catch (e) {
-          uplResult = `threw-${String(e && e.message).slice(0, 120)}`;
-        }
-        H("x-diag-upl", encodeURIComponent(uplResult));
-        H("x-diag-step", "4-upl");
+        };
+        H("x-diag-step", "1-enter");
+        H(
+          "x-diag-env",
+          JSON.stringify({
+            u: !!(env && env.SUPABASE_URL),
+            k: !!(env && env.SUPABASE_SERVICE_KEY),
+            wait: typeof (ctx && ctx.waitUntil),
+            penv: typeof process !== "undefined" && !!(process.env && process.env.SUPABASE_URL),
+            hdr: diag,
+          })
+        );
+        H("x-diag-ring", `${ring.length} total, ${ring.length - before} this request`);
+        const lines = ring.slice(before).concat(ring.slice(before).length === 0 ? ring.slice(-3) : []);
+        lines.slice(0, 4).forEach((line, i) => H(`x-diag-log-${i}`, line));
+        H("x-diag-step", "3-ring");
+      } catch {
+        // diagnostics must never break the response
       }
     }
     return marked;
