@@ -257,9 +257,26 @@ try {
         // Gate on every use-site carrying ssr:!1 so an ssr:true dynamic can
         // never get silently stubbed.
         if (/^async__chunk_/.test(id)) {
-          const useContexts = [...src.matchAll(new RegExp(`[\\s\\S]{0,40}(?:^|[^\\w$"'.])${id}\\b(?!["'])[\\s\\S]{0,300}`, "g"))];
-          const allSsrFalse = useContexts.length > 0 && useContexts.every((m) => m[0].includes("ssr:!1") || m[0].includes("ssr: false") || m[0].includes("ssr:false"));
-          if (allSsrFalse) {
+          // Plain string scan (no regex backtracking on multi-MB files): find
+          // every free use of the id and require ssr:!1 within the following
+          // 320 chars of each.
+          let allSsrFalse = null;
+          let pos = 0;
+          for (;;) {
+            const at = src.indexOf(id, pos);
+            if (at === -1) break;
+            pos = at + id.length;
+            const prev = at > 0 ? src[at - 1] : " ";
+            const next = src[pos] || " ";
+            if (/[\w$"'.]/.test(prev) || /[\w$"']/.test(next)) continue;
+            const windowAfter = src.slice(at, at + id.length + 320);
+            const okHere =
+              windowAfter.includes("ssr:!1") ||
+              windowAfter.includes("ssr:false") ||
+              windowAfter.includes("ssr: false");
+            allSsrFalse = allSsrFalse === null ? okHere : allSsrFalse && okHere;
+          }
+          if (allSsrFalse === true) {
             stubs.push(id);
             continue;
           }
@@ -275,9 +292,13 @@ try {
         byProvider.get(provider.file).ids.push(id);
       }
       if (stubs.length > 0) {
-        const proxyEnd = src.indexOf(proxyM[0]) + proxyM[0].length;
-        const stubCode = "\n" + stubs.map((id) => `var ${id}=()=>Promise.resolve({});`).join("") + "\n";
-        src = src.slice(0, proxyEnd) + stubCode + src.slice(proxyEnd);
+        // Prepend at position 0: the minified proxy statement is a
+        // multi-declarator const (splicing after it broke the syntax and
+        // failed worker upload validation on the first attempt). A var
+        // statement before the hoisted imports is legal ESM, and the IIFE
+        // resolves it from module scope at call time.
+        const stubCode = stubs.map((id) => `var ${id}=()=>Promise.resolve({});`).join("") + "\n";
+        src = stubCode + src;
         fs.writeFileSync(file, src);
         report.repaired.push({ file: fileEntry.file, ids: stubs, method: "ssr-false-loader-stub" });
       }
