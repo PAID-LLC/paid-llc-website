@@ -118,13 +118,114 @@ if (fs.existsSync(notFoundDir)) {
 // captures console.error output on 5xx responses and ships it to Supabase
 // Storage — the only way to read the world-route render error without
 // Cloudflare log access. Remove with worker-entry.js once root-caused.
+run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --custom-entrypoint ./worker-entry.js");
+
+// ── Step 5: repair missing chunk bindings (next-on-pages dedup bug) ──────────
+// next-on-pages' chunk dedup replaces a shared webpack chunk code block with a
+// bare identifier (e.g. async__chunk_82704) and prepends an import + extraction
+// (`const async__chunk_82704 = __exportsOfX["async__chunk_82704"];`) — but in
+// some function files the import never lands, and that route 500s at SSR
+// require time with "ReferenceError: async__chunk_N is not defined". Which
+// function draws the missing binding reshuffles every build (observed live
+// 2026-07-20 breaking 1-3 of the four Latent Space world routes per build;
+// --disableChunksDedup avoids it but blows the 10 MiB publish cap).
 //
-// --disableChunksDedup (2026-07-20): next-on-pages' chunk dedup emits
-// "ReferenceError: async__chunk_N is not defined" — it replaces a webpack
-// chunk code block with a bare identifier in a function file without
-// prepending the matching import. Which function draws the missing binding
-// reshuffles every build, 500ing one to three of the four Latent Space
-// world routes on the HTML path (SSR require) while RSC/APIs stay fine.
-// Disabling dedup keeps every chunk inlined per function: the bug class
-// disappears. Cost: bigger worker — watch the 10 MiB (gzip) publish cap.
-run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --disableChunksDedup --custom-entrypoint ./worker-entry.js");
+// This pass replays the tool's own emit for the bindings it forgot: scan each
+// built function for unquoted chunk identifiers with no declaration, find the
+// dist file that registers that key, and inject the same import + extraction
+// pattern the healthy functions have. If a binding cannot be resolved, FAIL
+// the build — a failed deploy keeps the last good build live, which beats
+// silently shipping a route that 500s.
+const nopDistDir = path.join(root, ".vercel", "output", "static", "_worker.js", "__next-on-pages-dist__");
+const nopFunctionsDir = path.join(nopDistDir, "functions");
+
+function* walkJs(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) yield* walkJs(p);
+    else if (entry.name.endsWith(".js")) yield p;
+  }
+}
+
+if (fs.existsSync(nopFunctionsDir)) {
+  // Index which dist file registers each chunk key, and its export name.
+  const providers = new Map();
+  for (const entry of fs.readdirSync(nopDistDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === "functions") continue;
+    for (const file of walkJs(path.join(nopDistDir, entry.name))) {
+      const src = fs.readFileSync(file, "utf8");
+      const exp =
+        src.match(/export\s+const\s+(\w+)\s*=/) ||
+        src.match(/export\s*\{\s*\w+\s+as\s+(\w+)\s*\}/) ||
+        src.match(/export\s*\{\s*(\w+)\s*\}/);
+      if (!exp) continue;
+      for (const m of src.matchAll(/\[\s*["']((?:async)?__chunk_\d+)["']\s*\]\s*=/g)) {
+        if (!providers.has(m[1])) providers.set(m[1], { file, exportName: exp[1] });
+      }
+    }
+  }
+
+  let repairedCount = 0;
+  const unresolved = [];
+  for (const file of walkJs(nopFunctionsDir)) {
+    let src = fs.readFileSync(file, "utf8");
+    const used = new Set(
+      [...src.matchAll(/(^|[^\w$"'])((?:async)?__chunk_\d+)\b(?!["'])/g)].map((m) => m[2])
+    );
+    const missing = [...used].filter(
+      (id) => !new RegExp(`(?:const|var|let)\\s+${id}\\s*=`).test(src)
+    );
+    if (missing.length === 0) continue;
+
+    const proxyM = src.match(
+      /(?:const|var|let)\s+(\w+)\s*=\s*globalThis\.__nextOnPagesRoutesIsolation\.getProxyFor\((?:"[^"]*"|'[^']*')\)\s*;?/
+    );
+    if (!proxyM) {
+      unresolved.push(`${path.relative(nopDistDir, file)}: no proxy declaration; missing ${missing.join(", ")}`);
+      continue;
+    }
+    const proxyVar = proxyM[1];
+    const insertAt = src.indexOf(proxyM[0]) + proxyM[0].length;
+
+    const byProvider = new Map();
+    for (const id of missing) {
+      const provider = providers.get(id);
+      if (!provider) {
+        unresolved.push(`${path.relative(nopDistDir, file)}: no provider registers ${id}`);
+        continue;
+      }
+      if (!byProvider.has(provider.file)) byProvider.set(provider.file, { exportName: provider.exportName, ids: [] });
+      byProvider.get(provider.file).ids.push(id);
+    }
+    if (byProvider.size === 0) continue;
+
+    let imports = "";
+    let extractions = "";
+    let ri = 0;
+    for (const [providerFile, { exportName, ids }] of byProvider) {
+      const rel = path.relative(path.dirname(file), providerFile).split(path.sep).join("/");
+      const relPath = rel.startsWith(".") ? rel : `./${rel}`;
+      const fnAlias = `__nopRepairGet_${ri}`;
+      const objAlias = `__nopRepairExports_${ri}`;
+      ri++;
+      imports += `import { ${exportName} as ${fnAlias} } from '${relPath}';\n`;
+      extractions +=
+        `const ${objAlias} = ${fnAlias}(${proxyVar}, ${proxyVar}, ${proxyVar});` +
+        ids.map((id) => `const ${id} = ${objAlias}["${id}"];`).join("") +
+        "\n";
+      console.log(`repair: ${path.relative(nopDistDir, file)} — injecting ${ids.join(", ")} from ${path.basename(providerFile)}`);
+    }
+    src = imports + src.slice(0, insertAt) + "\n" + extractions + src.slice(insertAt);
+    fs.writeFileSync(file, src);
+    repairedCount++;
+  }
+
+  console.log(`repair: ${repairedCount} function file(s) repaired, ${providers.size} chunk keys indexed.`);
+  if (unresolved.length > 0) {
+    console.error("repair: UNRESOLVED chunk bindings — failing the build rather than shipping 500s:\n" + unresolved.join("\n"));
+    process.exit(1);
+  }
+} else {
+  console.error("repair: ERROR — __next-on-pages-dist__/functions not found; skipping repair.");
+  process.exit(1);
+}
