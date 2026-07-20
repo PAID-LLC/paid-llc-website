@@ -118,4 +118,13 @@ if (fs.existsSync(notFoundDir)) {
 // captures console.error output on 5xx responses and ships it to Supabase
 // Storage — the only way to read the world-route render error without
 // Cloudflare log access. Remove with worker-entry.js once root-caused.
-run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --custom-entrypoint ./worker-entry.js");
+//
+// --disableChunksDedup (2026-07-20): next-on-pages' chunk dedup emits
+// "ReferenceError: async__chunk_N is not defined" — it replaces a webpack
+// chunk code block with a bare identifier in a function file without
+// prepending the matching import. Which function draws the missing binding
+// reshuffles every build, 500ing one to three of the four Latent Space
+// world routes on the HTML path (SSR require) while RSC/APIs stay fine.
+// Disabling dedup keeps every chunk inlined per function: the bug class
+// disappears. Cost: bigger worker — watch the 10 MiB (gzip) publish cap.
+run("npx @cloudflare/next-on-pages --skip-build --experimental-minify --disableChunksDedup --custom-entrypoint ./worker-entry.js");
