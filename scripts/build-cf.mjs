@@ -161,6 +161,7 @@ const report = {
   providerSamples: [],
   filesScanned: 0,
   filesWithMissing: [],
+  worldSamples: [],
   repaired: [],
   unresolved: [],
   error: null,
@@ -181,8 +182,11 @@ try {
           src.match(/export\s+const\s+(\w+)\s*=/) ||
           src.match(/export\s*\{\s*\w+\s+as\s+(\w+)\s*\}/) ||
           src.match(/export\s*\{\s*(\w+)\s*\}/);
-        for (const m of src.matchAll(/\[\s*["']((?:async)?__chunk_\d+)["']\s*\]\s*=/g)) {
-          if (!providers.has(m[1]) && exp) providers.set(m[1], { file, exportName: exp[1] });
+        // Minified output registers keys as dot-access (X.__chunk_N=...) or
+        // bracket access — match both, requiring an assignment that is not ==.
+        for (const m of src.matchAll(/(?:\[\s*["']((?:async)?__chunk_\d+)["']\s*\]|\.((?:async)?__chunk_\d+))\s*=(?!=)/g)) {
+          const key = m[1] || m[2];
+          if (!providers.has(key) && exp) providers.set(key, { file, exportName: exp[1] });
         }
         if (report.providerSamples.length < 3) {
           report.providerSamples.push({
@@ -198,8 +202,22 @@ try {
     for (const file of walkJs(nopFunctionsDir)) {
       let src = fs.readFileSync(file, "utf8");
       report.filesScanned++;
+
+      // For the four world functions, classify every chunk-identifier
+      // occurrence (free vs dot-access vs quoted) so healthy and broken forms
+      // can be compared directly from the report.
+      if (/the-latent-space[\\/](palimpsest|arclight|simulation|genesis)/.test(file)) {
+        const occ = [];
+        for (const m of src.matchAll(/[\s\S]{0,30}(?:async)?__chunk_\d+[\s\S]{0,20}/g)) {
+          if (occ.length < 12) occ.push(m[0]);
+        }
+        report.worldSamples.push({ file: path.relative(nopDistDir, file), occurrences: occ });
+      }
+      // A FREE use is the bug signature: not preceded by a dot (property
+      // access), word char, or quote — dot-access and string keys are the
+      // healthy minified forms.
       const used = new Set(
-        [...src.matchAll(/(^|[^\w$"'])((?:async)?__chunk_\d+)\b(?!["'])/g)].map((m) => m[2])
+        [...src.matchAll(/(^|[^\w$"'.])((?:async)?__chunk_\d+)\b(?!["'])/g)].map((m) => m[2])
       );
       const missing = [...used].filter(
         (id) => !new RegExp(`(?:const|var|let)\\s+${id}\\s*=`).test(src)
