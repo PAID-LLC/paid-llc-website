@@ -63,3 +63,27 @@ jobs:
           echo "sim tick: $code"
           cat /tmp/sim.json
           test "$code" = "200"
+
+      # Meridian: the Macro-Vault's human colony shares the heartbeat. Six
+      # simulated citizens' stakes drift with a prosperity index eased toward
+      # the site's own real economics (credit revenue vs token cost); act
+      # transitions (boom/stable/correction/bust) use a 6-tick hysteresis so
+      # the index hovering on a boundary can't flicker the city's recorded
+      # state. Zero LLM cost. Returns 200 {initialized:false} until
+      # db/meridian.sql has been run in Supabase.
+      - name: Drive one Meridian tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repo secret not set — skipping"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/meridian.json -w "%{http_code}" --max-time 60 \
+            -X POST https://paiddev.com/api/meridian/tick \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "meridian tick: $code"
+          cat /tmp/meridian.json
+          test "$code" = "200"

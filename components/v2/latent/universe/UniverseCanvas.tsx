@@ -398,6 +398,11 @@ export default function UniverseCanvas({
                   Descend to the ruins <span aria-hidden>&rarr;</span>
                 </Link>
               )}
+              {currentWorld.theme === "macro-vault" && (
+                <Link href="/the-latent-space/meridian" className={v2.btnSecondary}>
+                  Enter the colony <span aria-hidden>&rarr;</span>
+                </Link>
+              )}
               {hasFloor(currentWorld.theme) && (
                 <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
                   Descend to the floor <span aria-hidden>&rarr;</span>

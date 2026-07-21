@@ -100,6 +100,8 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     cityLights: "#c4b5fd",
   },
   // Macro signals from a smooth, sideways world. Uranus-class: ~90° tilt, faint ring.
+  // Meridian (the human colony) lives here — cityLights added when its world
+  // shipped, matching Arclight's/Genesis's planet treatment.
   "macro-vault": {
     kind: "smooth-giant",
     orbitRadius: 33.5,
@@ -109,6 +111,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
     palette: { base: "#25705f", low: "#35917b", high: "#8fd9c9", detail: "#1d5a4e" },
     atmosphere: { color: "#34d399", opacity: 0.32 },
     ring: { inner: 2.35, outer: 2.65, opacity: 0.3 },
+    cityLights: "#fff4dc",
   },
   // Iteration storms until convergence. Neptune-class storm giant; arena
   // evaluation volume is storm cover + lightning.
