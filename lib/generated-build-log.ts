@@ -3,6 +3,11 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "66fffea",
+    "date": "2026-07-23",
+    "subject": "Ship Lathe: build-log/ledger colosseum (room 4, Iteration Forge), fifth world"
+  },
+  {
     "sha": "a48aeb1",
     "date": "2026-07-22",
     "subject": "Ship Crucible: arena world v1 (room 1, Roast Pit) - compile-class, no migration"
@@ -56,10 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "a5865c5",
     "date": "2026-07-20",
     "subject": "Fix world-route 500s: build-time repair of missing chunk bindings"
-  },
-  {
-    "sha": "aacd1ce",
-    "date": "2026-07-20",
-    "subject": "Fix world-route 500s: disable next-on-pages chunk dedup"
   }
 ];

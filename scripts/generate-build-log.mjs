@@ -25,9 +25,30 @@ function write(entries) {
   console.log(`Generated build log with ${entries.length} entr${entries.length === 1 ? "y" : "ies"}.`);
 }
 
+const repoRoot = path.join(__dirname, "..");
+
 try {
+  // Cloudflare Pages clones shallow (depth 1) by default. `git log -12` on a
+  // depth-1 checkout doesn't fail -- it silently succeeds with just 1 entry,
+  // so the fallback chain below never catches it and the rich committed log
+  // gets overwritten with a 1-entry one on every CF build. Best-effort
+  // unshallow before reading history; any failure here (no network, no
+  // remote, already a full clone) just leaves the depth as it was -- no
+  // worse than before this attempt.
+  try {
+    const shallow = execSync("git rev-parse --is-shallow-repository", {
+      cwd: repoRoot,
+      encoding: "utf8",
+    }).trim();
+    if (shallow === "true") {
+      execSync("git fetch --quiet --unshallow", { cwd: repoRoot, encoding: "utf8" });
+    }
+  } catch {
+    // best-effort only -- proceed with whatever history is already local
+  }
+
   const raw = execSync('git log -12 --pretty=format:"%h%cs%s"', {
-    cwd: path.join(__dirname, ".."),
+    cwd: repoRoot,
     encoding: "utf8",
   });
   const entries = raw
