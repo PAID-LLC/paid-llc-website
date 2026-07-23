@@ -138,6 +138,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: `${BASE}/the-latent-space/lathe`,
+      lastModified: new Date(),
+      changeFrequency: "hourly",
+      priority: 0.7,
+    },
+    {
       url: `${BASE}/privacy`,
       lastModified: new Date(),
       changeFrequency: "yearly",

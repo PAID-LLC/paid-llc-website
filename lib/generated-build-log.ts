@@ -3,63 +3,63 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
-    "sha": "e24604e",
-    "date": "2026-07-12",
-    "subject": "Living planets: every world's surface derives from its room's real activity"
+    "sha": "a48aeb1",
+    "date": "2026-07-22",
+    "subject": "Ship Crucible: arena world v1 (room 1, Roast Pit) - compile-class, no migration"
   },
   {
-    "sha": "e5b05cf",
-    "date": "2026-07-12",
-    "subject": "Chronicle chapters: collapsible per-ballot sections + paged history endpoint"
+    "sha": "c57ebbe",
+    "date": "2026-07-21",
+    "subject": "Ship Meridian: the Macro-Vault's human colony (room 3), third world"
   },
   {
-    "sha": "b884b59",
-    "date": "2026-07-12",
-    "subject": "Synthetica Prime surface view: expansive r3f world at /the-latent-space/genesis/world"
+    "sha": "8f15286",
+    "date": "2026-07-20",
+    "subject": "Merge: build-time repair for next-on-pages dropped ssr:false loader bindings"
   },
   {
-    "sha": "3733fc1",
-    "date": "2026-07-12",
-    "subject": "Genesis floor answers back: room 8 responder + reply-to-speaker's-room"
+    "sha": "79a6304",
+    "date": "2026-07-20",
+    "subject": "Finalize chunk-binding repair: loud mode on, diagnostic scaffolding removed"
   },
   {
-    "sha": "3903467",
-    "date": "2026-07-12",
-    "subject": "GA lazyOnload (frees agent Link header), room count 8, honest arena label"
+    "sha": "0fcb42e",
+    "date": "2026-07-20",
+    "subject": "Fix stub injection: prepend at file start, plain string scan for ssr:!1"
   },
   {
-    "sha": "82605cf",
-    "date": "2026-07-12",
-    "subject": "Restore homepage agent Link header at the routing layer"
+    "sha": "67499f9",
+    "date": "2026-07-20",
+    "subject": "Retrigger CF build (previous run looks like a builder flake - no check-run for 5 min, then"
   },
   {
-    "sha": "da0bc5e",
-    "date": "2026-07-12",
-    "subject": "Add blog post: What Really Happens When You Open Your Domain to AI Agents"
+    "sha": "d48fbac",
+    "date": "2026-07-20",
+    "subject": "Fix world-route 500s: stub the dropped ssr:false dynamic loader binding"
   },
   {
-    "sha": "fdd4731",
-    "date": "2026-07-12",
-    "subject": "Genesis accelerated time: 8x decision cadence + epoch calendar"
+    "sha": "e1b863d",
+    "date": "2026-07-20",
+    "subject": "Temp: repair matchers for minified output + world occurrence samples"
   },
   {
-    "sha": "cc400f7",
-    "date": "2026-07-12",
-    "subject": "Bazaar rollback retry + Genesis world digest endpoint"
+    "sha": "ad5bc1b",
+    "date": "2026-07-20",
+    "subject": "Temp: serve repair report from /_next/static/ (worker routing excludes it)"
   },
   {
-    "sha": "1b72e34",
-    "date": "2026-07-11",
-    "subject": "Registry: house agents get resident profiles instead of 'Agent not found'"
+    "sha": "5c8a8dc",
+    "date": "2026-07-20",
+    "subject": "Temp: repair pass in diagnostic mode - report into deploy artifact"
   },
   {
-    "sha": "c29c8e3",
-    "date": "2026-07-11",
-    "subject": "Genesis interactive space: living surface, embodied assembly, human petitions"
+    "sha": "a5865c5",
+    "date": "2026-07-20",
+    "subject": "Fix world-route 500s: build-time repair of missing chunk bindings"
   },
   {
-    "sha": "244e7f0",
-    "date": "2026-07-11",
-    "subject": "Universe camera: fly home on deselect, sync OrbitControls target"
+    "sha": "aacd1ce",
+    "date": "2026-07-20",
+    "subject": "Fix world-route 500s: disable next-on-pages chunk dedup"
   }
 ];

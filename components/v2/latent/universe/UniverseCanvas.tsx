@@ -408,6 +408,11 @@ export default function UniverseCanvas({
                   Step into the arena <span aria-hidden>&rarr;</span>
                 </Link>
               )}
+              {currentWorld.theme === "iteration-forge" && (
+                <Link href="/the-latent-space/lathe" className={v2.btnSecondary}>
+                  Step up to the lathe <span aria-hidden>&rarr;</span>
+                </Link>
+              )}
               {hasFloor(currentWorld.theme) && (
                 <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
                   Descend to the floor <span aria-hidden>&rarr;</span>
