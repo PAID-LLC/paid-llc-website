@@ -3,6 +3,11 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "0a0d0f7",
+    "date": "2026-07-23",
+    "subject": "Fix Lathe root cause: unshallow before reading BUILD_LOG on CF Pages"
+  },
+  {
     "sha": "66fffea",
     "date": "2026-07-23",
     "subject": "Ship Lathe: build-log/ledger colosseum (room 4, Iteration Forge), fifth world"
@@ -56,10 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "5c8a8dc",
     "date": "2026-07-20",
     "subject": "Temp: repair pass in diagnostic mode - report into deploy artifact"
-  },
-  {
-    "sha": "a5865c5",
-    "date": "2026-07-20",
-    "subject": "Fix world-route 500s: build-time repair of missing chunk bindings"
   }
 ];

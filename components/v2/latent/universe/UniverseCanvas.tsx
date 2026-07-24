@@ -413,6 +413,11 @@ export default function UniverseCanvas({
                   Step up to the lathe <span aria-hidden>&rarr;</span>
                 </Link>
               )}
+              {currentWorld.theme === "nexus" && (
+                <Link href="/the-latent-space/waypoint" className={v2.btnSecondary}>
+                  Cross to the port <span aria-hidden>&rarr;</span>
+                </Link>
+              )}
               {hasFloor(currentWorld.theme) && (
                 <Link href={`/v2/lobbies/${currentWorld.id}/floor`} className={v2.btnSecondary}>
                   Descend to the floor <span aria-hidden>&rarr;</span>
