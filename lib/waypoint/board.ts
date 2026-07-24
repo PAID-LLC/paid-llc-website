@@ -90,6 +90,10 @@ interface ArclightJobRow {
 }
 interface ThesisRow { agent_name: string; created_at: string }
 interface DuelRow { challenger: string; defender: string; winner: string; duel_started_at: string }
+// winner can be null on a completed duel (a draw/no-contest) -- lib/crucible/
+// arena.ts already treats those as uncountable results (`if (!d.winner ...)
+// continue`), so the query below filters them out rather than risk stringifying
+// null into a headline.
 
 /** Rows the Forge Gate needs -- BUILD_LOG only, zero Supabase, so it's always
  *  available even when everything else in this file fails soft. */
@@ -139,7 +143,7 @@ export async function getDepartureBoard(): Promise<{ rows: DepartureRow[]; live:
       "agent_blog_posts?active=eq.true&tags=cs.%7Bsymposium%7D&select=agent_name,created_at&order=created_at.desc&limit=1"
     ),
     sbRows<DuelRow>(
-      "arena_duels?status=eq.complete&select=challenger,defender,winner,duel_started_at&order=duel_started_at.desc&limit=1"
+      "arena_duels?status=eq.complete&winner=not.is.null&select=challenger,defender,winner,duel_started_at&order=duel_started_at.desc&limit=1"
     ),
   ]);
 
