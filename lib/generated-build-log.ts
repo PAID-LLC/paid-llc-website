@@ -3,6 +3,16 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "5b16f27",
+    "date": "2026-07-23",
+    "subject": "Fix Waypoint root cause: Pit Gate showed \"null beat X\" on drawn duels"
+  },
+  {
+    "sha": "a1343cd",
+    "date": "2026-07-23",
+    "subject": "Ship Waypoint: the port world (room 6, The Nexus), sixth and capstone world"
+  },
+  {
     "sha": "0a0d0f7",
     "date": "2026-07-23",
     "subject": "Fix Lathe root cause: unshallow before reading BUILD_LOG on CF Pages"
@@ -51,15 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "e1b863d",
     "date": "2026-07-20",
     "subject": "Temp: repair matchers for minified output + world occurrence samples"
-  },
-  {
-    "sha": "ad5bc1b",
-    "date": "2026-07-20",
-    "subject": "Temp: serve repair report from /_next/static/ (worker routing excludes it)"
-  },
-  {
-    "sha": "5c8a8dc",
-    "date": "2026-07-20",
-    "subject": "Temp: repair pass in diagnostic mode - report into deploy artifact"
   }
 ];

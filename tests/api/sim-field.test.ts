@@ -10,8 +10,10 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  ROAM_RADIUS, DISCOVERY_RADIUS, SEASONS, TICKS_PER_DAY, WEATHER_KINDS,
-  anomalySites, isConvergence, seasonFor, terrainHeight, weatherFor, worldDay,
+  ROAM_RADIUS, DISCOVERY_RADIUS, SEASONS, SHORE_END, SHORE_START,
+  TICKS_PER_DAY, WATER_LEVEL, WEATHER_KINDS,
+  anomalySites, groundColor, isConvergence, seasonFor, terrainHeight,
+  weatherFor, worldDay,
 } from "@/lib/sim-field";
 
 describe("anomalySites", () => {
@@ -104,5 +106,49 @@ describe("terrainHeight", () => {
   it("keeps the Mast ground level", () => {
     expect(Math.abs(terrainHeight(0, 0))).toBeLessThan(1);
     expect(Math.abs(terrainHeight(3, -3))).toBeLessThan(1.5);
+  });
+
+  it("keeps the whole roamed island above the water line — nothing the engine places can ever end up submerged", () => {
+    for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
+      for (const r of [0, 20, 45, 60, 90, 110, ROAM_RADIUS]) {
+        const x = Math.cos(angle) * r;
+        const z = Math.sin(angle) * r;
+        expect(terrainHeight(x, z)).toBeGreaterThan(WATER_LEVEL);
+      }
+    }
+  });
+
+  it("shelves down to the seabed well past the shore, below the water line", () => {
+    for (const r of [SHORE_END, SHORE_END + 30, 250]) {
+      expect(terrainHeight(r, 0)).toBeLessThan(WATER_LEVEL);
+    }
+  });
+
+  it("doesn't touch the shore falloff before SHORE_START", () => {
+    // Same formula as the roamed island right up to the shore boundary —
+    // the beach/seabed slope only begins past it.
+    expect(terrainHeight(SHORE_START - 0.01, 0)).toBeGreaterThan(WATER_LEVEL);
+  });
+});
+
+describe("groundColor", () => {
+  it("always returns valid 0..1 RGB", () => {
+    for (const [x, z] of [[0, 0], [60, -40], [SHORE_START, 0], [SHORE_END + 20, 15], [-140, 90]] as const) {
+      const c = groundColor(x, z);
+      for (const ch of [c.r, c.g, c.b]) {
+        expect(ch).toBeGreaterThanOrEqual(0);
+        expect(ch).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("warms toward sand near the shoreline versus deep inland", () => {
+    // The beach ring sits around SHORE_START; deep inland (near the Mast)
+    // should read distinctly cooler/darker than the sand blend at the coast.
+    const inland = groundColor(10, 0);
+    const shore = groundColor(SHORE_START - 10, 0);
+    // Sand (#d9c48f) is warmer (higher r, lower b relative to r) than the
+    // cool slate palette used everywhere else.
+    expect(shore.r - shore.b).toBeGreaterThan(inland.r - inland.b);
   });
 });

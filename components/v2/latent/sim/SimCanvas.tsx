@@ -7,15 +7,20 @@ import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
 import type { SimAgentRow, SimData, SimStructure } from "@/lib/simworld";
 import {
   CinematicDescent, CloudBand, GroundMist, GroundSky, MilkyWayBackdrop,
-  NexusStar, ParticleField, Pulse, RimMountains, RippleDisc, ScatterField,
-  SceneFX, SkyWorld, Spin, StormFlash, TrailLine, ageTier, detailSeed,
-  mixHex, type ParticleMode,
+  NexusStar, ParticleField, Pulse, RealisticWater, RimMountains, RippleDisc,
+  ScatterField, SceneFX, SkyWorld, Spin, StormFlash, TrailLine, ageTier,
+  detailSeed, mixHex, type ParticleMode,
 } from "@/components/v2/latent/ground-fx";
 import {
-  GROUND_SIZE, SIM_ACCENT, SIM_ACCENT_SOFT,
+  GROUND_SIZE, SIM_ACCENT, SIM_ACCENT_SOFT, WATER_LEVEL,
   anomalySites, groundColor, hashStr, terrainHeight,
   type AnomalySite, type Weather,
 } from "@/lib/sim-field";
+
+// The key light's position doubles as the water's sun direction, so the
+// reflected specular glint lands where the actual light source is.
+const SUN_DIRECTION: [number, number, number] = [-70, 65, 50];
+const WATER_COLOR = "#0a3d52";
 
 // ── Substrate: the territory ─────────────────────────────────────────────────
 // Everything rendered here derives from live /api/sim/state (instances,
@@ -952,6 +957,14 @@ export default function SimCanvas({
       {storm && <StormFlash color="#c4b5fd" reduced={reduced} />}
 
       <Terrain />
+      <RealisticWater
+        size={460}
+        y={WATER_LEVEL}
+        color={WATER_COLOR}
+        sunColor={flush ? "#ffe3b0" : "#cfe6ff"}
+        sunDirection={SUN_DIRECTION}
+        reduced={reduced}
+      />
       <UnchartedShroud sim={sim} />
       <Mast reduced={reduced} />
       <BondThreads sim={sim} />

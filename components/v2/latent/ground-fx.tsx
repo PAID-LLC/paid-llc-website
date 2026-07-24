@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { Water } from "three/examples/jsm/objects/Water.js";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import { EffectComposer, Bloom, Noise, Vignette } from "@react-three/postprocessing";
@@ -987,6 +988,141 @@ export function RippleDisc({
       </mesh>
     </group>
   );
+}
+
+// ── Realistic water ──────────────────────────────────────────────────────────
+// A genuine three.js Water surface — real-time mirror reflection of the live
+// scene via its own render pass, animated distortion, and a specular sun
+// glint — rather than a painted plane. The ripple normal map is generated as
+// a sum of periodic sine waves (every term completes a whole number of
+// cycles across the tile, so it's seamless by construction, no fetched
+// texture): a cheap approximation of real ocean wave superposition, and it
+// keeps this file's "everything procedural" rule intact.
+
+function makeWaveNormalTexture(): THREE.CanvasTexture {
+  const s = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = s;
+  canvas.height = s;
+  const ctx = canvas.getContext("2d")!;
+  const img = ctx.createImageData(s, s);
+  const TWO_PI = Math.PI * 2;
+  const WAVES = [
+    { kx: 3, ky: 2, amp: 1.0, phase: 0.0 },
+    { kx: -5, ky: 4, amp: 0.55, phase: 1.7 },
+    { kx: 8, ky: -6, amp: 0.32, phase: 3.1 },
+    { kx: -11, ky: -9, amp: 0.18, phase: 0.6 },
+    { kx: 15, ky: 3, amp: 0.1, phase: 4.4 },
+  ];
+  const height = (x: number, y: number): number => {
+    const u = (x / s) * TWO_PI;
+    const v = (y / s) * TWO_PI;
+    let h = 0;
+    for (const w of WAVES) h += Math.sin(u * w.kx + v * w.ky + w.phase) * w.amp;
+    return h;
+  };
+  const strength = 1.1;
+  for (let y = 0; y < s; y++) {
+    for (let x = 0; x < s; x++) {
+      const hl = height((x - 1 + s) % s, y);
+      const hr = height((x + 1) % s, y);
+      const hd = height(x, (y - 1 + s) % s);
+      const hu = height(x, (y + 1) % s);
+      const dx = (hr - hl) * strength;
+      const dz = (hu - hd) * strength;
+      const len = Math.hypot(dx, dz, 1) || 1;
+      const nx = -dx / len, ny = 1 / len, nz = -dz / len;
+      const i = (y * s + x) * 4;
+      img.data[i] = Math.round((nx * 0.5 + 0.5) * 255);
+      img.data[i + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      img.data[i + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+export function RealisticWater({
+  size = 420,
+  y = 0,
+  color,
+  sunColor = "#ffffff",
+  sunDirection,
+  distortionScale = 2.4,
+  reduced,
+}: {
+  /** Flat-plane footprint, world units. */
+  size?: number;
+  y?: number;
+  color: string;
+  sunColor?: string;
+  sunDirection: [number, number, number];
+  distortionScale?: number;
+  reduced: boolean;
+}) {
+  // Built once (geometry + shader + render target are expensive) and never
+  // torn down for weather/light changes — those update the live uniforms
+  // instead. Reflection is real: Water sets its own onBeforeRender hook, so
+  // the mirror render pass runs automatically every frame once it's in the
+  // scene graph, no manual wiring beyond advancing its time uniform.
+  const water = useMemo(() => {
+    const geometry = new THREE.PlaneGeometry(size, size);
+    const normals = makeWaveNormalTexture();
+    const w = new Water(geometry, {
+      textureWidth: 512,
+      textureHeight: 512,
+      waterNormals: normals,
+      sunDirection: new THREE.Vector3(0, 1, 0),
+      sunColor: 0xffffff,
+      waterColor: 0x0a3d52,
+      distortionScale,
+      fog: true,
+      alpha: 1.0,
+    });
+    w.rotation.x = -Math.PI / 2;
+    return w;
+  }, [size, distortionScale]);
+
+  useEffect(() => {
+    water.position.y = y;
+  }, [water, y]);
+
+  useEffect(() => {
+    (water.material as THREE.ShaderMaterial).uniforms.waterColor.value.set(color);
+  }, [water, color]);
+
+  useEffect(() => {
+    (water.material as THREE.ShaderMaterial).uniforms.sunColor.value.set(sunColor);
+  }, [water, sunColor]);
+
+  useEffect(() => {
+    (water.material as THREE.ShaderMaterial).uniforms.sunDirection.value
+      .set(sunDirection[0], sunDirection[1], sunDirection[2])
+      .normalize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [water, sunDirection[0], sunDirection[1], sunDirection[2]]);
+
+  useEffect(
+    () => () => {
+      water.geometry.dispose();
+      const mat = water.material as THREE.ShaderMaterial;
+      (mat.uniforms.normalSampler?.value as THREE.Texture | undefined)?.dispose();
+      mat.dispose();
+    },
+    [water]
+  );
+
+  useFrame((_, dt) => {
+    if (reduced) return;
+    (water.material as THREE.ShaderMaterial).uniforms.time.value += dt * 0.55;
+  });
+
+  return <primitive object={water} />;
 }
 
 /** Lightning for the static-storm regime: random double-strike sky flashes. */

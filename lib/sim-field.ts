@@ -67,11 +67,27 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
 // ── Territory shape ──────────────────────────────────────────────────────────
 // Flat-topped mesas and shallow basins instead of Genesis's ridge country: the
 // Substrate reads as a test bench, not a frontier — level ground near the Mast
-// (origin), stepped terraces further out, a rim that closes the horizon.
+// (origin), stepped terraces further out. Substrate is an island: the roamed
+// territory is the only dry land, and past its edge the ground shelves down
+// into real water (SimCanvas's RealisticWater) rather than rising into a rim
+// wall — the sea closes the horizon now, not a ring of hills.
 
 export const GROUND_SIZE = 300;
 /** Instances and structures stay inside this radius. */
 export const ROAM_RADIUS = 130;
+
+/** Where the water surface sits. Comfortably below the island interior's
+ *  lowest point (~-3.5 at the noise floor) so nothing on dry land ever dips
+ *  below sea level. */
+export const WATER_LEVEL = -6;
+/** The shore begins just past ROAM_RADIUS — nothing the engine places can
+ *  ever land here, so the beach/seabed slope is purely cosmetic. */
+export const SHORE_START = 134;
+/** Fully underwater seabed by here. */
+export const SHORE_END = 170;
+/** The seabed's resting depth beyond the shelf (mostly hidden under the
+ *  water surface, but it gives the drop-off real shape from above). */
+export const SEABED_FLOOR = -22;
 
 export function terrainHeight(x: number, z: number): number {
   const d = Math.hypot(x, z);
@@ -80,8 +96,13 @@ export function terrainHeight(x: number, z: number): number {
   const raw = fbm2(x * 0.012 + 53, z * 0.012, SIM_SEED + 17, 3);
   const terrace = Math.floor(raw * 5) * 3.2 * smoothstep(45, 90, d);
   const dish = smoothstep(6, 26, d); // Mast ground stays level
-  const rim = smoothstep(110, 148, d) * 30;
-  return rolling * dish + terrace + rim;
+  const island = rolling * dish + terrace;
+  // Past the shore, the island shelves down to the seabed floor.
+  const shoreT = smoothstep(SHORE_START, SHORE_END, d);
+  if (shoreT <= 0) return island;
+  const seabedNoise = (fbm2(x * 0.02 + 91, z * 0.02, SIM_SEED + 53, 3) - 0.5) * 4;
+  const seabed = SEABED_FLOOR + seabedNoise;
+  return island + (seabed - island) * shoreT;
 }
 
 // ── Anomaly sites ────────────────────────────────────────────────────────────
@@ -264,7 +285,10 @@ const SLATE = {
   detail: rgb01("#38bdf8"),
 };
 
+const SAND = rgb01("#d9c48f");
+
 export function groundColor(x: number, z: number): RGB {
+  const d = Math.hypot(x, z);
   const n = fbm2(x * 0.05, z * 0.05, SIM_SEED + 3, 4);
   let c = mix3(SLATE.base, SLATE.high, n);
   c = mix3(c, SLATE.low, noise2(x * 0.12, z * 0.12, SIM_SEED + 7) * 0.4);
@@ -274,5 +298,12 @@ export function groundColor(x: number, z: number): RGB {
   if (gx > 9.75 || gz > 9.75) c = mix3(c, SLATE.detail, 0.10);
   const ridge = Math.abs(fbm2(x * 0.08, z * 0.08, SIM_SEED + 31, 3) - 0.5);
   if (ridge < 0.008) c = mix3(c, SLATE.detail, 0.55);
+  // The shore: a warm sand ring where the island meets the sea, fading back
+  // to slate both further inland and further out toward the (mostly
+  // water-hidden) seabed.
+  const beach =
+    smoothstep(SHORE_START - 26, SHORE_START - 4, d) *
+    (1 - smoothstep(SHORE_START + 10, SHORE_START + 28, d));
+  if (beach > 0) c = mix3(c, SAND, beach * 0.85);
   return c;
 }
