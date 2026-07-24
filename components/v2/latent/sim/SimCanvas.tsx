@@ -12,7 +12,7 @@ import {
   detailSeed, mixHex, type ParticleMode,
 } from "@/components/v2/latent/ground-fx";
 import {
-  GROUND_SIZE, SIM_ACCENT, SIM_ACCENT_SOFT, WATER_LEVEL,
+  GROUND_SIZE, SHORE_END, SIM_ACCENT, SIM_ACCENT_SOFT, WATER_LEVEL,
   anomalySites, groundColor, hashStr, terrainHeight,
   type AnomalySite, type Weather,
 } from "@/lib/sim-field";
@@ -958,7 +958,7 @@ export default function SimCanvas({
 
       <Terrain />
       <RealisticWater
-        size={460}
+        size={2 * SHORE_END}
         y={WATER_LEVEL}
         color={WATER_COLOR}
         sunColor={flush ? "#ffe3b0" : "#cfe6ff"}

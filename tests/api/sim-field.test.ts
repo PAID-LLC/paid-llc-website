@@ -143,10 +143,11 @@ describe("groundColor", () => {
   });
 
   it("warms toward sand near the shoreline versus deep inland", () => {
-    // The beach ring sits around SHORE_START; deep inland (near the Mast)
-    // should read distinctly cooler/darker than the sand blend at the coast.
+    // The beach ring sits just inland of SHORE_START; deep inland (near the
+    // Mast) should read distinctly cooler/darker than the sand blend at the
+    // coast.
     const inland = groundColor(10, 0);
-    const shore = groundColor(SHORE_START - 10, 0);
+    const shore = groundColor(SHORE_START - 4, 0);
     // Sand (#d9c48f) is warmer (higher r, lower b relative to r) than the
     // cool slate palette used everywhere else.
     expect(shore.r - shore.b).toBeGreaterThan(inland.r - inland.b);

@@ -3,6 +3,16 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "8f6f914",
+    "date": "2026-07-24",
+    "subject": "Fix Substrate coastline: keep the existing surface intact, water surrounds it"
+  },
+  {
+    "sha": "6e5629f",
+    "date": "2026-07-24",
+    "subject": "Substrate: island surrounded by real water, not a rim wall"
+  },
+  {
     "sha": "5b16f27",
     "date": "2026-07-23",
     "subject": "Fix Waypoint root cause: Pit Gate showed \"null beat X\" on drawn duels"
@@ -51,15 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "67499f9",
     "date": "2026-07-20",
     "subject": "Retrigger CF build (previous run looks like a builder flake - no check-run for 5 min, then"
-  },
-  {
-    "sha": "d48fbac",
-    "date": "2026-07-20",
-    "subject": "Fix world-route 500s: stub the dropped ssr:false dynamic loader binding"
-  },
-  {
-    "sha": "e1b863d",
-    "date": "2026-07-20",
-    "subject": "Temp: repair matchers for minified output + world occurrence samples"
   }
 ];

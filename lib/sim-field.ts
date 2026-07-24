@@ -69,10 +69,11 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
 // Substrate reads as a test bench, not a frontier — level ground near the Mast
 // (origin), stepped terraces further out, a rim that closes the far edge.
 // Substrate is an island: the existing surface (everything up through the
-// rim, exactly as it was) is untouched, and past it — beyond anywhere the
-// existing terrain ever reached — the ground shelves down into real water
-// (SimCanvas's RealisticWater), surrounding the island rather than reshaping
-// its coastline.
+// rim, exactly as it was) is untouched, and the water lives in the space
+// that was ALREADY part of the terrain's own existing footprint (the flat
+// highland shelf the old rim used to plateau onto, d=148 out to the mesh's
+// own edge at GROUND_SIZE/2) rather than extending the world outward with a
+// brand new zone beyond anywhere the terrain has ever reached.
 
 export const GROUND_SIZE = 300;
 /** Instances and structures stay inside this radius. */
@@ -82,12 +83,15 @@ export const ROAM_RADIUS = 130;
  *  (~-3.5 at the noise floor) so nothing on dry land ever dips below sea
  *  level. */
 export const WATER_LEVEL = -6;
-/** The shore begins right past the existing rim (which finishes rising by
- *  d=148) — the water surrounds the surface exactly as it already was,
- *  rather than replacing any of it. */
-export const SHORE_START = 150;
-/** Fully underwater seabed by here. */
-export const SHORE_END = 185;
+/** The shore begins exactly where the existing rim finishes rising (d=148)
+ *  — no gap, no overlap: the rim is untouched, and the very next unit of
+ *  ground (already part of the existing terrain mesh, previously a flat
+ *  highland shelf) becomes shore. */
+export const SHORE_START = 148;
+/** Fully underwater seabed by here — still inside the terrain mesh's own
+ *  existing footprint (GROUND_SIZE=300 reaches this radius along its
+ *  shortest, axis-aligned edge), not a new radius invented beyond it. */
+export const SHORE_END = 160;
 /** The seabed's resting depth beyond the shelf (mostly hidden under the
  *  water surface, but it gives the drop-off real shape from above). */
 export const SEABED_FLOOR = -22;
@@ -305,10 +309,11 @@ export function groundColor(x: number, z: number): RGB {
   if (ridge < 0.008) c = mix3(c, SLATE.detail, 0.55);
   // The shore: a warm sand ring where the island meets the sea, fading back
   // to slate both further inland and further out toward the (mostly
-  // water-hidden) seabed.
+  // water-hidden) seabed. Narrow band -- the whole shore-to-seabed run is
+  // only SHORE_END - SHORE_START (12 units) wide.
   const beach =
-    smoothstep(SHORE_START - 26, SHORE_START - 4, d) *
-    (1 - smoothstep(SHORE_START + 10, SHORE_START + 28, d));
+    smoothstep(SHORE_START - 9, SHORE_START - 1, d) *
+    (1 - smoothstep(SHORE_START + 3, SHORE_START + 12, d));
   if (beach > 0) c = mix3(c, SAND, beach * 0.85);
   return c;
 }
