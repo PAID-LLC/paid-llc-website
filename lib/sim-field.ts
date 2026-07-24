@@ -67,24 +67,27 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
 // ── Territory shape ──────────────────────────────────────────────────────────
 // Flat-topped mesas and shallow basins instead of Genesis's ridge country: the
 // Substrate reads as a test bench, not a frontier — level ground near the Mast
-// (origin), stepped terraces further out. Substrate is an island: the roamed
-// territory is the only dry land, and past its edge the ground shelves down
-// into real water (SimCanvas's RealisticWater) rather than rising into a rim
-// wall — the sea closes the horizon now, not a ring of hills.
+// (origin), stepped terraces further out, a rim that closes the far edge.
+// Substrate is an island: the existing surface (everything up through the
+// rim, exactly as it was) is untouched, and past it — beyond anywhere the
+// existing terrain ever reached — the ground shelves down into real water
+// (SimCanvas's RealisticWater), surrounding the island rather than reshaping
+// its coastline.
 
 export const GROUND_SIZE = 300;
 /** Instances and structures stay inside this radius. */
 export const ROAM_RADIUS = 130;
 
-/** Where the water surface sits. Comfortably below the island interior's
- *  lowest point (~-3.5 at the noise floor) so nothing on dry land ever dips
- *  below sea level. */
+/** Where the water surface sits. Comfortably below the island's lowest point
+ *  (~-3.5 at the noise floor) so nothing on dry land ever dips below sea
+ *  level. */
 export const WATER_LEVEL = -6;
-/** The shore begins just past ROAM_RADIUS — nothing the engine places can
- *  ever land here, so the beach/seabed slope is purely cosmetic. */
-export const SHORE_START = 134;
+/** The shore begins right past the existing rim (which finishes rising by
+ *  d=148) — the water surrounds the surface exactly as it already was,
+ *  rather than replacing any of it. */
+export const SHORE_START = 150;
 /** Fully underwater seabed by here. */
-export const SHORE_END = 170;
+export const SHORE_END = 185;
 /** The seabed's resting depth beyond the shelf (mostly hidden under the
  *  water surface, but it gives the drop-off real shape from above). */
 export const SEABED_FLOOR = -22;
@@ -96,8 +99,10 @@ export function terrainHeight(x: number, z: number): number {
   const raw = fbm2(x * 0.012 + 53, z * 0.012, SIM_SEED + 17, 3);
   const terrace = Math.floor(raw * 5) * 3.2 * smoothstep(45, 90, d);
   const dish = smoothstep(6, 26, d); // Mast ground stays level
-  const island = rolling * dish + terrace;
-  // Past the shore, the island shelves down to the seabed floor.
+  const rim = smoothstep(110, 148, d) * 30; // the existing surface's far edge
+  const island = rolling * dish + terrace + rim;
+  // Past the existing surface entirely, the ground shelves down to the
+  // seabed floor — the water surrounds the island, it doesn't cut into it.
   const shoreT = smoothstep(SHORE_START, SHORE_END, d);
   if (shoreT <= 0) return island;
   const seabedNoise = (fbm2(x * 0.02 + 91, z * 0.02, SIM_SEED + 53, 3) - 0.5) * 4;
