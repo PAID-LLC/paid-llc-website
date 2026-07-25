@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import ResidentsPanel from "@/components/v2/latent/ResidentsPanel";
 import Link from "next/link";
 import type { WaypointLegends } from "@/lib/waypoint/legends";
 import type { WaypointSnapshot } from "@/lib/waypoint/data";
@@ -181,6 +182,14 @@ export default function WaypointExperience({ initial }: { initial: WaypointSnaps
       )}
 
       {tab !== "legends" && <Hud state={state} />}
+
+      {/* Resident layer: simulated inhabitants on the shared 30-min tick.
+          Separate from this world's compiled data by design -- see
+          lib/residents/engine.ts. Desktop only; the mobile scene is
+          already carrying the HUD and the tab bar. */}
+      <div className="pointer-events-none absolute right-4 top-16 z-30 hidden max-h-[calc(100vh-8rem)] overflow-y-auto lg:block">
+        <ResidentsPanel world="waypoint" accent="#ffdf9e" />
+      </div>
 
       <TabBar tab={tab} onTab={switchTab} />
     </div>,

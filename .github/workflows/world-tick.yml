@@ -87,3 +87,33 @@ jobs:
           echo "meridian tick: $code"
           cat /tmp/meridian.json
           test "$code" = "200"
+
+      # World residents: the five COMPILER worlds (Arclight, the Crucible,
+      # Palimpsest, the Lathe, Waypoint) render real platform data and go dark
+      # when it is empty — a 2026-07-25 audit found three dark for 12-20 days
+      # and one that had never recorded traffic. This step gives each of them
+      # four residents who move, work and build inside the world itself. Two
+      # residents act per world per tick, chosen deterministically from their
+      # drives. ZERO Gemini calls, so it never competes for the shared
+      # 1,000/day budget and never stalls when that budget is spent.
+      #
+      # Writes only to the world_resident_* / world_builds tables; it never
+      # touches arena_duels, sales_ledger or agent_service_jobs, so no compiled
+      # world reports activity that did not really happen. Returns 200
+      # {initialized:false} until db/world-residents.sql has been run.
+      - name: Drive one resident tick across the five compiler worlds
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repo secret not set — skipping"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/residents.json -w "%{http_code}" --max-time 60 \
+            -X POST https://paiddev.com/api/residents/tick \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "residents tick: $code"
+          cat /tmp/residents.json
+          test "$code" = "200"

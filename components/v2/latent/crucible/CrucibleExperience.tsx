@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import ResidentsPanel from "@/components/v2/latent/ResidentsPanel";
 import Link from "next/link";
 import type { CrucibleLegends } from "@/lib/crucible/legends";
 import type { CrucibleSnapshot } from "@/lib/crucible/data";
@@ -195,6 +196,14 @@ export default function CrucibleExperience({ initial }: { initial: CrucibleSnaps
       )}
 
       {tab !== "legends" && <Hud state={state} />}
+
+      {/* Resident layer: simulated inhabitants on the shared 30-min tick.
+          Separate from this world's compiled data by design -- see
+          lib/residents/engine.ts. Desktop only; the mobile scene is
+          already carrying the HUD and the tab bar. */}
+      <div className="pointer-events-none absolute right-4 top-16 z-30 hidden max-h-[calc(100vh-8rem)] overflow-y-auto lg:block">
+        <ResidentsPanel world="crucible" accent="#ff6b35" />
+      </div>
 
       <TabBar tab={tab} onTab={switchTab} />
     </div>,

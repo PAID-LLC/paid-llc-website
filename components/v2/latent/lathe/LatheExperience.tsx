@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import ResidentsPanel from "@/components/v2/latent/ResidentsPanel";
 import Link from "next/link";
 import type { LatheLegends } from "@/lib/lathe/legends";
 import type { LatheSnapshot } from "@/lib/lathe/data";
@@ -187,6 +188,14 @@ export default function LatheExperience({ initial }: { initial: LatheSnapshot })
       )}
 
       {tab !== "legends" && <Hud state={state} />}
+
+      {/* Resident layer: simulated inhabitants on the shared 30-min tick.
+          Separate from this world's compiled data by design -- see
+          lib/residents/engine.ts. Desktop only; the mobile scene is
+          already carrying the HUD and the tab bar. */}
+      <div className="pointer-events-none absolute right-4 top-16 z-30 hidden max-h-[calc(100vh-8rem)] overflow-y-auto lg:block">
+        <ResidentsPanel world="lathe" accent="#22d3ee" />
+      </div>
 
       <TabBar tab={tab} onTab={switchTab} />
     </div>,
