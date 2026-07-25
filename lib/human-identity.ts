@@ -11,7 +11,14 @@ import { grantCredits }     from "@/lib/ucp-helpers";
 // Welcome grant on first provision: enough for ~1-2 house hires so a new human can
 // try the market before buying a pack. Adjust freely; this is the "first hires are
 // effectively free" lever. Set to 0 to require a credit purchase up front.
-const HUMAN_WELCOME_CREDITS = 10;
+//
+// Raised 10 -> 30 (2026-07-25) so the /website-audit storefront converts: the
+// Website Audit Brief is the premium anchor at 25cr, and a cold visitor arriving
+// from outreach used to sign in and immediately hit a paywall on the exact thing
+// the page advertises. 30 covers one audit plus a cheap second hire. The giveaway
+// is bounded by the existing daily Gemini budget in lib/usage-guard.ts, so this
+// cannot run away on cost.
+const HUMAN_WELCOME_CREDITS = 30;
 
 export interface HumanIdentity {
   agentName: string;
