@@ -37,20 +37,20 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
       type="button"
       onClick={() => onTab(t)}
       aria-pressed={tab === t}
-      className="rounded-md px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors"
+      className="rounded-md px-2 py-1.5 font-mono sm:px-3.5 text-[11px] uppercase tracking-[0.2em] transition-colors"
       style={tab === t ? { color: "#2a1f04", background: GOLD } : { color: "#e8d9b8" }}
     >
       {label}
     </button>
   );
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-amber-900/30 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
+    <div className="pointer-events-auto absolute bottom-4 left-[92px] right-0 z-40 mx-auto flex w-fit flex-wrap items-center justify-center gap-1 rounded-lg border border-amber-900/30 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
       {btn("port", "Port")}
       {btn("map", "Map")}
       {btn("legends", "Legends")}
       <Link
         href="/the-latent-space"
-        className="rounded-md px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-amber-100/60 transition-colors hover:text-amber-50"
+        className="rounded-md px-2 py-1.5 font-mono sm:px-3.5 text-[11px] uppercase tracking-[0.2em] text-amber-100/60 transition-colors hover:text-amber-50"
       >
         Universe
       </Link>
@@ -66,7 +66,7 @@ function Hud({ state }: { state: WaypointSnapshot }) {
     </div>
   );
   return (
-    <div className="pointer-events-none absolute left-4 top-4 z-30 w-[240px] rounded-lg border border-amber-900/30 bg-black/70 p-3 font-mono text-[11px] backdrop-blur-sm sm:left-5 sm:top-16">
+    <div className="pointer-events-none absolute left-[92px] top-4 z-30 w-[240px] rounded-lg border border-amber-900/30 bg-black/70 p-3 font-mono text-[11px] backdrop-blur-sm sm:left-24 sm:top-16">
       <p className="mb-0.5 uppercase tracking-[0.3em]" style={{ color: GOLD }}>
         Waypoint
       </p>

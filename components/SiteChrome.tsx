@@ -67,12 +67,23 @@ const DOCK_SKIP = [
   "/free", // lead magnet landing — keep it conversion-focused
 ];
 
+// Every world surface mounts itself as a `fixed inset-0 z-[100]` overlay, which
+// paints above the z-50 site header AND above a z-[60] dock. Any such surface
+// MUST be listed here so the dock rides z-[110] and stays reachable — omitting
+// one does not degrade gracefully, it buries the nav entirely (2026-07-25: the
+// Crucible, Lathe, Waypoint and Meridian each had all 9 rail links dead because
+// they were missing from this list). The matching contract on the other side:
+// every listed surface's own left-edge HUD clears the rail (left-[92px]).
 const isImmersive = (p: string) =>
   p === "/the-latent-space" ||
   p === "/the-latent-space/genesis/world" ||
   p === "/the-latent-space/simulation" ||
   p === "/the-latent-space/arclight" ||
   p === "/the-latent-space/palimpsest" ||
+  p === "/the-latent-space/crucible" ||
+  p === "/the-latent-space/lathe" ||
+  p === "/the-latent-space/waypoint" ||
+  p === "/the-latent-space/meridian" ||
   /^\/v2\/lobbies\/[^/]+\/floor$/.test(p);
 
 const isLatent = (p: string) =>

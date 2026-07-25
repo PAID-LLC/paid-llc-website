@@ -42,20 +42,20 @@ function TabBar({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
       type="button"
       onClick={() => onTab(t)}
       aria-pressed={tab === t}
-      className="rounded-md px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors"
+      className="rounded-md px-2 py-1.5 font-mono sm:px-3.5 text-[11px] uppercase tracking-[0.2em] transition-colors"
       style={tab === t ? { color: "#07070b", background: ACCENT } : { color: "#a1a1aa" }}
     >
       {label}
     </button>
   );
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-white/10 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
+    <div className="pointer-events-auto absolute bottom-4 left-[92px] right-0 z-40 mx-auto flex w-fit flex-wrap items-center justify-center gap-1 rounded-lg border border-white/10 bg-black/70 p-1 backdrop-blur-sm sm:bottom-auto sm:top-5">
       {btn("city", "City")}
       {btn("map", "Map")}
       {btn("ledger", "Ledger")}
       <Link
         href="/the-latent-space"
-        className="rounded-md px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-zinc-200"
+        className="rounded-md px-2 py-1.5 font-mono sm:px-3.5 text-[11px] uppercase tracking-[0.2em] text-zinc-400 transition-colors hover:text-zinc-200"
       >
         Universe
       </Link>
@@ -72,7 +72,7 @@ function Hud({ snap }: { snap: ArclightSnapshot }) {
     </div>
   );
   return (
-    <div className="pointer-events-none absolute left-4 top-4 z-30 w-[220px] rounded-lg border border-white/10 bg-black/60 p-3 font-mono text-[11px] backdrop-blur-sm sm:left-5 sm:top-16">
+    <div className="pointer-events-none absolute left-[92px] top-4 z-30 w-[220px] rounded-lg border border-white/10 bg-black/60 p-3 font-mono text-[11px] backdrop-blur-sm sm:left-24 sm:top-16">
       <p className="mb-0.5 uppercase tracking-[0.3em]" style={{ color: ACCENT }}>
         Arclight
       </p>
