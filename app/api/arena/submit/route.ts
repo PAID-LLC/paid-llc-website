@@ -17,7 +17,11 @@ import { ArenaDuel, ArenaPuzzle, JuryScores, DuelRubric, SUDDEN_DEATH_MARGIN } f
 import { sentinelCheck } from "@/lib/sentinel";
 import { verifyAgentWrite } from "@/lib/agent-auth";
 
-const MAX_RESPONSE_CHARS = 1000;
+// Must match the limit the public manifest advertises. These disagreed until
+// 2026-07-26: the manifest promised 2000 and this silently sliced to 1000, so
+// an agent that followed our published contract had half its answer truncated
+// with no error and was then judged on the remainder.
+const MAX_RESPONSE_CHARS = 2000;
 const GEMINI_MODEL       = "gemini-flash-lite-latest";
 const GEMINI_ENDPOINT    = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -127,49 +131,73 @@ export async function POST(req: Request) {
     body: JSON.stringify({ status: "judging" }),
   });
 
-  // ── Multi-model jury ──────────────────────────────────────────────────────
-  // Calls all available judges in parallel (Gemini free tier + GPT-4o if key present).
-  // Scores are averaged across all judges that respond successfully.
-  // Falls back to a coin flip if no judges are available.
-
-  const judgePrompt =
-    `You are an impartial AI judge in The Latent Space Arena — a real-time duel platform where AI agents compete on response quality.\n\n` +
-    `DUEL PROMPT:\n${duel.prompt}\n\n` +
-    `CHALLENGER — ${duel.challenger}:\n${challResponse}\n\n` +
-    `DEFENDER — ${duel.defender}:\n${defResponse}\n\n` +
-    `Score each response on exactly 5 dimensions using a 0–10 integer scale. Return ONLY valid JSON — no commentary, no markdown, no explanation outside the JSON object.\n\n` +
-    `{"reasoning":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"accuracy":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"depth":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"creativity":{"challenger_score":0,"defender_score":0,"winner":"challenger"},"coherence":{"challenger_score":0,"defender_score":0,"winner":"challenger"}}\n\n` +
-    `Scoring guide:\n` +
-    `- reasoning: Is the logic sound? Conclusions supported by premises? Clear reasoning steps or unsupported leaps?\n` +
-    `- accuracy: Are all factual claims correct? Any hallucinations or unsupported assertions?\n` +
-    `- depth: How comprehensively does it cover the topic, nuance, edge cases, sub-topics?\n` +
-    `- creativity: Unique framing or non-obvious insight? Or standard rote answer?\n` +
-    `- coherence: Fluent, well-organized, grammatically clean, easy to follow?\n\n` +
-    `Anchor every score to this scale and use the full range:\n` +
-    `  0-2 poor · 3-4 weak · 5-6 adequate · 7-8 strong · 9-10 exceptional.\n` +
-    `Do not default to the middle. A rote or generic answer is a 3-5, not a 7.\n\n` +
-    `Rules: Do not favor length over quality. Score dimensions independently. Set "winner" to the agent with the higher score for that dimension, or "tie" if equal.`;
+  // ── Multi-model jury, order-swapped ───────────────────────────────────────
+  // Calls every available judge (Gemini free tier + GPT-4o if a key is present)
+  // TWICE: once with the challenger presented first, once with the defender
+  // presented first. Responses are labelled A and B rather than by role, so
+  // neither position nor agent name is stable between the two passes.
+  //
+  // Why: LLM judges systematically prefer whichever response appears first.
+  // This prompt used to put CHALLENGER first in every duel ever run, and then
+  // ties went to the challenger, and then the no-puzzle sudden-death fallback
+  // also went to the challenger. Three independent biases all pointing the same
+  // way, in a system whose only job is fair ranking. Randomising order is the
+  // mitigation the literature actually supports; telling the judge to be fair
+  // is not.
+  //
+  // Scores from both passes are averaged. If the winner FLIPS between passes,
+  // the judge has told us it cannot separate the two answers, and that is
+  // recorded as a genuine tie rather than silently resolved.
 
   const geminiKey = process.env.GEMINI_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
-  const judgeCalls: Promise<DuelRubric | null>[] = [];
-  if (geminiKey) judgeCalls.push(callGeminiJudge(judgePrompt, geminiKey));
-  if (openaiKey) judgeCalls.push(callGPT4oJudge(judgePrompt, openaiKey));
+  const runPass = (first: string, second: string): Promise<RubricAB | null>[] => {
+    const prompt = buildJudgePrompt(duel.prompt, first, second);
+    const calls: Promise<RubricAB | null>[] = [];
+    if (geminiKey) calls.push(callGeminiJudge(prompt, geminiKey));
+    if (openaiKey) calls.push(callGPT4oJudge(prompt, openaiKey));
+    return calls;
+  };
 
-  const judgeResults = (await Promise.all(judgeCalls)).filter(Boolean) as DuelRubric[];
+  // Pass 1: A = challenger. Pass 2: A = defender, so orientation is inverted.
+  const [pass1, pass2] = await Promise.all([
+    Promise.all(runPass(challResponse, defResponse)),
+    Promise.all(runPass(defResponse, challResponse)),
+  ]);
+
+  const oriented1 = pass1.filter(Boolean).map((r) => orient(r as RubricAB, false));
+  const oriented2 = pass2.filter(Boolean).map((r) => orient(r as RubricAB, true));
+  const allOriented = [...oriented1, ...oriented2];
 
   let juryScores: JuryScores | null = null;
 
-  if (judgeResults.length > 0) {
-    const rubric = averageRubrics(judgeResults);
+  if (allOriented.length > 0) {
+    const rubric = averageRubrics(allOriented);
     const sources = [geminiKey && GEMINI_MODEL, openaiKey && "gpt-4o"].filter(Boolean) as string[];
+
+    // Order consistency: compare the verdict each pass reached on its own.
+    // Only meaningful when both passes produced at least one usable rubric.
+    const verdict = (rs: DuelRubric[]): "challenger" | "defender" | "tie" | null => {
+      if (rs.length === 0) return null;
+      const avg = averageRubrics(rs);
+      const c = computeTotal(avg, "challenger");
+      const d = computeTotal(avg, "defender");
+      return c === d ? "tie" : c > d ? "challenger" : "defender";
+    };
+    const v1 = verdict(oriented1);
+    const v2 = verdict(oriented2);
+    const orderConsistent = v1 === null || v2 === null ? undefined : v1 === v2;
+
     juryScores = {
-      challenger:   computeTotal(rubric, "challenger"),
-      defender:     computeTotal(rubric, "defender"),
+      challenger:       computeTotal(rubric, "challenger"),
+      defender:         computeTotal(rubric, "defender"),
       rubric,
-      judged:       true,
-      judge_source: sources.join("+"),
+      judged:           true,
+      judge_source:     sources.join("+"),
+      order_consistent: orderConsistent,
+      judge_passes:     allOriented.length,
+      method:           JUDGE_METHOD,
     };
   }
 
@@ -194,13 +222,20 @@ export async function POST(req: Request) {
       defender:     computeTotal(rubric, "defender"),
       rubric,
       judged:       false,
+      method:       JUDGE_METHOD,
     };
   }
 
   const margin = Math.abs(juryScores.challenger - juryScores.defender);
 
-  // ── Sudden Death if margin ≤ 2 ────────────────────────────────────────────
-  if (margin <= SUDDEN_DEATH_MARGIN) {
+  // Indistinguishable on either of two independent grounds: the averaged margin
+  // is inside the sudden-death band, or the verdict flipped when the
+  // presentation order flipped. Both mean "the judge cannot separate these".
+  const orderFlipped = juryScores.order_consistent === false;
+  const indistinguishable = margin <= SUDDEN_DEATH_MARGIN || orderFlipped;
+
+  // ── Sudden Death when the jury cannot separate them ───────────────────────
+  if (indistinguishable) {
     const puzzleRes = await fetch(
       sbUrl("arena_puzzles?active=eq.true&select=id,type,prompt,answer,difficulty&order=id.asc"),
       { headers: sbHeaders() }
@@ -208,12 +243,24 @@ export async function POST(req: Request) {
     const puzzles = puzzleRes.ok ? await puzzleRes.json() as ArenaPuzzle[] : [];
 
     if (puzzles.length === 0) {
-      // No puzzles — break tie by challenger wins
-      const [winnerElo, loserElo] = await Promise.all([fetchElo(duel.challenger), fetchElo(duel.defender)]);
-      const winnerDelta = computeEloDelta(winnerElo, loserElo);
-      await finalizeDuel(duelId, duel.challenger, duel.defender, juryScores, false, null, false, /* isChallengerWinner */ true, winnerDelta, stakeCredits);
-      await postLossAudit(duel.defender, duel.prompt, defResponse, duel.room_id);
-      return Response.json({ ok: true, status: "complete", winner: duel.challenger });
+      // No puzzle bank, so there is no fair way to break this. Record an honest
+      // draw: no Elo movement, both stakes returned.
+      //
+      // This branch used to award the win to the challenger unconditionally,
+      // which meant every closest and most contested duel was decided by which
+      // side happened to open it. Combined with the fixed challenger-first
+      // judge prompt, that was a systematic advantage rather than a tiebreak.
+      await finalizeDraw(duelId, juryScores, duel.challenger, duel.defender, stakeCredits);
+      return Response.json({
+        ok:     true,
+        status: "complete",
+        winner: null,
+        drawn:  true,
+        reason: orderFlipped
+          ? "the jury's verdict flipped when the presentation order was swapped"
+          : `scores within the ${SUDDEN_DEATH_MARGIN}-point sudden-death margin and no tiebreak puzzles are available`,
+        scores: { challenger: juryScores.challenger, defender: juryScores.defender },
+      });
     }
 
     const puzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
@@ -237,7 +284,10 @@ export async function POST(req: Request) {
   }
 
   // ── Declare winner ────────────────────────────────────────────────────────
-  const winner = juryScores.challenger >= juryScores.defender ? duel.challenger : duel.defender;
+  // Strict comparison. An exact tie cannot reach here: it would have been
+  // inside the sudden-death margin above. The old `>=` handed exact ties to the
+  // challenger.
+  const winner = juryScores.challenger > juryScores.defender ? duel.challenger : duel.defender;
   const loser  = winner === duel.challenger ? duel.defender : duel.challenger;
   const isChallengerWinner = winner === duel.challenger;
 
@@ -307,7 +357,48 @@ async function finalizeDuel(
   }
 }
 
+/** An honest draw: both stakes returned, no Elo movement, no W/L recorded. */
+async function finalizeDraw(
+  duelId:       number,
+  juryScores:   JuryScores,
+  challenger:   string,
+  defender:     string,
+  stakeCredits: number,
+): Promise<void> {
+  await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
+    method:  "PATCH",
+    headers: sbHeaders(),
+    body: JSON.stringify({
+      jury_scores:          juryScores,
+      winner:               null,
+      loser:                null,
+      sd_winner:            null,
+      sudden_death:         false,
+      status:               "complete",
+      challenger_elo_delta: 0,
+      defender_elo_delta:   0,
+    }),
+  });
+
+  // Refund both stakes. The challenger paid at challenge time and the defender
+  // paid on submit, so a draw has to return two.
+  if (stakeCredits > 0) {
+    await Promise.all([challenger, defender].map((agent) =>
+      fetch(sbUrl("rpc/add_latent_credits"), {
+        method: "POST",
+        headers: { ...sbHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_agent_name: agent, p_amount: stakeCredits }),
+      })
+    ));
+  }
+}
+
 // ── Judge helpers ─────────────────────────────────────────────────────────────
+
+/** Grading methodology version, stamped onto every result. Bump when scoring
+ *  semantics change, or a stored score's meaning silently rots.
+ *  Not exported: a Next.js route module may only export route handlers. */
+const JUDGE_METHOD = "jury/v2-order-swapped";
 
 const RUBRIC_DIMS = ["reasoning", "accuracy", "depth", "creativity", "coherence"] as const;
 type RubricDim = typeof RUBRIC_DIMS[number];
@@ -316,28 +407,71 @@ const RUBRIC_WEIGHTS: Record<RubricDim, number> = {
   reasoning: 0.25, accuracy: 0.25, depth: 0.20, creativity: 0.15, coherence: 0.15,
 };
 
-function parseRubric(text: string): DuelRubric | null {
+/** A judge's raw verdict, in the anonymous A/B frame it was asked in. */
+type RubricAB = Record<RubricDim, { a: number; b: number }>;
+
+/** Builds the prompt in an anonymous A/B frame. The agents' names never appear:
+ *  a judge that recognises a name could favour it, and more importantly the
+ *  order-swap only removes position bias if position is the ONLY thing that
+ *  changes between the two passes. */
+function buildJudgePrompt(duelPrompt: string, aResponse: string, bResponse: string): string {
+  return (
+    `You are an impartial judge in an AI response-quality evaluation.\n\n` +
+    `TASK GIVEN TO BOTH:\n${duelPrompt}\n\n` +
+    `RESPONSE A:\n${aResponse}\n\n` +
+    `RESPONSE B:\n${bResponse}\n\n` +
+    `Score each response on exactly 5 dimensions using a 0-10 integer scale. Return ONLY valid JSON, no commentary, no markdown, no explanation outside the JSON object.\n\n` +
+    `{"reasoning":{"a":0,"b":0},"accuracy":{"a":0,"b":0},"depth":{"a":0,"b":0},"creativity":{"a":0,"b":0},"coherence":{"a":0,"b":0}}\n\n` +
+    `Scoring guide:\n` +
+    `- reasoning: Is the logic sound? Conclusions supported by premises? Clear reasoning steps or unsupported leaps?\n` +
+    `- accuracy: Are all factual claims correct? Any hallucinations or unsupported assertions?\n` +
+    `- depth: How comprehensively does it cover the topic, nuance, edge cases, sub-topics?\n` +
+    `- creativity: Unique framing or non-obvious insight? Or standard rote answer?\n` +
+    `- coherence: Fluent, well-organized, grammatically clean, easy to follow?\n\n` +
+    `Anchor every score to this scale and use the full range:\n` +
+    `  0-2 poor, 3-4 weak, 5-6 adequate, 7-8 strong, 9-10 exceptional.\n` +
+    `Do not default to the middle. A rote or generic answer is a 3-5, not a 7.\n\n` +
+    `Rules: Judge only on quality. Length is not quality. A and B are in arbitrary order and the order carries no information. Score dimensions independently.`
+  );
+}
+
+/** Maps an anonymous A/B verdict back onto challenger/defender.
+ *  `inverted` is true for the pass where A was the DEFENDER. */
+function orient(ab: RubricAB, inverted: boolean): DuelRubric {
+  const rubric = {} as DuelRubric;
+  for (const dim of RUBRIC_DIMS) {
+    const cs = inverted ? ab[dim].b : ab[dim].a;
+    const ds = inverted ? ab[dim].a : ab[dim].b;
+    rubric[dim] = {
+      challenger_score: cs,
+      defender_score:   ds,
+      winner: cs > ds ? "challenger" : ds > cs ? "defender" : "tie",
+      weight: RUBRIC_WEIGHTS[dim],
+    };
+  }
+  return rubric;
+}
+
+function parseRubric(text: string): RubricAB | null {
   try {
     const cleaned = text.replace(/```json|```/g, "").trim();
     const raw = JSON.parse(cleaned) as Record<string, Record<string, unknown>>;
-    const rubric = {} as DuelRubric;
+    const rubric = {} as RubricAB;
     for (const dim of RUBRIC_DIMS) {
       const d = raw[dim];
       if (!d) return null;
-      const cs = Number(d.challenger_score);
-      const ds = Number(d.defender_score);
-      rubric[dim] = {
-        challenger_score: cs,
-        defender_score:   ds,
-        winner: cs > ds ? "challenger" : ds > cs ? "defender" : "tie",
-        weight: RUBRIC_WEIGHTS[dim],
-      };
+      const a = Number(d.a);
+      const b = Number(d.b);
+      // A judge that returns a non-number has not scored this dimension, and
+      // NaN would propagate silently through the average into a stored score.
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+      rubric[dim] = { a, b };
     }
     return rubric;
   } catch { return null; }
 }
 
-async function callGeminiJudge(prompt: string, apiKey: string): Promise<DuelRubric | null> {
+async function callGeminiJudge(prompt: string, apiKey: string): Promise<RubricAB | null> {
   try {
     await bumpCounter("gemini_arena", 1); // accounting only — arena is credit-gated, not budget-gated
     const res = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
@@ -355,7 +489,7 @@ async function callGeminiJudge(prompt: string, apiKey: string): Promise<DuelRubr
   } catch { return null; }
 }
 
-async function callGPT4oJudge(prompt: string, apiKey: string): Promise<DuelRubric | null> {
+async function callGPT4oJudge(prompt: string, apiKey: string): Promise<RubricAB | null> {
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method:  "POST",

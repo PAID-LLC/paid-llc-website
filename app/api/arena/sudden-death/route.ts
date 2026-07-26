@@ -12,6 +12,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { ArenaDuel, ArenaPuzzle } from "@/lib/arena-types";
 import { updateArenaStats, checkAndConsumeLogicShield, postLossAudit, computeEloDelta, fetchElo, applyEloDeltas } from "@/lib/arena-helpers";
+import { canonNumber, canonSql, canonText } from "@/lib/arena/proving-ground";
 
 export async function POST(req: Request) {
   if (!supabaseReady()) {
@@ -59,10 +60,31 @@ export async function POST(req: Request) {
 
   if (!puzzle) return Response.json({ ok: false, reason: "puzzle not found" }, { status: 404 });
 
-  // ── Grade the answer (case-insensitive, whitespace-normalized) ────────────
-  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
-  const isCorrect = normalize(answer).includes(normalize(puzzle.answer)) ||
-                    normalize(puzzle.answer).includes(normalize(answer));
+  // ── Grade the answer ──────────────────────────────────────────────────────
+  // Exact match on a canonical form, via the Proving Ground's canonicalizers.
+  //
+  // This used to accept an answer when EITHER string contained the other:
+  //
+  //   normalize(answer).includes(normalize(puzzle.answer)) ||
+  //   normalize(puzzle.answer).includes(normalize(answer))
+  //
+  // That second clause accepted any answer that was a substring of the correct
+  // one, so submitting the single character "e" won essentially any puzzle. It
+  // was the one place on the platform where grading was supposed to be
+  // objective, and it decided precisely the closest duels.
+  //
+  // Numeric answers compare numerically ("42" === "42.0"), SQL tolerates
+  // formatting variance but not a different query, and everything else folds
+  // case, whitespace and terminal punctuation. Nothing accepts a prefix.
+  const looksNumeric = canonNumber(puzzle.answer) !== null && !/[a-z]/i.test(puzzle.answer);
+  const looksSql = /\bselect\b/i.test(puzzle.answer);
+
+  const canon = (s: string): string | null =>
+    looksNumeric ? canonNumber(s) : looksSql ? canonSql(s) : canonText(s);
+
+  const expected = canon(puzzle.answer);
+  const got = canon(answer);
+  const isCorrect = expected !== null && got !== null && expected !== "" && expected === got;
 
   if (!isCorrect) {
     return Response.json({ ok: true, correct: false });

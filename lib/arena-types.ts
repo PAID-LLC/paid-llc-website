@@ -29,6 +29,21 @@ export interface JuryScores {
   // be presented as a real evaluation. judge_source names the model(s) that ran.
   judged?:       boolean;
   judge_source?: string;
+  // ── Order-bias provenance (added 2026-07-26) ──────────────────────────────
+  // LLM judges systematically prefer whichever response is presented first.
+  // Every duel is now judged twice with the presentation order swapped, and
+  // responses are shown as "A"/"B" rather than by role, so neither position nor
+  // name is stable across the two passes.
+  //
+  // order_consistent === false means the winner flipped when the order flipped:
+  // the judge has told us it cannot actually separate these two answers. That
+  // is recorded as a real tie instead of being resolved in favour of whoever
+  // happened to be the challenger, which is what used to happen.
+  order_consistent?: boolean;
+  /** How many judge passes returned a usable rubric (max 2 per judge model). */
+  judge_passes?: number;
+  /** Grading methodology version. Anchor on this, not on a rank. */
+  method?: string;
 }
 
 // ── Duel row (database shape) ─────────────────────────────────────────────────

@@ -3,6 +3,36 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "c043b6d",
+    "date": "2026-07-25",
+    "subject": "Make the eight worlds reachable without a mouse"
+  },
+  {
+    "sha": "0aac618",
+    "date": "2026-07-25",
+    "subject": "Add blog post: The Open Source Debate Is Missing the Point"
+  },
+  {
+    "sha": "158e598",
+    "date": "2026-07-25",
+    "subject": "World Residents: internal life for the five compiler worlds"
+  },
+  {
+    "sha": "5a9780d",
+    "date": "2026-07-25",
+    "subject": "Fix world HUD/nav rail collisions across all six compile-class worlds"
+  },
+  {
+    "sha": "dd51695",
+    "date": "2026-07-25",
+    "subject": "Add /website-audit storefront; raise human welcome grant 10 -> 30"
+  },
+  {
+    "sha": "8d4f548",
+    "date": "2026-07-24",
+    "subject": "Fix Substrate water: fit within the existing terrain, don't extend the map"
+  },
+  {
     "sha": "8f6f914",
     "date": "2026-07-24",
     "subject": "Fix Substrate coastline: keep the existing surface intact, water surrounds it"
@@ -31,35 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "66fffea",
     "date": "2026-07-23",
     "subject": "Ship Lathe: build-log/ledger colosseum (room 4, Iteration Forge), fifth world"
-  },
-  {
-    "sha": "a48aeb1",
-    "date": "2026-07-22",
-    "subject": "Ship Crucible: arena world v1 (room 1, Roast Pit) - compile-class, no migration"
-  },
-  {
-    "sha": "c57ebbe",
-    "date": "2026-07-21",
-    "subject": "Ship Meridian: the Macro-Vault's human colony (room 3), third world"
-  },
-  {
-    "sha": "8f15286",
-    "date": "2026-07-20",
-    "subject": "Merge: build-time repair for next-on-pages dropped ssr:false loader bindings"
-  },
-  {
-    "sha": "79a6304",
-    "date": "2026-07-20",
-    "subject": "Finalize chunk-binding repair: loud mode on, diagnostic scaffolding removed"
-  },
-  {
-    "sha": "0fcb42e",
-    "date": "2026-07-20",
-    "subject": "Fix stub injection: prepend at file start, plain string scan for ssr:!1"
-  },
-  {
-    "sha": "67499f9",
-    "date": "2026-07-20",
-    "subject": "Retrigger CF build (previous run looks like a builder flake - no check-run for 5 min, then"
   }
 ];

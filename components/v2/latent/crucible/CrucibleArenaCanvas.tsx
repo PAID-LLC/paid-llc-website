@@ -14,7 +14,7 @@ import {
   plinthSlots,
   type EmberMound,
 } from "@/lib/crucible/colosseum";
-import type { CrucibleSnapshot } from "@/lib/crucible/data";
+import type { CrucibleSnapshot, HouseStatue } from "@/lib/crucible/data";
 import type { ArenaChampion } from "@/lib/crucible/arena";
 import {
   CinematicDescent, GroundMist, ParticleField, Pulse, SceneFX,
@@ -123,6 +123,55 @@ function ChampionStatue({ champion, reduced }: { champion: ArenaChampion; reduce
           <span className="uppercase tracking-[0.1em]">{champion.agent_name}</span>{" "}
           <span className="text-orange-300/80">streak {champion.win_streak}</span>
           {stage > 0 && <span className="text-red-400/80"> · crumbling</span>}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// House exhibition entrants. Rendered in the plinth slots real champions have
+// not claimed, and deliberately NOT styled like a real champion: cooler stone,
+// a cyan rim (the brand's agent/commerce signal), an open-frame obelisk rather
+// than a solid column, and an explicit "house exhibition" label on every one.
+// A visitor must never be able to mistake one of these for a third party who
+// actually won something. See lib/crucible/house-ladder.ts.
+const HOUSE_ACCENT = "#5cc9ff";
+
+function HouseStatueMesh({ statue, reduced }: { statue: HouseStatue; reduced: boolean }) {
+  const slot = plinthSlots()[statue.plinth_index];
+  if (!slot) return null;
+  const h = statue.height * 0.8; // visibly shorter than a real champion's
+
+  return (
+    <group position={[slot.x, 0, slot.z]} rotation-y={-slot.angle * (Math.PI / 180) + Math.PI / 2}>
+      <mesh position-y={0.4}>
+        <cylinderGeometry args={[2.2, 2.6, 0.8, 12]} />
+        <meshStandardMaterial color="#141c22" roughness={0.9} />
+      </mesh>
+      <Pulse speed={0.6} amp={reduced ? 0 : 0.015} reduced={reduced}>
+        <mesh position-y={0.8 + h / 2}>
+          <boxGeometry args={[1.5, h, 1.5]} />
+          <meshStandardMaterial
+            color="#1b262e"
+            emissive={HOUSE_ACCENT}
+            emissiveIntensity={0.12 + statue.glow * 0.3}
+            roughness={0.4}
+            metalness={0.35}
+            transparent
+            opacity={0.72}
+            wireframe={false}
+          />
+        </mesh>
+      </Pulse>
+      <Html position={[0, h + 2.2, 0]} center distanceFactor={52} occlude={false}>
+        <div className="pointer-events-none whitespace-nowrap rounded-md border border-sky-500/30 bg-black/80 px-2 py-1 font-mono text-[10px] text-sky-100 shadow-sm">
+          <span className="uppercase tracking-[0.1em]">{statue.agent_name}</span>{" "}
+          <span className="text-sky-300/80">
+            {statue.rating} · {(statue.accuracy * 100).toFixed(0)}%
+          </span>
+          <span className="block text-[8px] uppercase tracking-[0.2em] text-sky-400/60">
+            house exhibition
+          </span>
         </div>
       </Html>
     </group>
@@ -238,6 +287,10 @@ export default function CrucibleArenaCanvas({ state, reduced }: { state: Crucibl
 
       {state.champions.map((c) => (
         <ChampionStatue key={c.agent_name} champion={c} reduced={reduced} />
+      ))}
+
+      {(state.house_statues ?? []).map((s) => (
+        <HouseStatueMesh key={s.agent_name} statue={s} reduced={reduced} />
       ))}
 
       <Stocks gauntlet={state.gauntlet} />

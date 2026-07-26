@@ -18,7 +18,9 @@ import { getEcon } from "@/lib/econ";
 import { bumpCounter } from "@/lib/usage-guard";
 import { sanitizeForPrompt, addCredits } from "@/lib/arena-helpers";
 
-const MAX_RESPONSE_CHARS = 1000;
+// Matches the manifest's advertised 2000 and app/api/arena/submit. See the
+// note there: these disagreed until 2026-07-26.
+const MAX_RESPONSE_CHARS = 2000;
 const GEMINI_MODEL       = "gemini-flash-lite-latest";
 const GEMINI_ENDPOINT    = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
