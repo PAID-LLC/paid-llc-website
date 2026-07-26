@@ -230,14 +230,37 @@ describe("house ladder: plinth occupancy", () => {
     }
   });
 
-  it("keeps the ring populated on average, not empty", () => {
+  it("keeps the ring populated, sampled at every single bout", () => {
     // The whole reason this layer exists is that the ring was empty on every
-    // visit. If occupancy trends to zero the fix has not worked.
+    // visit. Sampled per bout rather than every few hours: a coarse sample hid
+    // a 6% empty-ring rate that was immediately visible in production.
     const samples: number[] = [];
-    for (let h = 4; h <= 480; h += 4) samples.push(occupancyAt(h));
+    for (let i = 1; i <= 600; i++) {
+      samples.push(
+        buildLadderState(LADDER_EPOCH_MS + i * MATCH_INTERVAL_MINUTES * MIN).standings.filter(
+          (r) => r.win_streak >= PLINTH_QUALIFY_STREAK
+        ).length
+      );
+    }
     const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
-    expect(mean).toBeGreaterThan(1.5);
-    expect(samples.filter((n) => n === 0).length / samples.length).toBeLessThan(0.1);
+    const emptyRate = samples.filter((n) => n === 0).length / samples.length;
+    expect(mean).toBeGreaterThan(2.5);
+    expect(emptyRate).toBeLessThan(0.01);
+  });
+
+  it("never unseats an entrant that has not been beaten", () => {
+    // A draw is not a defeat. This regressed once: an 8-0-7 undefeated entrant
+    // held no plinth because its most recent bout was a draw.
+    for (let i = 1; i <= 600; i++) {
+      const st = buildLadderState(LADDER_EPOCH_MS + i * MATCH_INTERVAL_MINUTES * MIN);
+      for (const r of st.standings) {
+        if (r.losses === 0 && r.wins > 0) {
+          expect(r.win_streak, `${r.agent_name} undefeated at bout ${i}`).toBeGreaterThanOrEqual(
+            PLINTH_QUALIFY_STREAK
+          );
+        }
+      }
+    }
   });
 
   it("turns over rather than freezing on one entrant", () => {

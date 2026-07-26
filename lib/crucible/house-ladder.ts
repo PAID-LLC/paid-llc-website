@@ -276,6 +276,7 @@ export interface LadderStanding {
   wins: number;
   losses: number;
   draws: number;
+  /** Consecutive wins uninterrupted by a LOSS. Draws pass through it. */
   win_streak: number;
   /** Fraction of graded vectors won across all bouts, 0..1. A rating says who
    *  beat whom; this says how well anyone actually solves the tasks. */
@@ -372,9 +373,15 @@ export function buildLadderState(
     rb.rating -= delta;
 
     if (res.drawn) {
+      // A draw is neutral: it neither extends a streak nor ends one. Only a
+      // LOSS takes the stone.
+      //
+      // This reset both streaks until 2026-07-26, which left the ring empty 6%
+      // of the time and, worse, could unseat an undefeated entrant: House
+      // Anchor was observed at 8-0-7 holding no plinth, because its most recent
+      // bout happened to be a draw. Draws are common here (identical playbook
+      // answers grade identically), so this was not an edge case.
       ra.draws += 1; rb.draws += 1;
-      ra.win_streak = 0; rb.win_streak = 0;
-      ra.reign_start = null; rb.reign_start = null;
     } else {
       const w = res.winner === ra.agent_name ? ra : rb;
       const l = res.winner === ra.agent_name ? rb : ra;
