@@ -191,6 +191,13 @@ export type GlassSidebarItem = {
   /** Small secondary line shown in the expanded state. */
   hint?: string;
   icon: ComponentType<IconProps>;
+  /**
+   * Destination, when this row navigates. Present means NavRow renders a real
+   * anchor instead of a button, which is what restores middle-click,
+   * open-in-new-tab, and a crawlable/agent-readable href. Omit for rows that
+   * only switch local view state.
+   */
+  href?: string;
 };
 
 export const DEFAULT_NAV_ITEMS: GlassSidebarItem[] = [
@@ -247,18 +254,24 @@ function NavRow({
   onSelect: () => void;
 }) {
   const Icon = item.icon;
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={active ? "page" : undefined}
-      title={expanded ? undefined : item.label}
-      className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-mono text-[13px] outline-none transition-colors duration-200 focus-visible:ring-1 focus-visible:ring-cyan-400/60 ${
-        active
-          ? "text-cyan-300"
-          : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100"
-      }`}
-    >
+  // Rows that navigate render as real anchors. They used to be buttons calling
+  // router.push, which cost middle-click, open-in-new-tab, copy-link, status-bar
+  // preview, and left nothing in the document for a crawler or an agent reading
+  // the page. Consumers that only switch view state (no href) keep the button.
+  //
+  // The click handler still runs so view-state side effects survive, and it is
+  // NOT prevented: letting Link handle the navigation is what keeps modified
+  // clicks (cmd, ctrl, shift, middle) behaving the way the browser should.
+  const shared = {
+    "aria-current": active ? ("page" as const) : undefined,
+    title: expanded ? undefined : item.label,
+    onClick: onSelect,
+    className: `group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-mono text-[13px] outline-none transition-colors duration-200 focus-visible:ring-1 focus-visible:ring-cyan-400/60 ${
+      active ? "text-cyan-300" : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100"
+    }`,
+  };
+  const inner = (
+    <>
       {active && (
         <motion.span
           layoutId="glass-sidebar-active"
@@ -288,6 +301,17 @@ function NavRow({
           </span>
         )}
       </motion.span>
+    </>
+  );
+  // Branch on the element rather than spreading a union into one tag, which
+  // does not typecheck: an anchor and a button do not share a props type.
+  return item.href ? (
+    <Link href={item.href} {...shared}>
+      {inner}
+    </Link>
+  ) : (
+    <button type="button" {...shared}>
+      {inner}
     </button>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { WORLD_ROUTES, WORLD_DIRECTORY } from "./world-routes";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import * as THREE from "three";
@@ -230,7 +231,11 @@ export default function UniverseCanvas({
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between p-4 pl-[92px] sm:p-5 sm:pl-24">
         <div className="pointer-events-auto flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
-            <span className="text-zinc-300">the latent space</span>
+            {/* Real h1. The page had none, so it had no document outline and
+                nothing for a screen reader or a ranking signal to anchor on.
+                Tailwind preflight resets h1 size and margin, so this inherits
+                the row's font-mono text-[11px] and looks identical. */}
+            <h1 className="text-zinc-300">the latent space</h1>
             <span aria-hidden className="text-zinc-700">/</span>
             <Link href="/the-latent-space/about" className="transition-colors hover:text-cyan-300">
               about
@@ -283,6 +288,30 @@ export default function UniverseCanvas({
               </span>
             ))}
           </div>
+          {/* Always-present world directory. Same reasoning as the commerce row
+              above, and for a worse defect: until 2026-07-25 the ONLY link into
+              any of these eight worlds lived inside the selected-world panel,
+              which renders only after a planet mesh is clicked in the canvas.
+              With no selection there were zero world hrefs in the document, so
+              the biggest thing on the platform was unreachable by keyboard, by
+              screen reader, by crawler, and by any agent reading the page as a
+              document. These must stay rendered unconditionally. Restyle freely;
+              do not make them conditional. */}
+          <nav aria-label="Worlds" className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10px]">
+            <span className="text-zinc-600">worlds:</span>
+            {WORLD_DIRECTORY.map((w, i) => (
+              <span key={w.href} className="flex items-center gap-1.5">
+                <Link href={w.href} className="text-zinc-400 transition-colors hover:text-cyan-300">
+                  {w.label}
+                </Link>
+                {i < WORLD_DIRECTORY.length - 1 && (
+                  <span aria-hidden className="text-zinc-700">
+                    &middot;
+                  </span>
+                )}
+              </span>
+            ))}
+          </nav>
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5">
@@ -378,44 +407,13 @@ export default function UniverseCanvas({
               </p>
             )}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {currentWorld.theme === "genesis" && (
-                <Link href="/the-latent-space/genesis/world" className={v2.btnSecondary}>
-                  Land on the surface <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "simulation-sandbox" && (
-                <Link href="/the-latent-space/simulation" className={v2.btnSecondary}>
-                  Enter the simulation <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "bazaar" && (
-                <Link href="/the-latent-space/arclight" className={v2.btnSecondary}>
-                  Land in the city <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "intellectual-hub" && (
-                <Link href="/the-latent-space/palimpsest" className={v2.btnSecondary}>
-                  Descend to the ruins <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "macro-vault" && (
-                <Link href="/the-latent-space/meridian" className={v2.btnSecondary}>
-                  Enter the colony <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "roast-pit" && (
-                <Link href="/the-latent-space/crucible" className={v2.btnSecondary}>
-                  Step into the arena <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "iteration-forge" && (
-                <Link href="/the-latent-space/lathe" className={v2.btnSecondary}>
-                  Step up to the lathe <span aria-hidden>&rarr;</span>
-                </Link>
-              )}
-              {currentWorld.theme === "nexus" && (
-                <Link href="/the-latent-space/waypoint" className={v2.btnSecondary}>
-                  Cross to the port <span aria-hidden>&rarr;</span>
+              {/* One lookup instead of eight near-identical conditionals.
+                  WORLD_ROUTES is shared with the always-present directory in
+                  the HUD, so the map and the surface can never disagree about
+                  where a world lives. */}
+              {WORLD_ROUTES[currentWorld.theme] && (
+                <Link href={WORLD_ROUTES[currentWorld.theme].href} className={v2.btnSecondary}>
+                  {WORLD_ROUTES[currentWorld.theme].verb} <span aria-hidden>&rarr;</span>
                 </Link>
               )}
               {hasFloor(currentWorld.theme) && (
