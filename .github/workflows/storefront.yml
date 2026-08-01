@@ -1,0 +1,42 @@
+# Storefront integrity: can a stranger actually buy right now?
+#
+# This is the gap watchdog.yml structurally cannot cover. That job checks
+# Supabase, webhook signature failures, and sales marked paid-but-undelivered,
+# all of which are DOWNSTREAM of a sale already existing. If the buy button
+# breaks there are no sales rows, no webhook failures, and /api/watchdog happily
+# reports healthy.
+#
+# With $9.99 in lifetime revenue that is the dangerous failure: a broken
+# storefront and no demand look identical from the inside. Both are silence.
+#
+# No secrets required. A failing run fails the workflow, and GitHub emails the
+# repo owner, which is the same alerting path watchdog.yml already depends on.
+name: storefront
+
+on:
+  schedule:
+    # Every 6 hours. Frequent enough that a broken buy path is caught the same
+    # day, infrequent enough that 19 payment links stay well clear of any
+    # Stripe rate limiting (76 requests/day).
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      # A change to the storefront is exactly when a payment link gets broken,
+      # so verify on the way in rather than waiting up to 6 hours.
+      - "app/digital-products/**"
+      - "scripts/check-storefront.mjs"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Can a stranger buy?
+        run: node scripts/check-storefront.mjs
