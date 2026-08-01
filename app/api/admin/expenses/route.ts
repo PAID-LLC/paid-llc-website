@@ -99,7 +99,7 @@ interface ProviderRow {
 
 const STATIC_PROVIDERS: ProviderRow[] = [
   { name: "Supabase",          cost_now: "$0/mo",    paid_tier: "$25/mo",  upgrade_trigger: "DB > 500MB or always-on needed",   risk: "warning", note: "Pauses after 7 days inactivity — keep-alive cron required (UptimeRobot recommended)" },
-  { name: "Cloudflare Pages",  cost_now: "$0/mo",    paid_tier: "$20/mo",  upgrade_trigger: ">500 builds/mo (won't happen)",     risk: "ok" },
+  { name: "Cloudflare (Pages + Workers Paid)", cost_now: "$5/mo", paid_tier: "$5/mo Workers Paid", upgrade_trigger: "Worker bundle approaching the 10 MiB cap", risk: "warning", note: "Workers Paid ($5/mo) is required for the 10 MiB worker size cap; the bundle sits near it, so verify the live build stamp after pushes. Hosting itself is still free. This line was missing until 2026-08-01 and the dashboard under-reported burn by $5/mo" },
   { name: "Gemini API",        cost_now: "$0/mo",    paid_tier: "~$5/mo",  upgrade_trigger: ">250 req/day (2.0 Flash)",          risk: "warning", note: "$20/mo hard cap set via Openclaw — arena judge uses 1 req/duel" },
   { name: "ElevenLabs TTS",    cost_now: "$6/mo",    paid_tier: "included",upgrade_trigger: "Subscription active — no upgrade needed", risk: "warning", note: "Subscription active — confirm /api/tts is JWT-gated before promoting publicly" },
   { name: "Google One",        cost_now: "$9.99/mo", paid_tier: "same",    upgrade_trigger: "Storage upgrade if needed",         risk: "ok", note: "Includes AI Studio API key access; $20/mo API spend cap set" },
@@ -171,8 +171,12 @@ export async function GET(req: Request) {
     ...STATIC_PROVIDERS,
   ];
 
-  const monthly_floor_cents    = 6667; // Claude ~$16.67 + ElevenLabs $6 + Google One $9.99 + Workspace $14 + Simple Mobile $20 = ~$66.67/mo
-  const post_scale_floor_cents = 9167; // + Supabase Pro $25/mo if needed
+  // Claude ~$16.67 + ElevenLabs $6 + Google One $9.99 + Workspace $14
+  // + Simple Mobile $20 + Cloudflare Workers Paid $5 = $71.66/mo.
+  // Cloudflare was omitted until 2026-08-01, so this figure and the note below
+  // both under-reported real burn by $5/mo.
+  const monthly_floor_cents    = 7166;
+  const post_scale_floor_cents = 9666; // + Supabase Pro $25/mo if needed
 
   return Response.json({
     ok:                    true,
@@ -185,6 +189,6 @@ export async function GET(req: Request) {
     spending_controls:     SPENDING_CONTROLS,
     monthly_floor_cents,
     post_scale_floor_cents,
-    break_even_note:       "Committed expenses: ~$66.67/mo (Claude + ElevenLabs + Google One + Workspace + Simple Mobile). Break-even: 1 consulting hour covers all monthly costs.",
+    break_even_note:       "Committed expenses: ~$71.66/mo (Claude $16.67 + ElevenLabs $6 + Google One $9.99 + Workspace $14 + Simple Mobile $20 + Cloudflare Workers Paid $5). Break-even: 1 consulting hour covers all monthly costs.",
   });
 }
