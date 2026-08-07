@@ -23,6 +23,7 @@ import {
   CinematicDescent, GlyphPlaque, GroundMist, MilkyWayBackdrop, ParticleField,
   Pulse, SceneFX, SkyWorld,
 } from "@/components/v2/latent/ground-fx";
+import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 import type { PalimpsestState } from "./usePalimpsestLive";
 
 // ── Palimpsest RUINS: the comprehensive 3D read ──────────────────────────────
@@ -458,6 +459,10 @@ export default function PalimpsestRuinsCanvas({
         count={Math.min(state.survey_teams_24h, 8)}
         reduced={reduced}
       />
+
+      {/* The survey team walks the dunes, so it samples the same height
+          function the dust plain, the rubble, and the trail all use. */}
+      <Inhabitants world="palimpsest" reduced={reduced} groundY={duneHeight} />
 
       <GroundMist color="#2a2114" opacity={0.06} area={200} reduced={reduced} />
       <ParticleField mode="motes" color="#5c4a2e" area={180} reduced={reduced} />

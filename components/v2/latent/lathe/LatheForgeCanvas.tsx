@@ -9,6 +9,7 @@ import type { ForgeRing } from "@/lib/lathe/forge";
 import {
   CinematicDescent, GroundMist, ParticleField, Pulse, ScatterField, Spin, SceneFX, StormFlash, mixHex,
 } from "@/components/v2/latent/ground-fx";
+import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── The Lathe FORGE: the comprehensive 3D read ───────────────────────────────
 // Compile-class, third of its kind after Arclight and the Crucible. Every
@@ -182,6 +183,8 @@ export default function LatheForgeCanvas({ state, reduced }: { state: LatheSnaps
         heightFn={() => 0}
         seed={0x1a7e}
       />
+
+      <Inhabitants world="lathe" reduced={reduced} />
 
       {level > 0.25 && <StormFlash color="#22d3ee" reduced={reduced} />}
 

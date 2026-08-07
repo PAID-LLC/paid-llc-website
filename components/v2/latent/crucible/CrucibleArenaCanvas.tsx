@@ -19,6 +19,7 @@ import type { ArenaChampion } from "@/lib/crucible/arena";
 import {
   CinematicDescent, GroundMist, ParticleField, Pulse, SceneFX,
 } from "@/components/v2/latent/ground-fx";
+import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── The Crucible ARENA: the comprehensive 3D read ────────────────────────────
 // Compile-class, like Arclight: everything here renders from one snapshot
@@ -295,6 +296,7 @@ export default function CrucibleArenaCanvas({ state, reduced }: { state: Crucibl
 
       <Stocks gauntlet={state.gauntlet} />
       <EmberField heat={heat} reduced={reduced} />
+      <Inhabitants world="crucible" reduced={reduced} />
 
       <GroundMist color={EMBER} opacity={0.08 + heat * 0.1} area={220} reduced={reduced} />
       <ParticleField mode="embers" color={EMBER_HOT} area={PLINTH_RADIUS + 60} reduced={reduced} />

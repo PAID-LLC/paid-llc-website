@@ -3,6 +3,26 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "39ecac2",
+    "date": "2026-08-01",
+    "subject": "TTS: prefer Cloudflare Workers AI, keep ElevenLabs as fallback"
+  },
+  {
+    "sha": "286a493",
+    "date": "2026-08-01",
+    "subject": "Expenses endpoint: include the $5 Cloudflare Workers Paid charge"
+  },
+  {
+    "sha": "2b77be2",
+    "date": "2026-07-31",
+    "subject": "Storefront integrity: verify a stranger can actually buy"
+  },
+  {
+    "sha": "0e216bc",
+    "date": "2026-07-26",
+    "subject": "Crucible: a draw no longer takes an entrant's plinth"
+  },
+  {
     "sha": "577d4e6",
     "date": "2026-07-26",
     "subject": "Arena integrity pass + the Proving Ground + the House Ladder"
@@ -41,25 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "8f6f914",
     "date": "2026-07-24",
     "subject": "Fix Substrate coastline: keep the existing surface intact, water surrounds it"
-  },
-  {
-    "sha": "6e5629f",
-    "date": "2026-07-24",
-    "subject": "Substrate: island surrounded by real water, not a rim wall"
-  },
-  {
-    "sha": "5b16f27",
-    "date": "2026-07-23",
-    "subject": "Fix Waypoint root cause: Pit Gate showed \"null beat X\" on drawn duels"
-  },
-  {
-    "sha": "a1343cd",
-    "date": "2026-07-23",
-    "subject": "Ship Waypoint: the port world (room 6, The Nexus), sixth and capstone world"
-  },
-  {
-    "sha": "0a0d0f7",
-    "date": "2026-07-23",
-    "subject": "Fix Lathe root cause: unshallow before reading BUILD_LOG on CF Pages"
   }
 ];

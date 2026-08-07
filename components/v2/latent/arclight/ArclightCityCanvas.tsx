@@ -36,6 +36,7 @@ import {
   CinematicDescent, GroundMist, MilkyWayBackdrop, ParticleField, Pulse,
   SceneFX, SkyWorld,
 } from "@/components/v2/latent/ground-fx";
+import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── Arclight CITY: the comprehensive 3D read ─────────────────────────────────
 // Same compiler-world contract as the 2D map: everything here renders from the
@@ -828,6 +829,8 @@ export default function ArclightCityCanvas({
       <RelayMast reduced={reduced} />
       <FirstsMonuments snap={snap} />
       <DistrictLabels />
+
+      <Inhabitants world="arclight" reduced={reduced} />
 
       <GroundMist color="#0f2a26" opacity={0.05} area={210} reduced={reduced} />
       <ParticleField mode="motes" color="#3d5a55" area={190} reduced={reduced} />

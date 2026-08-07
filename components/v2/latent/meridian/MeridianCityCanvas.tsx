@@ -22,6 +22,7 @@ import { WARDS, type MeridianCitizenRow, type MeridianStructureRow, type Ward } 
 import {
   CinematicDescent, CloudBand, GroundSky, ParticleField, Pulse, SceneFX,
 } from "@/components/v2/latent/ground-fx";
+import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 import type { MeridianData } from "@/lib/meridian/engine";
 
 // ── Meridian CITY: the comprehensive 3D read ─────────────────────────────────
@@ -249,6 +250,10 @@ export default function MeridianCityCanvas({ state, reduced }: { state: Meridian
       {state.citizens.map((c) => (
         <CitizenMarker key={c.name} citizen={c} reduced={reduced} />
       ))}
+
+      {/* Visiting agents only. Meridian simulates its own citizens and is out
+          of scope for the resident layer, so nobody here is a resident. */}
+      <Inhabitants world="meridian" reduced={reduced} />
 
       <ParticleField mode="motes" color="#fff6d8" area={200} reduced={reduced} />
       <SceneFX bloom={0.35} />

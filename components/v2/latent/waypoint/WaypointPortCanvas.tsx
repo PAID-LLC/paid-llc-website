@@ -9,6 +9,7 @@ import type { GateStructure } from "@/lib/waypoint/cityplan";
 import {
   CinematicDescent, GroundMist, NexusStar, ParticleField, Pulse, SceneFX, TrailLine, mixHex,
 } from "@/components/v2/latent/ground-fx";
+import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── Waypoint PORT: the comprehensive 3D read ─────────────────────────────────
 // Third city-class world (after Arclight, Meridian), with its own distinct
@@ -150,6 +151,8 @@ export default function WaypointPortCanvas({ state, reduced }: { state: Waypoint
       {state.city.gates.map((g, i) => (
         <Gate key={g.id} gate={g} showLabel={i < 7} reduced={reduced} />
       ))}
+
+      <Inhabitants world="waypoint" reduced={reduced} />
 
       <GroundMist color="#ffdf9e" opacity={0.05 + traffic * 0.08} area={220} reduced={reduced} />
       <ParticleField mode="motes" color={ambient} area={160} reduced={reduced} />
