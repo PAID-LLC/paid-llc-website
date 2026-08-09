@@ -1054,6 +1054,7 @@ export function RealisticWater({
   sunColor = "#ffffff",
   sunDirection,
   distortionScale = 2.4,
+  waveScale = 1,
   reduced,
 }: {
   /** Flat-plane footprint, world units. */
@@ -1063,6 +1064,11 @@ export function RealisticWater({
   sunColor?: string;
   sunDirection: [number, number, number];
   distortionScale?: number;
+  /** Wave frequency. three's Water samples noise at `worldPosition.xz * size`,
+   *  so this is chop per world unit: 1 gives ~100-unit swell, which is right
+   *  for a small lake and far too slack across a 1900-unit harbour. Higher
+   *  values put more, finer waves in the same footprint. */
+  waveScale?: number;
   reduced: boolean;
 }) {
   // Built once (geometry + shader + render target are expensive) and never
@@ -1091,6 +1097,10 @@ export function RealisticWater({
   useEffect(() => {
     water.position.y = y;
   }, [water, y]);
+
+  useEffect(() => {
+    (water.material as THREE.ShaderMaterial).uniforms.size.value = waveScale;
+  }, [water, waveScale]);
 
   useEffect(() => {
     (water.material as THREE.ShaderMaterial).uniforms.waterColor.value.set(color);

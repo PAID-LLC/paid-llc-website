@@ -34,7 +34,7 @@ import {
 } from "@/lib/arclight/skyline";
 import {
   CinematicDescent, GroundMist, MilkyWayBackdrop, ParticleField, Pulse,
-  SkyWorld,
+  RealisticWater, SkyWorld,
 } from "@/components/v2/latent/ground-fx";
 import { SkyDome, SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
 import { surface, triplanarMaterial, type SurfaceSpec } from "@/components/v2/latent/surface-kit";
@@ -195,21 +195,65 @@ function useSurfaces(): CitySurfaces {
 
 // ── Water and land ───────────────────────────────────────────────────────────
 
-function DarkPool() {
-  // Raised from -0.7. At the old level the harbour sat well below the land and
-  // the lit quay wall showed all the way round, which is the exact silhouette
-  // of a model on a table. Water lapping near the top edge reads as coastline.
+/** Water level. Land tops sit at y≈-0.02, so the sea laps just under the kerb —
+ *  a harbour dropped below its banks shows a lit quay wall the whole way round,
+ *  which is the exact silhouette of a model sitting on a table. */
+const SEA_Y = -0.22;
+
+/**
+ * The Dark Pool.
+ *
+ * Was a flat plane with a metalness value, which is why the harbour read as a
+ * black floor rather than as water. Still water returns one specular answer
+ * across its whole surface; what makes water look wet is that it MOVES and that
+ * it carries a broken reflection of whatever stands beside it.
+ *
+ * `RealisticWater` is three's Water — a real mirror pass plus animated normal
+ * distortion — already shipped here for Substrate's island, so this is reuse
+ * rather than a new dependency. The skyline, the sky dome and every lit window
+ * now break up across the swell.
+ *
+ * Reduced motion keeps the flat plane on purpose: the mirror pass renders the
+ * scene a second time every frame, and that is precisely the cost a visitor who
+ * asked for less motion is asking us not to pay.
+ */
+function Harbour({ reduced }: { reduced: boolean }) {
+  if (reduced) {
+    return (
+      <mesh rotation-x={-Math.PI / 2} position-y={SEA_Y}>
+        <planeGeometry args={[1900, 1900]} />
+        <meshStandardMaterial
+          color="#030608"
+          metalness={0.55}
+          roughness={0.3}
+          emissive="#062018"
+          emissiveIntensity={0.22}
+        />
+      </mesh>
+    );
+  }
+  // Wide enough to run past the mainland's outer edge, so the sea meets the
+  // horizon instead of ending in a visible seam short of it.
+  //
+  // `sunDirection` is the view direction mirrored about the water plane, which
+  // is what lays the specular glitter path down the middle of the harbour
+  // between the camera and the city instead of somewhere off-frame. That path
+  // is the single strongest "this is water and it is moving" cue there is, and
+  // because the scene auto-orbits it sweeps across the surface as you go round.
+  // Low elevation on purpose: a grazing highlight streaks, a high one blobs.
   return (
-    <mesh rotation-x={-Math.PI / 2} position-y={-0.22}>
-      <planeGeometry args={[1100, 950]} />
-      <meshStandardMaterial
-        color="#030608"
-        metalness={0.55}
-        roughness={0.3}
-        emissive="#062018"
-        emissiveIntensity={0.22}
-      />
-    </mesh>
+    <RealisticWater
+      size={1900}
+      y={SEA_Y}
+      color="#072b36"
+      sunColor="#a8f0e6"
+      sunDirection={[-0.58, 0.16, -0.78]}
+      distortionScale={4.5}
+      // Default 1.0 is roughly 100-unit swell — correct for a lake, glassy
+      // across a harbour this size. This is harbour chop.
+      waveScale={2.4}
+      reduced={reduced}
+    />
   );
 }
 
@@ -241,6 +285,135 @@ function LandMass({ pts }: { pts: readonly [number, number][] }) {
   return <mesh geometry={geometry} material={surfaces.ground} />;
 }
 
+// ── The mainland: what the simulated city is a district OF ───────────────────
+
+/** Inner shore of the mainland, before the ±wave. Keeps a real strait between
+ *  it and the island, which the causeways then cross. */
+const MAINLAND_INNER = 250;
+const MAINLAND_OUTER = 820;
+/** Deterministic wobble on the inner shore so the mainland is a coastline and
+ *  not a drafting compass circle. */
+function mainlandRadius(a: number): number {
+  return MAINLAND_INNER + Math.sin(a * 3) * 34 + Math.sin(a * 7 + 1.2) * 19;
+}
+
+/** Centre of the far bank's downtown, world XZ. Placed north-west so it sits
+ *  behind the Exchange from the opening camera and swings across the frame as
+ *  the orbit comes round, rather than hiding behind the HUD panels. */
+const DOWNTOWN: [number, number] = [-250, -410];
+
+/**
+ * The far bank.
+ *
+ * The distant skyline used to stand in open water at radius 320 with nothing
+ * underneath it and nothing joining it to the lit plate — so it read as a
+ * painted backdrop hung behind a model rather than as the rest of a city. A
+ * city on a coast has a far shore, and you can get to it.
+ *
+ * So the outer buildings now stand on real ground that runs from just across
+ * the strait out past the fog's far plane, and four causeways cross to it. The
+ * strait is what remains of the old gap and it is doing a job now: it is why
+ * the simulated districts are legible as a distinct place.
+ */
+function Mainland() {
+  const surfaces = useSurfaces();
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    const outerSegs = 84;
+    for (let i = 0; i <= outerSegs; i++) {
+      const a = (i / outerSegs) * Math.PI * 2;
+      const r = MAINLAND_OUTER + Math.sin(a * 2.3) * 40;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      if (i === 0) shape.moveTo(x, y);
+      else shape.lineTo(x, y);
+    }
+    const hole = new THREE.Path();
+    const innerSegs = 96;
+    for (let i = 0; i <= innerSegs; i++) {
+      // Wound opposite to the outline: a hole path that runs the same way as
+      // its shape is silently ignored by the triangulator and the annulus comes
+      // out solid, which would drown the whole harbour in concrete.
+      const a = -(i / innerSegs) * Math.PI * 2;
+      const r = mainlandRadius(a);
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      if (i === 0) hole.moveTo(x, y);
+      else hole.lineTo(x, y);
+    }
+    shape.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 2.4, bevelEnabled: false });
+    g.rotateX(-Math.PI / 2);
+    // Top face a shade below the island's, so the far bank sits fractionally
+    // lower and the strait stays legible from a low camera.
+    g.translate(0, -2.5, 0);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  useLayoutEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh geometry={geometry} material={surfaces.ground} />;
+}
+
+/** Where the four crossings leave the island, in world units, and the bearing
+ *  each one runs out on. Chosen to start on land the districts actually
+ *  occupy — a causeway that begins in the water is worse than none. */
+const CAUSEWAYS: { from: [number, number]; angle: number }[] = [
+  { from: [118, -24], angle: 0.12 },
+  { from: [24, -127], angle: -Math.PI / 2 + 0.15 },
+  { from: [-147, 18], angle: Math.PI - 0.1 },
+  { from: [-46, 127], angle: Math.PI / 2 - 0.12 },
+];
+
+/**
+ * The crossings. Each runs from the island's edge out onto the far bank, on
+ * piers, with the same guide lights as the Counterparty Bridge so they read as
+ * the same civil engineering rather than as four stray planks.
+ */
+function Causeways() {
+  const surfaces = useSurfaces();
+  return (
+    <>
+      {CAUSEWAYS.map(({ from, angle }, i) => {
+        const [sx, sz] = from;
+        // Run to the mainland's inner shore on this bearing, then 34 units past
+        // it so the deck lands ON the bank instead of stopping at its lip.
+        const reach = mainlandRadius(angle) - Math.hypot(sx, sz) + 34;
+        const len = Math.max(40, reach);
+        const midX = sx + Math.cos(angle) * (len / 2);
+        const midZ = sz + Math.sin(angle) * (len / 2);
+        // Piers every ~26 units, skipping the two ends where the deck is
+        // already sitting on land.
+        const piers = Math.max(1, Math.floor(len / 26) - 1);
+        return (
+          <group key={i} position={[midX, 0, midZ]} rotation-y={-angle}>
+            <mesh position-y={1.5} material={surfaces.deck}>
+              <boxGeometry args={[len, 0.55, 7]} />
+            </mesh>
+            {[-3.3, 3.3].map((oz) => (
+              <mesh key={oz} position={[0, 1.92, oz]}>
+                <boxGeometry args={[len, 0.09, 0.12]} />
+                <meshBasicMaterial color={ACCENT} transparent opacity={0.3} />
+              </mesh>
+            ))}
+            {Array.from({ length: piers }, (_, p) => {
+              const t = (p + 1) / (piers + 1);
+              return (
+                <mesh
+                  key={p}
+                  position={[(t - 0.5) * len, 0.1, 0]}
+                  material={surfaces.deck}
+                >
+                  <cylinderGeometry args={[0.85, 1.15, 3.2, 8]} />
+                </mesh>
+              );
+            })}
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
 /**
  * The city that exists beyond the part we simulate.
  *
@@ -251,11 +424,15 @@ function LandMass({ pts }: { pts: readonly [number, number][] }) {
  * separates a photograph of a city from a photograph of a diorama, and no
  * amount of detail on the near buildings substitutes for it.
  *
- * So: an annulus of blocks starting outside the simulated districts and
- * running out past the fog's far plane. They carry the same facade material as
- * the real city, which costs one extra draw call and buys distant window glow
- * for free — and because fog applies after emissive in three's shader, those
- * windows fade with distance exactly like the concrete does.
+ * Now standing on the mainland rather than in open water, and starting right at
+ * its inner shore so the built-up area is continuous from the strait outward
+ * instead of resuming abruptly a hundred units later.
+ *
+ * Silhouette variety matters more than count at this distance: everything out
+ * here is a dark shape against haze, and a field of identical extruded boxes
+ * reads as packaging no matter how many of them there are. So each site gets a
+ * base, most get a setback shoulder, and some get a mast — three mesh draws for
+ * an outline that changes as you orbit.
  *
  * These are scenery, and they are honest about it: nothing here is derived from
  * business data, nothing here is counted anywhere, and no resident can be here.
@@ -263,11 +440,11 @@ function LandMass({ pts }: { pts: readonly [number, number][] }) {
  */
 function DistantSkyline({ reduced }: { reduced: boolean }) {
   const surfaces = useSurfaces();
-  const count = reduced ? 90 : 190;
-  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  const mesh = useMemo(() => {
-    const m = new THREE.InstancedMesh(geometry, surfaces.tower, count);
-    const t = new THREE.Object3D();
+  const sites = reduced ? 110 : 240;
+  const boxGeo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const mastGeo = useMemo(() => new THREE.CylinderGeometry(0.16, 0.5, 1, 6), []);
+
+  const { blocks, masts } = useMemo(() => {
     // Deterministic: the skyline is geography, and geography should not
     // reshuffle itself on every render.
     let seed = 20260809;
@@ -275,25 +452,95 @@ function DistantSkyline({ reduced }: { reduced: boolean }) {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
       return seed / 4294967296;
     };
-    for (let i = 0; i < count; i++) {
-      const angle = rand() * Math.PI * 2;
-      // Squared distribution pushes more of them far out, so the ring reads as
-      // a city thinning toward a horizon rather than as a fence around the map.
-      const radius = 320 + Math.pow(rand(), 0.6) * 340;
-      const h = 16 + Math.pow(rand(), 1.7) * 88;
-      t.position.set(Math.cos(angle) * radius, h / 2 - 1, Math.sin(angle) * radius);
-      t.scale.set(11 + rand() * 19, h, 11 + rand() * 19);
-      t.rotation.y = rand() * Math.PI;
+    const boxes: THREE.Matrix4[] = [];
+    const spires: THREE.Matrix4[] = [];
+    const t = new THREE.Object3D();
+    const push = (into: THREE.Matrix4[]) => {
       t.updateMatrix();
-      m.setMatrixAt(i, t.matrix);
+      into.push(t.matrix.clone());
+    };
+
+    for (let i = 0; i < sites; i++) {
+      const angle = rand() * Math.PI * 2;
+      // Powered distribution pushes more of them far out, so the field reads as
+      // a city thinning toward a horizon rather than as a fence around the map.
+      const radius = mainlandRadius(angle) + 12 + Math.pow(rand(), 0.62) * 470;
+      const cx = Math.cos(angle) * radius;
+      const cz = Math.sin(angle) * radius;
+      // Height is the whole hierarchy question. A uniform boost near the strait
+      // walls the simulated districts into a canyon and makes the scenery the
+      // subject of the picture, which is backwards — the lit plate is the city
+      // this world is about. So the far bank stays LOW, and all the drama goes
+      // into one downtown cluster across the water on a fixed bearing, the way
+      // a real coastal city has a single recognisable centre and low sprawl
+      // either side of it. That also gives the orbit something to swing past.
+      const dx = cx - DOWNTOWN[0];
+      const dz = cz - DOWNTOWN[1];
+      const core = Math.max(0, 1 - Math.hypot(dx, dz) / 210);
+      const h = 9 + Math.pow(rand(), 1.7) * (30 + Math.pow(core, 1.5) * 96);
+      const w = 10 + rand() * 18;
+      const d = 10 + rand() * 18;
+      const ry = rand() * Math.PI;
+
+      t.rotation.set(0, ry, 0);
+      t.position.set(cx, h / 2 - 2.2, cz);
+      t.scale.set(w, h, d);
+      push(boxes);
+
+      const shape = rand();
+      if (shape > 0.42) {
+        // Setback shoulder: a narrower storey block stepped in on top.
+        const sh = h * (0.2 + rand() * 0.36);
+        t.position.set(cx, h + sh / 2 - 2.2, cz);
+        t.scale.set(w * (0.5 + rand() * 0.24), sh, d * (0.5 + rand() * 0.24));
+        push(boxes);
+        if (shape > 0.83) {
+          const mh = 6 + rand() * 26;
+          t.position.set(cx, h + sh + mh / 2 - 2.2, cz);
+          t.scale.set(1, mh, 1);
+          push(spires);
+        }
+      } else if (shape < 0.12) {
+        // Roof plant on the flat-topped ones, so even the plain silhouettes
+        // break the skyline somewhere.
+        const mh = 4 + rand() * 9;
+        t.position.set(cx, h + mh / 2 - 2.2, cz);
+        t.scale.set(0.8, mh, 0.8);
+        push(spires);
+      }
     }
+    return { blocks: boxes, masts: spires };
+  }, [sites]);
+
+  const blockMesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(boxGeo, surfaces.tower, blocks.length);
+    blocks.forEach((mat, i) => m.setMatrixAt(i, mat));
     m.instanceMatrix.needsUpdate = true;
     m.frustumCulled = false;
     return m;
-  }, [geometry, surfaces.tower, count]);
+  }, [boxGeo, surfaces.tower, blocks]);
 
-  useLayoutEffect(() => () => geometry.dispose(), [geometry]);
-  return <primitive object={mesh} />;
+  const mastMesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(mastGeo, surfaces.deck, masts.length);
+    masts.forEach((mat, i) => m.setMatrixAt(i, mat));
+    m.instanceMatrix.needsUpdate = true;
+    m.frustumCulled = false;
+    return m;
+  }, [mastGeo, surfaces.deck, masts]);
+
+  useLayoutEffect(
+    () => () => {
+      boxGeo.dispose();
+      mastGeo.dispose();
+    },
+    [boxGeo, mastGeo]
+  );
+  return (
+    <>
+      <primitive object={blockMesh} />
+      <primitive object={mastMesh} />
+    </>
+  );
 }
 
 // ── Roads ────────────────────────────────────────────────────────────────────
@@ -429,6 +676,337 @@ function CityBlocks({ dim }: { dim: Record<DistrictId, number> }) {
         <planeGeometry args={[0.6, 0.85]} />
         <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
       </instancedMesh>
+    </>
+  );
+}
+
+// ── Rooftops and doorways: the scale cues that make a box a building ─────────
+//
+// A extruded block has no size. It could be a filing cabinet. What tells you a
+// shape is eight storeys of occupied building is the stuff sized to a PERSON:
+// a parapet you could lean on, a hut with a door in it where the stair comes
+// out, a stoop of four steps, a lit entrance. None of it is visible from orbit
+// and all of it is what you look for when you drop the camera to the street.
+//
+// Everything here is instanced off the same deterministic lot grid the city
+// itself is built from, so it costs six draw calls for the entire metropolis
+// and it never reshuffles between frames.
+//
+// The entrance lights are deliberately NOT wired to today's trading. Same call
+// as the window grid: a lit doorway says a building is occupied, not that it
+// sold something in the last hour, and going dark on a quiet afternoon would
+// overstate the quiet.
+
+/** Deterministic per-lot draw. Index-seeded so the same lot always gets the
+ *  same roof, whatever order anything else runs in. */
+function lotRand(i: number, salt: number): number {
+  let s = (Math.imul(i + 1, 0x9e3779b1) ^ Math.imul(salt + 7, 0x85ebca6b)) >>> 0;
+  s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) >>> 0;
+  s = Math.imul(s ^ (s >>> 12), 0x297a2d39) >>> 0;
+  return ((s ^ (s >>> 15)) >>> 0) / 4294967296;
+}
+
+/** Unit-footprint parapet: 1x1 outside, hollow, standing 0→1 in Y. Instanced
+ *  scaled to each roof, so the wall stays a constant thickness in world units
+ *  whatever the building's plan. */
+function makeParapetGeometry(): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.5, -0.5);
+  shape.lineTo(0.5, -0.5);
+  shape.lineTo(0.5, 0.5);
+  shape.lineTo(-0.5, 0.5);
+  shape.closePath();
+  const hole = new THREE.Path();
+  // Opposite winding to the outline, or the triangulator ignores it and the
+  // parapet comes out as a solid cap over the roof.
+  hole.moveTo(-0.4, 0.4);
+  hole.lineTo(0.4, 0.4);
+  hole.lineTo(0.4, -0.4);
+  hole.lineTo(-0.4, -0.4);
+  hole.closePath();
+  shape.holes.push(hole);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Four steps up to a raised entrance. Profile in X/Y, extruded along Z for
+ *  the width, wall at x=0 and the bottom step at x=1.2. Real world units — a
+ *  0.84 rise against a 1.6 storey is a stoop, and reading that ratio is
+ *  exactly how the eye works out how big the building is. */
+function makeStoopGeometry(): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.lineTo(1.2, 0);
+  shape.lineTo(1.2, 0.28);
+  shape.lineTo(0.8, 0.28);
+  shape.lineTo(0.8, 0.56);
+  shape.lineTo(0.4, 0.56);
+  shape.lineTo(0.4, 0.84);
+  shape.lineTo(0, 0.84);
+  shape.closePath();
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+  g.translate(0, 0, -0.5);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Which face the front door is on, as a yaw plus the outward unit vector. */
+const FACES: { ry: number; nx: number; nz: number }[] = [
+  { ry: 0, nx: 0, nz: 1 },
+  { ry: Math.PI, nx: 0, nz: -1 },
+  { ry: Math.PI / 2, nx: 1, nz: 0 },
+  { ry: -Math.PI / 2, nx: -1, nz: 0 },
+];
+
+function RoofDetail() {
+  const surfaces = useSurfaces();
+  const { lots } = useMemo(() => buildSkyline(), []);
+
+  const parapetGeo = useMemo(makeParapetGeometry, []);
+  const boxGeo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const tankGeo = useMemo(() => new THREE.CylinderGeometry(0.72, 0.85, 1.7, 8), []);
+  const doorGeo = useMemo(() => new THREE.PlaneGeometry(0.62, 1.15), []);
+
+  const doorMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: "#ffb765",
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+      }),
+    []
+  );
+
+  const meshes = useMemo(() => {
+    const t = new THREE.Object3D();
+    // Sized up front: a roof either takes a stair head or it does not, and the
+    // instance buffers have to be allocated at the real count.
+    const huts: number[] = [];
+    const tanks: number[] = [];
+    lots.forEach((_, i) => {
+      if (lotRand(i, 1) > 0.32) huts.push(i);
+      if (lotRand(i, 2) > 0.68) tanks.push(i);
+    });
+
+    const parapet = new THREE.InstancedMesh(parapetGeo, surfaces.deck, lots.length);
+    lots.forEach((l, i) => {
+      t.position.set(l.x, l.sy, l.z);
+      t.rotation.set(0, 0, 0);
+      // Taller parapets on taller buildings, but never so tall they read as
+      // another storey.
+      t.scale.set(l.sx, 0.34 + Math.min(0.4, l.sy * 0.02), l.sz);
+      t.updateMatrix();
+      parapet.setMatrixAt(i, t.matrix);
+    });
+    parapet.instanceMatrix.needsUpdate = true;
+
+    // Stair bulkhead: the hut the roof access comes out of. Offset toward one
+    // corner and kept inside the parapet.
+    const hut = new THREE.InstancedMesh(boxGeo, surfaces.stall, huts.length);
+    const hutDoor = new THREE.InstancedMesh(doorGeo, doorMat, huts.length);
+    huts.forEach((li, n) => {
+      const l = lots[li];
+      const w = Math.min(2.3, l.sx * 0.3);
+      const d = Math.min(2.0, l.sz * 0.34);
+      const h = 1.5 + lotRand(li, 3) * 0.5;
+      const ox = (lotRand(li, 4) - 0.5) * Math.max(0, l.sx - w - 1.0);
+      const oz = (lotRand(li, 5) - 0.5) * Math.max(0, l.sz - d - 1.0);
+      t.rotation.set(0, 0, 0);
+      t.position.set(l.x + ox, l.sy + h / 2, l.z + oz);
+      t.scale.set(w, h, d);
+      t.updateMatrix();
+      hut.setMatrixAt(n, t.matrix);
+
+      const f = FACES[Math.floor(lotRand(li, 6) * 4) % 4];
+      t.rotation.set(0, f.ry, 0);
+      t.position.set(
+        l.x + ox + f.nx * (f.nx ? w / 2 + 0.02 : 0),
+        l.sy + 0.6,
+        l.z + oz + f.nz * (f.nz ? d / 2 + 0.02 : 0)
+      );
+      t.scale.set(1, 1, 1);
+      t.updateMatrix();
+      hutDoor.setMatrixAt(n, t.matrix);
+    });
+    hut.instanceMatrix.needsUpdate = true;
+    hutDoor.instanceMatrix.needsUpdate = true;
+
+    const tank = new THREE.InstancedMesh(tankGeo, surfaces.works, tanks.length);
+    tanks.forEach((li, n) => {
+      const l = lots[li];
+      const ox = (lotRand(li, 7) - 0.5) * Math.max(0, l.sx - 2.4);
+      const oz = (lotRand(li, 8) - 0.5) * Math.max(0, l.sz - 2.4);
+      t.rotation.set(0, lotRand(li, 9) * Math.PI, 0);
+      t.position.set(l.x + ox, l.sy + 0.85, l.z + oz);
+      t.scale.set(1, 1, 1);
+      t.updateMatrix();
+      tank.setMatrixAt(n, t.matrix);
+    });
+    tank.instanceMatrix.needsUpdate = true;
+
+    return { parapet, hut, hutDoor, tank };
+  }, [lots, parapetGeo, boxGeo, tankGeo, doorGeo, doorMat, surfaces]);
+
+  useLayoutEffect(
+    () => () => {
+      parapetGeo.dispose();
+      boxGeo.dispose();
+      tankGeo.dispose();
+      doorGeo.dispose();
+      doorMat.dispose();
+    },
+    [parapetGeo, boxGeo, tankGeo, doorGeo, doorMat]
+  );
+
+  return (
+    <>
+      <primitive object={meshes.parapet} />
+      <primitive object={meshes.hut} />
+      <primitive object={meshes.hutDoor} />
+      <primitive object={meshes.tank} />
+    </>
+  );
+}
+
+/** Soft round falloff, drawn once, used as the light pool an entrance throws
+ *  onto the pavement. A real point light per doorway would be hundreds of
+ *  lights in a forward renderer; this is the same read for one draw call. */
+function makeSpillTexture(): THREE.CanvasTexture {
+  const s = 64;
+  const c = document.createElement("canvas");
+  c.width = s;
+  c.height = s;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, "rgba(255,190,116,0.85)");
+  g.addColorStop(0.45, "rgba(255,168,90,0.28)");
+  g.addColorStop(1, "rgba(255,150,70,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const t = new THREE.CanvasTexture(c);
+  t.needsUpdate = true;
+  return t;
+}
+
+function StreetDetail() {
+  const surfaces = useSurfaces();
+  const { lots } = useMemo(() => buildSkyline(), []);
+
+  const stoopGeo = useMemo(makeStoopGeometry, []);
+  const doorGeo = useMemo(() => new THREE.PlaneGeometry(1.05, 1.95), []);
+  const canopyGeo = useMemo(() => new THREE.BoxGeometry(1.9, 0.14, 0.75), []);
+  const spillGeo = useMemo(() => new THREE.PlaneGeometry(5.2, 5.2), []);
+
+  // Warm on purpose, and the only warm light at ground level. The haze is cold
+  // and covers the entire frame, so without practicals down here the city reads
+  // as a single teal wash however much geometry is in it.
+  const doorMat = useMemo(
+    () => new THREE.MeshBasicMaterial({ color: "#ffbe74", side: THREE.DoubleSide }),
+    []
+  );
+
+  // Without this the stoops were invisible: dark civic concrete, unlit, against
+  // dark civic ground. Geometry nobody can see is geometry that isn't there, and
+  // the fix for an unlit object is light, not more polygons.
+  const spillMat = useMemo(() => {
+    const tex = makeSpillTexture();
+    return new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+  }, []);
+
+  const meshes = useMemo(() => {
+    const t = new THREE.Object3D();
+    const n = lots.length;
+    const stoop = new THREE.InstancedMesh(stoopGeo, surfaces.deck, n);
+    const door = new THREE.InstancedMesh(doorGeo, doorMat, n);
+    const canopy = new THREE.InstancedMesh(canopyGeo, surfaces.stall, n);
+    const spill = new THREE.InstancedMesh(spillGeo, spillMat, n);
+
+    lots.forEach((l, i) => {
+      const f = FACES[Math.floor(lotRand(i, 11) * 4) % 4];
+      const half = f.nz ? l.sz / 2 : l.sx / 2;
+      // Slide the entrance off dead-centre; a door in the exact middle of every
+      // facade in the city is its own kind of tell.
+      const along = (lotRand(i, 12) - 0.5) * (f.nz ? l.sx : l.sz) * 0.42;
+      const ax = f.nz ? along : 0;
+      const az = f.nz ? 0 : along;
+      const width = 2.0 + lotRand(i, 13) * 0.8;
+
+      // The stoop's own geometry runs outward from x=0, so the yaw that points
+      // +x at the facade normal is the face yaw minus a quarter turn.
+      t.rotation.set(0, f.ry - Math.PI / 2, 0);
+      t.position.set(l.x + ax + f.nx * half, 0, l.z + az + f.nz * half);
+      t.scale.set(1, 1, width);
+      t.updateMatrix();
+      stoop.setMatrixAt(i, t.matrix);
+
+      // Door sits at the top of the steps and a hair PROUD of the wall. It was
+      // 0.04 units inside, which is not "recessed" — it is behind an opaque
+      // facade, and the entire entrance was invisible from every angle.
+      t.rotation.set(0, f.ry, 0);
+      t.position.set(
+        l.x + ax + f.nx * (half + 0.03),
+        0.84 + 0.98,
+        l.z + az + f.nz * (half + 0.03)
+      );
+      t.scale.set(1, 1, 1);
+      t.updateMatrix();
+      door.setMatrixAt(i, t.matrix);
+
+      t.position.set(
+        l.x + ax + f.nx * (half + 0.3),
+        0.84 + 2.1,
+        l.z + az + f.nz * (half + 0.3)
+      );
+      t.updateMatrix();
+      canopy.setMatrixAt(i, t.matrix);
+
+      // Pool of light on the pavement, laid flat and pushed out past the foot
+      // of the steps so it lights the treads rather than sitting under them.
+      t.rotation.set(-Math.PI / 2, 0, 0);
+      t.position.set(
+        l.x + ax + f.nx * (half + 1.5),
+        0.05,
+        l.z + az + f.nz * (half + 1.5)
+      );
+      t.updateMatrix();
+      spill.setMatrixAt(i, t.matrix);
+    });
+
+    stoop.instanceMatrix.needsUpdate = true;
+    door.instanceMatrix.needsUpdate = true;
+    canopy.instanceMatrix.needsUpdate = true;
+    spill.instanceMatrix.needsUpdate = true;
+    return { stoop, door, canopy, spill };
+  }, [lots, stoopGeo, doorGeo, canopyGeo, spillGeo, doorMat, spillMat, surfaces]);
+
+  useLayoutEffect(
+    () => () => {
+      stoopGeo.dispose();
+      doorGeo.dispose();
+      canopyGeo.dispose();
+      spillGeo.dispose();
+      doorMat.dispose();
+      spillMat.map?.dispose();
+      spillMat.dispose();
+    },
+    [stoopGeo, doorGeo, canopyGeo, spillGeo, doorMat, spillMat]
+  );
+
+  return (
+    <>
+      <primitive object={meshes.spill} />
+      <primitive object={meshes.stoop} />
+      <primitive object={meshes.door} />
+      <primitive object={meshes.canopy} />
     </>
   );
 }
@@ -1031,14 +1609,18 @@ export default function ArclightCityCanvas({
       />
 
       <SurfaceContext.Provider value={surfaces}>
-        <DarkPool />
+        <Harbour reduced={reduced} />
+        <Mainland />
         <DistantSkyline reduced={reduced} />
         <LandMass pts={LAND_NORTH} />
         <LandMass pts={LAND_SOUTH} />
+        <Causeways />
         <Roads />
         <CounterpartyBridge />
 
         <CityBlocks dim={plan.dim} />
+        <RoofDetail />
+        <StreetDetail />
         {plan.towers.map((t) => {
           const withLight = t.lit && crownLights < 6;
           if (withLight) crownLights += 1;
