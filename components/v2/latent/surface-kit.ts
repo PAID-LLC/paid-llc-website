@@ -136,12 +136,40 @@ export interface SurfaceSpec {
   rough: number;
   /** Surface relief in the normal map, world-ish units. 0 disables. */
   relief: number;
+  /**
+   * Emissive window grid. Omit on anything that is not an inhabited building.
+   *
+   * This is the single strongest "city" cue there is: in every reference image
+   * of a science-fiction metropolis, the buildings ARE their window grids —
+   * the massing only tells you where they are. A tower without windows is a
+   * monolith, and no amount of concrete detail will convince anyone otherwise.
+   *
+   * Because sampling is triplanar in world space, the second coordinate on any
+   * wall is world Y, so window rows line up at the same absolute heights across
+   * every building in the city for free. That accidental correctness is worth a
+   * lot — mismatched floor heights are the fastest way to make a skyline read
+   * as a pile of unrelated boxes.
+   */
+  windows?: {
+    /** Windows across and down one tile. Combined with the material's `scale`
+     *  this sets the real floor height: rows/scale world units per storey. */
+    cols: number;
+    rows: number;
+    /** Fraction alight, 0-1. This is the dial real occupancy drives. */
+    lit: number;
+    /** Interior colours. Real cities are mostly warm with a cold minority —
+     *  that mix is what stops a facade reading as one flat neon. */
+    warm: string;
+    cool: string;
+  };
 }
 
 export interface Surface {
   map: THREE.CanvasTexture;
   roughnessMap: THREE.CanvasTexture;
   normalMap: THREE.CanvasTexture;
+  /** Present only when the spec asked for windows. */
+  emissiveMap: THREE.CanvasTexture | null;
   dispose(): void;
 }
 
@@ -318,6 +346,52 @@ function normalCanvas(spec: SurfaceSpec, h: Float32Array): HTMLCanvasElement {
 // main thread to rebuild, and worlds get revisited constantly, so holding them
 // beats regenerating. Materials are disposed per-scene; call disposeSurfaces()
 // only when tearing the whole 3D layer down.
+/**
+ * The window grid, as an emissive map.
+ *
+ * Two details do most of the work. Windows are inset inside their cell so wall
+ * shows between them — without the gap the grid reads as stripes, not glass.
+ * And whole storeys switch off together, because that is how real buildings
+ * empty out: floor by floor as tenants leave, not window by window at random.
+ */
+function windowCanvas(spec: SurfaceSpec, seed: number): HTMLCanvasElement {
+  const w = spec.windows!;
+  const { canvas, data } = blank();
+  const px = data.data;
+  const warm = rgb(w.warm);
+  const cool = rgb(w.cool);
+  const cw = TILE / w.cols;
+  const rh = TILE / w.rows;
+  const insetX = Math.max(1, cw * 0.3);
+  const insetY = Math.max(1, rh * 0.32);
+
+  for (let y = 0; y < TILE; y++) {
+    const row = Math.floor(y / rh);
+    // Canvas row 0 is the TOP of the tile, which triplanar maps to high world
+    // Y. Dark floors are keyed off the row index either way, so the direction
+    // does not matter here — but it does in albedoCanvas, which streaks.
+    const floorDark = latticeHash(0, row, seed + 91) > 0.84;
+    const fy = y - row * rh;
+    for (let x = 0; x < TILE; x++) {
+      const i = (y * TILE + x) * 4;
+      px[i + 3] = 255;
+      if (floorDark) continue;
+      const col = Math.floor(x / cw);
+      const fx = x - col * cw;
+      if (fx < insetX || fx > cw - insetX || fy < insetY || fy > rh - insetY) continue;
+      if (latticeHash(col, row, seed) > w.lit) continue;
+      const t = latticeHash(col, row, seed + 17);
+      // Cool interiors are the minority, so bias the mix toward warm.
+      const cold = t > 0.78 ? 1 : t * 0.25;
+      const dim = 0.5 + 0.5 * latticeHash(col, row, seed + 33);
+      px[i] = Math.round((warm.r * (1 - cold) + cool.r * cold) * dim);
+      px[i + 1] = Math.round((warm.g * (1 - cold) + cool.g * cold) * dim);
+      px[i + 2] = Math.round((warm.b * (1 - cold) + cool.b * cold) * dim);
+    }
+  }
+  return commit(canvas, data);
+}
+
 const CACHE = new Map<string, Surface>();
 
 export function surface(key: string, spec: SurfaceSpec): Surface {
@@ -329,15 +403,18 @@ export function surface(key: string, spec: SurfaceSpec): Surface {
   const map = toTexture(albedoCanvas(spec, seed, h), true);
   const roughnessMap = toTexture(roughnessCanvas(spec, seed, h), false);
   const normalMap = toTexture(normalCanvas(spec, h), false);
+  const emissiveMap = spec.windows ? toTexture(windowCanvas(spec, seed), true) : null;
 
   const built: Surface = {
     map,
     roughnessMap,
     normalMap,
+    emissiveMap,
     dispose() {
       map.dispose();
       roughnessMap.dispose();
       normalMap.dispose();
+      emissiveMap?.dispose();
       CACHE.delete(key);
     },
   };
@@ -386,15 +463,20 @@ export interface TriplanarOptions {
 export function triplanarMaterial(options: TriplanarOptions): THREE.MeshStandardMaterial {
   const useNormal = options.reduced !== true && options.normalScale !== 0;
   const scale = options.scale ?? 12;
+  const useWindows = options.surface.emissiveMap !== null;
 
   const material = new THREE.MeshStandardMaterial({
     color: new THREE.Color(options.color ?? "#ffffff"),
     map: options.surface.map,
     roughnessMap: options.surface.roughnessMap,
     normalMap: useNormal ? options.surface.normalMap : null,
+    // The window map carries the colour, so the emissive term has to be lit
+    // white or the multiply below zeroes it. Callers set brightness with
+    // emissiveIntensity instead.
+    emissiveMap: options.surface.emissiveMap,
     roughness: options.roughness ?? 1,
     metalness: options.metalness ?? 0,
-    emissive: new THREE.Color(options.emissive ?? "#000000"),
+    emissive: new THREE.Color(options.emissive ?? (useWindows ? "#ffffff" : "#000000")),
     emissiveIntensity: options.emissiveIntensity ?? 1,
     vertexColors: options.vertexColors ?? false,
   });
@@ -481,11 +563,28 @@ export function triplanarMaterial(options: TriplanarOptions): THREE.MeshStandard
         normal = normalize( tnX.zyx * triB.x + tnY.xzy * triB.y + tnZ.xyz * triB.z );`
       );
     }
+
+    if (useWindows) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <emissivemap_fragment>",
+        `// Windows belong on walls only. The Y weight IS the up-facing share,
+        // so dropping it and renormalising gives a wall-only blend, and the
+        // final fade stops roofs and undersides glowing at grazing angles.
+        vec3 triW = vec3( triB.x, 0.0, triB.z );
+        float triWs = triW.x + triW.z;
+        vec3 triEm = triWs < 1e-3
+          ? vec3( 0.0 )
+          : ( texture2D( emissiveMap, triUvX() ).rgb * triW.x
+            + texture2D( emissiveMap, triUvZ() ).rgb * triW.z ) / triWs;
+        totalEmissiveRadiance *= triEm * ( 1.0 - triB.y );`
+      );
+    }
   };
 
   // Without this every triplanar material collapses onto one cached program and
   // the first scale compiled wins for the whole scene.
-  material.customProgramCacheKey = () => `triplanar|${scale}|${useNormal ? 1 : 0}`;
+  material.customProgramCacheKey = () =>
+    `triplanar|${scale}|${useNormal ? 1 : 0}|${useWindows ? 1 : 0}`;
 
   return material;
 }

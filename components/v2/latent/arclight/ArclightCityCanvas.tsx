@@ -36,7 +36,7 @@ import {
   CinematicDescent, GroundMist, MilkyWayBackdrop, ParticleField, Pulse,
   SkyWorld,
 } from "@/components/v2/latent/ground-fx";
-import { SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
+import { SkyDome, SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
 import { surface, triplanarMaterial, type SurfaceSpec } from "@/components/v2/latent/surface-kit";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
@@ -94,6 +94,34 @@ const CONCRETE: SurfaceSpec = {
   relief: 1,
 };
 
+// Inhabited stock: blocks, towers, hab slabs. Same concrete, plus the window
+// grid that turns a box into a building.
+//
+// `lit` is deliberately keyed to what is BUILT here, not to what happened
+// today. Arclight is compiled from real business data, and on a quiet day the
+// freight, grid-load and inference numbers all read zero — but 16 residents
+// still live here and 28 storefronts still exist. Wiring the windows to
+// today's traffic rendered "nobody traded this hour" as "the city is
+// abandoned", which overstates the quiet. Occupancy sets the floor; activity
+// modulates emissiveIntensity on top of it, which needs no regeneration.
+const FACADE: SurfaceSpec = {
+  stain: "#7d6a52",
+  panelsX: 4,
+  panelsY: 4,
+  seam: 0.55,
+  wear: 0.62,
+  wet: 0.12,
+  rough: 0.88,
+  relief: 1,
+  windows: {
+    cols: 7,
+    rows: 8,
+    lit: 0.42,
+    warm: "#ffca7a",
+    cool: "#9fd8ff",
+  },
+};
+
 // Streets, viaducts and riverbank. Heavily wetted: Arclight sits on water under
 // permanent night, and wet ground is where the new environment map does its
 // most visible work.
@@ -123,13 +151,20 @@ const SurfaceContext = createContext<CitySurfaces | null>(null);
 function useCitySurfaces(reduced: boolean): CitySurfaces {
   const materials = useMemo<CitySurfaces>(() => {
     const concrete = surface("arclight-concrete", CONCRETE);
+    const facade = surface("arclight-facade", FACADE);
     const civic = surface("arclight-civic", CIVIC);
     // Scale is world units per tile: tighter on small structures so a stall
-    // does not wear the same size panels as a tower.
+    // does not wear the same size panels as a tower. On the window-bearing
+    // surfaces it doubles as the storey height — rows/scale world units per
+    // floor — so a hab slab reads as more, shorter floors than a tower.
     return {
-      block: triplanarMaterial({ surface: concrete, scale: 10, metalness: 0.06, normalScale: 0.85, reduced }),
-      tower: triplanarMaterial({ surface: concrete, color: TOWER_TINT, scale: 14, metalness: 0.14, normalScale: 0.7, reduced }),
-      hab: triplanarMaterial({ surface: concrete, color: HAB_TINT, scale: 8, metalness: 0.05, normalScale: 0.9, reduced }),
+      // Emissive runs hot on purpose. The haze is cold and it covers the whole
+      // frame, so at parity the city reads as one teal wash; the warm/cool
+      // tension in every reference image comes from window light winning
+      // locally while the atmosphere wins globally.
+      block: triplanarMaterial({ surface: facade, scale: 10, metalness: 0.06, normalScale: 0.85, emissiveIntensity: 2.4, reduced }),
+      tower: triplanarMaterial({ surface: facade, color: TOWER_TINT, scale: 14, metalness: 0.14, normalScale: 0.7, emissiveIntensity: 2.9, reduced }),
+      hab: triplanarMaterial({ surface: facade, color: HAB_TINT, scale: 8, metalness: 0.05, normalScale: 0.9, emissiveIntensity: 2.1, reduced }),
       stall: triplanarMaterial({ surface: concrete, color: STALL_TINT, scale: 5, metalness: 0.05, normalScale: 1, reduced }),
       deck: triplanarMaterial({ surface: civic, color: DECK_TINT, scale: 12, metalness: 0.22, normalScale: 0.8, reduced }),
       ground: triplanarMaterial({ surface: civic, color: LAND_TINT, scale: 26, metalness: 0.18, normalScale: 0.7, reduced }),
@@ -161,8 +196,11 @@ function useSurfaces(): CitySurfaces {
 // ── Water and land ───────────────────────────────────────────────────────────
 
 function DarkPool() {
+  // Raised from -0.7. At the old level the harbour sat well below the land and
+  // the lit quay wall showed all the way round, which is the exact silhouette
+  // of a model on a table. Water lapping near the top edge reads as coastline.
   return (
-    <mesh rotation-x={-Math.PI / 2} position-y={-0.7}>
+    <mesh rotation-x={-Math.PI / 2} position-y={-0.22}>
       <planeGeometry args={[1100, 950]} />
       <meshStandardMaterial
         color="#030608"
@@ -201,6 +239,61 @@ function LandMass({ pts }: { pts: readonly [number, number][] }) {
   // a normal map: it recomputes normals per face, which flattens exactly the
   // relief the map is there to add.
   return <mesh geometry={geometry} material={surfaces.ground} />;
+}
+
+/**
+ * The city that exists beyond the part we simulate.
+ *
+ * Arclight's whole failure as an image was that it read as a model on a table:
+ * a lit plate with a visible edge, floating in void. Depth in a wide city shot
+ * comes from layered silhouettes at increasing distance, each one paler than
+ * the one in front, until the furthest merges into the horizon. That is what
+ * separates a photograph of a city from a photograph of a diorama, and no
+ * amount of detail on the near buildings substitutes for it.
+ *
+ * So: an annulus of blocks starting outside the simulated districts and
+ * running out past the fog's far plane. They carry the same facade material as
+ * the real city, which costs one extra draw call and buys distant window glow
+ * for free — and because fog applies after emissive in three's shader, those
+ * windows fade with distance exactly like the concrete does.
+ *
+ * These are scenery, and they are honest about it: nothing here is derived from
+ * business data, nothing here is counted anywhere, and no resident can be here.
+ * The simulated city is the lit plate. This is the horizon it sits in.
+ */
+function DistantSkyline({ reduced }: { reduced: boolean }) {
+  const surfaces = useSurfaces();
+  const count = reduced ? 90 : 190;
+  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const mesh = useMemo(() => {
+    const m = new THREE.InstancedMesh(geometry, surfaces.tower, count);
+    const t = new THREE.Object3D();
+    // Deterministic: the skyline is geography, and geography should not
+    // reshuffle itself on every render.
+    let seed = 20260809;
+    const rand = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < count; i++) {
+      const angle = rand() * Math.PI * 2;
+      // Squared distribution pushes more of them far out, so the ring reads as
+      // a city thinning toward a horizon rather than as a fence around the map.
+      const radius = 320 + Math.pow(rand(), 0.6) * 340;
+      const h = 16 + Math.pow(rand(), 1.7) * 88;
+      t.position.set(Math.cos(angle) * radius, h / 2 - 1, Math.sin(angle) * radius);
+      t.scale.set(11 + rand() * 19, h, 11 + rand() * 19);
+      t.rotation.y = rand() * Math.PI;
+      t.updateMatrix();
+      m.setMatrixAt(i, t.matrix);
+    }
+    m.instanceMatrix.needsUpdate = true;
+    m.frustumCulled = false;
+    return m;
+  }, [geometry, surfaces.tower, count]);
+
+  useLayoutEffect(() => () => geometry.dispose(), [geometry]);
+  return <primitive object={mesh} />;
 }
 
 // ── Roads ────────────────────────────────────────────────────────────────────
@@ -871,27 +964,58 @@ export default function ArclightCityCanvas({
     <Canvas
       dpr={[1, 1.75]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      camera={{ position: [140, 95, 185], fov: 50, near: 0.5, far: 1200 }}
+      camera={{
+        // Down from [140, 95, 185]. That was 251 units out at 22 degrees above
+        // the plate: a map camera, and from above nothing overlaps, so nothing
+        // layers, so there is no depth to read. This sits just off the water at
+        // about 6 degrees looking ACROSS the harbour at the skyline, which is
+        // the composition every reference image of a city actually uses.
+        position: [175, 30, 235],
+        fov: 50,
+        near: 0.5,
+        far: 1200,
+      }}
     >
-      <color attach="background" args={["#05060a"]} />
-      <fog attach="fog" args={["#0a0d13", 130, 620]} />
-      {/* Ambient drops from 0.14 to 0.06: the environment map below is now
-          carrying the fill, and it carries it with direction and colour where a
-          flat ambient term only washed everything out equally. */}
-      <hemisphereLight args={["#0e1420", "#05070b", 0.35]} />
-      <ambientLight color="#8fa8bf" intensity={0.06} />
-      <directionalLight color="#b8d4f0" intensity={0.3} position={[-220, 260, -140]} />
+      {/* Haze must be BRIGHTER than the things it hides. Aerial perspective is
+          light scattered toward the camera, so a distant block goes pale and
+          blue and separates from the one in front of it. The old #0a0d13 was
+          darker than the buildings, which is only correct in vacuum — it
+          dissolved the far half of the city into the background instead of
+          layering it. The colour tracks the sky dome's horizon band so the far
+          skyline dissolves into sky rather than cutting a hard edge on it. */}
+      <fog attach="fog" args={["#0f252c", 210, 900]} />
+      {/* These four numbers are the ones that were wrong. The surface pass
+          lifted every structure to mid-tone and then, on the theory that the
+          environment map would carry the fill, cut ambient nearly in half. But
+          the map below was built out of near-blacks, so it carried almost no
+          irradiance: total omnidirectional fill landed near 0.13, which turns
+          RGB 42 concrete into RGB 5. The paint went up and the light went down.
+          A night city is lit mostly from below and sideways by its own streets,
+          so the hemisphere's GROUND colour is warm here on purpose. */}
+      <hemisphereLight args={["#16283a", "#1a1208", 0.7]} />
+      <ambientLight color="#8fa8bf" intensity={0.16} />
+      <directionalLight color="#b8d4f0" intensity={0.45} position={[-220, 260, -140]} />
 
-      {/* IBL, generated not fetched. Cool sky above, and the city's own teal
-          and amber bounced back from below — the reason wet streets and metal
-          edges read as surfaces here for the first time. */}
+      {/* IBL, generated not fetched. The sky is a light source, so it has to
+          own real luminance — the horizon band especially, since that is the
+          city's own glow scattered back down onto every upward face. */}
       <SkyEnvironment
-        top="#04060b"
-        horizon="#0d1c22"
-        ground="#241a12"
-        glow="#153b3a"
+        top="#0a1420"
+        horizon="#1d3f45"
+        ground="#3a2a1c"
+        glow="#2f7d72"
         glowY={-0.04}
-        intensity={0.85}
+        intensity={1.15}
+      />
+      {/* The same gradient again, this time visible. Replaces the flat
+          background colour that gave the world no horizon to recede into. */}
+      <SkyDome
+        top="#04080f"
+        horizon="#123037"
+        ground="#060c10"
+        glow="#17544e"
+        glowY={-0.02}
+        radius={900}
       />
 
       <MilkyWayBackdrop radius={520} />
@@ -908,6 +1032,7 @@ export default function ArclightCityCanvas({
 
       <SurfaceContext.Provider value={surfaces}>
         <DarkPool />
+        <DistantSkyline reduced={reduced} />
         <LandMass pts={LAND_NORTH} />
         <LandMass pts={LAND_SOUTH} />
         <Roads />

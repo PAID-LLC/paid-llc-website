@@ -323,6 +323,61 @@ export function SkyEnvironment({
   );
 }
 
+/**
+ * The same gradient as `SkyEnvironment`, but visible.
+ *
+ * A flat `<color attach="background">` gives a world no horizon, and without a
+ * horizon there is no depth: distant geometry fades into a wall of uniform
+ * colour instead of into sky. The luminous band where sky meets ground or water
+ * is the strongest depth cue a wide shot has, so it has to be drawn, not just
+ * fed to the light rig.
+ *
+ * Deliberately unfogged — a raw ShaderMaterial opts out of three's fog chunks.
+ * This IS what fog resolves toward, so fogging it would flatten it back into
+ * the single colour it exists to replace. Keep the radius inside the camera's
+ * far plane, and keep the scene's fog colour close to `horizon`, or distant
+ * buildings will cut a hard silhouette against the sky instead of dissolving.
+ */
+export function SkyDome({
+  top,
+  horizon,
+  ground,
+  glow,
+  glowY = -0.05,
+  radius = 900,
+}: {
+  top: string;
+  horizon: string;
+  ground: string;
+  glow: string;
+  glowY?: number;
+  radius?: number;
+}) {
+  const uniforms = useMemo(
+    () => ({
+      uTop: { value: new THREE.Color(top) },
+      uHorizon: { value: new THREE.Color(horizon) },
+      uGround: { value: new THREE.Color(ground) },
+      uGlow: { value: new THREE.Color(glow) },
+      uGlowY: { value: glowY },
+    }),
+    [top, horizon, ground, glow, glowY]
+  );
+
+  return (
+    <mesh renderOrder={-1} frustumCulled={false}>
+      <sphereGeometry args={[radius, 48, 32]} />
+      <shaderMaterial
+        side={THREE.BackSide}
+        depthWrite={false}
+        uniforms={uniforms}
+        vertexShader={ENV_VERT}
+        fragmentShader={ENV_FRAG}
+      />
+    </mesh>
+  );
+}
+
 // brightest at its silhouette, which is what a real light column does.
 const SHAFT_FRAG = /* glsl */ `
   uniform vec3 uColor;

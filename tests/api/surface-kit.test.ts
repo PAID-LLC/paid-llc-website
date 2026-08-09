@@ -12,11 +12,12 @@ import { triplanarMaterial, type Surface } from "@/components/v2/latent/surface-
 //
 // These tests turn that silent failure into a loud one at CI time.
 
-function fakeSurface(): Surface {
+function fakeSurface(windows = false): Surface {
   return {
     map: new THREE.Texture() as THREE.CanvasTexture,
     roughnessMap: new THREE.Texture() as THREE.CanvasTexture,
     normalMap: new THREE.Texture() as THREE.CanvasTexture,
+    emissiveMap: windows ? (new THREE.Texture() as THREE.CanvasTexture) : null,
     dispose() {},
   };
 }
@@ -65,6 +66,21 @@ describe("three shader chunk contract", () => {
     // The generated roughness map writes grey, but the patch samples .g
     // explicitly. If three ever moved to another channel this would drift.
     expect(THREE.ShaderChunk.roughnessmap_fragment).toContain("texelRoughness.g");
+  });
+
+  it("emits emissivemap_fragment after map_fragment", () => {
+    // The window patch reuses triB, which map_fragment's replacement declares.
+    expect(frag).toContain("#include <emissivemap_fragment>");
+    expect(frag.indexOf("#include <emissivemap_fragment>")).toBeGreaterThan(
+      frag.indexOf("#include <map_fragment>")
+    );
+  });
+
+  it("still multiplies rather than assigns totalEmissiveRadiance", () => {
+    // The patch relies on the multiply: material.emissive * emissiveIntensity
+    // is the brightness, and the window map is the 0-1 mask over it. An
+    // upstream switch to assignment would blow every facade to full white.
+    expect(THREE.ShaderChunk.emissivemap_fragment).toContain("totalEmissiveRadiance *=");
   });
 });
 
@@ -134,5 +150,40 @@ describe("triplanarMaterial", () => {
     expect(m.map).not.toBeNull();
     expect(m.roughnessMap).not.toBeNull();
     expect(m.metalness).toBeCloseTo(0.14);
+  });
+
+  it("leaves the emissive chunk alone on a surface with no windows", () => {
+    const m = triplanarMaterial({ surface: fakeSurface() });
+    expect(m.emissiveMap).toBeNull();
+    // Black emissive, so a stray multiply could never light a road or a roof.
+    expect(m.emissive.getHex()).toBe(0x000000);
+    expect(compile(m).fragmentShader).toContain("#include <emissivemap_fragment>");
+  });
+
+  it("lights windows on walls only, never on roofs", () => {
+    const m = triplanarMaterial({ surface: fakeSurface(true) });
+    const { fragmentShader } = compile(m);
+    expect(fragmentShader).not.toContain("#include <emissivemap_fragment>");
+    // The Y weight is the up-facing share. It must be excluded from the blend
+    // AND fade the result, or every rooftop in the city lights up like a floor.
+    expect(fragmentShader).toContain("vec3 triW = vec3( triB.x, 0.0, triB.z )");
+    expect(fragmentShader).toContain("( 1.0 - triB.y )");
+    expect(fragmentShader).not.toContain("texture2D( emissiveMap, triUvY() )");
+  });
+
+  it("gives a windowed material a lit emissive, or the mask multiplies to nothing", () => {
+    // totalEmissiveRadiance starts at emissive * emissiveIntensity and the
+    // window map multiplies it. Default-black emissive would mean the whole
+    // feature silently renders as an unlit facade.
+    const m = triplanarMaterial({ surface: fakeSurface(true), emissiveIntensity: 1.9 });
+    expect(m.emissive.getHex()).toBe(0xffffff);
+    expect(m.emissiveIntensity).toBeCloseTo(1.9);
+    expect(m.emissiveMap).not.toBeNull();
+  });
+
+  it("keys the program cache by windows as well as scale", () => {
+    const lit = triplanarMaterial({ surface: fakeSurface(true), scale: 10 });
+    const dark = triplanarMaterial({ surface: fakeSurface(), scale: 10 });
+    expect(lit.customProgramCacheKey()).not.toEqual(dark.customProgramCacheKey());
   });
 });
