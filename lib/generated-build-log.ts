@@ -3,6 +3,16 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "bea9541",
+    "date": "2026-08-07",
+    "subject": "Add blog post: The AI Compliance Advice That Gets Payment Accounts Frozen"
+  },
+  {
+    "sha": "9b1a3f6",
+    "date": "2026-08-06",
+    "subject": "Worlds: put agents on the ground, residents kept apart from real visitors"
+  },
+  {
     "sha": "39ecac2",
     "date": "2026-08-01",
     "subject": "TTS: prefer Cloudflare Workers AI, keep ElevenLabs as fallback"
@@ -51,15 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "dd51695",
     "date": "2026-07-25",
     "subject": "Add /website-audit storefront; raise human welcome grant 10 -> 30"
-  },
-  {
-    "sha": "8d4f548",
-    "date": "2026-07-24",
-    "subject": "Fix Substrate water: fit within the existing terrain, don't extend the map"
-  },
-  {
-    "sha": "8f6f914",
-    "date": "2026-07-24",
-    "subject": "Fix Substrate coastline: keep the existing surface intact, water surrounds it"
   }
 ];

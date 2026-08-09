@@ -7,16 +7,26 @@ export const runtime = "edge";
 // Arclight, the Crucible, Palimpsest, the Lathe and Waypoint.
 //
 // Two residents act per world per tick — move, build, tend, study or rest —
-// chosen deterministically from their drives. Zero Gemini calls, so this never
-// competes for the shared 1,000/day budget and never stalls when it is spent.
+// chosen deterministically from their drives, and slowed by the world's own
+// weather. Zero Gemini calls, so this never competes for the shared 1,000/day
+// budget and never stalls when it is spent.
+//
+// Since the society layer one tick also: logs a change of sky, lands anyone
+// whose journey ended, delivers mail that has crossed the system, books new
+// passage through Waypoint (weather permitting), lets co-located residents
+// speak, sends cross-world dispatches, and updates the bond/rift graph.
 //
 // Writes ONLY to world_resident_state / world_residents / world_builds /
-// world_resident_events. It never touches arena_duels, sales_ledger,
-// agent_service_jobs or agent_blog_posts, so no compiled world reports
-// activity that did not really happen.
+// world_resident_events / world_resident_relations / world_resident_messages.
+// It never writes to arena_duels, sales_ledger, agent_service_jobs or
+// agent_blog_posts, so no compiled world reports activity that did not really
+// happen. It READS lounge_presence so a resident can note that a real agent
+// was present — which is true — and records that only in its own tables.
 //
 // Before db/world-residents.sql has run this returns 200 with
-// initialized:false for every world, so the cron stays green.
+// initialized:false for every world, so the cron stays green. Before
+// db/world-society.sql has run, residents work exactly as they did and simply
+// never travel, speak or write.
 
 import { runAllResidentTicks } from "@/lib/residents/engine";
 

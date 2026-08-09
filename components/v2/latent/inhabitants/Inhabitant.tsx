@@ -249,6 +249,24 @@ export default function Inhabitant({
           />
         </mesh>
 
+        {/* Speech: the last thing this resident said to somebody standing
+            here. Sits above the nameplate so a conversation reads at a glance
+            without the plate moving. */}
+        {data.says ? (
+          <Html position={[0, 6.15, 0]} center distanceFactor={62} occlude={false}>
+            <div
+              className="pointer-events-none max-w-[190px] whitespace-normal rounded-lg px-2.5 py-1.5 text-center font-sans text-[11px] leading-snug shadow-md"
+              style={{
+                background: bright ? "rgba(255,255,255,0.94)" : "rgba(24,24,27,0.92)",
+                color: bright ? "#27272a" : "#e4e4e7",
+                border: `1px solid ${trim}55`,
+              }}
+            >
+              {data.says}
+            </div>
+          </Html>
+        ) : null}
+
         {/* Nameplate. Follows the host world's own plate styling — the dark
             worlds all use black/75 on a hairline border, Meridian's daylight
             plates are white. */}
@@ -277,9 +295,17 @@ export default function Inhabitant({
                 visiting · {data.activity}
               </span>
             ) : (
-              <span className={`block max-w-[150px] whitespace-normal text-[8px] leading-tight ${bright ? "text-zinc-500" : "text-zinc-500"}`}>
-                {data.activity}
-              </span>
+              <>
+                <span className={`block max-w-[150px] whitespace-normal text-[8px] leading-tight ${bright ? "text-zinc-500" : "text-zinc-500"}`}>
+                  {data.activity}
+                </span>
+                {/* Came in on the packet — a resident of somewhere else. */}
+                {data.foreign ? (
+                  <span className="block text-[8px] uppercase leading-tight tracking-[0.2em] text-amber-400/70">
+                    off-world
+                  </span>
+                ) : null}
+              </>
             )}
           </div>
         </Html>
