@@ -3,6 +3,11 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "b9bb025",
+    "date": "2026-08-09",
+    "subject": "Arclight gets surfaces: procedural textures, triplanar, and IBL"
+  },
+  {
     "sha": "f5fd2b5",
     "date": "2026-08-09",
     "subject": "Worlds: the Lathe becomes a quarry, Waypoint loses its ground"
@@ -56,10 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "0aac618",
     "date": "2026-07-25",
     "subject": "Add blog post: The Open Source Debate Is Missing the Point"
-  },
-  {
-    "sha": "158e598",
-    "date": "2026-07-25",
-    "subject": "World Residents: internal life for the five compiler worlds"
   }
 ];

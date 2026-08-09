@@ -71,6 +71,9 @@ const STALL_TINT = "#2a3642";
 const HAB_TINT = "#29313d";
 const DECK_TINT = "#2a323e";
 const LAND_TINT = "#1a212c";
+// The Foundry runs warm where the rest of the city runs cold — soot and
+// firelight rather than rain and neon.
+const WORKS_TINT = "#3a3026";
 
 const WINDOW_PALETTE = ["#f5c580", "#cfdcea", "#67e8f9"] as const;
 const WINDOW_DARK = "#0b0e13";
@@ -112,6 +115,7 @@ interface CitySurfaces {
   stall: THREE.MeshStandardMaterial;
   deck: THREE.MeshStandardMaterial;
   ground: THREE.MeshStandardMaterial;
+  works: THREE.MeshStandardMaterial;
 }
 
 const SurfaceContext = createContext<CitySurfaces | null>(null);
@@ -129,6 +133,9 @@ function useCitySurfaces(reduced: boolean): CitySurfaces {
       stall: triplanarMaterial({ surface: concrete, color: STALL_TINT, scale: 5, metalness: 0.05, normalScale: 1, reduced }),
       deck: triplanarMaterial({ surface: civic, color: DECK_TINT, scale: 12, metalness: 0.22, normalScale: 0.8, reduced }),
       ground: triplanarMaterial({ surface: civic, color: LAND_TINT, scale: 26, metalness: 0.18, normalScale: 0.7, reduced }),
+      // Heavier relief and more metal than the housing stock: this is plant,
+      // not architecture.
+      works: triplanarMaterial({ surface: concrete, color: WORKS_TINT, scale: 9, metalness: 0.3, roughness: 0.95, normalScale: 1.15, reduced }),
     };
   }, [reduced]);
 
@@ -618,7 +625,7 @@ function Crane({ mx, my, flip }: { mx: number; my: number; flip: boolean }) {
       </mesh>
       <mesh position={[6.6, 6.7, 0]}>
         <boxGeometry args={[1.1, 0.7, 0.8]} />
-        <meshStandardMaterial color="#10151d" flatShading roughness={1} />
+        <meshStandardMaterial color="#2a323e" flatShading roughness={1} metalness={0.2} />
       </mesh>
       <mesh position={[3.4, 9.95, 0]}>
         <sphereGeometry args={[0.16, 8, 6]} />
@@ -654,13 +661,16 @@ function MintIsland({ beam, reduced }: { beam: CityPlan["mintBeam"]; reduced: bo
     <group position={[x, 0, z]}>
       <mesh position-y={-0.45}>
         <cylinderGeometry args={[MINT_ISLAND.r * 0.5, MINT_ISLAND.r * 0.58, 1.6, 20]} />
-        <meshStandardMaterial color="#0b0f16" flatShading roughness={1} />
+        <meshStandardMaterial color="#1c242e" flatShading roughness={1} metalness={0.15} />
       </mesh>
       {/* The Mint itself: a stepped vault. */}
       {[[5, 2], [3.4, 3.6], [2, 5]].map(([s, y], i) => (
         <mesh key={i} position-y={y as number}>
           <boxGeometry args={[s as number, 1.7, s as number]} />
-          <meshStandardMaterial color="#0f141c" flatShading roughness={0.9} emissive={color} emissiveIntensity={0.08} />
+          {/* Keeps its own material rather than a shared one: the vault's
+              emissive tracks the live beam colour. Tint lifted to match the
+              rest of the city so it stops reading as a black cutout. */}
+          <meshStandardMaterial color="#2a3240" flatShading roughness={0.9} metalness={0.2} emissive={color} emissiveIntensity={0.08} />
         </mesh>
       ))}
       <mesh position-y={40}>
@@ -684,17 +694,16 @@ function MintIsland({ beam, reduced }: { beam: CityPlan["mintBeam"]; reduced: bo
 // ── The Foundry: the power district — plant glow tracks real inference load ──
 
 function FoundryPlant({ load, dimF, reduced }: { load: number; dimF: number; reduced: boolean }) {
+  const surfaces = useSurfaces();
   const [x, z] = toWorld(FOUNDRY_PLANT.x, FOUNDRY_PLANT.y);
   const glow = Math.max(0.06, (0.25 + load * 0.75) * (1 - dimF));
   return (
     <group position={[x, 0, z]}>
-      <mesh position={[0, 3.5, 0]}>
+      <mesh position={[0, 3.5, 0]} material={surfaces.works}>
         <boxGeometry args={[16, 7, 10]} />
-        <meshStandardMaterial color="#16130f" flatShading roughness={0.95} />
       </mesh>
-      <mesh position={[10, 2.5, 2]}>
+      <mesh position={[10, 2.5, 2]} material={surfaces.works}>
         <boxGeometry args={[8, 5, 7]} />
-        <meshStandardMaterial color="#141210" flatShading roughness={0.95} />
       </mesh>
       {/* Furnace seam. */}
       <mesh position={[0, 1.1, 5.03]}>
@@ -703,9 +712,8 @@ function FoundryPlant({ load, dimF, reduced }: { load: number; dimF: number; red
       </mesh>
       {[[-5, 12, 0.9], [0, 13.5, 1.0], [4.6, 11, 0.8]].map(([sx, sh, sr], i) => (
         <group key={i}>
-          <mesh position={[sx, (sh as number) / 2 + 7, -2]}>
+          <mesh position={[sx, (sh as number) / 2 + 7, -2]} material={surfaces.works}>
             <cylinderGeometry args={[sr as number, (sr as number) * 1.25, sh as number, 8]} />
-            <meshStandardMaterial color="#1a1712" flatShading roughness={1} />
           </mesh>
           <Pulse speed={1.4} amp={0.12} phase={i * 1.7} reduced={reduced}>
             <mesh position={[sx, (sh as number) + 7.4, -2]}>
@@ -727,12 +735,12 @@ function FoundryPlant({ load, dimF, reduced }: { load: number; dimF: number; red
 // ── Landmarks and civic memory ───────────────────────────────────────────────
 
 function CustomHouse() {
+  const surfaces = useSurfaces();
   const [x, z] = toWorld(LANDMARKS.custom_house.x, LANDMARKS.custom_house.y);
   return (
     <group position={[x, 0, z]}>
-      <mesh position-y={2.5}>
+      <mesh position-y={2.5} material={surfaces.hab}>
         <boxGeometry args={[9, 5, 7]} />
-        <meshStandardMaterial color="#101720" flatShading roughness={0.9} />
       </mesh>
       <mesh position-y={5.15}>
         <boxGeometry args={[9.3, 0.3, 7.3]} />
@@ -741,7 +749,7 @@ function CustomHouse() {
       {/* Settlement pier reaching into the channel. */}
       <mesh position={[0, 0.5, -6.5]}>
         <boxGeometry args={[3, 0.3, 8]} />
-        <meshStandardMaterial color="#0f141c" roughness={1} />
+        <meshStandardMaterial color="#29313d" roughness={1} metalness={0.12} />
       </mesh>
       <Html position={[0, 7.6, 0]} center distanceFactor={52} className="pointer-events-none">
         <p className="whitespace-nowrap font-mono text-[9px] uppercase tracking-widest text-zinc-400">
