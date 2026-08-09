@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { Environment } from "@react-three/drei";
 import {
   Bloom,
   BrightnessContrast,
@@ -15,10 +16,13 @@ import {
 
 // ── World craft kit ──────────────────────────────────────────────────────────
 //
-// The second shared layer under the world scenes. ground-fx.tsx supplies the
-// *atmosphere* (sky domes, mist, weather, starfields); this file supplies the
-// *finish and the mass*: a per-world colour grade, volumetric light, instanced
-// structure, and procedural molten/holographic surfaces.
+// The second of three shared layers under the world scenes. ground-fx.tsx
+// supplies the *atmosphere* (sky domes, mist, weather, starfields); this file
+// supplies the *finish and the mass* — a per-world colour grade, image-based
+// lighting, volumetric light, instanced structure, and procedural
+// molten/holographic surfaces; surface-kit.ts supplies the *surface itself*,
+// the generated albedo/roughness/normal sets and the triplanar projection that
+// puts them on geometry.
 //
 // Three rules it exists to enforce:
 //
@@ -229,6 +233,96 @@ const SHAFT_VERT = /* glsl */ `
 
 // Edge-on fragments are the ones looking down the length of the cone wall, so
 // they accumulate the most "air" — inverting the fresnel gives a shaft that is
+// ── Image-based lighting ─────────────────────────────────────────────────────
+//
+// Until this shipped there was no environment map anywhere in the eight worlds,
+// which meant all 27 declared `metalness` values were doing nothing useful: a
+// metallic surface renders what it reflects, and with nothing to reflect it can
+// only darken. Raising metalness was actively making things worse.
+//
+// drei's Environment renders its children into a cube target, PMREM-filters it
+// and assigns scene.environment — so this is IBL with NO fetched HDRI, which
+// keeps the no-external-assets rule intact. One bake at mount (frames={1}),
+// 128px, then it costs nothing per frame.
+//
+// The gradient is deliberately lit from BELOW as well as above. A night city is
+// lit by its own streets, so the warm bounce under the horizon is what puts a
+// sheen on wet ground and a rim on every metal edge. Skip it and the scene goes
+// back to looking like painted cardboard even with the textures in place.
+
+const ENV_VERT = /* glsl */ `
+  varying vec3 vDir;
+  void main() {
+    vDir = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const ENV_FRAG = /* glsl */ `
+  uniform vec3 uTop;
+  uniform vec3 uHorizon;
+  uniform vec3 uGround;
+  uniform vec3 uGlow;
+  uniform float uGlowY;
+  varying vec3 vDir;
+  void main() {
+    float y = normalize(vDir).y;
+    vec3 c = mix(uHorizon, uTop, smoothstep(0.0, 0.6, y));
+    c = mix(c, uGround, smoothstep(0.0, -0.55, y));
+    // A soft band of the world's own light sitting on the horizon line.
+    float band = exp(-pow((y - uGlowY) * 5.5, 2.0));
+    gl_FragColor = vec4(c + uGlow * band, 1.0);
+  }
+`;
+
+export function SkyEnvironment({
+  top,
+  horizon,
+  ground,
+  glow,
+  glowY = -0.05,
+  intensity = 1,
+  resolution = 128,
+}: {
+  /** Zenith. */
+  top: string;
+  horizon: string;
+  /** Below the horizon — the bounce colour. On a city this is warm, on ice it
+   *  is the ice, on open water it is near-black. */
+  ground: string;
+  /** Added on the horizon band. This is the colour that ends up rimming metal. */
+  glow: string;
+  glowY?: number;
+  intensity?: number;
+  resolution?: number;
+}) {
+  const uniforms = useMemo(
+    () => ({
+      uTop: { value: new THREE.Color(top) },
+      uHorizon: { value: new THREE.Color(horizon) },
+      uGround: { value: new THREE.Color(ground) },
+      uGlow: { value: new THREE.Color(glow) },
+      uGlowY: { value: glowY },
+    }),
+    [top, horizon, ground, glow, glowY]
+  );
+
+  return (
+    <Environment frames={1} resolution={resolution} environmentIntensity={intensity}>
+      <mesh scale={100}>
+        <sphereGeometry args={[1, 24, 16]} />
+        <shaderMaterial
+          side={THREE.BackSide}
+          depthWrite={false}
+          uniforms={uniforms}
+          vertexShader={ENV_VERT}
+          fragmentShader={ENV_FRAG}
+        />
+      </mesh>
+    </Environment>
+  );
+}
+
 // brightest at its silhouette, which is what a real light column does.
 const SHAFT_FRAG = /* glsl */ `
   uniform vec3 uColor;

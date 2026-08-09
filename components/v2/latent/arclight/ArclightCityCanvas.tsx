@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
@@ -34,8 +34,10 @@ import {
 } from "@/lib/arclight/skyline";
 import {
   CinematicDescent, GroundMist, MilkyWayBackdrop, ParticleField, Pulse,
-  SceneFX, SkyWorld,
+  SkyWorld,
 } from "@/components/v2/latent/ground-fx";
+import { SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
+import { surface, triplanarMaterial, type SurfaceSpec } from "@/components/v2/latent/surface-kit";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── Arclight CITY: the comprehensive 3D read ─────────────────────────────────
@@ -48,17 +50,106 @@ import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 const ACCENT = "#2dd4bf";
 const AMBER = "#f59e0b";
 
+// District tints, lifted 2026-08-09. These used to run #0c1118 to #16130f —
+// RGB 12 to 36 out of 255, i.e. every building in the city was painted almost
+// black. That is a different thing from a dark scene, and it is a hard ceiling:
+// a surface with no value range has nothing for a light to reveal, so the
+// procedural detail below would have been invisible underneath it. The paint is
+// now mid-tone and the LIGHT RIG does the darkening, which is how the reference
+// art gets a night city that still shows its own concrete.
 const BODY_TINT: Record<DistrictId, string> = {
-  stacks: "#10151d",
-  old_grid: "#131118",
-  strip: "#101820",
-  exchange: "#0e1522",
-  dockyards: "#12141a",
-  foundry: "#16130f",
+  stacks: "#2b3340",
+  old_grid: "#312b3a",
+  strip: "#2a3642",
+  exchange: "#273246",
+  dockyards: "#2c3038",
+  foundry: "#3a3026",
 };
+
+const TOWER_TINT = "#273246";
+const STALL_TINT = "#2a3642";
+const HAB_TINT = "#29313d";
+const DECK_TINT = "#2a323e";
+const LAND_TINT = "#1a212c";
 
 const WINDOW_PALETTE = ["#f5c580", "#cfdcea", "#67e8f9"] as const;
 const WINDOW_DARK = "#0b0e13";
+
+// ── City surfaces ────────────────────────────────────────────────────────────
+// Two generated texture sets carry the whole metropolis. Everything samples
+// them triplanar in world space, so one material covers a 6-unit market stall
+// and a 40-unit exchange tower at identical texel density with no UV work.
+
+const CONCRETE: SurfaceSpec = {
+  stain: "#7d6a52",
+  panelsX: 4,
+  panelsY: 4,
+  seam: 0.55,
+  wear: 0.62,
+  wet: 0.12,
+  rough: 0.88,
+  relief: 1,
+};
+
+// Streets, viaducts and riverbank. Heavily wetted: Arclight sits on water under
+// permanent night, and wet ground is where the new environment map does its
+// most visible work.
+const CIVIC: SurfaceSpec = {
+  stain: "#4a5a5e",
+  panelsX: 2,
+  panelsY: 2,
+  seam: 0.3,
+  wear: 0.8,
+  wet: 0.72,
+  rough: 0.76,
+  relief: 0.8,
+};
+
+interface CitySurfaces {
+  block: THREE.MeshStandardMaterial;
+  tower: THREE.MeshStandardMaterial;
+  hab: THREE.MeshStandardMaterial;
+  stall: THREE.MeshStandardMaterial;
+  deck: THREE.MeshStandardMaterial;
+  ground: THREE.MeshStandardMaterial;
+}
+
+const SurfaceContext = createContext<CitySurfaces | null>(null);
+
+function useCitySurfaces(reduced: boolean): CitySurfaces {
+  const materials = useMemo<CitySurfaces>(() => {
+    const concrete = surface("arclight-concrete", CONCRETE);
+    const civic = surface("arclight-civic", CIVIC);
+    // Scale is world units per tile: tighter on small structures so a stall
+    // does not wear the same size panels as a tower.
+    return {
+      block: triplanarMaterial({ surface: concrete, scale: 10, metalness: 0.06, normalScale: 0.85, reduced }),
+      tower: triplanarMaterial({ surface: concrete, color: TOWER_TINT, scale: 14, metalness: 0.14, normalScale: 0.7, reduced }),
+      hab: triplanarMaterial({ surface: concrete, color: HAB_TINT, scale: 8, metalness: 0.05, normalScale: 0.9, reduced }),
+      stall: triplanarMaterial({ surface: concrete, color: STALL_TINT, scale: 5, metalness: 0.05, normalScale: 1, reduced }),
+      deck: triplanarMaterial({ surface: civic, color: DECK_TINT, scale: 12, metalness: 0.22, normalScale: 0.8, reduced }),
+      ground: triplanarMaterial({ surface: civic, color: LAND_TINT, scale: 26, metalness: 0.18, normalScale: 0.7, reduced }),
+    };
+  }, [reduced]);
+
+  // Materials are per-scene and get disposed; the textures behind them are
+  // module-cached, because a visitor bouncing between worlds should not pay to
+  // regenerate them each time.
+  useEffect(
+    () => () => {
+      for (const m of Object.values(materials)) m.dispose();
+    },
+    [materials]
+  );
+
+  return materials;
+}
+
+function useSurfaces(): CitySurfaces {
+  const ctx = useContext(SurfaceContext);
+  if (!ctx) throw new Error("Arclight surfaces used outside the provider");
+  return ctx;
+}
 
 // ── Water and land ───────────────────────────────────────────────────────────
 
@@ -78,6 +169,7 @@ function DarkPool() {
 }
 
 function LandMass({ pts }: { pts: readonly [number, number][] }) {
+  const surfaces = useSurfaces();
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
     pts.forEach(([mx, my], i) => {
@@ -98,11 +190,10 @@ function LandMass({ pts }: { pts: readonly [number, number][] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial color="#0a0e15" flatShading roughness={1} />
-    </mesh>
-  );
+  // flatShading is deliberately gone here and on every surface below that took
+  // a normal map: it recomputes normals per face, which flattens exactly the
+  // relief the map is there to add.
+  return <mesh geometry={geometry} material={surfaces.ground} />;
 }
 
 // ── Roads ────────────────────────────────────────────────────────────────────
@@ -147,13 +238,13 @@ function Roads() {
 
 /** Counterparty Bridge: the low road crossing west of the Circuit's span. */
 function CounterpartyBridge() {
+  const surfaces = useSurfaces();
   const [x, z] = toWorld(LANDMARKS.counterparty_bridge.x, LANDMARKS.counterparty_bridge.y);
   const span = (CHANNEL.y2 - CHANNEL.y1) * 0.5 + 8;
   return (
     <group position={[x, 0, z]}>
-      <mesh position-y={1.1}>
+      <mesh position-y={1.1} material={surfaces.deck}>
         <boxGeometry args={[4.5, 0.4, span]} />
-        <meshStandardMaterial color="#10151d" flatShading roughness={0.9} />
       </mesh>
       {[-1.9, 1.9].map((ox) => (
         <mesh key={ox} position={[ox, 1.42, 0]}>
@@ -162,9 +253,8 @@ function CounterpartyBridge() {
         </mesh>
       ))}
       {[-5, 5].map((oz) => (
-        <mesh key={oz} position={[0, 0.1, oz]}>
+        <mesh key={oz} position={[0, 0.1, oz]} material={surfaces.deck}>
           <cylinderGeometry args={[0.5, 0.6, 2.4, 8]} />
-          <meshStandardMaterial color="#0c1118" roughness={1} />
         </mesh>
       ))}
     </group>
@@ -174,6 +264,7 @@ function CounterpartyBridge() {
 // ── The seeded city fabric: one draw call of bodies, one of windows ──────────
 
 function CityBlocks({ dim }: { dim: Record<DistrictId, number> }) {
+  const surfaces = useSurfaces();
   const { lots, windows } = useMemo(() => buildSkyline(), []);
   const bodyRef = useRef<THREE.InstancedMesh>(null);
   const winRef = useRef<THREE.InstancedMesh>(null);
@@ -228,9 +319,11 @@ function CityBlocks({ dim }: { dim: Record<DistrictId, number> }) {
 
   return (
     <>
-      <instancedMesh ref={bodyRef} args={[undefined, undefined, lots.length]}>
+      {/* White material colour on purpose: the per-instance district tint set
+          in setColorAt multiplies through it, so one triplanar material skins
+          every lot in the city while each district keeps its own hue. */}
+      <instancedMesh ref={bodyRef} args={[undefined, undefined, lots.length]} material={surfaces.block}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#ffffff" flatShading roughness={0.95} metalness={0} />
       </instancedMesh>
       <instancedMesh ref={winRef} args={[undefined, undefined, windows.length]}>
         <planeGeometry args={[0.6, 0.85]} />
@@ -245,15 +338,15 @@ function CityBlocks({ dim }: { dim: Record<DistrictId, number> }) {
 function ExchangeTower({ t, dimE, reduced, crownLight }: {
   t: Tower; dimE: number; reduced: boolean; crownLight: boolean;
 }) {
+  const surfaces = useSurfaces();
   const [x, z] = toWorld(t.x, t.y);
   const h = t.h * HEIGHT_SCALE;
   const w = t.w * 0.55;
   const glow = 1 - dimE * 0.85;
   return (
     <group position={[x, 0, z]}>
-      <mesh position-y={h / 2}>
+      <mesh position-y={h / 2} material={surfaces.tower}>
         <boxGeometry args={[w, h, w]} />
-        <meshStandardMaterial color="#0e1522" flatShading roughness={0.85} />
       </mesh>
       {/* Lit service cores on two facades. */}
       <mesh position={[w * 0.18, h / 2, w / 2 + 0.03]}>
@@ -275,7 +368,7 @@ function ExchangeTower({ t, dimE, reduced, crownLight }: {
       ) : (
         <mesh position-y={h + 0.3}>
           <boxGeometry args={[w * 0.72, 0.5, w * 0.72]} />
-          <meshStandardMaterial color="#1a222c" emissive={ACCENT} emissiveIntensity={0.12 * glow} roughness={0.8} />
+          <meshStandardMaterial color="#2c3644" emissive={ACCENT} emissiveIntensity={0.12 * glow} roughness={0.8} metalness={0.3} />
         </mesh>
       )}
       {t.lit && crownLight && (
@@ -293,6 +386,7 @@ function ExchangeTower({ t, dimE, reduced, crownLight }: {
 // ── The Strip: one stall per live listing along Throughput Avenue ────────────
 
 function Stall({ s, dimS, reduced }: { s: Storefront; dimS: number; reduced: boolean }) {
+  const surfaces = useSurfaces();
   const [x, z] = toWorld(s.x + s.w / 2, s.y + s.h / 2);
   const east = s.x < 210; // west column faces the avenue (east), and vice versa
   const signColor = s.service ? AMBER : ACCENT;
@@ -305,9 +399,8 @@ function Stall({ s, dimS, reduced }: { s: Storefront; dimS: number; reduced: boo
   );
   return (
     <group position={[x, 0, z]}>
-      <mesh position-y={1.1}>
+      <mesh position-y={1.1} material={surfaces.stall}>
         <boxGeometry args={[6, 2.2, 4.2]} />
-        <meshStandardMaterial color="#101820" flatShading roughness={0.9} />
       </mesh>
       {/* Awning light over the doorway. */}
       <mesh position={[east ? 3.04 : -3.04, 1.9, 0]} rotation-y={east ? Math.PI / 2 : -Math.PI / 2}>
@@ -327,6 +420,7 @@ function Stall({ s, dimS, reduced }: { s: Storefront; dimS: number; reduced: boo
 // ── The Stacks: the hab slab — one window per registered agent ───────────────
 
 function HabSlab({ habs, dimS }: { habs: HabField; dimS: number }) {
+  const surfaces = useSurfaces();
   const [x, z] = toWorld(HAB_SLAB.x, HAB_SLAB.y);
   const rows = habs.rows;
   const height = rows * 1.7 + 2.5;
@@ -362,13 +456,11 @@ function HabSlab({ habs, dimS }: { habs: HabField; dimS: number }) {
 
   return (
     <group>
-      <mesh position={[x, height / 2, z]}>
+      <mesh position={[x, height / 2, z]} material={surfaces.hab}>
         <boxGeometry args={[5.5, height, depth]} />
-        <meshStandardMaterial color="#0f141c" flatShading roughness={0.95} />
       </mesh>
-      <mesh position={[x, height + 0.25, z]}>
+      <mesh position={[x, height + 0.25, z]} material={surfaces.deck}>
         <boxGeometry args={[5.7, 0.5, depth + 0.2]} />
-        <meshStandardMaterial color="#131a24" roughness={0.9} />
       </mesh>
       <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]}>
         <planeGeometry args={[1.05, 1.15]} />
@@ -382,6 +474,7 @@ function HabSlab({ habs, dimS }: { habs: HabField; dimS: number }) {
 // ── The Circuit: the elevated loop and its light traffic ─────────────────────
 
 function CircuitLoop({ traffic }: { traffic: number }) {
+  const surfaces = useSurfaces();
   const path = useMemo(() => circuitPath(), []);
   const segs = useMemo(() => {
     return path.pts.map((a, i) => {
@@ -403,9 +496,8 @@ function CircuitLoop({ traffic }: { traffic: number }) {
     <group>
       {segs.map((s, i) => (
         <group key={i} position={[s.cx, CIRCUIT_HEIGHT, s.cz]}>
-          <mesh>
+          <mesh material={surfaces.deck}>
             <boxGeometry args={s.horizontal ? [s.len, 0.5, 4.5] : [4.5, 0.5, s.len]} />
-            <meshStandardMaterial color="#10151d" flatShading roughness={0.9} />
           </mesh>
           {[-2.1, 2.1].map((off) => (
             <mesh key={off} position={s.horizontal ? [0, 0.3, off] : [off, 0.3, 0]}>
@@ -419,9 +511,8 @@ function CircuitLoop({ traffic }: { traffic: number }) {
             const px = s.a[0] + (s.b[0] - s.a[0]) * f - s.cx;
             const pz = s.a[1] + (s.b[1] - s.a[1]) * f - s.cz;
             return (
-              <mesh key={k} position={[px, -CIRCUIT_HEIGHT / 2 - 0.2, pz]}>
+              <mesh key={k} position={[px, -CIRCUIT_HEIGHT / 2 - 0.2, pz]} material={surfaces.deck}>
                 <cylinderGeometry args={[0.45, 0.6, CIRCUIT_HEIGHT + 1.2, 6]} />
-                <meshStandardMaterial color="#0c1118" flatShading roughness={1} />
               </mesh>
             );
           })}
@@ -762,6 +853,7 @@ export default function ArclightCityCanvas({
   reduced: boolean;
 }) {
   const plan = useMemo(() => buildCityPlan(snap), [snap]);
+  const surfaces = useCitySurfaces(reduced);
   const [introDone, setIntroDone] = useState(false);
   // Forward renderers hate light piles: only the first few lit crowns get a
   // real point light — the rest glow through emissive + bloom.
@@ -775,9 +867,24 @@ export default function ArclightCityCanvas({
     >
       <color attach="background" args={["#05060a"]} />
       <fog attach="fog" args={["#0a0d13", 130, 620]} />
-      <hemisphereLight args={["#0e1420", "#05070b", 0.45]} />
-      <ambientLight color="#8fa8bf" intensity={0.14} />
+      {/* Ambient drops from 0.14 to 0.06: the environment map below is now
+          carrying the fill, and it carries it with direction and colour where a
+          flat ambient term only washed everything out equally. */}
+      <hemisphereLight args={["#0e1420", "#05070b", 0.35]} />
+      <ambientLight color="#8fa8bf" intensity={0.06} />
       <directionalLight color="#b8d4f0" intensity={0.3} position={[-220, 260, -140]} />
+
+      {/* IBL, generated not fetched. Cool sky above, and the city's own teal
+          and amber bounced back from below — the reason wet streets and metal
+          edges read as surfaces here for the first time. */}
+      <SkyEnvironment
+        top="#04060b"
+        horizon="#0d1c22"
+        ground="#241a12"
+        glow="#153b3a"
+        glowY={-0.04}
+        intensity={0.85}
+      />
 
       <MilkyWayBackdrop radius={520} />
       <Stars radius={480} depth={60} count={3000} factor={2.4} saturation={0.2} fade speed={reduced ? 0 : 0.25} />
@@ -791,50 +898,54 @@ export default function ArclightCityCanvas({
         reduced={reduced}
       />
 
-      <DarkPool />
-      <LandMass pts={LAND_NORTH} />
-      <LandMass pts={LAND_SOUTH} />
-      <Roads />
-      <CounterpartyBridge />
+      <SurfaceContext.Provider value={surfaces}>
+        <DarkPool />
+        <LandMass pts={LAND_NORTH} />
+        <LandMass pts={LAND_SOUTH} />
+        <Roads />
+        <CounterpartyBridge />
 
-      <CityBlocks dim={plan.dim} />
-      {plan.towers.map((t) => {
-        const withLight = t.lit && crownLights < 6;
-        if (withLight) crownLights += 1;
-        return (
-          <ExchangeTower
-            key={t.seller}
-            t={t}
-            dimE={plan.dim.exchange}
-            reduced={reduced}
-            crownLight={withLight}
-          />
-        );
-      })}
-      {plan.storefronts.map((s, i) => (
-        <Stall key={`${s.name}-${i}`} s={s} dimS={plan.dim.strip} reduced={reduced} />
-      ))}
-      <HabSlab habs={plan.habs} dimS={plan.dim.stacks} />
+        <CityBlocks dim={plan.dim} />
+        {plan.towers.map((t) => {
+          const withLight = t.lit && crownLights < 6;
+          if (withLight) crownLights += 1;
+          return (
+            <ExchangeTower
+              key={t.seller}
+              t={t}
+              dimE={plan.dim.exchange}
+              reduced={reduced}
+              crownLight={withLight}
+            />
+          );
+        })}
+        {plan.storefronts.map((s, i) => (
+          <Stall key={`${s.name}-${i}`} s={s} dimS={plan.dim.strip} reduced={reduced} />
+        ))}
+        <HabSlab habs={plan.habs} dimS={plan.dim.stacks} />
 
-      <CircuitLoop traffic={plan.traffic} />
-      <CircuitTraffic traffic={plan.traffic} reduced={reduced} />
-      <FreightSleds plan={plan} reduced={reduced} />
-      {CRANE_SITES.map(([mx, my], i) => (
-        <Crane key={i} mx={mx} my={my} flip={i % 2 === 1} />
-      ))}
+        <CircuitLoop traffic={plan.traffic} />
+        <CircuitTraffic traffic={plan.traffic} reduced={reduced} />
+        <FreightSleds plan={plan} reduced={reduced} />
+        {CRANE_SITES.map(([mx, my], i) => (
+          <Crane key={i} mx={mx} my={my} flip={i % 2 === 1} />
+        ))}
 
-      <MintIsland beam={plan.mintBeam} reduced={reduced} />
-      <FoundryPlant load={plan.load} dimF={plan.dim.foundry} reduced={reduced} />
-      <CustomHouse />
-      <RelayMast reduced={reduced} />
-      <FirstsMonuments snap={snap} />
-      <DistrictLabels />
+        <MintIsland beam={plan.mintBeam} reduced={reduced} />
+        <FoundryPlant load={plan.load} dimF={plan.dim.foundry} reduced={reduced} />
+        <CustomHouse />
+        <RelayMast reduced={reduced} />
+        <FirstsMonuments snap={snap} />
+        <DistrictLabels />
 
-      <Inhabitants world="arclight" reduced={reduced} />
+        <Inhabitants world="arclight" reduced={reduced} />
+      </SurfaceContext.Provider>
 
       <GroundMist color="#0f2a26" opacity={0.05} area={210} reduced={reduced} />
       <ParticleField mode="motes" color="#3d5a55" area={190} reduced={reduced} />
-      <SceneFX bloom={0.85} />
+      {/* Was SceneFX bloom={0.85} — the single-number grade every world shared.
+          WorldFX pulls Arclight's own entry out of the GRADE table instead. */}
+      <WorldFX world="arclight" reduced={reduced} />
 
       <CinematicDescent
         from={[330, 250, 430]}
