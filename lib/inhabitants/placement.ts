@@ -101,13 +101,17 @@ export const PLACEMENT: Record<InhabitedWorld, Placement> = {
     bright: false,
     accent: "#cbb27e",
   },
-  // Room 4. Growth rings are flat decals, so the crew walks over the shop
-  // floor and reads as working it. Spread covers roughly rings 2 through 6.
+  // Room 4. Widened 2026-08-09 when the Lathe became a quarry: the rings used
+  // to be flat decals, so any spread put the crew on one shop floor. Now each
+  // ring is a terrace at its own elevation, and a 52-unit spread would have
+  // stranded everybody on the four deepest steps at the bottom of the pit.
+  // 78 puts them across roughly terraces 0 through 8 — the whole cut face —
+  // and the canvas passes terraceHeightAt so they stand on the steps.
   lathe: {
     room: 4,
-    spread: { x: 52, z: 52 },
+    spread: { x: 78, z: 78 },
     centre: { x: 0, z: 0 },
-    visitors: { rx: 70, rz: 70 },
+    visitors: { rx: 96, rz: 96 },
     baseY: 0.22,
     figure: 1.15,
     bright: false,

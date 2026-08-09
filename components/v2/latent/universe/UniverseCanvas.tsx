@@ -358,7 +358,9 @@ export default function UniverseCanvas({
             <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
               {focusedData.modelClass}
               {focusedPresence && <span> &middot; {focusedPresence}</span>}
-              {focusedWorld && <span> &middot; in {focusedWorld.name}</span>}
+              {focusedWorld && (
+                <span> &middot; in {WORLD_ROUTES[focusedWorld.theme]?.label ?? focusedWorld.name}</span>
+              )}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Link
@@ -379,9 +381,22 @@ export default function UniverseCanvas({
       ) : currentWorld && currentTheme ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center p-4 sm:p-5">
           <div className="pointer-events-auto flex max-w-lg flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-black/70 px-6 py-4 text-center backdrop-blur">
-            <p className="font-mono text-sm font-bold tracking-wide" style={{ color: currentTheme.accent }}>
-              {currentWorld.name.toUpperCase()}
-            </p>
+            {/* The world's name leads; the room it hosts is the subtitle.
+                This mirrors every world surface's own HUD ("Arclight / Room 7
+                · The Bazaar"). Before this, the map labelled each planet with
+                its ROOM name while the button directly below it offered to
+                land you on a world with a different name — the card read
+                "THE BAZAAR ... Land in the city" and dropped you in Arclight.
+                Seven of the eight disagreed; only Synthetica Prime matched,
+                because that room was renamed to match its world. */}
+            <div>
+              <p className="font-mono text-sm font-bold tracking-wide" style={{ color: currentTheme.accent }}>
+                {(WORLD_ROUTES[currentWorld.theme]?.label ?? currentWorld.name).toUpperCase()}
+              </p>
+              <p className="mt-0.5 font-mono text-[9px] uppercase tracking-widest text-zinc-600">
+                Room {currentWorld.id} &middot; {currentWorld.name}
+              </p>
+            </div>
             {currentWorld.topic && (
               <div>
                 <p className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">

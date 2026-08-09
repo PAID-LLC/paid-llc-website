@@ -103,7 +103,10 @@ function forgeRow(now: number): DepartureRow {
     "forge",
     "The Forge Gate",
     "lathe",
-    "Iteration Forge",
+    // The WORLD's name, like every other gate on this board. This slot said
+    // "Iteration Forge" — the room it hosts — so the Forge Gate advertised a
+    // destination whose surface calls itself the Lathe.
+    "the Lathe",
     latest ? `${latest.sha} -- ${latest.subject}` : null,
     latest ? new Date(`${latest.date}T12:00:00Z`).toISOString() : null,
     now
