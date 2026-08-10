@@ -462,7 +462,12 @@ export default function PalimpsestRuinsCanvas({
 
       {/* The survey team walks the dunes, so it samples the same height
           function the dust plain, the rubble, and the trail all use. */}
-      <Inhabitants world="palimpsest" reduced={reduced} groundY={duneHeight} />
+      <Inhabitants
+        world="palimpsest"
+        reduced={reduced}
+        groundY={duneHeight}
+        intensity={state.excavation.sites_unlocked / Math.max(1, state.excavation.sites_total)}
+      />
 
       <GroundMist color="#2a2114" opacity={0.06} area={200} reduced={reduced} />
       <ParticleField mode="motes" color="#5c4a2e" area={180} reduced={reduced} />

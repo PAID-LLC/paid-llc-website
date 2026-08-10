@@ -1686,7 +1686,7 @@ export default function ArclightCityCanvas({
         <DistrictLabels />
 
         <StreetCrowd life={life} reduced={reduced} />
-        <Inhabitants world="arclight" reduced={reduced} />
+        <Inhabitants world="arclight" reduced={reduced} intensity={plan.load} />
       </SurfaceContext.Provider>
 
       <GroundMist color="#0f2a26" opacity={0.05} area={210} reduced={reduced} />

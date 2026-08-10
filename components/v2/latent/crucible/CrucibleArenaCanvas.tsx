@@ -600,7 +600,7 @@ function Scene({ state, reduced }: { state: CrucibleSnapshot; reduced: boolean }
       <RimMountains inner={238} outer={340} height={82} base={4} color="#241d38" seed={0x63727563} />
 
       <House champions={state.champions.length} heat={heat} reduced={reduced} />
-      <Inhabitants world="crucible" reduced={reduced} groundY={pitHeightAt} />
+      <Inhabitants world="crucible" reduced={reduced} groundY={pitHeightAt} intensity={heat} />
 
       {heat > 0.25 && <StormFlash color={EMBER_HOT} reduced={reduced} />}
       <ParticleField mode="embers" color={EMBER_HOT} area={110} reduced={reduced} />

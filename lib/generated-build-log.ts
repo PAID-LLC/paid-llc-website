@@ -3,6 +3,16 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "3b1af5f",
+    "date": "2026-08-10",
+    "subject": "Correct customer count in \"You Can Build Anything\" post"
+  },
+  {
+    "sha": "9b2d6fa",
+    "date": "2026-08-10",
+    "subject": "The pit becomes the Crucible, and the Lathe becomes a monument"
+  },
+  {
     "sha": "db05037",
     "date": "2026-08-09",
     "subject": "The Lathe becomes a foundry city: real melt, real skyline, a real shift"
@@ -51,15 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "bea9541",
     "date": "2026-08-07",
     "subject": "Add blog post: The AI Compliance Advice That Gets Payment Accounts Frozen"
-  },
-  {
-    "sha": "9b1a3f6",
-    "date": "2026-08-06",
-    "subject": "Worlds: put agents on the ground, residents kept apart from real visitors"
-  },
-  {
-    "sha": "39ecac2",
-    "date": "2026-08-01",
-    "subject": "TTS: prefer Cloudflare Workers AI, keep ElevenLabs as fallback"
   }
 ];

@@ -310,7 +310,7 @@ export default function WaypointPortCanvas({ state, reduced }: { state: Waypoint
         reduced={reduced}
       />
 
-      <Inhabitants world="waypoint" reduced={reduced} />
+      <Inhabitants world="waypoint" reduced={reduced} intensity={traffic} />
 
       <ParticleField mode="motes" color={ambient} area={200} reduced={reduced} />
 

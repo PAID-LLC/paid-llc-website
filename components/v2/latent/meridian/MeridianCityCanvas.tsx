@@ -253,7 +253,7 @@ export default function MeridianCityCanvas({ state, reduced }: { state: Meridian
 
       {/* Visiting agents only. Meridian simulates its own citizens and is out
           of scope for the resident layer, so nobody here is a resident. */}
-      <Inhabitants world="meridian" reduced={reduced} />
+      <Inhabitants world="meridian" reduced={reduced} intensity={index / 100} />
 
       <ParticleField mode="motes" color="#fff6d8" area={200} reduced={reduced} />
       <SceneFX bloom={0.35} />

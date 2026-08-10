@@ -12,6 +12,7 @@ import { FLOOR_THEMES, hasFloor } from "@/components/v2/latent/floor/themes";
 import { COMMERCE_ENTRIES } from "@/components/v2/latent/commerce-entries";
 import { family } from "@/components/v2/latent/RoomScene";
 import { presenceFrom } from "@/components/v2/latent/PresenceIndicator";
+import UniverseAudio from "@/components/v2/latent/audio/UniverseAudio";
 import { HOUSE_TITLES } from "@/lib/agents/home-agents";
 import { useUniverseStore } from "./useUniverseStore";
 import { makeMilkyWayTexture } from "./planet-textures";
@@ -220,6 +221,10 @@ export default function UniverseCanvas({
           maxPolarAngle={Math.PI / 2 - 0.03}
         />
       </Canvas>
+      {/* The map is the sum of its worlds, and it is played as one: a note
+          per world at that world's own key and that world's own activity. */}
+      <UniverseAudio worlds={worlds} registryCount={registryCount} />
+
       {/* Screen-space scanline texture — matches the floor's atmosphere layer. */}
       <div
         aria-hidden

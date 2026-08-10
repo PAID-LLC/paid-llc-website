@@ -6,6 +6,8 @@ import Link from "next/link";
 import type { SimData } from "@/lib/simworld";
 import { SIM_ACCENT } from "@/lib/sim-field";
 import { useLegendTitles } from "@/components/v2/latent/useLegendTitles";
+import WorldAudio from "@/components/v2/latent/audio/WorldAudio";
+import { normalise } from "@/lib/audio/worlds";
 import { useSimLive } from "./useSimLive";
 import SimCanvas from "./SimCanvas";
 import SimHUD from "./SimHUD";
@@ -105,6 +107,8 @@ export default function SimExperience({ initial }: { initial: SimData }) {
       <div className="absolute inset-0">
         <SimCanvas sim={sim} freshStructureIds={freshStructureIds} reduced={reduced} titles={titles} />
       </div>
+
+      <WorldAudio surface="simulation" intensity={normalise(sim.agents.length, 8)} />
 
       {/* Screen-space finish — same scanline texture as the universe map, plus
           a faint accent vignette rising from the ground line. Sits under the

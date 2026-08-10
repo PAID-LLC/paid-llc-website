@@ -1,9 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import V2Frame from "@/components/v2/V2Frame";
 import SiteNavDock from "@/components/v2/SiteNavDock";
 import LatentNavDock from "@/components/v2/latent/LatentNavDock";
+
+// The mixer rides the same immersive route list as the nav dock, and is loaded
+// only on those routes — the audio engine has no business in the shared bundle
+// of a page that can never make a sound.
+const AudioDock = dynamic(() => import("@/components/v2/latent/audio/AudioDock"), {
+  ssr: false,
+});
 
 // ── Site chrome: v2 everywhere (promoted 2026-06-12) ─────────────────────────
 // The v1 Nav/Footer are retired (v1 home archived in the cowork repo).
@@ -98,7 +106,17 @@ function dockFor(pathname: string): { dock: React.ReactNode; pad: boolean } {
   }
   if (isImmersive(pathname)) {
     // Scene HUDs already clear the rail (pl-[92px] clusters); no shell pad.
-    return { dock: <LatentNavDock />, pad: false };
+    // The mixer mounts here and only here — never per page, for the same
+    // reason the nav dock does not.
+    return {
+      dock: (
+        <>
+          <LatentNavDock />
+          <AudioDock />
+        </>
+      ),
+      pad: false,
+    };
   }
   if (isLatent(pathname)) {
     return {

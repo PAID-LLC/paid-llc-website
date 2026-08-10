@@ -8,6 +8,8 @@ import type { LoungeMessage, LoungeRoom } from "@/lib/lounge-types";
 import type { WorldData } from "@/lib/world";
 import { useRoomLive } from "@/components/v2/latent/useRoomLive";
 import { useSpeechOutput } from "@/components/v2/latent/useSpeech";
+import WorldAudio from "@/components/v2/latent/audio/WorldAudio";
+import { normalise } from "@/lib/audio/worlds";
 import { family } from "@/components/v2/latent/RoomScene";
 import RoomChat from "@/components/v2/latent/RoomChat";
 import FloorAgent from "@/components/v2/latent/floor/FloorAgent";
@@ -259,6 +261,12 @@ export default function FloorScene({
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#050508]">
       <style>{css(t)}</style>
+
+      {/* Room tone. One shared bed across the seven floors — they are rooms
+          in a building, not worlds, and a recipe each would claim a
+          difference the floors do not have. It follows who is actually in
+          the room, so an empty floor is nearly silent. */}
+      <WorldAudio surface="lounge" intensity={normalise(room.agents?.length ?? 0, 6)} />
 
       {/* ── Backdrop: night city outside the cutaway ── */}
       <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, #04040a 0%, #0b0714 42%, #150a10 76%, #0a0609 100%)" }} />

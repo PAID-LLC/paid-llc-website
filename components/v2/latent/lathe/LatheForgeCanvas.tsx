@@ -588,7 +588,7 @@ function Scene({ state, reduced }: { state: LatheSnapshot; reduced: boolean }) {
       />
       <RimMountains inner={238} outer={340} height={82} base={4} color="#1b3145" seed={0x1a7e} />
 
-      <Inhabitants world="lathe" reduced={reduced} />
+      <Inhabitants world="lathe" reduced={reduced} intensity={heat} />
 
       <Lightning reduced={reduced} />
       {level > 0.25 && <StormFlash color={STORM} reduced={reduced} />}

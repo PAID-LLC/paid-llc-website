@@ -119,7 +119,8 @@ describe("a bout nobody judged", () => {
   });
 
   it("treats a legacy row with no provenance the same way", () => {
-    const { judged: _drop, ...legacy } = jury();
+    const legacy: Partial<JuryScores> = { ...jury() };
+    delete legacy.judged;
     const card = buildScorecard(duel({ jury_scores: legacy as JuryScores }));
     expect(card.verdict).toBe("unjudged");
     expect(card.scores).toBeNull();

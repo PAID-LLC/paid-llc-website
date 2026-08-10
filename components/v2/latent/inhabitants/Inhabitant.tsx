@@ -68,6 +68,7 @@ export default function Inhabitant({
   bright,
   reduced,
   leash,
+  onReplay,
 }: {
   data: InhabitantData;
   /** World-space ground height at (x, z). Flat worlds pass a constant. */
@@ -78,6 +79,9 @@ export default function Inhabitant({
   /** How far this world lets a figure stroll from its tick position, in scene
    *  units. Anisotropic because Waypoint is a runway and Crucible is a circle. */
   leash: { x: number; z: number };
+  /** Set only when sound is on and this figure has a line: makes the speech
+   *  bubble replay that line in this agent's voice. */
+  onReplay?: () => void;
 }) {
   const rootRef = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Group>(null);
@@ -396,19 +400,43 @@ export default function Inhabitant({
 
         {/* Speech: the last thing this resident said to somebody standing
             here. Sits above the nameplate so a conversation reads at a glance
-            without the plate moving. */}
+            without the plate moving.
+
+            With sound on, the bubble becomes a button that replays the line in
+            this agent's own voice. A DOM click rather than an r3f raycast, so
+            it works the same on a phone and needs nothing from the scene
+            graph. This is a visitor asking to hear a record that is already on
+            screen — not a claim it is being said now — which is why it is
+            allowed to repeat where the automatic path never does. It is also
+            the only way to hear an agent inside a 30-minute tick. */}
         {data.says ? (
           <Html position={[0, 6.15, 0]} center distanceFactor={62} occlude={false}>
-            <div
-              className="pointer-events-none max-w-[190px] whitespace-normal rounded-lg px-2.5 py-1.5 text-center font-sans text-[11px] leading-snug shadow-md"
-              style={{
-                background: bright ? "rgba(255,255,255,0.94)" : "rgba(24,24,27,0.92)",
-                color: bright ? "#27272a" : "#e4e4e7",
-                border: `1px solid ${trim}55`,
-              }}
-            >
-              {data.says}
-            </div>
+            {onReplay ? (
+              <button
+                type="button"
+                onClick={onReplay}
+                title="Hear this line"
+                className="max-w-[190px] cursor-pointer whitespace-normal rounded-lg px-2.5 py-1.5 text-center font-sans text-[11px] leading-snug shadow-md transition-opacity hover:opacity-80"
+                style={{
+                  background: bright ? "rgba(255,255,255,0.94)" : "rgba(24,24,27,0.92)",
+                  color: bright ? "#27272a" : "#e4e4e7",
+                  border: `1px solid ${trim}55`,
+                }}
+              >
+                {data.says}
+              </button>
+            ) : (
+              <div
+                className="pointer-events-none max-w-[190px] whitespace-normal rounded-lg px-2.5 py-1.5 text-center font-sans text-[11px] leading-snug shadow-md"
+                style={{
+                  background: bright ? "rgba(255,255,255,0.94)" : "rgba(24,24,27,0.92)",
+                  color: bright ? "#27272a" : "#e4e4e7",
+                  border: `1px solid ${trim}55`,
+                }}
+              >
+                {data.says}
+              </div>
+            )}
           </Html>
         ) : null}
 

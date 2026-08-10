@@ -7,6 +7,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html } from "@react-three/drei";
 import type { WorldData, WorldStructure } from "@/lib/world";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
+import WorldAudio from "@/components/v2/latent/audio/WorldAudio";
 import {
   AuroraCurtain, CinematicDescent, CloudBand, GlyphPlaque, GroundMist,
   GroundSky, MilkyWayBackdrop, NexusStar, ParticleField, Pulse, RimMountains,
@@ -692,6 +693,9 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
 
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#07070b]">
+      {/* The civic hum rises with the stage the ballots have actually
+          enacted, so a world nobody has voted on is quiet. */}
+      <WorldAudio surface="genesis" intensity={stage / 5} />
       <Canvas
         shadows
         dpr={[1, 1.75]}

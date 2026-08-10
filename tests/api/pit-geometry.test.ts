@@ -16,16 +16,13 @@ import {
   PLANT_OUTER,
   RIM_RADIUS,
   TIERS,
-  TIER_BASE_RADIUS,
   TIER_DROP,
-  TIER_STEP,
   lavaLevel,
   lavaRadius,
   pitHeightAt,
   pitProfile,
   rimPlant,
   tierElevation,
-  tierRadius,
 } from "@/lib/pit/geometry";
 
 describe("terrace elevation", () => {
