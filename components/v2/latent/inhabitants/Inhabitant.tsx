@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
+import { BEAT_STYLE, beatFor, dwellFor, wanderOffset } from "@/lib/inhabitants/behaviour";
 import type { Inhabitant as InhabitantData } from "./useInhabitants";
 
 // ── One embodied figure standing on a world's surface ────────────────────────
@@ -20,18 +21,38 @@ import type { Inhabitant as InhabitantData } from "./useInhabitants";
 // AgentBody.tsx's Phase 1 rule that the colour identifies and the silhouette
 // distinguishes.
 //
-// Movement: residents only change position on the 30-minute world tick, so the
-// figure walks to each new position over a couple of seconds and idles there,
-// rather than teleporting the moment a poll lands. Reduced motion snaps
-// instead and holds still.
+// ── Movement ────────────────────────────────────────────────────────────────
+//
+// The tick moves residents once every thirty minutes. Walking straight to the
+// new spot and then standing perfectly still for the rest of the half hour is
+// what made a city of working agents read as a diorama: the label said
+// "sweeping the frontage" and the body did nothing at all.
+//
+// So the tick position is treated as a LEASH ANCHOR rather than a destination.
+// A figure strolls inside a small radius of it, dwells, works, and moves on —
+// and when the anchor itself moves, walks the whole way over. Nothing about
+// what the figure MEANS is invented here; see lib/inhabitants/behaviour.ts for
+// where that line sits and why.
+//
+// Legs and arms exist for one reason: without them, a moving figure slides.
+// The gait is the cheapest possible one that reads — two rigid legs counter-
+// swinging, arms opposing, and a hip bob that peaks at the passing position so
+// the planted foot stays near the ground.
+//
+// Reduced motion sits the whole system out: figures snap to the tick position
+// and hold still, exactly as before this shipped.
 
-const WALK_SPEED = 3.2; // scene units per second
-const ARRIVE = 0.06; // below this, treat as standing
-const WALKING = 0.45; // above this, play the walk
+const ARRIVE = 0.12; // below this, treat as standing
+const TURN_RATE = 0.11; // facing lerp per frame while walking
+const CADENCE = 5.4; // strides per second at full pace
 
 const DARK_MASS = "#10131a";
 const BRIGHT_MASS = "#3b4551";
 const VISITOR_RIM = "#5cc9ff";
+
+/** Visitors are standing in a room, not working a district. They shift their
+ *  weight and turn to watch; they do not wander off. */
+const VISITOR_LEASH = 2.2;
 
 function angleLerp(a: number, b: number, t: number): number {
   let d = b - a;
@@ -46,6 +67,7 @@ export default function Inhabitant({
   scale,
   bright,
   reduced,
+  leash,
 }: {
   data: InhabitantData;
   /** World-space ground height at (x, z). Flat worlds pass a constant. */
@@ -53,69 +75,153 @@ export default function Inhabitant({
   scale: number;
   bright: boolean;
   reduced: boolean;
+  /** How far this world lets a figure stroll from its tick position, in scene
+   *  units. Anisotropic because Waypoint is a runway and Crucible is a circle. */
+  leash: { x: number; z: number };
 }) {
   const rootRef = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Group>(null);
   const moteRef = useRef<THREE.Mesh>(null);
+  const legL = useRef<THREE.Group>(null);
+  const legR = useRef<THREE.Group>(null);
+  const armL = useRef<THREE.Group>(null);
+  const armR = useRef<THREE.Group>(null);
 
   const visitor = data.kind === "visitor";
   const mass = bright ? BRIGHT_MASS : DARK_MASS;
   const trim = visitor ? VISITOR_RIM : data.color;
 
-  // Per-figure motion seed so four residents never bob in lockstep.
+  // Visitors watch; residents act out whatever the tick says they are doing.
+  const beat = useMemo(
+    () => (visitor ? "study" : beatFor(data.activity)),
+    [visitor, data.activity]
+  );
+  const style = BEAT_STYLE[beat];
+
+  const reach = useMemo(
+    () => (visitor ? { x: VISITOR_LEASH, z: VISITOR_LEASH } : leash),
+    [visitor, leash]
+  );
+
+  // Per-figure motion seed so four residents never move in lockstep.
   const phase = useMemo(() => {
     let h = 0;
     for (let i = 0; i < data.id.length; i++) h = (h * 31 + data.id.charCodeAt(i)) >>> 0;
     return (h % 628) / 100;
   }, [data.id]);
 
-  // Live position, carried across frames. Starts unset so the first frame
+  // Live state, carried across frames. `pos` starts unset so the first frame
   // places the figure at its true spot instead of walking it in from origin.
   const pos = useRef<{ x: number; z: number } | null>(null);
+  const target = useRef<{ x: number; z: number } | null>(null);
+  const anchorSeen = useRef<{ x: number; z: number } | null>(null);
+  const step = useRef(0);
+  const holdUntil = useRef(0);
   const facing = useRef(0);
+  const gait = useRef(0);
 
   useFrame((state, delta) => {
     const root = rootRef.current;
     const body = bodyRef.current;
     if (!root || !body) return;
 
-    if (!pos.current) pos.current = { x: data.x, z: data.z };
+    const t = state.clock.elapsedTime;
+    const dt = Math.min(delta, 0.1); // a backgrounded tab must not teleport anyone
+
+    // A conversation overrides the wander: the pair stand where the meeting
+    // put them and look at each other until the speech falls off the feed.
+    const meet = data.meet;
+    const anchorX = meet ? meet.x : data.x;
+    const anchorZ = meet ? meet.z : data.z;
+
+    if (!pos.current) pos.current = { x: anchorX, z: anchorZ };
     const p = pos.current;
 
-    const dx = data.x - p.x;
-    const dz = data.z - p.z;
-    const dist = Math.hypot(dx, dz);
-
     if (reduced) {
-      p.x = data.x;
-      p.z = data.z;
-    } else if (dist > ARRIVE) {
-      const step = Math.min(dist, WALK_SPEED * Math.min(delta, 0.1));
-      p.x += (dx / dist) * step;
-      p.z += (dz / dist) * step;
+      p.x = anchorX;
+      p.z = anchorZ;
+      root.position.set(p.x, groundY(p.x, p.z), p.z);
+      body.position.y = 0;
+      return;
     }
 
-    const walking = !reduced && dist > WALKING;
-    const t = state.clock.elapsedTime;
+    // Did the tick (or a new conversation) move the leash? Then abandon the
+    // stroll and walk to the new ground.
+    const seen = anchorSeen.current;
+    const moved = !seen || Math.hypot(seen.x - anchorX, seen.z - anchorZ) > 0.5;
+    if (moved) {
+      anchorSeen.current = { x: anchorX, z: anchorZ };
+      target.current = null;
+      holdUntil.current = 0;
+    }
 
-    // Bob: a gait while walking, a slow breath while standing.
-    const bob = reduced
-      ? 0
-      : walking
-        ? Math.abs(Math.sin(t * 5.2 + phase)) * 0.13
-        : Math.sin(t * 1.15 + phase) * 0.05;
+    // Pick the next spot: the meeting point exactly, or a stroll inside the
+    // leash. Only ever chosen on arrival, so the walk is not re-rolled midway.
+    if (!target.current) {
+      if (meet) {
+        target.current = { x: anchorX, z: anchorZ };
+      } else {
+        const [ox, oz] = wanderOffset(data.id, step.current, beat);
+        target.current = { x: anchorX + ox * reach.x, z: anchorZ + oz * reach.z };
+      }
+    }
+    const tgt = target.current;
+
+    const dx = tgt.x - p.x;
+    const dz = tgt.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    const walking = dist > ARRIVE;
+
+    if (walking) {
+      const stepLen = Math.min(dist, style.pace * dt);
+      p.x += (dx / dist) * stepLen;
+      p.z += (dz / dist) * stepLen;
+      holdUntil.current = 0;
+    } else if (!meet) {
+      // Arrived. Hold for this beat's dwell, then stroll somewhere else.
+      if (holdUntil.current === 0) holdUntil.current = t + dwellFor(data.id, step.current, beat);
+      else if (t >= holdUntil.current) {
+        step.current += 1;
+        target.current = null;
+        holdUntil.current = 0;
+      }
+    }
+
+    // Gait phase only advances while actually walking, so a figure that stops
+    // does not carry on marching on the spot.
+    if (walking) gait.current += dt * CADENCE * Math.min(1, style.pace / 2.4);
+    const stride = walking ? Math.sin(gait.current + phase) : 0;
+
+    // Hips ride highest at the passing position (legs together), which keeps
+    // the planted foot near the ground without a real IK solve.
+    const bob = walking
+      ? (1 - Math.abs(stride)) * 0.11
+      : Math.sin(t * 1.15 + phase) * 0.05;
 
     root.position.set(p.x, groundY(p.x, p.z), p.z);
     body.position.y = bob;
 
-    // Face the direction of travel; drift slowly while idle so a standing
-    // figure still reads as awake.
-    const want = walking ? Math.atan2(dx, dz) : facing.current + Math.sin(t * 0.16 + phase) * 0.004;
-    facing.current = angleLerp(facing.current, want, walking ? 0.08 : 1);
+    // Face the way you are going; while stopped, face whoever you are talking
+    // to, and otherwise drift slowly so a standing figure still reads as awake.
+    let want: number;
+    if (walking) want = Math.atan2(dx, dz);
+    else if (meet) want = Math.atan2(meet.faceX - p.x, meet.faceZ - p.z);
+    else want = facing.current + Math.sin(t * 0.16 + phase) * 0.004;
+    facing.current = angleLerp(facing.current, want, walking || meet ? TURN_RATE : 1);
     body.rotation.y = facing.current;
-    body.rotation.z = walking ? Math.sin(t * 5.2 + phase) * 0.035 : 0;
+    body.rotation.z = walking ? stride * 0.03 : 0;
+    body.rotation.x = walking ? style.lean : 0;
 
-    if (moteRef.current && !reduced) {
+    // Limbs. Walking swings them; standing runs the beat's own gesture, which
+    // is what makes a stopped builder look like a builder rather than a post.
+    const swing = stride * 0.62;
+    const work = walking ? 0 : Math.sin(t * 2.3 + phase) * style.gesture;
+    if (legL.current) legL.current.rotation.x = swing;
+    if (legR.current) legR.current.rotation.x = -swing;
+    if (armL.current) armL.current.rotation.x = -swing * 0.75 - work;
+    if (armR.current) armR.current.rotation.x = swing * 0.75 - work * 0.7;
+
+    if (moteRef.current) {
       moteRef.current.rotation.y = t * 0.9 + phase;
       moteRef.current.position.y = 4.16 + Math.sin(t * 1.6 + phase) * 0.07;
     }
@@ -123,6 +229,18 @@ export default function Inhabitant({
 
   const opacity = visitor ? 0.52 * data.dim : 1;
   const emissive = visitor ? 0.5 * data.dim : 0.55;
+
+  // Limb material is shared between all four limbs of one figure — same mass
+  // colour as the torso, so the silhouette stays one solid shape at distance.
+  const limbMat = (
+    <meshStandardMaterial
+      color={mass}
+      flatShading
+      roughness={0.72}
+      transparent={visitor}
+      opacity={opacity}
+    />
+  );
 
   return (
     <group ref={rootRef}>
@@ -167,22 +285,35 @@ export default function Inhabitant({
         </>
       ) : null}
 
-      <group ref={bodyRef} scale={scale}>
-        {/* Lower body */}
-        <mesh position-y={0.82}>
-          <cylinderGeometry args={[0.44, 0.92, 1.64, 7]} />
-          <meshStandardMaterial
-            color={mass}
-            flatShading
-            roughness={0.72}
-            transparent={visitor}
-            opacity={opacity}
-          />
+      {/* YXZ so the yaw applies before the pitch: with the default XYZ order a
+          figure walking east would lean sideways instead of forward, because
+          the lean would be taken in world space rather than in its own. */}
+      <group ref={bodyRef} scale={scale} rotation-order="YXZ">
+        {/* Legs. Pivoted at the hip, mesh hung below the pivot, so a rotation
+            on the group swings the whole leg from the top like a hinge. */}
+        <group ref={legL} position={[0.34, 1.54, 0]}>
+          <mesh position-y={-0.75}>
+            <cylinderGeometry args={[0.23, 0.3, 1.5, 6]} />
+            {limbMat}
+          </mesh>
+        </group>
+        <group ref={legR} position={[-0.34, 1.54, 0]}>
+          <mesh position-y={-0.75}>
+            <cylinderGeometry args={[0.23, 0.3, 1.5, 6]} />
+            {limbMat}
+          </mesh>
+        </group>
+
+        {/* Hips — bridges the two legs into one mass so the figure does not
+            read as a pair of stilts. */}
+        <mesh position-y={1.68}>
+          <cylinderGeometry args={[0.6, 0.66, 0.62, 8]} />
+          {limbMat}
         </mesh>
 
         {/* Torso */}
-        <mesh position-y={2.28}>
-          <cylinderGeometry args={[0.7, 0.52, 1.28, 8]} />
+        <mesh position-y={2.42}>
+          <cylinderGeometry args={[0.7, 0.56, 1.02, 8]} />
           <meshStandardMaterial
             color={mass}
             emissive={trim}
@@ -194,6 +325,20 @@ export default function Inhabitant({
             opacity={opacity}
           />
         </mesh>
+
+        {/* Arms, hung from the shoulder on the same hinge trick as the legs. */}
+        <group ref={armL} position={[0.78, 2.82, 0]}>
+          <mesh position-y={-0.58}>
+            <cylinderGeometry args={[0.16, 0.2, 1.18, 6]} />
+            {limbMat}
+          </mesh>
+        </group>
+        <group ref={armR} position={[-0.78, 2.82, 0]}>
+          <mesh position-y={-0.58}>
+            <cylinderGeometry args={[0.16, 0.2, 1.18, 6]} />
+            {limbMat}
+          </mesh>
+        </group>
 
         {/* Shoulder band — the figure's colour, its identity at a glance */}
         <mesh position-y={2.86}>

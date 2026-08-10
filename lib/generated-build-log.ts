@@ -3,6 +3,11 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "7829547",
+    "date": "2026-08-09",
+    "subject": "Arclight joins the mainland: causeways, real water, rooftops and doors"
+  },
+  {
     "sha": "148ebca",
     "date": "2026-08-09",
     "subject": "Arclight gets depth: sky dome, distant skyline, low camera, lit windows"
@@ -56,10 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "0e216bc",
     "date": "2026-07-26",
     "subject": "Crucible: a draw no longer takes an entrant's plinth"
-  },
-  {
-    "sha": "577d4e6",
-    "date": "2026-07-26",
-    "subject": "Arena integrity pass + the Proving Ground + the House Ladder"
   }
 ];

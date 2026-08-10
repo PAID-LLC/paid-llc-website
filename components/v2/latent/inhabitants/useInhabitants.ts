@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { LoungeAgent, LoungeRoom } from "@/lib/lounge-types";
 import { presenceFrom } from "@/components/v2/latent/PresenceIndicator";
+import { meetingsFrom, type Meeting } from "@/lib/inhabitants/behaviour";
 import {
   PLACEMENT,
   embodiable,
@@ -55,6 +56,11 @@ export interface Inhabitant {
   says?: string;
   /** A resident whose home world is not this one. */
   foreign?: boolean;
+  /** Set only when this resident exchanged speech with another resident who is
+   *  also standing on this world. Overrides the stroll: the pair converge and
+   *  face each other for as long as the line stays on the feed. Never inferred
+   *  — every meeting traces to a real from/to row. */
+  meet?: Meeting;
 }
 
 export interface Sky {
@@ -84,6 +90,8 @@ interface ResidentRow {
 interface MessageRow {
   id: number;
   from_name: string;
+  /** Null for a broadcast; a resident or agent name for a directed line. */
+  to_name?: string | null;
   kind: "speech" | "dispatch";
   body: string;
 }
@@ -148,21 +156,32 @@ export function useInhabitants(world: InhabitedWorld): { people: Inhabitant[]; s
           if (m.kind === "speech" && !said.has(m.from_name)) said.set(m.from_name, m.body);
         }
 
+        // Where the tick put everyone, in scene units. Computed once and shared
+        // with the meeting solver so a conversation lands between the two
+        // residents' real positions rather than somewhere invented.
+        const spots = new Map<string, { x: number; z: number }>();
+        for (const r of data.residents) {
+          const [x, z] = toScene(place, r.x, r.z);
+          spots.set(r.name, { x, z });
+        }
+        const meetings = meetingsFrom(data.messages ?? [], spots);
+
         setResidents(
           data.residents.map((r) => {
-            const [x, z] = toScene(place, r.x, r.z);
+            const spot = spots.get(r.name)!;
             return {
               id: `resident:${r.id}`,
               kind: "resident" as const,
               name: r.name,
               sub: r.epithet,
               color: r.color,
-              x,
-              z,
+              x: spot.x,
+              z: spot.z,
               activity: r.activity,
               dim: 1,
               says: said.get(r.name),
               foreign: !!r.home_world && r.home_world !== world,
+              meet: meetings.get(r.name),
             };
           })
         );

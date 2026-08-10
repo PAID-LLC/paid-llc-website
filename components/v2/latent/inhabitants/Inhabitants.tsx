@@ -40,6 +40,13 @@ function WorldWeather({ sky, reduced }: { sky: Sky; reduced: boolean }) {
   );
 }
 
+/** How much of a world's roam spread a figure may stroll inside between ticks.
+ *  Small on purpose: the tick position stays the anchor, so a scene read
+ *  against the roster still agrees with it. Scaled by each world's own spread
+ *  because Waypoint is a runway and Crucible is a circle — a fixed radius
+ *  would walk the port crew off the tarmac. */
+const LEASH = 0.22;
+
 export default function Inhabitants({
   world,
   reduced,
@@ -55,6 +62,10 @@ export default function Inhabitants({
     () => groundY ?? (() => place.baseY),
     [groundY, place.baseY]
   );
+  const leash = useMemo(
+    () => ({ x: place.spread.x * LEASH, z: place.spread.z * LEASH }),
+    [place.spread.x, place.spread.z]
+  );
 
   if (people.length === 0 && !sky) return null;
 
@@ -69,6 +80,7 @@ export default function Inhabitants({
           scale={place.figure}
           bright={place.bright}
           reduced={reduced}
+          leash={leash}
         />
       ))}
     </>
