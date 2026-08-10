@@ -159,11 +159,25 @@ export interface Box {
   ry?: number;
 }
 
+// ── Coplanar faces are the bug this world shipped with ───────────────────────
+//
+// Two surfaces at exactly the same depth give the depth buffer no way to choose
+// between them, and the winner flips per pixel per frame. On a slowly rotating
+// camera that reads as a flickering roof. It is invisible to every check this
+// environment can run — the tests passed, the build passed, and the only way it
+// surfaced was Travis looking at it.
+//
+// So: anything that sits ON something else overlaps INTO it by at least this
+// much, and nothing is ever placed flush. Enforced by test.
+export const SEAT = 0.1;
+
 /** Architrave over each colonnade, plus the cloister bridge. */
 export function buildBeams(): Box[] {
   const out: Box[] = COLONNADES.map((c) => ({
     x: c.x,
-    y: PAD_Y + COLUMN_H + 0.35,
+    // Seated INTO the column tops rather than resting exactly on them: a beam
+    // bottom at PAD_Y + COLUMN_H is coplanar with every column's top face.
+    y: PAD_Y + COLUMN_H + 0.35 - SEAT,
     z: (c.from + c.to) / 2,
     w: 1.5,
     h: 0.7,
@@ -173,7 +187,73 @@ export function buildBeams(): Box[] {
   // Placed at the entrance rather than mid-quad so you walk under it looking
   // north at the vault — it frames the axis instead of cutting it in half.
   out.push({ x: AXIS_X, y: PAD_Y + 7.2, z: 47, w: 32.4, h: 1.1, d: 3.2 });
-  out.push({ x: AXIS_X, y: PAD_Y + 8.5, z: 47, w: 32.4, h: 0.5, d: 4.0 });
+  // The roof sits on the deck, overlapping it. At its original height it
+  // floated half a unit clear of the span it was supposed to be covering.
+  out.push({ x: AXIS_X, y: PAD_Y + 7.95, z: 47, w: 32.4, h: 0.5, d: 4.0 });
+  return out;
+}
+
+export type MassPart = "plinth" | "cornice" | "window";
+
+export interface MassBox extends Box {
+  part: MassPart;
+}
+
+/**
+ * Plinth, cornice and window slots for each building.
+ *
+ * Lives here rather than in the canvas so the no-coplanar-faces rule can be
+ * asserted. The cornice is the piece that caused the reported flicker: its top
+ * face landed on PAD_Y + m.h, which is exactly the building's own roof plane.
+ * It now reads as a band UNDER the roofline, which is what a cornice is anyway.
+ */
+export function buildMassDetail(): MassBox[] {
+  const out: MassBox[] = [];
+  for (const m of MASSES) {
+    // Plinth: sunk below the deck so its underside is not coplanar with the
+    // paving, and tall enough to still read as a base.
+    out.push({
+      part: "plinth",
+      x: m.x,
+      y: PAD_Y + 0.3,
+      z: m.z,
+      w: m.w + 0.9,
+      h: 0.8,
+      d: m.d + 0.9,
+    });
+    // Cornice: a band finishing 0.31 below the roof, never touching it.
+    out.push({
+      part: "cornice",
+      x: m.x,
+      y: PAD_Y + m.h - 0.62,
+      z: m.z,
+      w: m.w + 1.1,
+      h: 0.62,
+      d: m.d + 1.1,
+    });
+
+    const alongZ = m.d >= m.w;
+    const span = alongZ ? m.d : m.w;
+    const n = Math.max(3, Math.round(span / 4.2));
+    const faceOff = alongZ ? m.w / 2 + 0.06 : m.d / 2 + 0.06;
+    const levels = m.h > 10 ? [0.42, 0.68] : [0.5];
+    for (let i = 0; i < n; i++) {
+      const along = -span / 2 + span * ((i + 0.5) / n);
+      for (const s of [-1, 1]) {
+        for (const level of levels) {
+          out.push({
+            part: "window",
+            x: alongZ ? m.x + s * faceOff : m.x + along,
+            y: PAD_Y + m.h * level,
+            z: alongZ ? m.z + along : m.z + s * faceOff,
+            w: alongZ ? 0.16 : 1.1,
+            h: 1.5,
+            d: alongZ ? 1.1 : 0.16,
+          });
+        }
+      }
+    }
+  }
   return out;
 }
 
@@ -195,11 +275,15 @@ export function buildSteps(): Box[] {
     const h = STEP_RISE * (i + 1);
     out.push({
       x: AXIS_X,
-      y: PAD_Y + h / 2,
+      // Sunk below the paving, and each tier a hair deeper than the last so no
+      // two steps share an underside either.
+      y: PAD_Y + h / 2 - SEAT / 2 - i * 0.01,
       z: 70.5 + i * STEP_TREAD,
       w: STEP_W,
       h,
-      d: STEP_TREAD,
+      // Treads overlap their neighbours: at exactly STEP_TREAD, each riser is
+      // coplanar with the next step's face and the whole flight shimmers.
+      d: STEP_TREAD + SEAT,
     });
   }
   return out;
@@ -297,11 +381,16 @@ export function buildTables(): Box[] {
 export function buildKerb(): Box[] {
   const t = 0.9;
   const y = PAD_Y - 0.15;
+  // The four runs cross at the terrace corners. Left at one height their top
+  // faces are coplanar over each corner square, which flickers exactly like the
+  // roofs did; the east/west runs finish 2cm lower so the north/south runs
+  // simply win there. Invisible as a step, decisive to the depth buffer.
+  const cross = 0.02;
   return [
     { x: AXIS_X, y, z: PAD_N, w: CAMPUS_PAD.w + t, h: 0.7, d: t },
     { x: AXIS_X, y, z: PAD_S, w: CAMPUS_PAD.w + t, h: 0.7, d: t },
-    { x: PAD_W, y, z: CAMPUS_PAD.cz, w: t, h: 0.7, d: CAMPUS_PAD.d },
-    { x: PAD_E, y, z: CAMPUS_PAD.cz, w: t, h: 0.7, d: CAMPUS_PAD.d },
+    { x: PAD_W, y: y - cross, z: CAMPUS_PAD.cz, w: t, h: 0.7, d: CAMPUS_PAD.d },
+    { x: PAD_E, y: y - cross, z: CAMPUS_PAD.cz, w: t, h: 0.7, d: CAMPUS_PAD.d },
   ];
 }
 

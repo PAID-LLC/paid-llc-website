@@ -29,6 +29,7 @@ import {
   buildColumns,
   buildHungBoards,
   buildKerb,
+  buildMassDetail,
   buildRoutes,
   buildSteps,
   buildTables,
@@ -306,6 +307,85 @@ describe("routes", () => {
         }
       }
     }
+  });
+});
+
+describe("no coplanar faces", () => {
+  // Travis found flickering rooftops. Cause: the cornice's top face landed on
+  // exactly the building's own roof plane, so the depth buffer had no way to
+  // choose between them and the winner flipped per pixel per frame.
+  //
+  // Nothing else in this repo can catch that — the tests passed, the build
+  // passed, and it only showed up when a person looked at it on a screen. So
+  // it becomes arithmetic: any two boxes whose footprints overlap must not
+  // share a horizontal face plane.
+
+  interface B { id: string; x: number; z: number; w: number; d: number; lo: number; hi: number }
+
+  const boxes: B[] = [];
+  const add = (id: string, x: number, z: number, w: number, d: number, y: number, h: number) =>
+    boxes.push({ id, x, z, w, d, lo: y - h / 2, hi: y + h / 2 });
+
+  for (const m of MASSES) add(`${m.id}:box`, m.x, m.z, m.w, m.d, CAMPUS_PAD.y + m.h / 2, m.h);
+  buildMassDetail().forEach((b, i) => add(`detail:${b.part}:${i}`, b.x, b.z, b.w, b.d, b.y, b.h));
+  buildBeams().forEach((b, i) => add(`beam:${i}`, b.x, b.z, b.w, b.d, b.y, b.h));
+  buildSteps().forEach((b, i) => add(`step:${i}`, b.x, b.z, b.w, b.d, b.y, b.h));
+  buildKerb().forEach((b, i) => add(`kerb:${i}`, b.x, b.z, b.w, b.d, b.y, b.h));
+  buildColumns().forEach((c, i) =>
+    add(`column:${i}`, c.x, c.z, c.r * 2, c.r * 2, CAMPUS_PAD.y + c.h / 2, c.h)
+  );
+
+  const overlapsXZ = (a: B, b: B) =>
+    Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 1e-6 &&
+    Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 1e-6;
+
+  it("shares no horizontal face between overlapping boxes", () => {
+    const clashes: string[] = [];
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        if (!overlapsXZ(a, b)) continue;
+        for (const [an, av] of [["lo", a.lo], ["hi", a.hi]] as const) {
+          for (const [bn, bv] of [["lo", b.lo], ["hi", b.hi]] as const) {
+            if (Math.abs(av - bv) < 1e-6) {
+              clashes.push(`${a.id}.${an} == ${b.id}.${bn} @ y=${av.toFixed(3)}`);
+            }
+          }
+        }
+      }
+    }
+    expect(clashes, clashes.slice(0, 8).join("\n")).toHaveLength(0);
+  });
+
+  it("seats the architrave into the columns rather than on them", () => {
+    const beam = buildBeams()[0];
+    const columnTop = CAMPUS_PAD.y + COLUMN_H;
+    expect(beam.y - beam.h / 2).toBeLessThan(columnTop);
+  });
+
+  it("finishes every cornice below its own roofline", () => {
+    const cornices = buildMassDetail().filter((b) => b.part === "cornice");
+    expect(cornices).toHaveLength(MASSES.length);
+    cornices.forEach((c, i) => {
+      expect(c.y + c.h / 2, MASSES[i].id).toBeLessThan(CAMPUS_PAD.y + MASSES[i].h);
+    });
+  });
+
+  it("overlaps the stair treads so no riser is coplanar with its neighbour", () => {
+    const steps = buildSteps();
+    for (let i = 1; i < steps.length; i++) {
+      const prevFar = steps[i - 1].z + steps[i - 1].d / 2;
+      const nextNear = steps[i].z - steps[i].d / 2;
+      expect(nextNear, `step ${i}`).toBeLessThan(prevFar);
+    }
+  });
+
+  it("covers the cloister deck with its roof instead of floating it", () => {
+    const beams = buildBeams();
+    const deck = beams[beams.length - 2];
+    const roof = beams[beams.length - 1];
+    expect(roof.y - roof.h / 2).toBeLessThan(deck.y + deck.h / 2);
   });
 });
 

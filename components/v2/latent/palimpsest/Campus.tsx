@@ -19,6 +19,7 @@ import {
   buildColumns,
   buildHungBoards,
   buildKerb,
+  buildMassDetail,
   buildRoutes,
   buildSteps,
   buildTables,
@@ -215,35 +216,15 @@ function Tables() {
  * building at night is a silhouette with lit openings and not a lightbox.
  */
 function Buildings({ glyph }: { glyph: THREE.Texture | null }) {
-  const detail = useMemo<Block[]>(() => {
-    const out: Block[] = [];
-    for (const m of MASSES) {
-      // Plinth and cornice: the two mouldings that stop a box being a box.
-      out.push({ p: [m.x, PAD_Y + 0.35, m.z], s: [m.w + 0.9, 0.7, m.d + 0.9], c: STONE_DARK });
-      out.push({ p: [m.x, PAD_Y + m.h - 0.3, m.z], s: [m.w + 1.1, 0.6, m.d + 1.1], c: STONE });
-      // Window slots down the long faces, cut on whichever axis is longer.
-      const alongZ = m.d >= m.w;
-      const span = alongZ ? m.d : m.w;
-      const n = Math.max(3, Math.round(span / 4.2));
-      const faceOff = alongZ ? m.w / 2 + 0.06 : m.d / 2 + 0.06;
-      for (let i = 0; i < n; i++) {
-        const t = (i + 0.5) / n;
-        const along = -span / 2 + span * t;
-        for (const s of [-1, 1]) {
-          for (const level of m.h > 10 ? [0.42, 0.68] : [0.5]) {
-            out.push({
-              p: alongZ
-                ? [m.x + s * faceOff, PAD_Y + m.h * level, m.z + along]
-                : [m.x + along, PAD_Y + m.h * level, m.z + s * faceOff],
-              s: alongZ ? [0.16, 1.5, 1.1] : [1.1, 1.5, 0.16],
-              c: "#1c160d",
-            });
-          }
-        }
-      }
-    }
-    return out;
-  }, []);
+  const detail = useMemo<Block[]>(
+    () =>
+      buildMassDetail().map((b) => ({
+        p: [b.x, b.y, b.z] as [number, number, number],
+        s: [b.w, b.h, b.d] as [number, number, number],
+        c: b.part === "plinth" ? STONE_DARK : b.part === "cornice" ? STONE : "#1c160d",
+      })),
+    []
+  );
 
   return (
     <>
@@ -323,8 +304,10 @@ function NamedBoard({
   const hue = folioHue(board.folio);
   return (
     <group position={[board.x, board.y, board.z]} rotation-y={board.ry}>
-      {/* The slab the text is posted on. */}
-      <mesh position-z={-0.14}>
+      {/* The slab the text is posted on. Its front face must clear the posted
+          plane — flush would put two surfaces at the same depth and the board
+          would flicker exactly like the roofs did. */}
+      <mesh position-z={-0.16}>
         <boxGeometry args={[board.w + 0.5, board.h + 0.5, 0.28]} />
         <meshStandardMaterial color={STONE_DARK} roughness={0.95} />
       </mesh>
