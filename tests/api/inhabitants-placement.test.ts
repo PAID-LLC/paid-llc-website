@@ -42,10 +42,12 @@ const BOUNDS: Record<InhabitedWorld, { x: number; z: number; note: string }> = {
   // Ground circle radius 230; the city occupies roughly the frame's 300x260.
   arclight: { x: 150, z: 130, note: "city frame, WORLD_SCALE 0.5 of 600x520" },
   // Arena floor is a radius-60 disc of sand.
-  crucible: { x: 60, z: 60, note: "ARENA_FLOOR_RADIUS 60" },
+  // Took over the tiered bowl on 2026-08-10. The old bound was the flat
+  // 60-unit colosseum floor, which no longer exists here.
+  crucible: { x: 220, z: 220, note: "pit GROUND_RADIUS 220" },
   palimpsest: { x: 150, z: 130, note: "dig frame, WORLD_SCALE 0.5 of 600x520" },
   // Ground circle radius 220.
-  lathe: { x: 220, z: 220, note: "GROUND_RADIUS 220" },
+  lathe: { x: 220, z: 220, note: "monument plain, GROUND_RADIUS 220" },
   // Tarmac plane is FRAME.w * 0.45 + 60 wide by 90 deep — so z is +/-45.
   waypoint: { x: 174, z: 45, note: "tarmac plane, 90 deep" },
   // Ground circle radius 95.

@@ -79,14 +79,19 @@ export const PLACEMENT: Record<InhabitedWorld, Placement> = {
     bright: false,
     accent: "#2dd4bf",
   },
-  // Room 1. The arena floor is radius 60, so the full roam disc lands on sand.
+  // Room 1. Widened 2026-08-10 when the Crucible took over the tiered bowl:
+  // the old arena was a flat 60-unit floor, so a 34-unit spread put everyone in
+  // the middle of it. Now each tier is at its own elevation and a narrow spread
+  // would strand the whole cast on the deepest steps around the melt. 78 puts
+  // them across roughly tiers 0 through 8 — the whole visible face — and the
+  // canvas passes pitHeightAt so they stand on the steps rather than in them.
   crucible: {
     room: 1,
-    spread: { x: 34, z: 34 },
+    spread: { x: 78, z: 78 },
     centre: { x: 0, z: 0 },
-    visitors: { rx: 47, rz: 47 },
+    visitors: { rx: 96, rz: 96 },
     baseY: 0.22,
-    figure: 1,
+    figure: 1.15,
     bright: false,
     accent: "#ff6b35",
   },
@@ -101,19 +106,19 @@ export const PLACEMENT: Record<InhabitedWorld, Placement> = {
     bright: false,
     accent: "#cbb27e",
   },
-  // Room 4. Widened 2026-08-09 when the Lathe became a quarry: the rings used
-  // to be flat decals, so any spread put the crew on one shop floor. Now each
-  // ring is a terrace at its own elevation, and a 52-unit spread would have
-  // stranded everybody on the four deepest steps at the bottom of the pit.
-  // 78 puts them across roughly terraces 0 through 8 — the whole cut face —
-  // and the canvas passes terraceHeightAt so they stand on the steps.
+  // Room 4. The quarry went to the Crucible on 2026-08-10 and the Lathe became
+  // a monument colonnade on flat ground, so there is no height field here any
+  // more — the canvas passes no sampler and everyone stands at baseY. The
+  // spread is sized to the colonnade itself (the outermost column sits at
+  // radius 109) so the cast walks among the columns rather than out on the
+  // empty plain beyond them.
   lathe: {
     room: 4,
-    spread: { x: 78, z: 78 },
+    spread: { x: 62, z: 62 },
     centre: { x: 0, z: 0 },
-    visitors: { rx: 96, rz: 96 },
+    visitors: { rx: 82, rz: 82 },
     baseY: 0.22,
-    figure: 1.15,
+    figure: 1.1,
     bright: false,
     accent: "#22d3ee",
   },

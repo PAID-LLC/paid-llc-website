@@ -2,24 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   GROUND_RADIUS,
   MAX_RINGS,
-  PIT_DROP,
-  PIT_FLOOR,
-  RIM_RADIUS,
   RING_BASE_RADIUS,
   RING_STEP,
   SPARK_INNER,
   SPARK_OUTER,
-  TERRACE_STEP,
-  TOWN_INNER,
-  TOWN_OUTER,
-  foundryTown,
-  lavaLevel,
-  lavaRadius,
+  columnHeight,
   ringRadius,
   sparkPosition,
-  terraceElevation,
-  terraceHeightAt,
-  terraceProfile,
 } from "@/lib/lathe/workshop";
 
 // The Lathe's massing layer, pinned like the Crucible's colosseum and
@@ -78,225 +67,32 @@ describe("sparkPosition", () => {
 // show up as figures teleporting a full terrace, which is the exact failure the
 // sloped riser exists to prevent.
 
-describe("terrace elevation", () => {
-  it("puts the outermost ring level with the rim and the oldest ring deepest", () => {
-    expect(terraceElevation(MAX_RINGS - 1)).toBeCloseTo(0, 10);
-    expect(terraceElevation(0)).toBeCloseTo(-(MAX_RINGS - 1) * TERRACE_STEP, 6);
+// ── The colonnade ────────────────────────────────────────────────────────────
+// Added 2026-08-10, when the tiered bowl went to the Crucible and the twelve
+// commits became twelve standing columns instead of twelve terraces.
+
+describe("columnHeight", () => {
+  it("stands the newest commit tallest, so the ring reads as a direction", () => {
+    const newest = columnHeight(MAX_RINGS - 1);
+    const oldest = columnHeight(0);
+    expect(newest).toBeGreaterThan(oldest);
   });
 
-  it("drops exactly one step per ring inward", () => {
+  it("steps evenly, one commit at a time", () => {
     for (let i = 1; i < MAX_RINGS; i++) {
-      expect(terraceElevation(i) - terraceElevation(i - 1)).toBeCloseTo(TERRACE_STEP, 6);
+      expect(columnHeight(i) - columnHeight(i - 1)).toBeCloseTo(1.6, 9);
     }
   });
 
-  it("keeps the spark annulus out on the flat rim, where sparkPosition put it", () => {
-    // The rebuild must not move a single ledger row. Every spark sits at y=0.
-    expect(SPARK_INNER).toBeGreaterThan(RIM_RADIUS);
-    for (const id of [1, 7, 42, 999, "abc"]) {
-      const { x, z } = sparkPosition(id);
-      expect(terraceHeightAt(x, z)).toBe(0);
-    }
-  });
-});
-
-describe("terraceHeightAt", () => {
-  it("is flat at and beyond the rim, all the way to the ground edge", () => {
-    expect(terraceHeightAt(RIM_RADIUS, 0)).toBe(0);
-    expect(terraceHeightAt(GROUND_RADIUS, 0)).toBe(0);
-    expect(terraceHeightAt(0, -GROUND_RADIUS)).toBe(0);
+  it("keeps every column standing, even the oldest", () => {
+    // A column that reached zero height would delete a real commit from the
+    // monument. History here is permanent record; only its warmth fades.
+    for (let i = 0; i < MAX_RINGS; i++) expect(columnHeight(i)).toBeGreaterThan(3);
   });
 
-  it("bottoms out at the pit floor in the middle", () => {
-    expect(terraceHeightAt(0, 0)).toBeCloseTo(PIT_FLOOR, 6);
-    expect(PIT_FLOOR).toBeCloseTo(terraceElevation(0) - PIT_DROP, 6);
-  });
-
-  it("is radially symmetric — the quarry is a revolution", () => {
-    for (const r of [4, 12, 33, 67, 104]) {
-      const heights = [0, 0.7, 1.9, 3.3, 5.1].map((a) =>
-        terraceHeightAt(Math.cos(a) * r, Math.sin(a) * r)
-      );
-      for (const h of heights) expect(h).toBeCloseTo(heights[0], 6);
-    }
-  });
-
-  it("never rises going inward", () => {
-    let prev = terraceHeightAt(GROUND_RADIUS, 0);
-    for (let r = GROUND_RADIUS; r >= 0; r -= 0.25) {
-      const h = terraceHeightAt(r, 0);
-      expect(h, `rose at r=${r}`).toBeLessThanOrEqual(prev + 1e-9);
-      prev = h;
-    }
-  });
-
-  it("is continuous everywhere — no step a walking figure could pop through", () => {
-    // A resident crossing a riser must ramp down it. The largest legal change
-    // over a quarter unit is well under a full terrace step.
-    let prev = terraceHeightAt(0, 0);
-    for (let r = 0; r <= GROUND_RADIUS; r += 0.25) {
-      const h = terraceHeightAt(r, 0);
-      expect(Math.abs(h - prev), `jumped at r=${r}`).toBeLessThan(TERRACE_STEP * 0.5);
-      prev = h;
-    }
-  });
-
-  it("stands the crew's whole spread on real terraces, not all on the floor", () => {
-    // lib/inhabitants/placement.ts maps the roam disc onto radius 78. If that
-    // spread only ever sampled the pit, widening it in placement.ts would have
-    // been pointless.
-    const depths = [10, 25, 45, 62, 78].map((r) => terraceHeightAt(r, 0));
-    expect(new Set(depths.map((d) => d.toFixed(2))).size).toBe(depths.length);
-    expect(Math.max(...depths) - Math.min(...depths)).toBeGreaterThan(TERRACE_STEP * 5);
-  });
-});
-
-describe("terraceProfile", () => {
-  it("runs from the pit floor out to the ground edge, monotonically outward", () => {
-    const profile = terraceProfile();
-    expect(profile[0][0]).toBe(0);
-    expect(profile[0][1]).toBeCloseTo(PIT_FLOOR, 6);
-    expect(profile[profile.length - 1]).toEqual([GROUND_RADIUS, 0]);
-    for (let i = 1; i < profile.length; i++) {
-      expect(profile[i][0], `radius went backwards at ${i}`).toBeGreaterThan(profile[i - 1][0]);
-      expect(profile[i][1]).toBeGreaterThanOrEqual(profile[i - 1][1] - 1e-9);
-    }
-  });
-
-  it("agrees with the height field it is revolved from", () => {
-    for (const [r, y] of terraceProfile()) {
-      expect(terraceHeightAt(r, 0)).toBeCloseTo(y, 6);
-    }
-  });
-
-  it("stays cheap enough to be one mesh", () => {
-    // Revolved at 144 segments, so the vertex count is profile.length * 145.
-    // A few hundred points is a detailed canyon; a few thousand is a mistake.
-    expect(terraceProfile().length).toBeLessThan(200);
-    expect(terraceProfile().length).toBeGreaterThan(MAX_RINGS * 4);
-  });
-});
-
-// ── The melt ─────────────────────────────────────────────────────────────────
-// The pool used to sit at a fixed offset above the pit floor, which on this
-// bowl is six units across inside a four-hundred-unit world. It is a level now,
-// keyed to real forge heat, and these pin the two things that could go wrong:
-// lava outside the rock that holds it, and a cold forge deleting the world's
-// only warm light.
-
-describe("lavaLevel", () => {
-  it("rises with forge heat and never leaves the pit", () => {
-    const cold = lavaLevel(0);
-    const warm = lavaLevel(0.5);
-    const hot = lavaLevel(1);
-    expect(cold).toBeLessThan(warm);
-    expect(warm).toBeLessThan(hot);
-    expect(cold).toBeGreaterThan(PIT_FLOOR);
-    expect(hot).toBeLessThan(0);
-  });
-
-  it("banks the furnace rather than emptying it when the forge goes cold", () => {
-    // Forge heat decays continuously from the last commit, so a quiet fortnight
-    // reaches heat 0 on its own. If that drained the pit, the world's only warm
-    // light would vanish and idle would render as broken.
-    expect(lavaLevel(0)).toBeGreaterThan(PIT_FLOOR);
-    expect(lavaRadius(lavaLevel(0))).toBeGreaterThan(0);
-  });
-
-  it("clamps heat outside 0..1 rather than flooding the quarry", () => {
-    expect(lavaLevel(-3)).toBe(lavaLevel(0));
-    expect(lavaLevel(9)).toBe(lavaLevel(1));
-  });
-});
-
-describe("lavaRadius", () => {
-  it("keeps the melt surface inside the bowl that holds it, at every heat", () => {
-    for (let h = 0; h <= 1.0001; h += 0.05) {
-      const y = lavaLevel(h);
-      const r = lavaRadius(y);
-      // The ground at the melt's edge is at or below the melt: lava cannot be
-      // sitting on top of rock that rises above it.
-      expect(terraceHeightAt(r, 0)).toBeLessThanOrEqual(y + 1e-6);
-      // And one step further out, the rock has risen above the surface — so the
-      // radius really is the shoreline and not just some radius inside it.
-      expect(terraceHeightAt(r + 0.5, 0)).toBeGreaterThan(y);
-    }
-  });
-
-  it("grows monotonically as the melt rises", () => {
-    let prev = -1;
-    for (let h = 0; h <= 1.0001; h += 0.1) {
-      const r = lavaRadius(lavaLevel(h));
-      expect(r).toBeGreaterThanOrEqual(prev);
-      prev = r;
-    }
-  });
-
-  it("is large enough at working heat to light the world it is in", () => {
-    // The defect this replaced: a 6-unit pool in a 440-unit-wide world. At the
-    // heat a shipping week produces, the melt has to be visible.
-    expect(lavaRadius(lavaLevel(0.8))).toBeGreaterThan(20);
-  });
-});
-
-// ── The foundry town ─────────────────────────────────────────────────────────
-
-describe("foundryTown", () => {
-  const town = foundryTown();
-
-  it("is deterministic, so the skyline does not reshuffle between visits", () => {
-    expect(foundryTown()).toEqual(town);
-  });
-
-  it("stands entirely on the flat rim, outside the terraces", () => {
-    for (const p of town) {
-      const r = Math.hypot(p.x, p.z);
-      expect(r).toBeGreaterThanOrEqual(TOWN_INNER - 1e-9);
-      expect(r).toBeLessThanOrEqual(TOWN_OUTER + 1e-9);
-      expect(r).toBeGreaterThan(RIM_RADIUS);
-      expect(terraceHeightAt(p.x, p.z)).toBe(0);
-    }
-  });
-
-  it("clears the spark annulus, so no ledger row is buried by scenery", () => {
-    for (const p of town) {
-      // Half the footprint diagonal is the worst case for a rotated box.
-      const reach = Math.hypot(p.w, p.d) / 2;
-      expect(Math.hypot(p.x, p.z) - reach).toBeGreaterThan(SPARK_OUTER);
-    }
-  });
-
-  it("stays inside the world", () => {
-    for (const p of town) {
-      expect(Math.hypot(p.x, p.z) + Math.hypot(p.w, p.d) / 2).toBeLessThan(GROUND_RADIUS);
-    }
-  });
-
-  it("has a skyline — not a ring of sheds", () => {
-    // The defect this replaced: 34 boxes averaging 7 units tall on a rim 109
-    // units out, which from any camera that frames the quarry is a texture.
-    const tallest = Math.max(...town.map((p) => p.h));
-    const tall = town.filter((p) => p.h > 30).length;
-    expect(tallest).toBeGreaterThan(55);
-    expect(tall).toBeGreaterThan(12);
-  });
-
-  it("carries all four kinds, so the horizon is not one repeated silhouette", () => {
-    const kinds = new Set(town.map((p) => p.kind));
-    expect(kinds).toEqual(new Set(["house", "stack", "silo", "shed"]));
-  });
-
-  it("faces the hearth: denser and taller on the side the work is on", () => {
-    // Every working town has a side that faces the work, and a perfectly even
-    // ring reads as a fence. The hearth sits at +z.
-    const near = town.filter((p) => p.z > 0);
-    const far = town.filter((p) => p.z <= 0);
-    expect(near.length).toBeGreaterThan(far.length);
-    const mean = (xs: typeof town) => xs.reduce((s, p) => s + p.h, 0) / xs.length;
-    expect(mean(near)).toBeGreaterThan(mean(far));
-  });
-
-  it("stays cheap enough to instance in four draw calls", () => {
-    expect(town.length).toBeLessThan(140);
+  it("stays clear of the spindle it stands around", () => {
+    // The tallest column must not out-top the spindle crown, or the world
+    // loses the silhouette it is named for.
+    expect(columnHeight(MAX_RINGS - 1)).toBeLessThan(72);
   });
 });

@@ -8,6 +8,7 @@ import type { CrucibleLegends } from "@/lib/crucible/legends";
 import type { CrucibleSnapshot } from "@/lib/crucible/data";
 import CrucibleMap from "./CrucibleMap";
 import CrucibleArenaCanvas from "./CrucibleArenaCanvas";
+import DuelReadout from "./DuelReadout";
 import { useCrucibleLive } from "./useCrucibleLive";
 
 // ── The Crucible experience: ARENA | MAP | LEGENDS ───────────────────────────
@@ -351,6 +352,10 @@ export default function CrucibleExperience({ initial }: { initial: CrucibleSnaps
       )}
 
       {tab !== "legends" && tab !== "ladder" && <Hud state={state} />}
+      {/* The bout readout. Only over the world itself — the legends and ladder
+          tabs are their own full-height documents and a floating panel would
+          sit on top of their content. */}
+      {tab !== "legends" && tab !== "ladder" && <DuelReadout state={state} />}
 
       {/* Resident layer: simulated inhabitants on the shared 30-min tick.
           Separate from this world's compiled data by design -- see

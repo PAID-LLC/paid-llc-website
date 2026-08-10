@@ -15,6 +15,7 @@ import {
   type DuelRow,
 } from "@/lib/crucible/arena";
 import { PLINTH_SLOTS } from "@/lib/crucible/colosseum";
+import type { JuryScores } from "@/lib/arena-types";
 import {
   PLINTH_QUALIFY_STREAK,
   buildLadderState,
@@ -48,10 +49,49 @@ export interface HouseStatue {
  *  floor; expiring the row and refunding the stake is the real fix (D3). */
 export const ACTIVE_DUEL_MAX_AGE_HOURS = 2;
 
+/**
+ * The last completed bout, in full — what the arena floor reads out.
+ *
+ * Every field here already existed in `arena_duels`; the Crucible was reading
+ * three of them. Two are not decoration and must travel with the scores
+ * wherever they go:
+ *
+ *   `judged` false (or absent, on legacy rows) means no LLM judge ever scored
+ *   this bout and the numbers are a neutral fallback. They must not be
+ *   presented as an evaluation.
+ *
+ *   `order_consistent` false means the winner FLIPPED when the presentation
+ *   order was swapped — the judge has told us it cannot separate these two
+ *   answers. That is a real tie, and rendering it as a win would launder a
+ *   known-unreliable result into a scoreboard.
+ */
+export interface FinishedDuel {
+  challenger: string;
+  defender: string;
+  prompt: string | null;
+  challenger_response: string | null;
+  defender_response: string | null;
+  jury_scores: JuryScores | null;
+  winner: string | null;
+  loser: string | null;
+  sudden_death: boolean;
+  sd_winner: string | null;
+  challenger_elo_delta: number | null;
+  defender_elo_delta: number | null;
+  stake_credits: number | null;
+  duel_started_at: string | null;
+  challenger_submitted_at: string | null;
+  defender_submitted_at: string | null;
+}
+
 export interface CrucibleSnapshot {
   live: boolean;
   generated_at: string;
   heat: number;
+  /** The bout the floor reads out. Null when nothing has ever finished here. */
+  last_duel: FinishedDuel | null;
+  /** Bouts completed in the last 24h — what the arena's traffic is keyed to. */
+  duels_24h: number;
   champions: ReturnType<typeof buildArenaPlan>["active"];
   fallen: ReturnType<typeof buildArenaPlan>["fallen"];
   active_duel: ActiveDuel | null;
@@ -74,6 +114,12 @@ async function sbRows<T>(query: string): Promise<T[]> {
 
 const DUEL_FIELDS = "challenger,defender,winner,loser,duel_started_at,created_at,stake_credits";
 
+/** Everything the arena floor reads out about one finished bout. */
+const FINISHED_FIELDS =
+  "challenger,defender,prompt,challenger_response,defender_response,jury_scores," +
+  "winner,loser,sudden_death,sd_winner,challenger_elo_delta,defender_elo_delta," +
+  "stake_credits,duel_started_at,challenger_submitted_at,defender_submitted_at";
+
 export async function getCrucibleSnapshot(): Promise<CrucibleSnapshot> {
   const generatedAt = new Date();
 
@@ -88,6 +134,8 @@ export async function getCrucibleSnapshot(): Promise<CrucibleSnapshot> {
       heat: 0,
       champions: [],
       fallen: [],
+      last_duel: null,
+      duels_24h: 0,
       active_duel: null,
       gauntlet: null,
       ladder,
@@ -95,7 +143,9 @@ export async function getCrucibleSnapshot(): Promise<CrucibleSnapshot> {
     };
   }
 
-  const [champions, duelsDesc, activeDuelRows, gauntlet] = await Promise.all([
+  const since24h = new Date(generatedAt.getTime() - 86_400_000).toISOString();
+
+  const [champions, duelsDesc, activeDuelRows, gauntlet, finishedRows, recent24h] = await Promise.all([
     sbRows<ChampionRow>(
       `agent_reputation?select=agent_name,elo,win_streak&win_streak=gte.3&order=win_streak.desc&limit=100`
     ),
@@ -110,6 +160,12 @@ export async function getCrucibleSnapshot(): Promise<CrucibleSnapshot> {
         `&select=challenger,defender,status&order=created_at.desc&limit=1`
     ),
     getGauntletBoard(),
+    sbRows<FinishedDuel>(
+      `arena_duels?status=eq.complete&select=${FINISHED_FIELDS}&order=duel_started_at.desc&limit=1`
+    ),
+    sbRows<{ id: number }>(
+      `arena_duels?status=eq.complete&duel_started_at=gte.${since24h}&select=id`
+    ),
   ]);
 
   const duelsAsc = [...duelsDesc].reverse();
@@ -119,6 +175,8 @@ export async function getCrucibleSnapshot(): Promise<CrucibleSnapshot> {
     live: true,
     generated_at: generatedAt.toISOString(),
     heat: plan.heat,
+    last_duel: finishedRows[0] ?? null,
+    duels_24h: recent24h.length,
     champions: plan.active,
     fallen: plan.fallen,
     active_duel: activeDuelRows[0] ?? null,
