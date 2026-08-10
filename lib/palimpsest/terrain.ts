@@ -34,6 +34,38 @@ export const DUNE_AMP = 1.9;
 /** Extra flat apron kept clear around every site, world units. */
 export const SITE_APRON = 6;
 
+/**
+ * The field school's terrace.
+ *
+ * A rectangular plinth raised out of the dune sea, south of the Colophon Vault.
+ * Its north edge stops one unit clear of the vault's own clearing so the two
+ * levellings never fight, and it sits in the only corridor of open ground the
+ * hand-placed site table leaves near the middle of the frame — the Folio Crypts
+ * bound it to the west and the Ninth Margin to the east, both far enough out
+ * that only the feather touches them.
+ *
+ * Terrain owns this rather than the campus module because where the ground is
+ * flat is a fact about the ground. campus.ts builds on top of it and imports
+ * from here, which keeps the dependency one-way.
+ */
+export const CAMPUS_PAD = {
+  cx: -20,
+  cz: 66,
+  w: 48,
+  d: 60,
+  /** Plinth height above the dune datum. */
+  y: 1.3,
+  /** Blend distance from the pad edge back down to open dune. */
+  feather: 8,
+} as const;
+
+/** 1 on the terrace, 0 out in the dunes, smooth across the feather. */
+export function campusMask(x: number, z: number): number {
+  const dx = Math.max(0, Math.abs(x - CAMPUS_PAD.cx) - CAMPUS_PAD.w / 2);
+  const dz = Math.max(0, Math.abs(z - CAMPUS_PAD.cz) - CAMPUS_PAD.d / 2);
+  return 1 - smoothstep(Math.hypot(dx, dz) / CAMPUS_PAD.feather);
+}
+
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -62,8 +94,10 @@ function smoothstep(t: number): number {
 }
 
 /** Height of the dust at (x, z): layered dunes, flattened around every site
- *  and the vault so the digs sit on clean ground. Pure and cheap — the plain
- *  mesh, the rubble, and the trail all sample the same function. */
+ *  and the vault so the digs sit on clean ground, then lifted onto the field
+ *  school's terrace. Pure and cheap — the plain mesh, the rubble, the trail,
+ *  the campus paving, and every walking body all sample the same function, so
+ *  nothing can end up standing in the air or buried to the knee. */
 export function duneHeight(x: number, z: number): number {
   let h =
     Math.sin(x * 0.045 + 1.7) * Math.cos(z * 0.038 + 0.4) * 0.55 +
@@ -75,7 +109,10 @@ export function duneHeight(x: number, z: number): number {
     // 0 at the site, 1 past the apron edge.
     h *= smoothstep((d - c.r * 0.55) / (c.r * 0.75));
   }
-  return h;
+  // The terrace wins wherever it exists: a lerp, not a sum, so the dunes do
+  // not print through the paving as a gentle swell.
+  const pad = campusMask(x, z);
+  return h * (1 - pad) + CAMPUS_PAD.y * pad;
 }
 
 // ── Per-site ruin kits ───────────────────────────────────────────────────────
