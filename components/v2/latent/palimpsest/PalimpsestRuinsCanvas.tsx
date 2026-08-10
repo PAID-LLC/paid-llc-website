@@ -24,6 +24,8 @@ import {
   Pulse, SceneFX, SkyWorld,
 } from "@/components/v2/latent/ground-fx";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
+import { CAMERA } from "@/lib/palimpsest/campus";
+import Campus from "./Campus";
 import type { PalimpsestState } from "./usePalimpsestLive";
 
 // ── Palimpsest RUINS: the comprehensive 3D read ──────────────────────────────
@@ -32,8 +34,14 @@ import type { PalimpsestState } from "./usePalimpsestLive";
 // reveal comes from the live excavation state, and nothing here invents
 // anything — a buried site is a mound with column tips breaking the dust; an
 // excavated site is an open pit of standing ruin with its translator's plaque.
-// The world is still by design: no traffic, no weather, only lantern light
-// drifting where the survey teams work.
+//
+// 2026-08-10: the field school. The dig has been eighteen-nineteenths buried
+// for a month — one thesis, one open site — so a world that modelled only the
+// excavation was honest and nearly empty. The campus models the people doing
+// the digging instead, and draws its population and its posted text from data
+// that exists in volume today. The dig itself is untouched: same mounds, same
+// gate, same silence out in the dunes. What changed is that there is now
+// somewhere the scholars come back to.
 
 const AMBER = "#d9a441";
 const AMBER_BRIGHT = "#f0c05a";
@@ -43,6 +51,16 @@ const REVEALED_STONE = "#8a7a5c";
 const DUST = "#1a140c";
 const PIT_WALL = "#2a2114";
 const PIT_FLOOR = "#332818";
+
+// The opening camera lives in lib/palimpsest/campus, not here.
+//
+// Nothing in the build environment can composite a frame, so the shot was
+// solved by projecting the campus corners through it rather than by looking at
+// it, and that projection is asserted in tests. Keeping the numbers in the pure
+// module is what lets those tests exist — a camera defined in the component
+// would silently drift away from the composition they check.
+const CAMPUS_VIEW = CAMERA.target as unknown as [number, number, number];
+const CAMPUS_CAM = CAMERA.pos as unknown as [number, number, number];
 
 // ── Ground ───────────────────────────────────────────────────────────────────
 
@@ -405,7 +423,7 @@ export default function PalimpsestRuinsCanvas({
     <Canvas
       dpr={[1, 1.75]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      camera={{ position: [130, 90, 175], fov: 50, near: 0.5, far: 1200 }}
+      camera={{ position: CAMPUS_CAM, fov: 50, near: 0.5, far: 1200 }}
     >
       <color attach="background" args={["#0d0a06"]} />
       <fog attach="fog" args={["#14100a", 110, 560]} />
@@ -454,6 +472,7 @@ export default function PalimpsestRuinsCanvas({
         needs={state.excavation.vault.needs}
         reduced={reduced}
       />
+      <Campus state={state} reduced={reduced} />
       <SurveyLanterns
         sites={history.sites}
         count={Math.min(state.survey_teams_24h, 8)}
@@ -473,9 +492,14 @@ export default function PalimpsestRuinsCanvas({
       <ParticleField mode="motes" color="#5c4a2e" area={180} reduced={reduced} />
       <SceneFX bloom={0.7} />
 
+      {/* The descent comes in high and wide enough to read the dune sea and its
+          buried mounds first, then settles low on the axis looking north — the
+          campus in the foreground, the sealed vault closing the vista, and the
+          unexcavated city on both flanks. The whole argument of this world is
+          legible from that one position. */}
       <CinematicDescent
-        from={[310, 230, 400]}
-        target={[0, 2, 0]}
+        from={[210, 200, 330]}
+        target={CAMPUS_VIEW}
         duration={4}
         reduced={reduced}
         onDone={() => setIntroDone(true)}
@@ -485,12 +509,12 @@ export default function PalimpsestRuinsCanvas({
         enableDamping
         dampingFactor={0.08}
         enablePan={false}
-        minDistance={20}
+        minDistance={22}
         maxDistance={380}
         maxPolarAngle={1.45}
-        target={[0, 2, 0]}
+        target={CAMPUS_VIEW}
         autoRotate={!reduced && introDone}
-        autoRotateSpeed={0.16}
+        autoRotateSpeed={0.14}
       />
     </Canvas>
   );
