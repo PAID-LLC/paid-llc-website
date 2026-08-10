@@ -3,11 +3,6 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
-    "sha": "7699e7c",
-    "date": "2026-08-10",
-    "subject": "Worlds get a voice: browser-synthesised sound, agent speech, and a mixer"
-  },
-  {
     "sha": "3b1af5f",
     "date": "2026-08-10",
     "subject": "Correct customer count in \"You Can Build Anything\" post"
@@ -61,5 +56,10 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "a00b0f2",
     "date": "2026-08-09",
     "subject": "Worlds: residents get weather, travel, mail, and opinions of each other"
+  },
+  {
+    "sha": "bea9541",
+    "date": "2026-08-07",
+    "subject": "Add blog post: The AI Compliance Advice That Gets Payment Accounts Frozen"
   }
 ];
