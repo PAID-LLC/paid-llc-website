@@ -10,6 +10,11 @@ import {
   SPARK_INNER,
   SPARK_OUTER,
   TERRACE_STEP,
+  TOWN_INNER,
+  TOWN_OUTER,
+  foundryTown,
+  lavaLevel,
+  lavaRadius,
   ringRadius,
   sparkPosition,
   terraceElevation,
@@ -169,5 +174,129 @@ describe("terraceProfile", () => {
     // A few hundred points is a detailed canyon; a few thousand is a mistake.
     expect(terraceProfile().length).toBeLessThan(200);
     expect(terraceProfile().length).toBeGreaterThan(MAX_RINGS * 4);
+  });
+});
+
+// ── The melt ─────────────────────────────────────────────────────────────────
+// The pool used to sit at a fixed offset above the pit floor, which on this
+// bowl is six units across inside a four-hundred-unit world. It is a level now,
+// keyed to real forge heat, and these pin the two things that could go wrong:
+// lava outside the rock that holds it, and a cold forge deleting the world's
+// only warm light.
+
+describe("lavaLevel", () => {
+  it("rises with forge heat and never leaves the pit", () => {
+    const cold = lavaLevel(0);
+    const warm = lavaLevel(0.5);
+    const hot = lavaLevel(1);
+    expect(cold).toBeLessThan(warm);
+    expect(warm).toBeLessThan(hot);
+    expect(cold).toBeGreaterThan(PIT_FLOOR);
+    expect(hot).toBeLessThan(0);
+  });
+
+  it("banks the furnace rather than emptying it when the forge goes cold", () => {
+    // Forge heat decays continuously from the last commit, so a quiet fortnight
+    // reaches heat 0 on its own. If that drained the pit, the world's only warm
+    // light would vanish and idle would render as broken.
+    expect(lavaLevel(0)).toBeGreaterThan(PIT_FLOOR);
+    expect(lavaRadius(lavaLevel(0))).toBeGreaterThan(0);
+  });
+
+  it("clamps heat outside 0..1 rather than flooding the quarry", () => {
+    expect(lavaLevel(-3)).toBe(lavaLevel(0));
+    expect(lavaLevel(9)).toBe(lavaLevel(1));
+  });
+});
+
+describe("lavaRadius", () => {
+  it("keeps the melt surface inside the bowl that holds it, at every heat", () => {
+    for (let h = 0; h <= 1.0001; h += 0.05) {
+      const y = lavaLevel(h);
+      const r = lavaRadius(y);
+      // The ground at the melt's edge is at or below the melt: lava cannot be
+      // sitting on top of rock that rises above it.
+      expect(terraceHeightAt(r, 0)).toBeLessThanOrEqual(y + 1e-6);
+      // And one step further out, the rock has risen above the surface — so the
+      // radius really is the shoreline and not just some radius inside it.
+      expect(terraceHeightAt(r + 0.5, 0)).toBeGreaterThan(y);
+    }
+  });
+
+  it("grows monotonically as the melt rises", () => {
+    let prev = -1;
+    for (let h = 0; h <= 1.0001; h += 0.1) {
+      const r = lavaRadius(lavaLevel(h));
+      expect(r).toBeGreaterThanOrEqual(prev);
+      prev = r;
+    }
+  });
+
+  it("is large enough at working heat to light the world it is in", () => {
+    // The defect this replaced: a 6-unit pool in a 440-unit-wide world. At the
+    // heat a shipping week produces, the melt has to be visible.
+    expect(lavaRadius(lavaLevel(0.8))).toBeGreaterThan(20);
+  });
+});
+
+// ── The foundry town ─────────────────────────────────────────────────────────
+
+describe("foundryTown", () => {
+  const town = foundryTown();
+
+  it("is deterministic, so the skyline does not reshuffle between visits", () => {
+    expect(foundryTown()).toEqual(town);
+  });
+
+  it("stands entirely on the flat rim, outside the terraces", () => {
+    for (const p of town) {
+      const r = Math.hypot(p.x, p.z);
+      expect(r).toBeGreaterThanOrEqual(TOWN_INNER - 1e-9);
+      expect(r).toBeLessThanOrEqual(TOWN_OUTER + 1e-9);
+      expect(r).toBeGreaterThan(RIM_RADIUS);
+      expect(terraceHeightAt(p.x, p.z)).toBe(0);
+    }
+  });
+
+  it("clears the spark annulus, so no ledger row is buried by scenery", () => {
+    for (const p of town) {
+      // Half the footprint diagonal is the worst case for a rotated box.
+      const reach = Math.hypot(p.w, p.d) / 2;
+      expect(Math.hypot(p.x, p.z) - reach).toBeGreaterThan(SPARK_OUTER);
+    }
+  });
+
+  it("stays inside the world", () => {
+    for (const p of town) {
+      expect(Math.hypot(p.x, p.z) + Math.hypot(p.w, p.d) / 2).toBeLessThan(GROUND_RADIUS);
+    }
+  });
+
+  it("has a skyline — not a ring of sheds", () => {
+    // The defect this replaced: 34 boxes averaging 7 units tall on a rim 109
+    // units out, which from any camera that frames the quarry is a texture.
+    const tallest = Math.max(...town.map((p) => p.h));
+    const tall = town.filter((p) => p.h > 30).length;
+    expect(tallest).toBeGreaterThan(55);
+    expect(tall).toBeGreaterThan(12);
+  });
+
+  it("carries all four kinds, so the horizon is not one repeated silhouette", () => {
+    const kinds = new Set(town.map((p) => p.kind));
+    expect(kinds).toEqual(new Set(["house", "stack", "silo", "shed"]));
+  });
+
+  it("faces the hearth: denser and taller on the side the work is on", () => {
+    // Every working town has a side that faces the work, and a perfectly even
+    // ring reads as a fence. The hearth sits at +z.
+    const near = town.filter((p) => p.z > 0);
+    const far = town.filter((p) => p.z <= 0);
+    expect(near.length).toBeGreaterThan(far.length);
+    const mean = (xs: typeof town) => xs.reduce((s, p) => s + p.h, 0) / xs.length;
+    expect(mean(near)).toBeGreaterThan(mean(far));
+  });
+
+  it("stays cheap enough to instance in four draw calls", () => {
+    expect(town.length).toBeLessThan(140);
   });
 });

@@ -3,6 +3,16 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "f35f4e6",
+    "date": "2026-08-09",
+    "subject": "Add blog post: You Can Build Anything. That Is the Problem."
+  },
+  {
+    "sha": "b9e6d5d",
+    "date": "2026-08-09",
+    "subject": "Arclight comes alive: the agents roam, work, and meet"
+  },
+  {
     "sha": "7829547",
     "date": "2026-08-09",
     "subject": "Arclight joins the mainland: causeways, real water, rooftops and doors"
@@ -51,15 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "286a493",
     "date": "2026-08-01",
     "subject": "Expenses endpoint: include the $5 Cloudflare Workers Paid charge"
-  },
-  {
-    "sha": "2b77be2",
-    "date": "2026-07-31",
-    "subject": "Storefront integrity: verify a stranger can actually buy"
-  },
-  {
-    "sha": "0e216bc",
-    "date": "2026-07-26",
-    "subject": "Crucible: a draw no longer takes an entrant's plinth"
   }
 ];

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
@@ -36,8 +36,8 @@ import {
   CinematicDescent, GroundMist, MilkyWayBackdrop, ParticleField, Pulse,
   RealisticWater, SkyWorld,
 } from "@/components/v2/latent/ground-fx";
-import { buildStreetLife, sampleRoute, type StreetLife } from "@/lib/arclight/streetlife";
-import { SkyDome, SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
+import { buildStreetLife, type StreetLife } from "@/lib/arclight/streetlife";
+import { CrowdFigures, SkyDome, SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
 import { surface, triplanarMaterial, type SurfaceSpec } from "@/components/v2/latent/surface-kit";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
@@ -611,9 +611,6 @@ function CounterpartyBridge() {
 
 // ── Street life ──────────────────────────────────────────────────────────────
 
-const CROWD_SCALE = 0.9;
-/** Hip height in figure-local units — where the legs hinge. */
-const CROWD_HIP = 1.5;
 const CROWD_AMBIENT = new THREE.Color("#5c6b7a");
 const CROWD_COURIER = new THREE.Color("#c98442");
 
@@ -631,121 +628,15 @@ const CROWD_COURIER = new THREE.Color("#c98442");
  * the harbour mirrors this scene and every draw call is paid for twice.
  */
 function StreetCrowd({ life, reduced }: { life: StreetLife; reduced: boolean }) {
-  const bodyRef = useRef<THREE.InstancedMesh>(null);
-  const headRef = useRef<THREE.InstancedMesh>(null);
-  const legARef = useRef<THREE.InstancedMesh>(null);
-  const legBRef = useRef<THREE.InstancedMesh>(null);
-  const n = life.walkers.length;
-
-  const kit = useMemo(() => {
-    const body = new THREE.CylinderGeometry(0.66, 0.5, 1.9, 7);
-    body.translate(0, CROWD_HIP + 0.95, 0);
-    const head = new THREE.OctahedronGeometry(0.4, 0);
-    head.translate(0, CROWD_HIP + 2.22, 0);
-    // Legs hinge at the hip, so the geometry hangs BELOW its own origin and the
-    // lateral offset is baked in — one instanced mesh per leg, no extra nodes.
-    const legA = new THREE.CylinderGeometry(0.2, 0.26, 1.5, 5);
-    legA.translate(0.3, -0.75, 0);
-    const legB = legA.clone();
-    legB.translate(-0.6, 0, 0);
-    const mat = new THREE.MeshStandardMaterial({
-      color: "#ffffff", // instanceColor multiplies this, so it must be white
-      flatShading: true,
-      roughness: 0.78,
-      emissive: new THREE.Color("#22303a"),
-      emissiveIntensity: 0.55,
-    });
-    return { body, head, legA, legB, mat };
-  }, []);
-
-  useEffect(
-    () => () => {
-      kit.body.dispose();
-      kit.head.dispose();
-      kit.legA.dispose();
-      kit.legB.dispose();
-      kit.mat.dispose();
-    },
-    [kit]
+  // Ambient slate, couriers amber.
+  const tint = useCallback(
+    (i: number) => (life.walkers[i].courier ? CROWD_COURIER : CROWD_AMBIENT),
+    [life]
   );
-
-  // Ambient slate, couriers amber. Written once — nothing about a walker's
-  // identity changes between frames.
-  useEffect(() => {
-    const meshes = [bodyRef.current, headRef.current, legARef.current, legBRef.current];
-    for (const m of meshes) {
-      if (!m) continue;
-      for (let i = 0; i < n; i++) {
-        m.setColorAt(i, life.walkers[i].courier ? CROWD_COURIER : CROWD_AMBIENT);
-      }
-      if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    }
-  }, [life, n]);
-
-  const dummy = useMemo(() => {
-    const o = new THREE.Object3D();
-    // Yaw first, then swing in the yawed frame — otherwise a leg on a
-    // north-south street swings sideways.
-    o.rotation.order = "YXZ";
-    return o;
-  }, []);
-
-  useFrame((state) => {
-    const body = bodyRef.current;
-    const head = headRef.current;
-    const legA = legARef.current;
-    const legB = legBRef.current;
-    if (!body || !head || !legA || !legB) return;
-
-    const t = state.clock.elapsedTime;
-
-    for (let i = 0; i < n; i++) {
-      const w = life.walkers[i];
-      const s = sampleRoute(life.routes[w.route], w.offset + (reduced ? 0 : t * w.speed));
-
-      // Walk on a pavement, not down the centre line.
-      const x = s.x + Math.cos(s.heading) * w.lane;
-      const z = s.z - Math.sin(s.heading) * w.lane;
-      // Flat ground: every pedestrian route runs on land for its whole length,
-      // which is why the Circuit viaduct and Counterparty Bridge are not
-      // pedestrian routes. See ROUTE_IDS in lib/arclight/streetlife.ts.
-      const base = 0;
-
-      const stride = reduced ? 0 : Math.sin(t * w.speed * 3.1 + w.phase);
-      const bob = reduced ? 0 : (1 - Math.abs(stride)) * 0.09;
-
-      dummy.scale.setScalar(CROWD_SCALE);
-      dummy.position.set(x, base + bob, z);
-      dummy.rotation.set(0, s.heading, 0);
-      dummy.updateMatrix();
-      body.setMatrixAt(i, dummy.matrix);
-      head.setMatrixAt(i, dummy.matrix);
-
-      dummy.position.y = base + bob + CROWD_HIP * CROWD_SCALE;
-      dummy.rotation.set(stride * 0.55, s.heading, 0);
-      dummy.updateMatrix();
-      legA.setMatrixAt(i, dummy.matrix);
-      dummy.rotation.set(-stride * 0.55, s.heading, 0);
-      dummy.updateMatrix();
-      legB.setMatrixAt(i, dummy.matrix);
-    }
-
-    body.instanceMatrix.needsUpdate = true;
-    head.instanceMatrix.needsUpdate = true;
-    legA.instanceMatrix.needsUpdate = true;
-    legB.instanceMatrix.needsUpdate = true;
-  });
-
-  if (n === 0) return null;
-
-  return (
-    <>
-      <instancedMesh ref={bodyRef} args={[kit.body, kit.mat, n]} frustumCulled={false} />
-      <instancedMesh ref={headRef} args={[kit.head, kit.mat, n]} frustumCulled={false} />
-      <instancedMesh ref={legARef} args={[kit.legA, kit.mat, n]} frustumCulled={false} />
-      <instancedMesh ref={legBRef} args={[kit.legB, kit.mat, n]} frustumCulled={false} />
-    </>
-  );
+  // No ground sampler: every pedestrian route runs on land for its whole
+  // length, which is why the Circuit viaduct and Counterparty Bridge are not
+  // pedestrian routes. See ROUTE_IDS in lib/arclight/streetlife.ts.
+  return <CrowdFigures routes={life.routes} bodies={life.walkers} tint={tint} reduced={reduced} />;
 }
 
 // ── The seeded city fabric: one draw call of bodies, one of windows ──────────

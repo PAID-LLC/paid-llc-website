@@ -24,6 +24,14 @@
 
 import { ARTERIALS, FRAME, mulberry32, type ArclightSnapshot } from "./cityplan";
 import { WORLD_SCALE } from "./skyline";
+import { makeRoute, sampleRoute, type Route, type RouteWalker } from "@/lib/worlds/routes";
+
+// The route maths moved to lib/worlds/routes.ts when the Lathe's foundry crew
+// needed the same sampler. Re-exported here because this module's callers and
+// tests were written against it, and because "where does an Arclight walker
+// come from" should keep answering in one file.
+export { sampleRoute };
+export type { Route };
 
 /** Map coordinates → world units. Same transform the skyline uses; duplicated
  *  rather than imported through a chain so this module stays leaf-level. */
@@ -31,77 +39,7 @@ function toWorld(mx: number, my: number): [number, number] {
   return [(mx - FRAME.w / 2) * WORLD_SCALE, (my - FRAME.h / 2) * WORLD_SCALE];
 }
 
-export interface Route {
-  /** World-space polyline. */
-  pts: [number, number][];
-  /** Cumulative distance at each point; last entry is the total length. */
-  cum: number[];
-  length: number;
-  /** Closed loops wrap; open streets ping-pong so nobody teleports. */
-  loop: boolean;
-}
-
-function makeRoute(mapPts: readonly [number, number][], loop: boolean): Route {
-  const pts = mapPts.map(([mx, my]) => toWorld(mx, my)) as [number, number][];
-  if (loop && pts.length > 1) pts.push([pts[0][0], pts[0][1]]);
-
-  const cum = [0];
-  for (let i = 1; i < pts.length; i++) {
-    cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-  }
-  return { pts, cum, length: cum[cum.length - 1], loop };
-}
-
-/** Position and heading at distance `d` along a route. Heading is the tangent,
- *  so a walker always faces the way the street goes. */
-export function sampleRoute(r: Route, d: number): { x: number; z: number; heading: number } {
-  const len = r.length;
-  let t: number;
-  let backwards = false;
-
-  if (r.loop) {
-    t = ((d % len) + len) % len;
-  } else {
-    // Ping-pong: out along the street, then back, forever.
-    const span = len * 2;
-    const u = ((d % span) + span) % span;
-    if (u <= len) t = u;
-    else {
-      t = span - u;
-      backwards = true;
-    }
-  }
-
-  // Walk the cumulative table. Routes are 2-7 points, so a scan beats a binary
-  // search and keeps this allocation-free in the frame loop.
-  let i = 1;
-  while (i < r.cum.length - 1 && r.cum[i] < t) i++;
-  const segLen = r.cum[i] - r.cum[i - 1] || 1;
-  const f = (t - r.cum[i - 1]) / segLen;
-
-  const [ax, az] = r.pts[i - 1];
-  const [bx, bz] = r.pts[i];
-  const dx = bx - ax;
-  const dz = bz - az;
-
-  return {
-    x: ax + dx * f,
-    z: az + dz * f,
-    heading: Math.atan2(backwards ? -dx : dx, backwards ? -dz : dz),
-  };
-}
-
-export interface Walker {
-  route: number;
-  /** Distance along the route at t=0. */
-  offset: number;
-  /** World units per second. */
-  speed: number;
-  /** Sideways offset from the centreline, so walkers use both pavements
-   *  instead of marching down the middle of the road. */
-  lane: number;
-  /** Per-walker gait phase, so a street is not a chorus line. */
-  phase: number;
+export interface Walker extends RouteWalker {
   /** Couriers move stock between stalls and read as work. Keyed to real jobs;
    *  zero jobs today means zero couriers on the street. */
   courier: boolean;
@@ -147,7 +85,9 @@ const STREET_WEIGHT: Record<(typeof ROUTE_IDS)[number], number> = {
 
 export function buildStreetLife(snap: ArclightSnapshot): StreetLife {
   const byId = new Map(ARTERIALS.map((a) => [a.id, a.pts]));
-  const routes: Route[] = ROUTE_IDS.map((id) => makeRoute(byId.get(id) ?? [], false));
+  const routes: Route[] = ROUTE_IDS.map((id) =>
+    makeRoute((byId.get(id) ?? []).map(([mx, my]) => toWorld(mx, my)), false)
+  );
 
   const registered = Math.max(0, snap.population?.registered ?? 0);
   const jobs = Math.max(0, (snap.jobs?.active ?? 0) + (snap.jobs?.settled_24h ?? 0));

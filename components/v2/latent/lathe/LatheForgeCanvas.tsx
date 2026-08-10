@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Line, OrbitControls, Html } from "@react-three/drei";
@@ -9,15 +9,19 @@ import {
   GROUND_RADIUS,
   HEARTH,
   MAX_RINGS,
-  PIT_DROP,
   PIT_FLOOR,
   RIM_RADIUS,
   RING_BASE_RADIUS,
   RING_STEP,
+  foundryTown,
+  lavaLevel,
+  lavaRadius,
   terraceElevation,
   terraceHeightAt,
   terraceProfile,
+  type TownPiece,
 } from "@/lib/lathe/workshop";
+import { buildCrewLife } from "@/lib/lathe/crewlife";
 import { hashStr, mulberry32 } from "@/lib/sim-field";
 import type { LatheSnapshot } from "@/lib/lathe/data";
 import type { ForgeRing } from "@/lib/lathe/forge";
@@ -26,38 +30,56 @@ import {
   RimMountains, ScatterField, Spin, StormFlash, mixHex,
 } from "@/components/v2/latent/ground-fx";
 import {
-  InstancedBlocks, LightShaft, MoltenSurface, RevolvedTerrain, WorldFX,
-  type Block,
+  CrowdFigures, LightShaft, MoltenSurface, RevolvedTerrain, SkyEnvironment, WorldFX,
 } from "@/components/v2/latent/world-kit";
+import { surface, triplanarMaterial, type SurfaceSpec } from "@/components/v2/latent/surface-kit";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── The Lathe FORGE: a quarry cut into the build history ─────────────────────
 //
-// Rebuilt 2026-08-09. The compiler contract is unchanged and remains the point:
-// every terrace is a real commit from BUILD_LOG, every spark is a real
-// innovation_ledger row filed from inside the room, and the spindle turns for
-// as long as the site keeps shipping. What changed is the third dimension.
+// The compiler contract is unchanged and remains the point: every terrace is a
+// real commit from BUILD_LOG, every spark is a real innovation_ledger row filed
+// from inside the room, and the spindle turns for as long as the site keeps
+// shipping.
 //
-// The previous scene drew those same twelve commits as flat rings on a
-// 220-radius disc whose tallest object was about five units. Nothing was wrong
-// with it; it just had no vertical extent, so it read as a chart of a world
-// rather than a world. Now the same twelve radii carry an elevation — oldest
-// commit innermost and DEEPEST, the way sediment works — and the world runs
-// from a molten pit floor at y=-53 to the spindle's crown at y=+74.
+// Rebuilt in three passes. 2026-08-09 gave the world its third dimension — the
+// twelve commits stopped being flat rings on a 220-radius disc and became a
+// stepped canyon, oldest commit innermost and deepest, the way sediment works.
+// 2026-08-10 gave it a SURFACE and a POPULATION, against panel 2 of the
+// reference sheet (the volcanic megacity), which is the panel Travis mapped to
+// this world.
 //
-// It stays storm-cyan rather than becoming a lava world, on purpose: the
-// iteration-forge planet on the universe map is already a storm giant, and a
-// surface that contradicts its own planet is exactly the drift class we spent
-// 2026-08-09 fixing in UniverseCanvas. The fire is real, but it is at the
-// bottom of the pit where a foundry's fire belongs, under a sky that does not
-// change.
+// Three things were measurably wrong before that second pass, and each has a
+// specific fix here:
+//
+//   1. THE MELT WAS A PUDDLE. The pool sat at a fixed 4.2 units above the pit
+//      floor, which on this bowl works out at six units across inside a
+//      four-hundred-unit world — invisible at every camera distance. A foundry
+//      world lit by nothing was reading as a cold quarry. The melt is now a
+//      LEVEL keyed to real forge heat, and its radius is read off the bowl's
+//      own profile so it cannot float free of the rock holding it.
+//   2. NOTHING HAD A SURFACE. 15 declared metalness values with no environment
+//      map behind them, which renders as "slightly darker" and nothing else.
+//      There is an env map now, and the rock, the plate and the town all carry
+//      generated albedo/roughness/normal sets sampled triplanar in world space.
+//   3. THE TERRACES READ AS FLAT RINGS AGAIN. Four-unit steps on a 220-unit
+//      radius are 1.9% of the width; from any camera that frames the world they
+//      vanish. The step is deeper now and the rock is textured, so the risers
+//      catch the key light and the canyon reads as one.
+//
+// It stays storm-cyan overhead rather than becoming a lava sky, on purpose: the
+// iteration-forge planet on the universe map is a storm giant, and a surface
+// contradicting its own planet is exactly the drift class fixed in
+// UniverseCanvas on 2026-08-09. Panel 2 is a volcanic CITY, not a volcanic sky.
+// The fire is real and it is now large, but it is at the bottom of the pit where
+// a foundry's fire belongs, under a sky that does not change.
 
 const HEARTH_WARM = "#ffb35c";
 const MOLTEN = "#ff7a2a";
 const COLD = "#4a7bab";
 const STORM = "#22d3ee";
-const STONE_DARK = "#080e18";
-const STONE_ROCK = "#2a3444";
+const STONE_DARK = "#08111c";
+const STONE_ROCK = "#4a4a52";
 
 const PROFILE = terraceProfile();
 const SPINDLE_TOP = 72;
@@ -67,22 +89,169 @@ const SPINDLE_TOP = 72;
  *  instead of a second full-scene render. */
 function quarryShade(y: number): number {
   const depth = Math.min(1, -y / (Math.abs(PIT_FLOOR) + 2));
-  return 0.3 + 0.7 * Math.pow(1 - depth, 0.85);
+  return 0.34 + 0.66 * Math.pow(1 - depth, 0.8);
+}
+
+// ── Surfaces ─────────────────────────────────────────────────────────────────
+// Three generated texture sets carry the whole world. Everything samples them
+// triplanar in world space, so one material covers a four-unit shed wall and a
+// hundred-and-sixty-unit canyon at identical texel density with no UV work.
+
+/** Cut basalt. Strata read as horizontal bands, so the panel grid is taller
+ *  than it is wide — on a quarry wall the seams ARE the geology. */
+const BASALT: SurfaceSpec = {
+  stain: "#6a4a30",
+  panelsX: 3,
+  panelsY: 6,
+  seam: 0.44,
+  wear: 0.72,
+  wet: 0.05,
+  rough: 0.96,
+  relief: 1.3,
+};
+
+/** The town. Firebrick and soot, plus the window grid that turns a box into a
+ *  building — the single strongest "city" cue there is.
+ *
+ *  `lit` is keyed to what is BUILT, never to today's traffic. The forge heat
+ *  decays continuously from the last commit, so wiring windows to it would
+ *  render a quiet fortnight as an evacuated town. Occupancy sets the floor;
+ *  heat modulates emissiveIntensity on top, which needs no regeneration. */
+const FIREBRICK: SurfaceSpec = {
+  stain: "#7a4526",
+  panelsX: 4,
+  panelsY: 5,
+  seam: 0.52,
+  wear: 0.8,
+  wet: 0.04,
+  rough: 0.9,
+  relief: 1,
+  // Seven across an eighteen-unit tile is a 2.6-unit window, so a 20-unit
+  // frontage carries about eight of them. The two attempts either side of this
+  // both failed for texel density rather than for count: at 1.5 units the town
+  // read as pixel art, and at 0.75 a single building carried fourteen hundred
+  // windows that aliased into rainbow speckle.
+  windows: {
+    cols: 7,
+    rows: 9,
+    lit: 0.34,
+    warm: "#ffb257",
+    cool: "#8fd4e8",
+  },
+};
+
+/** Plate steel: the spindle, the gantries, the stacks and the silos. Tight
+ *  seams, heavy rust staining, and the one surface here with enough metal in it
+ *  to care that there is finally an environment map. */
+const PLATE: SurfaceSpec = {
+  stain: "#8a5528",
+  panelsX: 6,
+  panelsY: 6,
+  seam: 0.62,
+  wear: 0.68,
+  wet: 0.08,
+  rough: 0.6,
+  relief: 0.85,
+};
+
+interface ForgeSurfaces {
+  rock: THREE.MeshStandardMaterial;
+  town: THREE.MeshStandardMaterial;
+  shed: THREE.MeshStandardMaterial;
+  plate: THREE.MeshStandardMaterial;
+  spindle: THREE.MeshStandardMaterial;
+}
+
+const SurfaceContext = createContext<ForgeSurfaces | null>(null);
+
+function useForgeSurfaces(reduced: boolean, heat: number): ForgeSurfaces {
+  const materials = useMemo<ForgeSurfaces>(() => {
+    const basalt = surface("lathe-basalt", BASALT);
+    const brick = surface("lathe-firebrick", FIREBRICK);
+    const plate = surface("lathe-plate", PLATE);
+
+    const rock = triplanarMaterial({
+      surface: basalt,
+      color: "#ffffff",
+      // Coarse on purpose. At 24 the seams landed every four world units across
+      // a 220-unit canyon and the rock read as corrugation rather than geology.
+      scale: 40,
+      metalness: 0.04,
+      normalScale: 1.1,
+      vertexColors: true,
+      reduced,
+    });
+    // The quarry is a revolution: from inside the bowl the camera sees the back
+    // of the lathe faces, so both sides have to be lit.
+    rock.side = THREE.DoubleSide;
+
+    return {
+      rock,
+      // Windows run hot for the same reason they do in Arclight: the sky is
+      // cold and it covers the whole frame, so at parity the town reads as one
+      // teal wash. Warm has to win locally while the atmosphere wins globally.
+      town: triplanarMaterial({
+        surface: brick,
+        color: "#6b5747",
+        scale: 18,
+        metalness: 0.08,
+        normalScale: 0.9,
+        emissiveIntensity: 1.15 + heat * 0.45,
+        reduced,
+      }),
+      shed: triplanarMaterial({
+        surface: basalt,
+        color: "#4b433c",
+        scale: 6,
+        metalness: 0.1,
+        normalScale: 1,
+        reduced,
+      }),
+      plate: triplanarMaterial({
+        surface: plate,
+        color: "#5b5f66",
+        scale: 7,
+        metalness: 0.62,
+        roughness: 0.58,
+        normalScale: 1,
+        reduced,
+      }),
+      spindle: triplanarMaterial({
+        surface: plate,
+        color: "#6a6f78",
+        scale: 13,
+        metalness: 0.7,
+        roughness: 0.48,
+        normalScale: 0.8,
+        reduced,
+      }),
+    };
+  }, [reduced, heat]);
+
+  // Materials are per-scene and get disposed; the textures behind them are
+  // module-cached, because a visitor bouncing between worlds should not pay to
+  // regenerate them each time.
+  useEffect(
+    () => () => {
+      for (const m of Object.values(materials)) m.dispose();
+    },
+    [materials]
+  );
+
+  return materials;
+}
+
+function useSurfaces(): ForgeSurfaces {
+  const ctx = useContext(SurfaceContext);
+  if (!ctx) throw new Error("Lathe surfaces used outside the provider");
+  return ctx;
 }
 
 // ── The cut face ─────────────────────────────────────────────────────────────
 
 function Quarry() {
-  return (
-    <RevolvedTerrain
-      profile={PROFILE}
-      segments={144}
-      color={STONE_ROCK}
-      shade={quarryShade}
-      roughness={0.95}
-      metalness={0.06}
-    />
-  );
+  const surfaces = useSurfaces();
+  return <RevolvedTerrain profile={PROFILE} segments={160} color={STONE_ROCK} shade={quarryShade} material={surfaces.rock} />;
 }
 
 /** One glowing lip per commit, sitting on its own terrace's inner edge. The
@@ -113,27 +282,35 @@ function RingLip({ ring, reduced }: { ring: ForgeRing; reduced: boolean }) {
 
 // ── Molten runnels ───────────────────────────────────────────────────────────
 // Ribbons that follow the height field from the rim all the way down into the
-// pit. They are what makes the canyon legible from a distance: without them the
-// terraces read as concentric circles again, just lower down.
+// melt. They are what makes the canyon legible from a distance: without them
+// the terraces read as concentric circles again, just lower down.
+//
+// Both edges sample the height field at their OWN position rather than at the
+// centreline. Sampling once and using it for both was why these read as a row
+// of orange dashes: on every riser the ribbon cut into the rock and the buried
+// stretches vanished, leaving only the parts that happened to clear the slope.
 
-function MoltenChannel({ bearing, width = 2.6 }: { bearing: number; width?: number }) {
+function MoltenChannel({ bearing, from, width = 1.3 }: { bearing: number; from: number; width?: number }) {
   const geometry = useMemo(() => {
     const dx = Math.cos(bearing);
     const dz = Math.sin(bearing);
     const px = -dz;
     const pz = dx;
-    const steps = 96;
+    const steps = 120;
     const positions: number[] = [];
     const indices: number[] = [];
     for (let i = 0; i <= steps; i++) {
-      const r = RING_BASE_RADIUS * 0.4 + (i / steps) * (RIM_RADIUS - RING_BASE_RADIUS * 0.4);
+      const r = from + (i / steps) * (RIM_RADIUS - from);
       const x = dx * r;
       const z = dz * r;
-      const y = terraceHeightAt(x, z) + 0.18;
       // Runnels narrow as they drop, like real spillways.
-      const w = width * (0.55 + 0.45 * (r / RIM_RADIUS));
-      positions.push(x + px * w, y, z + pz * w);
-      positions.push(x - px * w, y, z - pz * w);
+      const w = width * (0.5 + 0.5 * (r / RIM_RADIUS));
+      const lx = x + px * w;
+      const lz = z + pz * w;
+      const rx = x - px * w;
+      const rz = z - pz * w;
+      positions.push(lx, terraceHeightAt(lx, lz) + 0.3, lz);
+      positions.push(rx, terraceHeightAt(rx, rz) + 0.3, rz);
       if (i < steps) {
         const a = i * 2;
         indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
@@ -144,14 +321,16 @@ function MoltenChannel({ bearing, width = 2.6 }: { bearing: number; width?: numb
     geo.setIndex(indices);
     geo.computeVertexNormals();
     return geo;
-  }, [bearing, width]);
+  }, [bearing, from, width]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
         color={MOLTEN}
         emissive={MOLTEN}
-        emissiveIntensity={1.15}
+        emissiveIntensity={0.85}
         roughness={0.35}
         side={THREE.DoubleSide}
         toneMapped={false}
@@ -167,6 +346,7 @@ function MoltenChannel({ bearing, width = 2.6 }: { bearing: number; width?: numb
 // disc, never really showed.
 
 function Spindle({ heat, reduced }: { heat: number; reduced: boolean }) {
+  const surfaces = useSurfaces();
   const lower = PIT_FLOOR;
   const seg = (a: number, b: number) => ({ h: b - a, y: (a + b) / 2 });
   const s1 = seg(lower, lower + 42);
@@ -177,17 +357,14 @@ function Spindle({ heat, reduced }: { heat: number; reduced: boolean }) {
 
   return (
     <group>
-      <mesh position-y={s1.y}>
-        <cylinderGeometry args={[7.4, 10.5, s1.h, 14]} />
-        <meshStandardMaterial color="#232b38" roughness={0.7} metalness={0.45} />
+      <mesh position-y={s1.y} material={surfaces.spindle}>
+        <cylinderGeometry args={[7.4, 10.5, s1.h, 16]} />
       </mesh>
-      <mesh position-y={s2.y}>
-        <cylinderGeometry args={[4.6, 7.4, s2.h, 14]} />
-        <meshStandardMaterial color="#2a3341" roughness={0.6} metalness={0.5} />
+      <mesh position-y={s2.y} material={surfaces.spindle}>
+        <cylinderGeometry args={[4.6, 7.4, s2.h, 16]} />
       </mesh>
-      <mesh position-y={s3.y}>
-        <cylinderGeometry args={[2.4, 4.6, s3.h, 12]} />
-        <meshStandardMaterial color="#323c4c" roughness={0.5} metalness={0.55} />
+      <mesh position-y={s3.y} material={surfaces.spindle}>
+        <cylinderGeometry args={[2.4, 4.6, s3.h, 14]} />
       </mesh>
 
       <Spin speed={0.28} reduced={reduced}>
@@ -273,13 +450,140 @@ function Lightning({ reduced }: { reduced: boolean }) {
   );
 }
 
+// ── The foundry town ─────────────────────────────────────────────────────────
+// Panel 2 is a volcanic megacity, and what stood on this rim was thirty-four
+// boxes averaging seven units tall on a hundred-and-nine-unit rim — a shanty,
+// seen from orbit. The layout is pinned in lib/lathe/workshop.ts; this only
+// draws it.
+//
+// Four instanced meshes for the whole city: two box batches (housed stock with
+// window grids, and windowless sheds) and two cylinder batches (stacks and
+// silos). The furnace caps on the stacks are the fifth, and they are the only
+// part that carries live data.
+
+interface Placed {
+  p: [number, number, number];
+  s: [number, number, number];
+  ry: number;
+}
+
+function InstancedPieces({
+  geometry,
+  material,
+  items,
+}: {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  items: readonly Placed[];
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+
+  useEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const axis = new THREE.Vector3(0, 1, 0);
+    const pos = new THREE.Vector3();
+    const scl = new THREE.Vector3();
+    items.forEach((b, i) => {
+      pos.set(b.p[0], b.p[1], b.p[2]);
+      scl.set(b.s[0], b.s[1], b.s[2]);
+      q.setFromAxisAngle(axis, b.ry);
+      mesh.setMatrixAt(i, m.compose(pos, q, scl));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [items]);
+
+  if (items.length === 0) return null;
+  return <instancedMesh ref={ref} args={[geometry, material, items.length]} />;
+}
+
+function useTownGeometry() {
+  const kit = useMemo(() => {
+    // A torus is born standing in the XY plane. `InstancedPieces` only applies
+    // yaw, so without this the furnace mouths are vertical hoops rearing off
+    // the stack tops instead of rings sitting on them.
+    const cap = new THREE.TorusGeometry(0.5, 0.12, 5, 12);
+    cap.rotateX(-Math.PI / 2);
+    return {
+      box: new THREE.BoxGeometry(1, 1, 1),
+      // Ten sides is enough for a stack at this distance and keeps the whole
+      // city inside its draw-call budget.
+      round: new THREE.CylinderGeometry(0.5, 0.55, 1, 10),
+      cap,
+    };
+  }, []);
+  useEffect(
+    () => () => {
+      kit.box.dispose();
+      kit.round.dispose();
+      kit.cap.dispose();
+    },
+    [kit]
+  );
+  return kit;
+}
+
+function FoundryTown({ heat }: { heat: number }) {
+  const surfaces = useSurfaces();
+  const geo = useTownGeometry();
+  const pieces = useMemo(() => foundryTown(), []);
+
+  const { houses, sheds, round, caps } = useMemo(() => {
+    const houses: Placed[] = [];
+    const sheds: Placed[] = [];
+    const round: Placed[] = [];
+    const caps: Placed[] = [];
+    for (const t of pieces as TownPiece[]) {
+      // Everything out here stands on the flat rim, so the ground is y=0 and
+      // the height field is not consulted — but the assertion is worth keeping
+      // in mind if the town is ever moved inside RIM_RADIUS.
+      const place: Placed = { p: [t.x, t.h / 2, t.z], s: [t.w, t.h, t.d], ry: t.ry };
+      if (t.kind === "house") houses.push(place);
+      else if (t.kind === "shed") sheds.push(place);
+      else {
+        round.push(place);
+        if (t.kind === "stack") {
+          caps.push({ p: [t.x, t.h + 0.3, t.z], s: [t.w * 1.05, t.w * 1.05, t.w * 1.05], ry: 0 });
+        }
+      }
+    }
+    return { houses, sheds, round, caps };
+  }, [pieces]);
+
+  const capMaterial = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#1a0f0a",
+        emissive: new THREE.Color(MOLTEN),
+        emissiveIntensity: 0.3 + heat * 0.9,
+        roughness: 0.5,
+        toneMapped: false,
+      }),
+    [heat]
+  );
+  useEffect(() => () => capMaterial.dispose(), [capMaterial]);
+
+  return (
+    <group>
+      <InstancedPieces geometry={geo.box} material={surfaces.town} items={houses} />
+      <InstancedPieces geometry={geo.box} material={surfaces.shed} items={sheds} />
+      <InstancedPieces geometry={geo.round} material={surfaces.plate} items={round} />
+      {/* The stack mouths. The only part of the town keyed to live data: a cold
+          forge banks its furnaces, it does not demolish them. */}
+      <InstancedPieces geometry={geo.cap} material={capMaterial} items={caps} />
+    </group>
+  );
+}
+
 // ── Foundry furniture ────────────────────────────────────────────────────────
 
-function useWorks(heat: number) {
+function useWorks() {
   return useMemo(() => {
     const rand = mulberry32(hashStr("lathe-works-v2"));
-    const gantries: Block[] = [];
-    const sheds: Block[] = [];
+    const gantries: Placed[] = [];
 
     // Catwalks spanning the canyon at three heights, each one a long thin box
     // rotated onto its own bearing. Three boxes, not three hundred.
@@ -309,22 +613,15 @@ function useWorks(heat: number) {
       }
     }
 
-    // The works on the rim plateau: sheds, stacks and stock piles, kept clear of
-    // the spark annulus so ledger rows are never buried by scenery.
-    for (let i = 0; i < 34; i++) {
-      const a = rand() * Math.PI * 2;
-      const r = 168 + rand() * 38;
-      const w = 5 + rand() * 11;
-      const h = 3 + rand() * 14;
-      sheds.push({
-        p: [Math.cos(a) * r, h / 2, Math.sin(a) * r],
-        s: [w, h, w * (0.6 + rand() * 0.7)],
-        ry: a + (rand() - 0.5) * 0.8,
-      });
-    }
+    return gantries;
+  }, []);
+}
 
-    return { gantries, sheds, glow: 0.15 + heat * 0.25 };
-  }, [heat]);
+function Works() {
+  const surfaces = useSurfaces();
+  const geo = useTownGeometry();
+  const gantries = useWorks();
+  return <InstancedPieces geometry={geo.box} material={surfaces.plate} items={gantries} />;
 }
 
 function ForgeHearth({ heat, reduced }: { heat: number; reduced: boolean }) {
@@ -332,7 +629,7 @@ function ForgeHearth({ heat, reduced }: { heat: number; reduced: boolean }) {
     <group position={[HEARTH.x, 0, HEARTH.z]}>
       <mesh position-y={0.8}>
         <boxGeometry args={[10, 1.6, 8]} />
-        <meshStandardMaterial color="#1a1f2a" roughness={0.85} />
+        <meshStandardMaterial color="#2a2118" roughness={0.85} />
       </mesh>
       <Pulse speed={1.8} amp={0.12 + heat * 0.15} reduced={reduced}>
         <mesh position-y={1.8}>
@@ -361,6 +658,41 @@ function ForgeHearth({ heat, reduced }: { heat: number; reduced: boolean }) {
         </div>
       </Html>
     </group>
+  );
+}
+
+// ── The shift ────────────────────────────────────────────────────────────────
+// See lib/lathe/crewlife.ts for what these bodies are allowed to claim. In
+// short: one crew member per real commit in the build log, and haul skips
+// keyed to real forge heat, with neither able to borrow from the other.
+
+const CREW_TINT = new THREE.Color("#9d9184");
+const HAULER_TINT = new THREE.Color("#e08a3c");
+
+function Shift({ commits, heat, reduced }: { commits: number; heat: number; reduced: boolean }) {
+  const life = useMemo(() => buildCrewLife({ commits, heat }), [commits, heat]);
+  const tint = useCallback(
+    (i: number) => (life.walkers[i].hauler ? HAULER_TINT : CREW_TINT),
+    [life]
+  );
+  return (
+    <CrowdFigures
+      routes={life.routes}
+      bodies={life.walkers}
+      tint={tint}
+      scale={1.4}
+      // Warmer than Arclight's slate: everyone down here is standing near an
+      // open melt, and a figure that does not pick up the firelight reads as
+      // pasted on.
+      emissive="#4a2410"
+      emissiveIntensity={0.7}
+      // The quarry is 440 units across and the shift is twelve strong. The
+      // bodies are what you see when you zoom to a terrace; the lamps are what
+      // tells you anyone is down there at all from the default framing.
+      lamp="#ffc46a"
+      groundY={terraceHeightAt}
+      reduced={reduced}
+    />
   );
 }
 
@@ -405,39 +737,41 @@ function LedgerFlare({
 
 // ── Scene root ───────────────────────────────────────────────────────────────
 
-export default function LatheForgeCanvas({ state, reduced }: { state: LatheSnapshot; reduced: boolean }) {
-  const [introDone, setIntroDone] = useState(false);
+function Scene({ state, reduced }: { state: LatheSnapshot; reduced: boolean }) {
   const heat = state.forge_heat;
   const level = state.weather.level;
   const sparkColor = mixHex(COLD, HEARTH_WARM, heat);
-  const works = useWorks(heat);
 
-  // Lava fills the bowl to a level, so its radius follows from the pit's own
-  // geometry rather than being a second number that can drift out of step.
-  const lavaY = PIT_FLOOR + 4.2;
-  const lavaR = ((lavaY - PIT_FLOOR) / PIT_DROP) * RING_BASE_RADIUS;
+  // The melt is a LEVEL, and its radius follows from the pit's own profile
+  // rather than being a second number that can drift out of step with it.
+  const lavaY = lavaLevel(heat);
+  const lavaR = lavaRadius(lavaY);
 
   return (
-    <Canvas
-      dpr={[1, 1.75]}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
-      camera={{ position: [150, 105, 175], fov: 50, near: 0.5, far: 1400 }}
-    >
-      <color attach="background" args={[STONE_DARK]} />
-      <fog attach="fog" args={["#0a1524", 150, 700]} />
-
+    <>
       {/* Storm sky. No stars and no galaxy: the cloud deck is closed. */}
-      <GroundSky zenith="#03060d" horizon="#0e2c44" glow={STORM} glowStrength={0.34 + level * 0.3} radius={520} />
-      <CloudBand color="#12324a" opacity={0.5 + level * 0.22} radius={430} y={118} height={78} reduced={reduced} />
-      <CloudBand color="#0b2135" opacity={0.4} radius={330} y={168} height={96} reduced={reduced} />
+      <GroundSky zenith="#061323" horizon="#164a66" glow={STORM} glowStrength={0.4 + level * 0.3} radius={520} />
+      <CloudBand color="#1a4763" opacity={0.5 + level * 0.22} radius={430} y={118} height={78} reduced={reduced} />
+      <CloudBand color="#12324c" opacity={0.4} radius={330} y={168} height={96} reduced={reduced} />
+      {/* Image-based lighting. The ground term is the melt, so every metal
+          surface in the world picks up an orange underside for free — which is
+          most of what makes a foundry read as a foundry rather than as a
+          quarry with a light in it. Before this, all 15 declared metalness
+          values in this scene had nothing to reflect and only darkened. */}
+      <SkyEnvironment top="#0a1a2c" horizon="#1d4a68" ground="#5c2408" glow={STORM} intensity={1.05} />
 
-      <hemisphereLight args={["#17406f", "#1d0c06", 0.55]} />
-      <ambientLight color="#123055" intensity={0.26} />
-      {/* The one key light: a break in the storm, raking across the terraces. */}
-      <directionalLight color="#7fb4e8" intensity={1.15 + heat * 0.35} position={[-180, 210, 140]} />
-      {/* Everything else that lights this world comes up out of the ground. */}
-      <pointLight color={MOLTEN} intensity={2.2 + heat * 2.4} position={[0, PIT_FLOOR + 12, 0]} distance={190} decay={1.6} />
-      <pointLight color={HEARTH_WARM} intensity={0.5 + heat * 0.9} position={[HEARTH.x, 6, HEARTH.z]} distance={140} />
+      <hemisphereLight args={["#2a5c8f", "#4a1e08", 0.6]} />
+      <ambientLight color="#1b3f66" intensity={0.2} />
+      {/* The one key light: a break in the storm, raking across the terraces.
+          Raking is the point — it is what makes a riser different from a tread
+          and stops the canyon collapsing back into concentric rings. */}
+      <directionalLight color="#bcd2e4" intensity={1.55 + heat * 0.35} position={[-180, 210, 140]} />
+      {/* Everything else that lights this world comes up out of the ground. Two
+          lamps, not one: the floor lamp fills the pit, and a second sits at the
+          melt's own surface so the terraces ABOVE it are lit from below. */}
+      <pointLight color={MOLTEN} intensity={3 + heat * 3.4} position={[0, PIT_FLOOR + 10, 0]} distance={260} decay={1.4} />
+      <pointLight color={MOLTEN} intensity={1.6 + heat * 3} position={[0, lavaY + 6, 0]} distance={220} decay={1.5} />
+      <pointLight color={HEARTH_WARM} intensity={0.6 + heat * 0.9} position={[HEARTH.x, 8, HEARTH.z]} distance={150} />
 
       <Quarry />
       {state.rings.map((r) => (
@@ -445,41 +779,25 @@ export default function LatheForgeCanvas({ state, reduced }: { state: LatheSnaps
       ))}
 
       {[0, 1, 2, 3, 4].map((i) => (
-        <MoltenChannel key={i} bearing={(i * 2 * Math.PI) / 5 + 0.4} />
+        <MoltenChannel key={i} bearing={(i * 2 * Math.PI) / 5 + 0.4} from={Math.max(lavaR - 1, 2)} />
       ))}
 
       <MoltenSurface radius={lavaR} y={lavaY} hot={MOLTEN} crust="#1d1117" heat={heat} scale={5} reduced={reduced} />
       {/* The furnace glow leaving the pit — the reason the world reads as deep
           from a camera that cannot see the bottom. */}
       <LightShaft
-        position={[0, PIT_FLOOR + 46, 0]}
-        radius={17}
+        position={[0, lavaY + 46, 0]}
+        radius={Math.max(lavaR * 0.8, 14)}
         height={92}
         color={MOLTEN}
-        opacity={0.15 + heat * 0.14}
+        opacity={0.15 + heat * 0.16}
         flicker={0.65}
         reduced={reduced}
       />
 
       <Spindle heat={heat} reduced={reduced} />
-
-      <InstancedBlocks
-        blocks={works.gantries}
-        color="#39434f"
-        emissive={STORM}
-        emissiveIntensity={works.glow}
-        roughness={0.55}
-        metalness={0.65}
-      />
-      <InstancedBlocks
-        blocks={works.sheds}
-        color="#1c2431"
-        emissive={STORM}
-        emissiveIntensity={works.glow * 0.6}
-        roughness={0.8}
-        metalness={0.25}
-      />
-
+      <Works />
+      <FoundryTown heat={heat} />
       <ForgeHearth heat={heat} reduced={reduced} />
 
       {state.sparks.map((s, i) => (
@@ -496,8 +814,9 @@ export default function LatheForgeCanvas({ state, reduced }: { state: LatheSnaps
         seed={0x1a7e}
       />
 
-      <RimMountains inner={238} outer={340} height={82} base={4} color="#0b1a2a" seed={0x1a7e} />
+      <RimMountains inner={238} outer={340} height={82} base={4} color="#1b3145" seed={0x1a7e} />
 
+      <Shift commits={state.stats.ring_count} heat={heat} reduced={reduced} />
       <Inhabitants world="lathe" reduced={reduced} groundY={terraceHeightAt} />
 
       <Lightning reduced={reduced} />
@@ -505,8 +824,31 @@ export default function LatheForgeCanvas({ state, reduced }: { state: LatheSnaps
       <ParticleField mode="rain" color="#9fd8ee" area={230} reduced={reduced} />
       <ParticleField mode="embers" color={sparkColor} area={90} reduced={reduced} />
       <GroundMist color={STORM} opacity={0.05 + level * 0.07} area={230} reduced={reduced} />
+    </>
+  );
+}
 
-      <WorldFX world="lathe" bloom={0.82 + heat * 0.22} reduced={reduced} />
+export default function LatheForgeCanvas({ state, reduced }: { state: LatheSnapshot; reduced: boolean }) {
+  const [introDone, setIntroDone] = useState(false);
+  const surfaces = useForgeSurfaces(reduced, state.forge_heat);
+
+  return (
+    <Canvas
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, powerPreference: "high-performance" }}
+      camera={{ position: [205, 145, 240], fov: 50, near: 0.5, far: 1400 }}
+    >
+      <color attach="background" args={[STONE_DARK]} />
+      {/* Fog resolves toward the sky's own horizon colour, and starts far
+          enough out that the town on the far rim is atmospheric rather than
+          erased — the far rim IS the skyline in this world. */}
+      <fog attach="fog" args={["#12293d", 160, 700]} />
+
+      <SurfaceContext.Provider value={surfaces}>
+        <Scene state={state} reduced={reduced} />
+      </SurfaceContext.Provider>
+
+      <WorldFX world="lathe" bloom={0.82 + state.forge_heat * 0.22} reduced={reduced} />
 
       <CinematicDescent
         from={[380, 300, 420]}

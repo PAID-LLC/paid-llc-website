@@ -13,6 +13,7 @@ import {
   Noise,
   Vignette,
 } from "@react-three/postprocessing";
+import { sampleRoute, type Route, type RouteWalker } from "@/lib/worlds/routes";
 
 // ── World craft kit ──────────────────────────────────────────────────────────
 //
@@ -723,6 +724,7 @@ export function RevolvedTerrain({
   shade,
   roughness = 0.92,
   metalness = 0.08,
+  material,
 }: {
   profile: [number, number][];
   segments?: number;
@@ -730,6 +732,11 @@ export function RevolvedTerrain({
   shade?: (y: number, r: number) => number;
   roughness?: number;
   metalness?: number;
+  /** Supply a material to give the terrain a real surface — a triplanar one
+   *  from surface-kit, say. It must have `vertexColors` set to match whether
+   *  `shade` was passed, or the baked contact darkening is silently dropped.
+   *  Ownership stays with the caller: this component will not dispose it. */
+  material?: THREE.Material;
 }) {
   const geometry = useMemo(() => {
     const pts = profile.map(([r, y]) => new THREE.Vector2(Math.max(r, 0.001), y));
@@ -755,6 +762,7 @@ export function RevolvedTerrain({
     return geo;
   }, [profile, segments, color, shade]);
   useEffect(() => () => geometry.dispose(), [geometry]);
+  if (material) return <mesh geometry={geometry} material={material} />;
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
@@ -766,5 +774,179 @@ export function RevolvedTerrain({
         flatShading
       />
     </mesh>
+  );
+}
+
+// ── Walking figures ──────────────────────────────────────────────────────────
+//
+// Extracted from Arclight's StreetCrowd when the Lathe's foundry crew needed
+// the same thing. Four instanced meshes carry a crowd of any size, which is
+// what makes a populated world affordable: Arclight's harbour mirrors the whole
+// scene, so every draw call there is paid for twice, and the Lathe stacks its
+// bodies on eleven terraces at once.
+//
+// What each world supplies is its own routes, its own counts (from its own real
+// data), its own colours, and — the part that is not optional on terrain — its
+// own ground sampler. A crowd with no `groundY` walks the plane y=0.
+
+const CROWD_HIP = 1.5;
+
+export function CrowdFigures({
+  routes,
+  bodies,
+  tint,
+  scale = 0.9,
+  emissive = "#22303a",
+  emissiveIntensity = 0.55,
+  lamp,
+  groundY,
+  reduced,
+}: {
+  routes: Route[];
+  bodies: readonly RouteWalker[];
+  /** Colour for body `i`. Called once per body when the crowd changes, not per
+   *  frame — nothing about a walker's identity changes between frames. */
+  tint: (index: number) => THREE.Color;
+  scale?: number;
+  emissive?: string;
+  emissiveIntensity?: number;
+  /**
+   * Worn lamp colour. Adds a fifth instanced mesh: a small unlit sphere at
+   * chest height that ignores tone mapping, so it survives at any distance and
+   * blooms.
+   *
+   * This exists because body size does not scale with world size. A figure that
+   * reads perfectly on Arclight's streets is four pixels on a 440-unit quarry,
+   * and the honest fix is not to build giants — it is that a night shift at
+   * distance is legible by its lamps and nothing else. Omit on daylight worlds.
+   */
+  lamp?: string;
+  /** Terrain height sampler. Omit on worlds whose walkable surface is flat. */
+  groundY?: (x: number, z: number) => number;
+  reduced: boolean;
+}) {
+  const bodyRef = useRef<THREE.InstancedMesh>(null);
+  const headRef = useRef<THREE.InstancedMesh>(null);
+  const legARef = useRef<THREE.InstancedMesh>(null);
+  const legBRef = useRef<THREE.InstancedMesh>(null);
+  const lampRef = useRef<THREE.InstancedMesh>(null);
+  const n = bodies.length;
+
+  const kit = useMemo(() => {
+    const body = new THREE.CylinderGeometry(0.66, 0.5, 1.9, 7);
+    body.translate(0, CROWD_HIP + 0.95, 0);
+    const head = new THREE.OctahedronGeometry(0.4, 0);
+    head.translate(0, CROWD_HIP + 2.22, 0);
+    // Legs hinge at the hip, so the geometry hangs BELOW its own origin and the
+    // lateral offset is baked in — one instanced mesh per leg, no extra nodes.
+    const legA = new THREE.CylinderGeometry(0.2, 0.26, 1.5, 5);
+    legA.translate(0.3, -0.75, 0);
+    const legB = legA.clone();
+    legB.translate(-0.6, 0, 0);
+    const mat = new THREE.MeshStandardMaterial({
+      color: "#ffffff", // instanceColor multiplies this, so it must be white
+      flatShading: true,
+      roughness: 0.78,
+      emissive: new THREE.Color(emissive),
+      emissiveIntensity,
+    });
+    let lampGeo: THREE.SphereGeometry | null = null;
+    let lampMat: THREE.MeshBasicMaterial | null = null;
+    if (lamp) {
+      lampGeo = new THREE.SphereGeometry(0.55, 6, 5);
+      // Worn on the chest, facing the way the body walks.
+      lampGeo.translate(0, CROWD_HIP + 1.4, 0.42);
+      lampMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(lamp), toneMapped: false });
+    }
+    return { body, head, legA, legB, mat, lampGeo, lampMat };
+  }, [emissive, emissiveIntensity, lamp]);
+
+  useEffect(
+    () => () => {
+      kit.body.dispose();
+      kit.head.dispose();
+      kit.legA.dispose();
+      kit.legB.dispose();
+      kit.mat.dispose();
+      kit.lampGeo?.dispose();
+      kit.lampMat?.dispose();
+    },
+    [kit]
+  );
+
+  useEffect(() => {
+    const meshes = [bodyRef.current, headRef.current, legARef.current, legBRef.current];
+    for (const m of meshes) {
+      if (!m) continue;
+      for (let i = 0; i < n; i++) m.setColorAt(i, tint(i));
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
+  }, [tint, n]);
+
+  const dummy = useMemo(() => {
+    const o = new THREE.Object3D();
+    // Yaw first, then swing in the yawed frame — otherwise a leg on a
+    // north-south street swings sideways.
+    o.rotation.order = "YXZ";
+    return o;
+  }, []);
+
+  useFrame((state) => {
+    const body = bodyRef.current;
+    const head = headRef.current;
+    const legA = legARef.current;
+    const legB = legBRef.current;
+    if (!body || !head || !legA || !legB) return;
+
+    const t = state.clock.elapsedTime;
+
+    for (let i = 0; i < n; i++) {
+      const w = bodies[i];
+      const s = sampleRoute(routes[w.route], w.offset + (reduced ? 0 : t * w.speed));
+
+      // Walk on a pavement, not down the centre line.
+      const x = s.x + Math.cos(s.heading) * w.lane;
+      const z = s.z - Math.sin(s.heading) * w.lane;
+      const base = groundY ? groundY(x, z) : 0;
+
+      const stride = reduced ? 0 : Math.sin(t * w.speed * 3.1 + w.phase);
+      const bob = reduced ? 0 : (1 - Math.abs(stride)) * 0.09;
+
+      dummy.scale.setScalar(scale);
+      dummy.position.set(x, base + bob, z);
+      dummy.rotation.set(0, s.heading, 0);
+      dummy.updateMatrix();
+      body.setMatrixAt(i, dummy.matrix);
+      head.setMatrixAt(i, dummy.matrix);
+      lampRef.current?.setMatrixAt(i, dummy.matrix);
+
+      dummy.position.y = base + bob + CROWD_HIP * scale;
+      dummy.rotation.set(stride * 0.55, s.heading, 0);
+      dummy.updateMatrix();
+      legA.setMatrixAt(i, dummy.matrix);
+      dummy.rotation.set(-stride * 0.55, s.heading, 0);
+      dummy.updateMatrix();
+      legB.setMatrixAt(i, dummy.matrix);
+    }
+
+    body.instanceMatrix.needsUpdate = true;
+    head.instanceMatrix.needsUpdate = true;
+    legA.instanceMatrix.needsUpdate = true;
+    legB.instanceMatrix.needsUpdate = true;
+    if (lampRef.current) lampRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  if (n === 0) return null;
+
+  return (
+    <>
+      <instancedMesh ref={bodyRef} args={[kit.body, kit.mat, n]} frustumCulled={false} />
+      <instancedMesh ref={headRef} args={[kit.head, kit.mat, n]} frustumCulled={false} />
+      <instancedMesh ref={legARef} args={[kit.legA, kit.mat, n]} frustumCulled={false} />
+      <instancedMesh ref={legBRef} args={[kit.legB, kit.mat, n]} frustumCulled={false} />
+      {kit.lampGeo && kit.lampMat && (
+        <instancedMesh ref={lampRef} args={[kit.lampGeo, kit.lampMat, n]} frustumCulled={false} />
+      )}
+    </>
   );
 }
