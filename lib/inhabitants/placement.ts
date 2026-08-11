@@ -133,12 +133,15 @@ export const PLACEMENT: Record<InhabitedWorld, Placement> = {
     bright: false,
     accent: "#fbbf24",
   },
-  // Room 3. Visitors only. The ward band sits between radius 15 and 52.
+  // Room 3. Visitors only. Widened 2026-08-11 with the massing fix: the ward
+  // band moved from 15..52 out to 26..74 once the buildings were given real
+  // floorplates, and a 30-unit spread would have left everyone milling in the
+  // Agora plaza while the city stood empty around them.
   meridian: {
     room: 3,
-    spread: { x: 30, z: 30 },
+    spread: { x: 45, z: 45 },
     centre: { x: 0, z: 0 },
-    visitors: { rx: 40, rz: 40 },
+    visitors: { rx: 60, rz: 60 },
     baseY: 0.15,
     figure: 0.85,
     bright: true,
