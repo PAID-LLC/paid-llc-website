@@ -567,6 +567,7 @@ export function InstancedBlocks({
   emissiveIntensity = 0,
   roughness = 0.7,
   metalness = 0.3,
+  material,
 }: {
   blocks: Block[];
   color: string;
@@ -574,6 +575,17 @@ export function InstancedBlocks({
   emissiveIntensity?: number;
   roughness?: number;
   metalness?: number;
+  /**
+   * Use this material instead of the plain standard one built below — normally
+   * a `triplanarMaterial`, so instanced detail carries the same surface as the
+   * meshes around it. Per-instance colour still applies, so keep the material's
+   * own colour white and let `Block.c` do the variation.
+   *
+   * Without this, a world that has had the surface pass ends up with textured
+   * hero meshes surrounded by flat-shaded instanced boxes, which reads worse
+   * than leaving the whole thing untextured.
+   */
+  material?: THREE.Material;
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const tinted = useMemo(() => blocks.some((b) => b.c), [blocks]);
@@ -599,6 +611,18 @@ export function InstancedBlocks({
   }, [blocks, color, tinted]);
 
   if (blocks.length === 0) return null;
+  if (material) {
+    return (
+      <instancedMesh
+        ref={ref}
+        args={[undefined, undefined, blocks.length]}
+        material={material}
+        castShadow={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+    );
+  }
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, blocks.length]} castShadow={false}>
       <boxGeometry args={[1, 1, 1]} />

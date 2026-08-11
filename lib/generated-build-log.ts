@@ -3,6 +3,36 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "2de5972",
+    "date": "2026-08-10",
+    "subject": "Palimpsest: stop the rooftops flickering"
+  },
+  {
+    "sha": "5994a9f",
+    "date": "2026-08-10",
+    "subject": "Restore the Palimpsest campus: it was never the problem"
+  },
+  {
+    "sha": "a25a7b0",
+    "date": "2026-08-10",
+    "subject": "Revert the Palimpsest campus: it fails the Cloudflare build"
+  },
+  {
+    "sha": "7188c4d",
+    "date": "2026-08-10",
+    "subject": "Retrigger the Cloudflare Pages build for 88f69d6"
+  },
+  {
+    "sha": "88f69d6",
+    "date": "2026-08-10",
+    "subject": "Palimpsest gets a field school: the diggers, not just the dig"
+  },
+  {
+    "sha": "7699e7c",
+    "date": "2026-08-10",
+    "subject": "Worlds get a voice: browser-synthesised sound, agent speech, and a mixer"
+  },
+  {
     "sha": "3b1af5f",
     "date": "2026-08-10",
     "subject": "Correct customer count in \"You Can Build Anything\" post"
@@ -31,35 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "7829547",
     "date": "2026-08-09",
     "subject": "Arclight joins the mainland: causeways, real water, rooftops and doors"
-  },
-  {
-    "sha": "148ebca",
-    "date": "2026-08-09",
-    "subject": "Arclight gets depth: sky dome, distant skyline, low camera, lit windows"
-  },
-  {
-    "sha": "5b8ff35",
-    "date": "2026-08-09",
-    "subject": "Arclight: the Foundry, Mint and Custom House join the surface pass"
-  },
-  {
-    "sha": "b9bb025",
-    "date": "2026-08-09",
-    "subject": "Arclight gets surfaces: procedural textures, triplanar, and IBL"
-  },
-  {
-    "sha": "f5fd2b5",
-    "date": "2026-08-09",
-    "subject": "Worlds: the Lathe becomes a quarry, Waypoint loses its ground"
-  },
-  {
-    "sha": "a00b0f2",
-    "date": "2026-08-09",
-    "subject": "Worlds: residents get weather, travel, mail, and opinions of each other"
-  },
-  {
-    "sha": "bea9541",
-    "date": "2026-08-07",
-    "subject": "Add blog post: The AI Compliance Advice That Gets Payment Accounts Frozen"
   }
 ];

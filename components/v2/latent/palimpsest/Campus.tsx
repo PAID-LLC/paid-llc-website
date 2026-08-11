@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { CrowdFigures, InstancedBlocks, type Block } from "@/components/v2/latent/world-kit";
 import { makeRoute, type Route, type RouteWalker } from "@/lib/worlds/routes";
+import { hashStr, mulberry32 } from "@/lib/sim-field";
 import { duneHeight } from "@/lib/palimpsest/terrain";
 import {
   AXIS_X,
@@ -29,6 +30,7 @@ import {
   type Board,
 } from "@/lib/palimpsest/campus";
 import type { PalimpsestState } from "./usePalimpsestLive";
+import type { PalimpsestSurfaces } from "./surfaces";
 
 // ── The field school ─────────────────────────────────────────────────────────
 //
@@ -101,7 +103,7 @@ function makeGlyphTexture(): THREE.Texture | null {
 
 /** The terrace deck and the paved quads. Flat by construction: duneHeight
  *  returns exactly PAD_Y everywhere inside the pad, so nothing floats. */
-function Terrace() {
+function Terrace({ sf }: { sf: PalimpsestSurfaces }) {
   const quads = useMemo<Block[]>(
     () =>
       QUADS.map((q) => ({
@@ -127,16 +129,16 @@ function Terrace() {
   );
   return (
     <>
-      <InstancedBlocks blocks={quads} color="#ffffff" roughness={0.9} metalness={0.05} />
-      <InstancedBlocks blocks={walk} color="#ffffff" roughness={0.72} metalness={0.08} />
-      <InstancedBlocks blocks={kerb} color="#ffffff" roughness={1} metalness={0} />
+      <InstancedBlocks blocks={quads} color="#ffffff" material={sf.stoneInstanced} />
+      <InstancedBlocks blocks={walk} color="#ffffff" material={sf.stoneInstanced} />
+      <InstancedBlocks blocks={kerb} color="#ffffff" material={sf.stoneInstanced} />
     </>
   );
 }
 
 // ── Architecture ─────────────────────────────────────────────────────────────
 
-function Columns() {
+function Columns({ sf }: { sf: PalimpsestSurfaces }) {
   const cols = useMemo(() => buildColumns(), []);
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
@@ -153,14 +155,17 @@ function Columns() {
     mesh.instanceMatrix.needsUpdate = true;
   }, [cols]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, cols.length]}>
+    <instancedMesh
+      ref={ref}
+      args={[undefined, undefined, cols.length]}
+      material={sf.stone}
+    >
       <cylinderGeometry args={[COLUMN_R * 0.88, COLUMN_R, COLUMN_H, 8]} />
-      <meshStandardMaterial color={STONE_LIT} roughness={0.85} metalness={0.04} />
     </instancedMesh>
   );
 }
 
-function Beams() {
+function Beams({ sf }: { sf: PalimpsestSurfaces }) {
   const blocks = useMemo<Block[]>(
     () =>
       buildBeams().map((b) => ({
@@ -169,10 +174,10 @@ function Beams() {
       })),
     []
   );
-  return <InstancedBlocks blocks={blocks} color={STONE} roughness={0.88} metalness={0.04} />;
+  return <InstancedBlocks blocks={blocks.map((b) => ({ ...b, c: STONE }))} color="#ffffff" material={sf.stoneInstanced} />;
 }
 
-function Steps() {
+function Steps({ sf }: { sf: PalimpsestSurfaces }) {
   const blocks = useMemo<Block[]>(
     () =>
       buildSteps().map((b) => ({
@@ -181,10 +186,10 @@ function Steps() {
       })),
     []
   );
-  return <InstancedBlocks blocks={blocks} color={STONE_LIT} roughness={0.92} metalness={0.03} />;
+  return <InstancedBlocks blocks={blocks.map((b) => ({ ...b, c: STONE_LIT }))} color="#ffffff" material={sf.stoneInstanced} />;
 }
 
-function Tables() {
+function Tables({ sf }: { sf: PalimpsestSurfaces }) {
   const blocks = useMemo<Block[]>(() => {
     const out: Block[] = [];
     for (const t of buildTables()) {
@@ -206,7 +211,7 @@ function Tables() {
     }
     return out;
   }, []);
-  return <InstancedBlocks blocks={blocks} color="#ffffff" roughness={0.9} metalness={0.03} />;
+  return <InstancedBlocks blocks={blocks} color="#ffffff" material={sf.stoneInstanced} />;
 }
 
 /**
@@ -215,39 +220,51 @@ function Tables() {
  * slots are cut as recessed dark panels rather than emissive rectangles, so a
  * building at night is a silhouette with lit openings and not a lightbox.
  */
-function Buildings({ glyph }: { glyph: THREE.Texture | null }) {
-  const detail = useMemo<Block[]>(
-    () =>
-      buildMassDetail().map((b) => ({
+function Buildings({ sf }: { sf: PalimpsestSurfaces }) {
+  // Plinths and cornices take the stone tint; window slots split into dark
+  // openings and lit rooms. Which rooms are lit is seeded off the slot's own
+  // position, so it is stable across renders — a window that flickers between
+  // lit and dark every frame is worse than no windows at all.
+  const { stonework, dark, lit } = useMemo(() => {
+    const stonework: Block[] = [];
+    const dark: Block[] = [];
+    const lit: Block[] = [];
+    for (const b of buildMassDetail()) {
+      const block: Block = {
         p: [b.x, b.y, b.z] as [number, number, number],
         s: [b.w, b.h, b.d] as [number, number, number],
-        c: b.part === "plinth" ? STONE_DARK : b.part === "cornice" ? STONE : "#1c160d",
-      })),
-    []
-  );
+      };
+      if (b.part === "window") {
+        const r = mulberry32(hashStr(`pal-win-${b.x.toFixed(2)}-${b.y.toFixed(2)}-${b.z.toFixed(2)}`))();
+        // A third of the rooms are still being read in. A campus lit end to
+        // end at night would be claiming a night shift nobody is working.
+        (r < 0.34 ? lit : dark).push(block);
+      } else {
+        stonework.push({ ...block, c: b.part === "plinth" ? STONE_DARK : STONE });
+      }
+    }
+    return { stonework, dark, lit };
+  }, []);
 
   return (
     <>
       {MASSES.map((m) => (
-        <mesh key={m.id} position={[m.x, PAD_Y + m.h / 2, m.z]}>
+        <mesh key={m.id} position={[m.x, PAD_Y + m.h / 2, m.z]} material={sf.stone}>
           <boxGeometry args={[m.w, m.h, m.d]} />
-          <meshStandardMaterial
-            color={STONE}
-            roughness={0.9}
-            metalness={0.04}
-            {...(glyph
-              ? {
-                  // The building itself is written on. That is what the world
-                  // is called.
-                  map: glyph,
-                  bumpMap: glyph,
-                  bumpScale: 0.012,
-                }
-              : {})}
-          />
         </mesh>
       ))}
-      <InstancedBlocks blocks={detail} color="#ffffff" roughness={0.9} metalness={0.04} />
+      <InstancedBlocks blocks={stonework} color="#ffffff" material={sf.stoneInstanced} />
+      <InstancedBlocks blocks={dark} color="#1c160d" roughness={0.95} metalness={0} />
+      {/* Lit rooms. Unlit-by-tone-mapping emissive so they survive the grade
+          and bloom rather than being crushed by the night vignette. */}
+      <InstancedBlocks
+        blocks={lit}
+        color="#2a2012"
+        emissive={LAMP}
+        emissiveIntensity={1.6}
+        roughness={0.6}
+        metalness={0}
+      />
     </>
   );
 }
@@ -598,9 +615,11 @@ function Scholars({ survey24h, reduced }: { survey24h: number; reduced: boolean 
 export default function Campus({
   state,
   reduced,
+  sf,
 }: {
   state: PalimpsestState;
   reduced: boolean;
+  sf: PalimpsestSurfaces;
 }) {
   const glyph = useMemo(() => makeGlyphTexture(), []);
   useLayoutEffect(() => () => glyph?.dispose(), [glyph]);
@@ -609,12 +628,12 @@ export default function Campus({
 
   return (
     <group>
-      <Terrace />
-      <Buildings glyph={glyph} />
-      <Columns />
-      <Beams />
-      <Steps />
-      <Tables />
+      <Terrace sf={sf} />
+      <Buildings sf={sf} />
+      <Columns sf={sf} />
+      <Beams sf={sf} />
+      <Steps sf={sf} />
+      <Tables sf={sf} />
       <HungBoards glyph={glyph} />
       <CampusBoards state={state} glyph={glyph} />
       <DebateRings survey24h={survey} reduced={reduced} />

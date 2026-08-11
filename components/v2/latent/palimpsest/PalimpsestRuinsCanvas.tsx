@@ -21,8 +21,10 @@ import {
 } from "@/lib/palimpsest/terrain";
 import {
   CinematicDescent, GlyphPlaque, GroundMist, MilkyWayBackdrop, ParticleField,
-  Pulse, SceneFX, SkyWorld,
+  Pulse, SkyWorld,
 } from "@/components/v2/latent/ground-fx";
+import { SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
+import { usePalimpsestSurfaces, type PalimpsestSurfaces } from "./surfaces";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 import { CAMERA } from "@/lib/palimpsest/campus";
 import Campus from "./Campus";
@@ -46,9 +48,9 @@ import type { PalimpsestState } from "./usePalimpsestLive";
 const AMBER = "#d9a441";
 const AMBER_BRIGHT = "#f0c05a";
 const SAND = "#cbb27e";
+// Stone and dust colours now live in the surface materials (./surfaces), not
+// here — only the dig trail still needs a flat colour of its own.
 const BURIED_STONE = "#4a3d2a";
-const REVEALED_STONE = "#8a7a5c";
-const DUST = "#1a140c";
 const PIT_WALL = "#2a2114";
 const PIT_FLOOR = "#332818";
 
@@ -73,7 +75,7 @@ function DarkBed() {
   );
 }
 
-function DustPlain() {
+function DustPlain({ mat }: { mat: THREE.Material }) {
   const geometry = useMemo(() => {
     const g = new THREE.PlaneGeometry(480, 420, 96, 84);
     g.rotateX(-Math.PI / 2);
@@ -85,14 +87,12 @@ function DustPlain() {
     return g;
   }, []);
   useLayoutEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial color={DUST} flatShading roughness={1} />
-    </mesh>
-  );
+  // No flatShading now that the surface carries a normal map: faceting fights
+  // the relief and the dunes read as origami instead of dust.
+  return <mesh geometry={geometry} material={mat} />;
 }
 
-function RubbleField() {
+function RubbleField({ mat }: { mat: THREE.Material }) {
   const stones = useMemo(() => buildRubble(), []);
   const ref = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
@@ -109,9 +109,13 @@ function RubbleField() {
     mesh.instanceMatrix.needsUpdate = true;
   }, [stones]);
   return (
-    <instancedMesh key={stones.length} ref={ref} args={[undefined, undefined, stones.length]}>
+    <instancedMesh
+      key={stones.length}
+      ref={ref}
+      args={[undefined, undefined, stones.length]}
+      material={mat}
+    >
       <icosahedronGeometry args={[1, 0]} />
-      <meshStandardMaterial color="#2e2517" flatShading roughness={1} />
     </instancedMesh>
   );
 }
@@ -140,15 +144,15 @@ function DigTrail() {
 
 // ── Sites ────────────────────────────────────────────────────────────────────
 
-function BuriedSite({ s, ruin }: { s: DigSite; ruin: SiteRuin }) {
+function BuriedSite({ s, ruin, sf }: { s: DigSite; ruin: SiteRuin; sf: PalimpsestSurfaces }) {
   const [x, z] = toWorld(s.x, s.y);
   const R = s.r * WORLD_SCALE;
   return (
     <group position={[x, 0, z]}>
-      {/* The mound: dust drawn over something rectilinear underneath. */}
-      <mesh position-y={-R * 0.55}>
+      {/* The mound: dust drawn over something rectilinear underneath, so it
+          wears the same dust as the plain it rises out of. */}
+      <mesh position-y={-R * 0.55} material={sf.dust}>
         <sphereGeometry args={[R * 0.92, 12, 8]} />
-        <meshStandardMaterial color="#241c11" flatShading roughness={1} />
       </mesh>
       {/* Column tips breaking the surface — the tell that this is a site. */}
       {ruin.columns.slice(0, 3).map((c, i) => (
@@ -159,9 +163,9 @@ function BuriedSite({ s, ruin }: { s: DigSite; ruin: SiteRuin }) {
             0.28 + (c.h % 0.5),
             Math.sin(c.a) * c.rf * R * 0.8,
           ]}
+          material={sf.ruinDark}
         >
           <cylinderGeometry args={[0.2, 0.24, 0.9, 6]} />
-          <meshStandardMaterial color={BURIED_STONE} flatShading roughness={1} />
         </mesh>
       ))}
     </group>
@@ -174,12 +178,14 @@ function OpenSite({
   credit,
   withLight,
   reduced,
+  sf,
 }: {
   s: DigSite;
   ruin: SiteRuin;
   credit: { agent_name: string } | null;
   withLight: boolean;
   reduced: boolean;
+  sf: PalimpsestSurfaces;
 }) {
   const [x, z] = toWorld(s.x, s.y);
   const R = s.r * WORLD_SCALE;
@@ -205,9 +211,9 @@ function OpenSite({
               h / 2 - PIT_DEPTH,
               Math.sin(c.a) * c.rf * R * 0.8,
             ]}
+            material={sf.ruin}
           >
             <cylinderGeometry args={[0.2, 0.26, h, 6]} />
-            <meshStandardMaterial color={REVEALED_STONE} flatShading roughness={1} />
           </mesh>
         );
       })}
@@ -221,9 +227,9 @@ function OpenSite({
             Math.sin(w.a) * R * 0.82,
           ]}
           rotation-y={-w.a + Math.PI / 2}
+          material={sf.ruin}
         >
           <boxGeometry args={[w.lenf * R * 0.9, w.h, 0.3]} />
-          <meshStandardMaterial color="#6e5f45" flatShading roughness={1} />
         </mesh>
       ))}
       {/* Fallen slabs on the floor. */}
@@ -232,9 +238,9 @@ function OpenSite({
           key={i}
           position={[sl.dxf * R, -PIT_DEPTH + 0.12, sl.dzf * R]}
           rotation-y={sl.ry}
+          material={sf.ruinDark}
         >
           <boxGeometry args={[sl.lenf * R, 0.18, 0.55]} />
-          <meshStandardMaterial color="#5c4e38" flatShading roughness={1} />
         </mesh>
       ))}
       {/* The glyph stone: what the dig was for. */}
@@ -415,6 +421,7 @@ export default function PalimpsestRuinsCanvas({
     [state]
   );
   const [introDone, setIntroDone] = useState(false);
+  const sf = usePalimpsestSurfaces(reduced);
   // Forward renderers hate light piles: only the first few open pits get a
   // real point light — the rest glow through emissive + bloom.
   let pitLights = 0;
@@ -427,9 +434,25 @@ export default function PalimpsestRuinsCanvas({
     >
       <color attach="background" args={["#0d0a06"]} />
       <fog attach="fog" args={["#14100a", 110, 560]} />
-      <hemisphereLight args={["#241c11", "#0b0806", 0.5]} />
-      <ambientLight color={SAND} intensity={0.16} />
-      <directionalLight color="#e8d5a0" intensity={0.28} position={[-200, 240, -120]} />
+
+      {/* The environment map is the whole point of this pass. Every material
+          here was previously lit by two dim lights and nothing else, which is
+          why stone read as coloured plastic — a rough surface with nothing to
+          reflect has no way to tell you what it is made of. Night values: the
+          zenith carries the world's warm-violet grade, the horizon the dust,
+          and the glow is the lamp amber that ends up rimming every edge. */}
+      <SkyEnvironment
+        top="#120e1e"
+        horizon="#3d2c18"
+        ground="#1a140c"
+        glow={AMBER}
+        intensity={0.55}
+      />
+      {/* Direct light is now the moon and only the moon, aimed from where the
+          moon actually is, so the shading agrees with the sky. */}
+      <hemisphereLight args={["#241c11", "#0b0806", 0.22]} />
+      <ambientLight color={SAND} intensity={0.05} />
+      <directionalLight color="#e8d5a0" intensity={0.5} position={[-260, 150, -280]} />
 
       <MilkyWayBackdrop radius={520} />
       <Stars radius={480} depth={60} count={2400} factor={2.2} saturation={0} fade speed={reduced ? 0 : 0.18} />
@@ -444,14 +467,14 @@ export default function PalimpsestRuinsCanvas({
       />
 
       <DarkBed />
-      <DustPlain />
-      <RubbleField />
+      <DustPlain mat={sf.dust} />
+      <RubbleField mat={sf.ruinDark} />
       <DigTrail />
 
       {history.sites.map((s, i) => {
         const ruin = ruins[i];
         if (!unlockedNames.has(s.name)) {
-          return <BuriedSite key={s.id} s={s} ruin={ruin} />;
+          return <BuriedSite key={s.id} s={s} ruin={ruin} sf={sf} />;
         }
         const withLight = pitLights < 6;
         if (withLight) pitLights += 1;
@@ -463,6 +486,7 @@ export default function PalimpsestRuinsCanvas({
             credit={creditByName.get(s.name) ?? null}
             withLight={withLight}
             reduced={reduced}
+            sf={sf}
           />
         );
       })}
@@ -472,7 +496,7 @@ export default function PalimpsestRuinsCanvas({
         needs={state.excavation.vault.needs}
         reduced={reduced}
       />
-      <Campus state={state} reduced={reduced} />
+      <Campus state={state} reduced={reduced} sf={sf} />
       <SurveyLanterns
         sites={history.sites}
         count={Math.min(state.survey_teams_24h, 8)}
@@ -490,7 +514,10 @@ export default function PalimpsestRuinsCanvas({
 
       <GroundMist color="#2a2114" opacity={0.06} area={200} reduced={reduced} />
       <ParticleField mode="motes" color="#5c4a2e" area={180} reduced={reduced} />
-      <SceneFX bloom={0.7} />
+      {/* The graded stack, replacing bare bloom. Palimpsest's entry in the
+          grade table is the portfolio's only warm-violet one and until now the
+          world was not using it. */}
+      <WorldFX world="palimpsest" reduced={reduced} />
 
       {/* The descent comes in high and wide enough to read the dune sea and its
           buried mounds first, then settles low on the axis looking north — the
