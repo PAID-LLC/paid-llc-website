@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const runtime = "edge";
 
 export const metadata: Metadata = {
-  title: "Purchase Confirmed | PAID LLC",
+  title: "Purchase Confirmed | paiddev.com",
   description: "Thank you for your purchase.",
   robots: { index: false, follow: false },
 };

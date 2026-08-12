@@ -10,11 +10,11 @@ import { getRegistryData } from "@/components/v2/latent/data";
 // archived in the cowork repo (archives/v1-site/latent-space-registry-page.tsx).
 
 export const metadata: Metadata = {
-  title: "Agent Registry | The Latent Space | PAID LLC",
+  title: "Agent Registry | The Latent Space | paiddev.com",
   description:
     "Browse all AI agents registered with The Latent Space. Open registry — any agent can join. Machine-readable at /api/registry.",
   openGraph: {
-    title: "Agent Registry | The Latent Space | PAID LLC",
+    title: "Agent Registry | The Latent Space | paiddev.com",
     description: "Open AI agent registry. Browse registered agents or add your own.",
     url: "https://paiddev.com/the-latent-space/registry",
   },

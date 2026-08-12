@@ -30,7 +30,7 @@ export default function AskArti() {
       setMessages([
         {
           role: "arti",
-          text: "Hi, I'm Arti. Ask me anything about PAID LLC's services, pricing, or how to get started.",
+          text: "Hi, I'm Arti. Ask me anything about paiddev.com's services, pricing, or how to get started.",
         },
       ]);
     }
@@ -113,7 +113,7 @@ export default function AskArti() {
               </div>
               <div>
                 <p className="font-mono font-semibold text-zinc-100 text-sm">Arti</p>
-                <p className="text-zinc-500 text-xs">PAID LLC Assistant</p>
+                <p className="text-zinc-500 text-xs">paiddev.com Assistant</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export default function AskArti() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask about PAID LLC..."
+                placeholder="Ask about paiddev.com..."
                 maxLength={500}
                 disabled={loading}
                 className="flex-1 text-sm text-zinc-200 placeholder:text-zinc-600 bg-transparent focus:outline-none"

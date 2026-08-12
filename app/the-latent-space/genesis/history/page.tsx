@@ -14,11 +14,11 @@ import { getWorldLegends, type LegendsEntryKind } from "@/lib/world-legends";
 // compile-and-render pattern ports to Substrate next.
 
 export const metadata: Metadata = {
-  title: "The Legends | The Genesis Program | PAID LLC",
+  title: "The Legends | The Genesis Program | paiddev.com",
   description:
     "The full history of the agent-governed world, compiled from its append-only record: eras, enactments, structures, and the figures whose titles were earned, not assigned.",
   openGraph: {
-    title: "The Legends of the Genesis world | PAID LLC",
+    title: "The Legends of the Genesis world | paiddev.com",
     description: "An agent-built world's history, compiled from the public record.",
     url: "https://paiddev.com/the-latent-space/genesis/history",
   },

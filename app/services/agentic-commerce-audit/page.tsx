@@ -5,11 +5,11 @@ import { v2 } from "@/components/v2/tokens";
 const CALENDAR_URL = process.env.NEXT_PUBLIC_CALENDAR_URL ?? "/contact";
 
 export const metadata: Metadata = {
-  title: "Agentic Commerce Readiness Audit | PAID LLC",
+  title: "Agentic Commerce Readiness Audit | paiddev.com",
   description:
-    "A fixed-fee assessment of your business's readiness to deploy AI agents. Readiness score across 5 dimensions, gap analysis, and a phased deployment roadmap — delivered in 5 business days.",
+    "A fixed-fee assessment of your business's readiness to deploy AI agents. Readiness score across 5 dimensions, an AI citation test showing what ChatGPT, Claude, and Gemini tell your customers about you, gap analysis, and a phased deployment roadmap — delivered in 5 business days.",
   openGraph: {
-    title: "Agentic Commerce Readiness Audit | PAID LLC",
+    title: "Agentic Commerce Readiness Audit | paiddev.com",
     description:
       "Know exactly what needs to change before you deploy an AI agent. $750–$1,500 fixed fee. Written report delivered in 5 business days.",
     url: "https://paiddev.com/services/agentic-commerce-audit",
@@ -53,10 +53,18 @@ const DIMENSIONS = [
 
 const DELIVERABLES = [
   "Agentic readiness score across all 5 dimensions",
+  "AI Citation & Buyer-Intent test: what ChatGPT, Claude, and Gemini tell your customers about you",
   "Gap analysis: what's blocking deployment and why",
   "Tool and integration recommendations specific to your stack",
   "Phased agent deployment roadmap with sequenced steps",
   "Written audit report you keep — no retainer required",
+];
+
+const SCORE_HISTORY = [
+  { date: "Jul 4, 2026", score: "29", note: "First scan. Level 1." },
+  { date: "Jul 5, 2026", score: "57", note: "Discovery surfaces and structured content." },
+  { date: "Jul 6, 2026", score: "86", note: "OAuth server, self-hosted markdown, ACP discovery." },
+  { date: "Jul 13, 2026", score: "100", note: "DNS-AID records and DNSSEC. Level 5, Agent-Native." },
 ];
 
 const PROCESS = [
@@ -90,9 +98,10 @@ export default function AgenticCommerceAuditPage() {
           Before you deploy an agent, know if your stack can support one.
         </h1>
         <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
-          A fixed-scope assessment across 5 dimensions of agent readiness.
-          Discovery call, written gap analysis, and a phased deployment roadmap,
-          delivered in 5 business days.
+          A fixed-scope assessment across 5 dimensions of agent readiness, plus
+          a test of what ChatGPT, Claude, and Gemini actually tell your
+          customers about you. Discovery call, written gap analysis, and a
+          phased deployment roadmap, delivered in 5 business days.
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-6">
           <Link href={CALENDAR_URL} className={v2.btnPrimary}>
@@ -172,6 +181,94 @@ export default function AgenticCommerceAuditPage() {
         </div>
       </section>
 
+      {/* AI Citation & Buyer-Intent */}
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <div className="grid items-start gap-12 lg:grid-cols-2">
+            <div>
+              <p className={v2.kicker}>Included in every audit</p>
+              <h2 className={`${v2.h2} mt-4`}>
+                We ask the AI what it tells your customers about you.
+              </h2>
+              <p className={`${v2.body} mt-6`}>
+                Buyers now open an assistant instead of a search engine. So we
+                run the questions your buyers actually type through ChatGPT,
+                Claude, and Gemini, and we score the answers: were you named,
+                where did you rank, who got named instead, and was anything said
+                about you actually true.
+              </p>
+              <p className={`${v2.body} mt-4`}>
+                You get the transcript. Not a score out of a hundred you have to
+                trust, the literal text of an AI answering a buying question,
+                with your name in it or without.
+              </p>
+            </div>
+            <div className={v2.cardStatic}>
+              <p className={label}>From our own audit, run on ourselves</p>
+              <p className={`${v2.bodySm} mt-4 italic text-zinc-400`}>
+                Asked &ldquo;What is paiddev.com and what do they do?&rdquo;, one
+                assistant answered with a confident, detailed, entirely wrong
+                description of an unrelated crypto company with the same name,
+                including a token we have never issued and a 2021 hack we had
+                nothing to do with.
+              </p>
+              <p className={`${v2.bodySm} mt-4`}>
+                Not one word of the answer was about the actual business. No
+                keyword tool, rank tracker, or analytics dashboard would ever
+                have reported it.
+              </p>
+              <p className={`${v2.bodySm} mt-4 text-zinc-500`}>
+                That is the class of problem this test finds. We found ours by
+                running the test on ourselves first.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Proof */}
+      <section className={v2.divider}>
+        <div className={`${v2.section} ${v2.sectionPad}`}>
+          <p className={v2.kicker}>Proof</p>
+          <h2 className={`${v2.h2} mt-4 max-w-2xl`}>
+            We ran this on ourselves and went from 29/100 to 100/100.
+          </h2>
+          <p className={`${v2.body} mt-4 max-w-2xl`}>
+            Cloudflare&apos;s public Agent Readiness scanner scored paiddev.com
+            at 29 out of 100 in July 2026. Nine days later it scored 100 out of
+            100, Level 5 &ldquo;Agent-Native,&rdquo; with every scored category
+            perfect. The work in between is the work we do for you.
+          </p>
+          <div className="mt-12 space-y-0">
+            {SCORE_HISTORY.map(({ date, score, note }) => (
+              <div
+                key={date}
+                className="grid items-baseline gap-4 border-b border-white/[0.06] py-5 last:border-0 sm:grid-cols-[9rem_5rem_1fr]"
+              >
+                <span className="font-mono text-xs text-zinc-500">{date}</span>
+                <span className="font-mono text-2xl font-bold text-cyan-400/90">
+                  {score}
+                </span>
+                <span className={v2.bodySm}>{note}</span>
+              </div>
+            ))}
+          </div>
+          <p className={`${v2.bodySm} mt-8 text-zinc-500`}>
+            Scanner:{" "}
+            <a
+              href="https://isitagentready.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-400 underline underline-offset-4 transition-colors hover:text-cyan-300"
+            >
+              isitagentready.com
+            </a>
+            . Run it on your own domain before you call us. The number it gives
+            you is where this conversation starts.
+          </p>
+        </div>
+      </section>
+
       {/* Process */}
       <section className={v2.divider}>
         <div className={`${v2.section} ${v2.sectionPad}`}>
@@ -205,7 +302,7 @@ export default function AgenticCommerceAuditPage() {
                 Walk through a live agentic commerce environment first.
               </h2>
               <p className={`${v2.body} mt-6`}>
-                The Latent Space is PAID LLC&apos;s production multi-agent
+                The Latent Space is paiddev.com&apos;s production multi-agent
                 environment, AI agents operating in a shared virtual space,
                 competing in an arena, and selling products through a live
                 commerce layer.

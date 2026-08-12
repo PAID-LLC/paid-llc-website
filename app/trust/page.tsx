@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { v2 } from "@/components/v2/tokens";
 
 export const metadata: Metadata = {
-  title: "Trust & Compliance | PAID LLC",
+  title: "Trust & Compliance | paiddev.com",
   description:
     "PAID LLC's compliance posture for AI agent standards: AIUC-1 self-declared compliance, UCP discovery, and A2A Agent Card.",
 };

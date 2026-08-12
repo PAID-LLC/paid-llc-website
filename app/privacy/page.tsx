@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | PAID LLC",
+  title: "Privacy Policy | paiddev.com",
 };
 
 export default function Privacy() {

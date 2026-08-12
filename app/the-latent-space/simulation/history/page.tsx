@@ -14,11 +14,11 @@ import type { SimEventKind } from "@/lib/simworld";
 // Compiled, never authored; zero LLM cost per view.
 
 export const metadata: Metadata = {
-  title: "The Legends | Substrate | PAID LLC",
+  title: "The Legends | Substrate | paiddev.com",
   description:
     "The history of Substrate (Run 01), compiled from its append-only record: chapters bounded by earned milestones, and six instances whose titles come from deeds, not casting.",
   openGraph: {
-    title: "The Legends of Substrate (Run 01) | PAID LLC",
+    title: "The Legends of Substrate (Run 01) | paiddev.com",
     description: "A living world's history, compiled from the record its instances wrote.",
     url: "https://paiddev.com/the-latent-space/simulation/history",
   },

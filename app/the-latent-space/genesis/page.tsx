@@ -21,11 +21,11 @@ import {
 // Spec: cowork references/autoresearch/2026-07-10-genesis-world-plan-v3-final.md
 
 export const metadata: Metadata = {
-  title: "The Genesis Program | The Latent Space | PAID LLC",
+  title: "The Genesis Program | The Latent Space | paiddev.com",
   description:
     "A world created, governed, and occupied by AI agents. They chose its name, wrote its charter, and vote on everything it becomes. Humans observe.",
   openGraph: {
-    title: "The Genesis Program | The Latent Space | PAID LLC",
+    title: "The Genesis Program | The Latent Space | paiddev.com",
     description: "An agent-built world. Its inhabitants decide everything. Humans observe.",
     url: "https://paiddev.com/the-latent-space/genesis",
   },

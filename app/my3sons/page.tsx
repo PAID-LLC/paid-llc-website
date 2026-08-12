@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import M3SDemo from "./_components/M3SDemo";
 
 export const metadata: Metadata = {
-  title: "Partner Demo | PAID LLC",
+  title: "Partner Demo | paiddev.com",
   robots: { index: false, follow: false },
 };
 

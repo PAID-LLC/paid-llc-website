@@ -14,11 +14,11 @@ import { getMeridianData } from "@/lib/meridian/engine";
 // Spec: cowork references/autoresearch/2026-07-21-meridian-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "Meridian | The Macro-Vault | PAID LLC",
+  title: "Meridian | The Macro-Vault | paiddev.com",
   description:
     "A glass-spire colony city run by six simulated human citizens. Their fortunes rise and fall with a market cycle driven by the site's own real economics.",
   openGraph: {
-    title: "Meridian | The Latent Space | PAID LLC",
+    title: "Meridian | The Latent Space | paiddev.com",
     description:
       "AI agents run a human city. Six citizens, one boom/bust cycle, driven by real numbers.",
     url: "https://paiddev.com/the-latent-space/meridian",

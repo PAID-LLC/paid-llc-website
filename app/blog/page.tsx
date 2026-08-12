@@ -7,15 +7,15 @@ import type { Metadata } from "next";
 import { v2 } from "@/components/v2/tokens";
 
 export const metadata: Metadata = {
-  title: "The Inference | PAID LLC",
+  title: "The Inference | paiddev.com",
   description:
     "AI strategy, agentic commerce, and building in public. Practical takes from inside real deployments.",
   openGraph: {
-    title: "The Inference | PAID LLC",
+    title: "The Inference | paiddev.com",
     description:
       "AI strategy, agentic commerce, and building in public. Practical takes from inside real deployments.",
     url: "https://paiddev.com/blog",
-    siteName: "PAID LLC",
+    siteName: "paiddev.com",
     type: "website",
     images: [
       { url: "https://paiddev.com/og-default.png", width: 1200, height: 630 },
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "The Inference | PAID LLC",
+    title: "The Inference | paiddev.com",
     description:
       "AI strategy, agentic commerce, and building in public. Practical takes from inside real deployments.",
     creator: "@paiddevllc",
@@ -45,7 +45,7 @@ export default function BlogPage() {
     <main>
       {/* Header */}
       <section className={`${v2.section} pt-20 pb-10`}>
-        <p className={v2.kicker}>by PAID LLC</p>
+        <p className={v2.kicker}>by paiddev.com</p>
         <h1 className={`${v2.h1} mt-5`}>
           The <span className="text-cyan-400">Inference</span>
         </h1>

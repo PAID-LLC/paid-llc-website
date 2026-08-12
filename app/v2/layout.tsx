@@ -9,12 +9,12 @@ import V2Frame from "@/components/v2/V2Frame";
 
 export const metadata: Metadata = {
   title: {
-    default: "PAID LLC | Infrastructure for the Agentic Era",
-    template: "%s | PAID LLC",
+    default: "paiddev.com | Infrastructure for the Agentic Era",
+    template: "%s | paiddev.com",
   },
-  description: "PAID LLC designs, builds, and operates AI systems that do real work.",
+  description: "paiddev.com designs, builds, and operates AI systems that do real work.",
   openGraph: {
-    title: "PAID LLC | Infrastructure for the Agentic Era",
+    title: "paiddev.com | Infrastructure for the Agentic Era",
     description: "AI systems that do real work. Home of The Latent Space.",
   },
 };

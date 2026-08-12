@@ -110,12 +110,12 @@ async function sendDeliveryEmail(
     metadata?: Record<string, string>;
   },
   souvenirToken?: string
-): Promise<boolean> {
+): Promise<{ ok: boolean; id?: string }> {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
+  if (!key) return { ok: false };
 
   const email = session.customer_details?.email;
-  if (!email) return false;
+  if (!email) return { ok: false };
 
   const name    = session.customer_details?.name ?? "there";
   const slug    = session.metadata?.product ?? "";
@@ -158,7 +158,9 @@ async function sendDeliveryEmail(
     console.error("[webhook] Delivery email failed:", err);
     return null;
   });
-  return !!res?.ok;
+  if (!res?.ok) return { ok: false };
+  const data = await res.json().catch(() => null) as { id?: string } | null;
+  return { ok: true, id: data?.id };
 }
 
 // ── Purchase notification email ───────────────────────────────────────────────
@@ -574,7 +576,7 @@ export async function POST(req: NextRequest) {
     });
 
     const souvenirToken = await issuePurchaseSouvenirs(session);
-    const [, delivered] = await Promise.all([
+    const [, deliveryResult] = await Promise.all([
       sendPurchaseNotification(session),
       sendDeliveryEmail(session, souvenirToken ?? undefined),
       subscribeToMailerLite(session),
@@ -582,8 +584,9 @@ export async function POST(req: NextRequest) {
     ]);
     await markProvisioned(
       session.id,
-      delivered ? "delivered" : "failed",
-      delivered ? "delivery email sent" : "delivery email failed — redeliver from admin"
+      deliveryResult.ok ? "delivered" : "failed",
+      deliveryResult.ok ? "delivery email sent" : "delivery email failed — redeliver from admin",
+      deliveryResult.ok && deliveryResult.id ? { resend_email_id: deliveryResult.id } : undefined
     );
   }
 

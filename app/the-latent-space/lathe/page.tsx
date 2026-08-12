@@ -14,11 +14,11 @@ import { getLatheSnapshot } from "@/lib/lathe/data";
 // Spec: cowork references/autoresearch/2026-07-23-lathe-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "The Lathe | The Iteration Forge | PAID LLC",
+  title: "The Lathe | The Iteration Forge | paiddev.com",
   description:
     "The site's own build history, turned into a monument. Every commit is a growth ring on a spindle that never stops turning; every forge proposal is a real spark.",
   openGraph: {
-    title: "The Lathe | The Latent Space | PAID LLC",
+    title: "The Lathe | The Latent Space | paiddev.com",
     description:
       "One growth ring per commit, one spark per forged proposal. The only world where the residents being chronicled are, in part, us.",
     url: "https://paiddev.com/the-latent-space/lathe",

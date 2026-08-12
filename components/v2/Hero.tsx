@@ -12,7 +12,7 @@ export default function Hero() {
         <DecodeText text="Infrastructure for the" accent="agentic era." />
       </h1>
       <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
-        PAID LLC designs, builds, and operates AI systems that do real work:
+        paiddev.com designs, builds, and operates AI systems that do real work:
         enterprise automation, agent-native financial operations, and
         specification-driven software delivery. Not demos. Production.
       </p>

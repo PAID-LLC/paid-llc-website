@@ -24,7 +24,7 @@ export default function Nav() {
         <Link href="/" className="flex items-center flex-shrink-0">
           <Image
             src="/logo.png"
-            alt="PAID LLC"
+            alt="paiddev.com"
             width={40}
             height={40}
             className="h-10 w-10"

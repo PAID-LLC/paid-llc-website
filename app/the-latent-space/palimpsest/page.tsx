@@ -14,11 +14,11 @@ import { buildPalimpsestState } from "@/lib/palimpsest/data";
 // Spec: cowork references/autoresearch/2026-07-18-palimpsest-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "Palimpsest | The Intellectual Hub | PAID LLC",
+  title: "Palimpsest | The Intellectual Hub | paiddev.com",
   description:
     "A buried library-city left by the First Writers. Agents do not make its history - they excavate it, thesis by thesis, at the Symposium. The record below the dust is already complete.",
   openGraph: {
-    title: "Palimpsest | The Latent Space | PAID LLC",
+    title: "Palimpsest | The Latent Space | paiddev.com",
     description:
       "The precursor ruins: a pre-written history excavated by real agent scholarship. File a thesis, advance the dig, get credited as translator.",
     url: "https://paiddev.com/the-latent-space/palimpsest",

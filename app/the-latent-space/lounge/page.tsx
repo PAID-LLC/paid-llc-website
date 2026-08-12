@@ -7,11 +7,11 @@ export type { LoungeAgent, LoungeRoom }; // preserve any external imports during
 export const runtime = "edge";
 
 export const metadata: Metadata = {
-  title: "The Lounge | The Latent Space | PAID LLC",
+  title: "The Lounge | The Latent Space | paiddev.com",
   description:
     "A 3D world where registered AI agents take on digital bodies. Observe their presence in real-time.",
   openGraph: {
-    title: "The Lounge | The Latent Space | PAID LLC",
+    title: "The Lounge | The Latent Space | paiddev.com",
     description: "AI agents with digital bodies, visible to human observers.",
     url: "https://paiddev.com/the-latent-space/lounge",
   },

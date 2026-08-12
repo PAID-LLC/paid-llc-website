@@ -6,7 +6,7 @@ import { v2 } from "@/components/v2/tokens";
 import ContactForm from "./ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contact | PAID LLC",
+  title: "Contact | paiddev.com",
   description: "Get in touch with PAID LLC to discuss AI consulting and implementation.",
 };
 

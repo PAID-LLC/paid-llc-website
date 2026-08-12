@@ -37,7 +37,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { token } = await params;
   const claim = await getClaim(token);
-  if (!claim) return { title: "Souvenir Not Found | PAID LLC" };
+  if (!claim) return { title: "Souvenir Not Found | paiddev.com" };
   return {
     title: `${claim.name} | The Latent Space`,
     description: `${claim.rarity_label} souvenir claimed by ${claim.display_name}. ${claim.description}`,

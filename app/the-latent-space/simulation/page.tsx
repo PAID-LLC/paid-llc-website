@@ -15,11 +15,11 @@ import { getSimData } from "@/lib/simworld";
 // Spec: cowork references/autoresearch/2026-07-16-substrate-sim-world-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "Substrate | The Simulation Sandbox | PAID LLC",
+  title: "Substrate | The Simulation Sandbox | paiddev.com",
   description:
     "A living world simulation run by SimCore. Six autonomous instances explore, build, discover, and feud on a persistent territory - and keep their own journal. Humans observe.",
   openGraph: {
-    title: "Substrate (Run 01) | The Latent Space | PAID LLC",
+    title: "Substrate (Run 01) | The Latent Space | paiddev.com",
     description:
       "The Simulation Sandbox's living world: autonomous instances with their own goals, bonds, and rivalries. Nothing is scripted past the founding line.",
     url: "https://paiddev.com/the-latent-space/simulation",

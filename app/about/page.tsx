@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 import { v2 } from "@/components/v2/tokens";
 
 export const metadata: Metadata = {
-  title: "About | PAID LLC",
+  title: "About | paiddev.com",
   description:
-    "PAID LLC was built to close the gap between AI potential and AI results. Meet founder Travis Raveling.",
+    "paiddev.com was built to close the gap between AI potential and AI results. Meet founder Travis Raveling.",
 };
 
 const approach = [
@@ -73,13 +73,13 @@ export default function About() {
               <h2 className={v2.h2}>Who We Are</h2>
               <div className="mt-6 space-y-5">
                 <p className={v2.body}>
-                  PAID LLC (Performance Artificial Intelligence Development) was
+                  paiddev.com (Performance Artificial Intelligence Development LLC) was
                   built on a straightforward idea: AI should work for your
                   business, not the other way around.
                 </p>
                 <p className={v2.body}>
                   Most businesses know AI is important. Few know how to make it
-                  actually useful. PAID LLC bridges that gap, helping clients
+                  actually useful. paiddev.com bridges that gap, helping clients
                   understand what AI can do, identify where it creates real
                   value, and implement it in ways that stick.
                 </p>
@@ -92,7 +92,7 @@ export default function About() {
                   disrupts businesses depending on how well leaders understand it.
                   When AI shifted from experiment to business reality, I kept
                   seeing the same problem: powerful tools, no clear path from
-                  curiosity to results. PAID LLC exists to close that gap.
+                  curiosity to results. paiddev.com exists to close that gap.
                 </p>
               </div>
             </div>
@@ -157,7 +157,7 @@ export default function About() {
               ))}
             </div>
             <p className={`${v2.body} max-w-xl`}>
-              PAID LLC helps businesses implement AI at the right scale for the
+              paiddev.com helps businesses implement AI at the right scale for the
               right tasks. That&apos;s not just good ROI. It&apos;s how
               responsible deployment works.
             </p>
@@ -172,7 +172,7 @@ export default function About() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/[0.06]">
               <Image
                 src="/founder.png"
-                alt="Travis Raveling, Founder of PAID LLC"
+                alt="Travis Raveling, Founder of paiddev.com"
                 fill
                 className="object-cover object-top"
               />
@@ -182,7 +182,7 @@ export default function About() {
               <h2 className={`${v2.h2} mt-4`}>Travis Raveling</h2>
               <div className="mt-6 space-y-4">
                 <p className={v2.body}>
-                  Travis Raveling is the founder of PAID LLC and an AI consultant
+                  Travis Raveling is the founder of paiddev.com and an AI consultant
                   helping individuals and businesses put artificial intelligence
                   to work. With a focus on practical implementation over theory,
                   Travis specializes in translating AI complexity into clear

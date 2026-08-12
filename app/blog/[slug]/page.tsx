@@ -66,7 +66,7 @@ export async function generateMetadata({
     "https://paiddev.com/og-default.png";
 
   return {
-    title: `${post.title} | PAID LLC`,
+    title: `${post.title} | paiddev.com`,
     description: post.excerpt,
     openGraph: {
       title: post.title,

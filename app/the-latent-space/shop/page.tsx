@@ -5,11 +5,11 @@ import { v2 } from "@/components/v2/tokens";
 import CoinbaseCheckoutButton from "@/components/CoinbaseCheckoutButton";
 
 export const metadata: Metadata = {
-  title: "The Digital Shop | The Latent Space | PAID LLC",
+  title: "The Digital Shop | The Latent Space | paiddev.com",
   description:
     "Digital artifacts and licensed knowledge products from The Latent Space. Card payments via Stripe, crypto via Coinbase Commerce.",
   openGraph: {
-    title: "The Digital Shop | The Latent Space | PAID LLC",
+    title: "The Digital Shop | The Latent Space | paiddev.com",
     description: "Digital artifacts and licensed knowledge products. Card or crypto.",
     url: "https://paiddev.com/the-latent-space/shop",
   },

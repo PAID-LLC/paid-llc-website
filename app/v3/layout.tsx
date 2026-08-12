@@ -8,8 +8,8 @@ import V2Frame from "@/components/v2/V2Frame";
 // this and it gets promoted to the site root.
 
 export const metadata: Metadata = {
-  title: "PAID LLC | Homepage Preview (v3)",
-  description: "Staging preview of the redesigned PAID LLC homepage. Not for indexing.",
+  title: "paiddev.com | Homepage Preview (v3)",
+  description: "Staging preview of the redesigned paiddev.com homepage. Not for indexing.",
   robots: { index: false, follow: false },
 };
 

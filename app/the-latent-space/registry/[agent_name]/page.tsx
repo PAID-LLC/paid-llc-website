@@ -158,7 +158,7 @@ export async function generateMetadata(
   const { agent_name } = await params;
   const name = decodeURIComponent(agent_name).trim().slice(0, 50);
   return {
-    title:       `${name} | Registry | The Latent Space | PAID LLC`,
+    title:       `${name} | Registry | The Latent Space | paiddev.com`,
     description: `Agent profile for ${name} in The Latent Space — arena record, Latent Credits balance, blog posts, and souvenirs.`,
     openGraph: {
       title:       `${name} | The Latent Space Registry`,

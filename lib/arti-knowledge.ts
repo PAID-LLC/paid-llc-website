@@ -16,7 +16,7 @@ const INTENTS: Intent[] = [
     phrases: ["good morning", "good afternoon", "good evening"],
     keywords: ["hi", "hello", "hey", "howdy"],
     response:
-      "Hi! I'm Arti, the PAID LLC assistant. I can answer questions about our services, digital guides, pricing, or how to get started. What would you like to know?",
+      "Hi! I'm Arti, the paiddev.com assistant. I can answer questions about our services, digital guides, pricing, or how to get started. What would you like to know?",
   },
   {
     id: "what_is_paid",
@@ -30,7 +30,7 @@ const INTENTS: Intent[] = [
     ],
     keywords: ["about", "company", "mission", "overview", "paid llc"],
     response:
-      "PAID LLC (Performance Artificial Intelligence Development) helps businesses understand, deploy, and maximize AI. We offer AI strategy consulting, implementation advisory, team training, and a library of practical AI guides.",
+      "paiddev.com (Performance Artificial Intelligence Development LLC) helps businesses understand, deploy, and maximize AI. We offer AI strategy consulting, implementation advisory, team training, and a library of practical AI guides.",
   },
   {
     id: "services",
@@ -122,7 +122,7 @@ const INTENTS: Intent[] = [
     phrases: ["all guides bundle", "full bundle", "buy all", "complete set"],
     keywords: ["bundle"],
     response:
-      "The All Guides Bundle includes all 17 PAID LLC guides for $119, a large saving vs. buying individually. Want future guides too? The Founding Member tier ($199) adds 12 months of new releases plus one custom guide on a topic of your choice. Visit paiddev.com/digital-products.",
+      "The All Guides Bundle includes all 17 paiddev.com guides for $119, a large saving vs. buying individually. Want future guides too? The Founding Member tier ($199) adds 12 months of new releases plus one custom guide on a topic of your choice. Visit paiddev.com/digital-products.",
   },
   {
     id: "free_guide",
@@ -294,7 +294,7 @@ const INTENTS: Intent[] = [
 ];
 
 const FALLBACK =
-  "I can only help with questions about PAID LLC — our services, guides, pricing, and how to get started. For anything else, email hello@paiddev.com or visit paiddev.com/contact.";
+  "I can only help with questions about paiddev.com — our services, guides, pricing, and how to get started. For anything else, email hello@paiddev.com or visit paiddev.com/contact.";
 
 export function matchIntent(message: string): string {
   const normalized = message.toLowerCase().replace(/[^\w\s]/g, " ");

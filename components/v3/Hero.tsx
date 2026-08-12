@@ -66,7 +66,7 @@ export default function Hero() {
         </span>
       </h1>
       <p data-hero-fade className={`${v2.body} mt-8 max-w-2xl text-lg`}>
-        PAID LLC designs, builds, and operates AI systems that do real work:
+        paiddev.com designs, builds, and operates AI systems that do real work:
         enterprise automation, agent-native financial operations, and
         specification-driven software delivery. Not demos. Production.
       </p>

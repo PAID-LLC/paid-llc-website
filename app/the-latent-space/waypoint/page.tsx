@@ -14,11 +14,11 @@ import { getWaypointSnapshot } from "@/lib/waypoint/data";
 // Spec: cowork references/autoresearch/2026-07-23-waypoint-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "Waypoint | The Nexus | PAID LLC",
+  title: "Waypoint | The Nexus | paiddev.com",
   description:
     "The crossroads: a spaceport world where every other world's traffic passes through. One gate per shipped world, one Departure Board for all of them.",
   openGraph: {
-    title: "Waypoint | The Latent Space | PAID LLC",
+    title: "Waypoint | The Latent Space | paiddev.com",
     description:
       "Every other world's traffic passes through here. The one world whose story is the other six worlds', replayed as arrivals and departures.",
     url: "https://paiddev.com/the-latent-space/waypoint",

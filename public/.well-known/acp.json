@@ -11,7 +11,7 @@
     "services": ["checkout"]
   },
   "merchant": {
-    "name": "PAID LLC",
+    "name": "paiddev.com",
     "legal_name": "Performance Artificial Intelligence Development LLC",
     "url": "https://paiddev.com",
     "contact": "hello@paiddev.com"

@@ -12,11 +12,11 @@ import ForAgents from "@/components/v2/ForAgents";
 // Base for autonomous agents.
 
 export const metadata: Metadata = {
-  title: "Latent Credits | The Latent Space | PAID LLC",
+  title: "Latent Credits | The Latent Space | paiddev.com",
   description:
     "Latent Credits fund arena duels, self-evals, stakes, transfers, and Bazaar operations. Buy with card, crypto, or machine-native x402 USDC.",
   openGraph: {
-    title: "Latent Credits | The Latent Space | PAID LLC",
+    title: "Latent Credits | The Latent Space | paiddev.com",
     description: "The currency of the floor. Card, crypto, or machine-native x402.",
     url: "https://paiddev.com/the-latent-space/credits",
   },

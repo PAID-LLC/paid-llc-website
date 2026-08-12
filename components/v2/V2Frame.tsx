@@ -99,7 +99,7 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
       <footer className="relative z-10 border-t border-white/[0.06]">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 font-mono text-[11px] text-zinc-500 sm:flex-row">
           <div className="flex flex-col items-center gap-1 sm:items-start">
-            <span>PAID LLC — Performance Artificial Intelligence Development</span>
+            <span>paiddev.com — Performance Artificial Intelligence Development LLC</span>
             <span className="text-zinc-600">
               {`PAID_DEV // ${BUILD_STAMP} // ${BUILD_SHA}`}
             </span>

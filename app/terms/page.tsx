@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | PAID LLC",
+  title: "Terms of Service | paiddev.com",
 };
 
 export default function Terms() {

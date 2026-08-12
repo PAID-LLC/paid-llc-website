@@ -10,7 +10,7 @@ export default function Footer() {
           <div className="md:col-span-1">
             <Image
               src="/logo.png"
-              alt="PAID LLC"
+              alt="paiddev.com"
               width={36}
               height={36}
               className="h-9 w-9 mb-4 brightness-0 invert"
@@ -134,7 +134,7 @@ export default function Footer() {
 
         <div className="border-t border-charcoal pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-stone text-xs">
-            © {new Date().getFullYear()} PAID LLC. All rights reserved.
+            © {new Date().getFullYear()} paiddev.com. All rights reserved.
           </p>
           <div className="flex gap-6">
             <Link

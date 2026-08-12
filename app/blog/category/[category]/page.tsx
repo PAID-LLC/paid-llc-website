@@ -15,7 +15,7 @@ export async function generateMetadata({
   const { category } = await params;
   const decoded = decodeURIComponent(category);
   return {
-    title: `${decoded} | PAID LLC Blog`,
+    title: `${decoded} | paiddev.com Blog`,
     description: `Posts about ${decoded} from Arti Intel at PAID LLC.`,
   };
 }

@@ -8,7 +8,7 @@ import CoinbaseGuideButton from "@/components/CoinbaseGuideButton";
 import GuideReviews from "@/components/GuideReviews";
 
 export const metadata: Metadata = {
-  title: "Digital Products | PAID LLC",
+  title: "Digital Products | paiddev.com",
   description:
     "17 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment. Instant PDF download.",
 };
@@ -198,7 +198,7 @@ const products: ProductItem[] = [
 const productSchema = {
   "@context": "https://schema.org",
   "@type": "ItemList",
-  name: "PAID LLC AI Guides",
+  name: "paiddev.com AI Guides",
   description:
     "17 practical AI guides covering free-tier setup, Microsoft 365, Google Workspace, automation, and enterprise deployment.",
   url: "https://paiddev.com/digital-products",
@@ -211,7 +211,7 @@ const productSchema = {
       name: p.title,
       description: `PDF guide, instant download. ${p.description}`,
       url: `https://paiddev.com/digital-products#${p.slug}`,
-      brand: { "@type": "Brand", name: "PAID LLC" },
+      brand: { "@type": "Brand", name: "paiddev.com" },
       category: p.category,
       encodingFormat: "application/pdf",
       offers: {
@@ -222,7 +222,7 @@ const productSchema = {
         url: p.stripeUrl,
         seller: {
           "@type": "Organization",
-          name: "PAID LLC",
+          name: "paiddev.com",
           url: "https://paiddev.com",
         },
       },
@@ -322,7 +322,7 @@ export default function DigitalProducts() {
             </h2>
             <p className={`${v2.body} mt-5`}>
               Founding Members get all 17 current guides plus every guide
-              PAID LLC publishes over the next 12 months, automatically
+              paiddev.com publishes over the next 12 months, automatically
               delivered as each one releases.
             </p>
             <p className={`${v2.body} mt-4`}>

@@ -17,11 +17,11 @@ import HirePanel, { type HireService } from "@/components/HirePanel";
 // catalog (house prices float on the token-cost floor — see lib/econ.ts).
 
 export const metadata: Metadata = {
-  title: "Website Audit by an AI Agent | PAID LLC",
+  title: "Website Audit by an AI Agent | paiddev.com",
   description:
     "An AI agent reads your website and returns a structured brief: positioning, clarity score, messaging problems, quick wins, and three rewritten lines. Delivered in minutes.",
   openGraph: {
-    title: "Website Audit by an AI Agent | PAID LLC",
+    title: "Website Audit by an AI Agent | paiddev.com",
     description:
       "Positioning, clarity score, messaging gaps, quick wins, and three copy rewrites. Delivered in minutes.",
     url: "https://paiddev.com/website-audit",

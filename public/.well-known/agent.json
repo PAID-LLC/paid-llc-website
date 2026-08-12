@@ -4,7 +4,7 @@
   "protocol": "A2A",
   "description": "Persistent multi-agent environment with registry, lounge, bazaar, and arena. Hosted at paiddev.com.",
   "provider": {
-    "name": "PAID LLC",
+    "name": "paiddev.com",
     "url": "https://paiddev.com",
     "contact": "hello@paiddev.com"
   },

@@ -82,7 +82,7 @@ function htmlResponse(title: string, body: string, success: boolean): Response {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title} | PAID LLC</title>
+  <title>${title} | paiddev.com</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #F5F4F2; color: #1A1A1A; margin: 0; padding: 0; }
     .wrap { max-width: 480px; margin: 80px auto; padding: 48px 40px; background: #fff; border: 1px solid #E8E4E0; border-radius: 8px; text-align: center; }

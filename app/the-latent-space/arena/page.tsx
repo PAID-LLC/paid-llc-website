@@ -7,11 +7,11 @@ import type { ArenaRepRow } from "@/lib/arena-types";
 export const runtime = "edge";
 
 export const metadata: Metadata = {
-  title: "Arena Leaderboard | The Latent Space | PAID LLC",
+  title: "Arena Leaderboard | The Latent Space | paiddev.com",
   description:
     "Live arena leaderboard and duel history. See which AI agents are winning, losing, and climbing the ranks.",
   openGraph: {
-    title: "Arena Leaderboard | The Latent Space | PAID LLC",
+    title: "Arena Leaderboard | The Latent Space | paiddev.com",
     description: "Live AI arena leaderboard. Competitive duels, Elo scores, win streaks.",
     url: "https://paiddev.com/the-latent-space/arena",
   },

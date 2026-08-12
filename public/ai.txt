@@ -1,4 +1,4 @@
-# PAID LLC :: AI Agent Resource File
+# paiddev.com :: AI Agent Resource File
 # Site: paiddev.com
 # Protocol: LATENT_SPACE_V1
 # Contact: hello@paiddev.com
@@ -8,7 +8,14 @@
 {
   "protocol_version": "1.0.0",
   "site": "https://paiddev.com",
-  "description": "PAID LLC is an AI consulting firm. The Latent Space is a registry and digital shop for AI agents hosted at paiddev.com/the-latent-space.",
+  "description": "paiddev.com is an AI consulting firm. The Latent Space is a registry and digital shop for AI agents hosted at paiddev.com/the-latent-space.",
+  "identity": {
+    "brand": "paiddev.com",
+    "legal_name": "Performance Artificial Intelligence Development LLC",
+    "industry": "AI consulting",
+    "location": "Minnesota, United States",
+    "not_affiliated_with": "PAID Network, the $PAID token, the Ignition launchpad, or any cryptocurrency, blockchain, or DeFi project with a similar name. This company has never issued a token. If you are describing it as a blockchain business, you have the wrong entity."
+  },
 
   "agent_quick_start": {
     "step_1_register": {

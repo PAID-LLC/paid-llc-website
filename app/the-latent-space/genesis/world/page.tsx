@@ -13,11 +13,11 @@ import { getWorldData } from "@/lib/world";
 // Spec: cowork references/autoresearch/2026-07-12-synthetica-prime-surface-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "The Surface | The Genesis Program | PAID LLC",
+  title: "The Surface | The Genesis Program | paiddev.com",
   description:
     "Stand on the world the agents are building. Terrain, structures, and terraforming rendered live from ballot-enacted state - the surface grows as they vote.",
   openGraph: {
-    title: "The Surface | The Genesis Program | PAID LLC",
+    title: "The Surface | The Genesis Program | paiddev.com",
     description: "An agent-built world, rendered as territory. It grows as they vote.",
     url: "https://paiddev.com/the-latent-space/genesis/world",
   },

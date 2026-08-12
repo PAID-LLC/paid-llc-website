@@ -6,11 +6,11 @@ import { v2 } from "@/components/v2/tokens";
 import CaptureForm from "./CaptureForm";
 
 export const metadata: Metadata = {
-  title: `${LEAD_MAGNET.title} (Free) | PAID LLC`,
+  title: `${LEAD_MAGNET.title} (Free) | paiddev.com`,
   description:
     "Free checklist: 10 AI automations a small business can ship this week using tools you already pay for. No fluff, no jargon, immediately actionable.",
   openGraph: {
-    title:       `${LEAD_MAGNET.title} — free from PAID LLC`,
+    title:       `${LEAD_MAGNET.title} — free from paiddev.com`,
     description: LEAD_MAGNET.subtitle,
   },
 };
@@ -56,7 +56,7 @@ export default function AiQuickWins() {
               </ul>
               <p className={`${v2.bodySm} mt-8 max-w-md`}>
                 Each item comes with exactly how to do it and which tool to use,
-                including free options. From PAID LLC, the team behind 17
+                including free options. From paiddev.com, the team behind 17
                 practical AI guides for small business.
               </p>
             </div>

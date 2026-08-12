@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ScorecardGate from "@/components/ScorecardGate";
 
 export const metadata: Metadata = {
-  title: "AI Readiness Scorecard | PAID LLC",
+  title: "AI Readiness Scorecard | paiddev.com",
   description:
     "Answer 10 questions and get a clear picture of where your business stands on AI adoption. Free, instant download.",
 };

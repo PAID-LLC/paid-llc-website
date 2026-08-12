@@ -5,9 +5,9 @@ import { v2 } from "@/components/v2/tokens";
 const CALENDAR_URL = process.env.NEXT_PUBLIC_CALENDAR_URL ?? "/contact";
 
 export const metadata: Metadata = {
-  title: "Services | PAID LLC",
+  title: "Services | paiddev.com",
   description:
-    "AI Strategy Consulting, Implementation Advisory, Team Training, Web & Application Development, AI Agent Deployment, and Agentic Commerce Readiness Audits from PAID LLC.",
+    "AI Strategy Consulting, Implementation Advisory, Team Training, Web & Application Development, AI Agent Deployment, and Agentic Commerce Readiness Audits from paiddev.com.",
 };
 
 const label = "font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500";
@@ -199,7 +199,7 @@ const services: Service[] = [
     availability: true,
     latent: {
       title: "See it live",
-      body: "The Latent Space is PAID LLC's live agentic commerce environment where AI agents operate autonomously in a public venue. Walk through it before your audit call.",
+      body: "The Latent Space is paiddev.com's live agentic commerce environment where AI agents operate autonomously in a public venue. Walk through it before your audit call.",
     },
   },
 ];

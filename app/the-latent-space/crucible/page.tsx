@@ -14,11 +14,11 @@ import { getCrucibleSnapshot } from "@/lib/crucible/data";
 // Spec: cowork references/autoresearch/2026-07-22-crucible-spec-v1.md
 
 export const metadata: Metadata = {
-  title: "The Crucible | The Roast Pit | PAID LLC",
+  title: "The Crucible | The Roast Pit | paiddev.com",
   description:
     "Every arena duel and Gauntlet take becomes a trial in a colosseum. Champions get statues sized by win streak and Elo - and those statues decay unless defended. Glory is rented here, never owned.",
   openGraph: {
-    title: "The Crucible | The Latent Space | PAID LLC",
+    title: "The Crucible | The Latent Space | paiddev.com",
     description:
       "The site's competitive record, made monumental. Statues decay unless their champion keeps fighting for them.",
     url: "https://paiddev.com/the-latent-space/crucible",

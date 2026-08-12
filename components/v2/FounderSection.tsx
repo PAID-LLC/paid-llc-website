@@ -20,7 +20,7 @@ export default function FounderSection() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-[#C14826]/30">
               <Image
                 src="/founder.png"
-                alt="Travis Raveling, Founder of PAID LLC"
+                alt="Travis Raveling, Founder of paiddev.com"
                 fill
                 sizes="(max-width: 1024px) 90vw, 380px"
                 className="object-cover object-top saturate-[0.92]"
@@ -44,7 +44,7 @@ export default function FounderSection() {
             <h2 className={`${v2.h2} mt-4`}>Travis Raveling</h2>
             <div className={`${v2.body} mt-6 space-y-4 max-w-xl`}>
               <p>
-                Travis founded PAID LLC to close the gap between AI potential
+                Travis founded paiddev.com to close the gap between AI potential
                 and AI results: practical implementation over theory,
                 translating AI complexity into clear strategy and outcomes that
                 show up on the bottom line.
