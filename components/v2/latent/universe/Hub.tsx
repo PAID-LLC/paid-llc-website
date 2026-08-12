@@ -65,14 +65,21 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
 
       {/* Fixed z-tier above agent labels (AgentNode) — room identity must
           never be occluded by a nearby agent's own name tag. */}
-      <Html distanceFactor={46} position={[0, labelY, 0]} center zIndexRange={[500, 500]}>
+      {/* Two renders to land this. Once the camera pulled back far enough to
+          fit the whole system, the labels became the composition problem: at
+          46 (their old on-screen size) they piled up around the sun and were
+          larger than the planets they named; at 30 they were unreadable. The
+          scale was never the real lever — the LINE COUNT was. A one-line tag
+          at near-original size clears its neighbours where a four-line card
+          cannot, at any scale. */}
+      <Html distanceFactor={44} position={[0, labelY, 0]} center zIndexRange={[500, 500]}>
         <div
           style={{
             fontFamily: "var(--font-mono, monospace)",
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: "0.08em",
-            padding: "5px 11px",
+            padding: "3px 8px",
             borderRadius: 8,
             background: "rgba(5,5,10,0.8)",
             color: theme.accent,
@@ -83,24 +90,19 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
             pointerEvents: "none",
           }}
         >
-          {/* The WORLD's name leads; the room it hosts is the subtitle.
+          {/* The WORLD's name, and nothing else.
               Until 2026-08-12 these ambient labels used the ROOM name, so the
-              map's most prominent text read "THE BAZAAR / THE ROAST PIT"
-              while the world directory in the same HUD read "Arclight / the
-              Crucible" and nothing on screen connected the two lists. The
-              selected-world card was fixed on 2026-08-09; the fix never
-              reached here, which is the copy a visitor actually reads first.
-              Keep these two in the same order as that card. */}
+              map's most prominent text read "THE BAZAAR / THE ROAST PIT" while
+              the world directory in the same HUD read "Arclight / the Crucible"
+              and nothing on screen connected the two lists. The selected-world
+              card was fixed on 2026-08-09; the fix never reached here, which is
+              the copy a visitor actually reads first.
+              The name matching the directory IS the connection, so one line
+              closes the defect. The room number, the tagline and the occupancy
+              count all used to live here and all moved out: eight labels on one
+              screen is a layout budget, and the selected-world card already
+              carries richer, live versions of every one of them. */}
           {(WORLD_ROUTES[node.theme]?.label ?? node.name).toUpperCase()}
-          <span style={{ display: "block", fontSize: 8, fontWeight: 400, color: "rgba(113,113,122,0.95)", marginTop: 3, textTransform: "none", letterSpacing: "0.04em" }}>
-            Room {node.id} &middot; {node.name}
-          </span>
-          <span style={{ display: "block", fontSize: 8, fontWeight: 400, color: "rgba(161,161,170,0.75)", marginTop: 3, textTransform: "none", letterSpacing: "normal" }}>
-            {theme.tagline}
-          </span>
-          <span style={{ display: "block", fontSize: 9, fontWeight: 400, color: "#a1a1aa", marginTop: 4 }}>
-            {node.agentCount > 0 ? `${node.agentCount} on the floor` : theme.empty}
-          </span>
         </div>
       </Html>
     </group>

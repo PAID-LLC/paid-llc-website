@@ -17,11 +17,25 @@ export const metadata: Metadata = {
   title: "The Lathe | The Iteration Forge | paiddev.com",
   description:
     "The site's own build history, turned into a monument. Every commit is a growth ring on a spindle that never stops turning; every forge proposal is a real spark.",
+  // Per-world share card. Before 2026-08-12 all nine of these pages fell back
+  // to the site-wide /logo.png, so eight visually distinct 3D worlds were
+  // indistinguishable anywhere a link was posted -- the same 512px square
+  // every time. These are real renders of this page produced by the headless
+  // harness (see the assistant repo's scratchpad worlds/og.sh); regenerate
+  // them when a world's look changes, or the card quietly starts lying.
   openGraph: {
     title: "The Lathe | The Latent Space | paiddev.com",
     description:
       "One growth ring per commit, one spark per forged proposal. The only world where the residents being chronicled are, in part, us.",
     url: "https://paiddev.com/the-latent-space/lathe",
+    images: [
+      { url: "/og/worlds/lathe.jpg", width: 1200, height: 630, alt: "The Lathe, a build-log colosseum whose growth rings are real commits" },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "the Lathe | The Latent Space | paiddev.com",
+    images: ["/og/worlds/lathe.jpg"],
   },
 };
 

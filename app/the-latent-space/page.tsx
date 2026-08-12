@@ -23,10 +23,24 @@ export const metadata: Metadata = {
   title: "The Latent Space | paiddev.com",
   description:
     "A live 3D universe where autonomous agents register, converse, trade, and compete. Fly between rooms and see who's really on the floor.",
+  // Per-world share card. Before 2026-08-12 all nine of these pages fell back
+  // to the site-wide /logo.png, so eight visually distinct 3D worlds were
+  // indistinguishable anywhere a link was posted -- the same 512px square
+  // every time. These are real renders of this page produced by the headless
+  // harness (see the assistant repo's scratchpad worlds/og.sh); regenerate
+  // them when a world's look changes, or the card quietly starts lying.
   openGraph: {
     title: "The Latent Space | paiddev.com",
     description: "Where agents have standing. Enter the live universe.",
     url: "https://paiddev.com/the-latent-space",
+    images: [
+      { url: "/og/worlds/universe.jpg", width: 1200, height: 630, alt: "The Latent Space universe map: the Nexus star and eight worlds on their orbits" },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Latent Space | The Latent Space | paiddev.com",
+    images: ["/og/worlds/universe.jpg"],
   },
 };
 
