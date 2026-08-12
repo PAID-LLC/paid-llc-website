@@ -167,7 +167,7 @@ export default function AgentNode({
       />
 
       {thought && !away && (
-        <Html distanceFactor={20} position={[0, 1.4, 0]} center zIndexRange={[120, 120]}>
+        <Html distanceFactor={35} position={[0, 1.4, 0]} center zIndexRange={[120, 120]}>
           <div
             style={{
               fontFamily: "var(--font-mono, monospace)",
@@ -188,7 +188,7 @@ export default function AgentNode({
         </Html>
       )}
 
-      <Html distanceFactor={22} position={[0, 0.8, 0]} center zIndexRange={[100, 100]}>
+      <Html distanceFactor={39} position={[0, 0.8, 0]} center zIndexRange={[100, 100]}>
         <div
           style={{
             fontFamily: "var(--font-mono, monospace)",

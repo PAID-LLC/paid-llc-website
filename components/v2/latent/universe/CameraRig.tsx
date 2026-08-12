@@ -7,7 +7,7 @@ import { useUniverseStore } from "./useUniverseStore";
 
 // The hub overview's resting camera pose (matches UniverseCanvas's initial
 // <Canvas camera> and PortraitFraming's default framing).
-const HUB_POSITION = new THREE.Vector3(0, 26, 46);
+const HUB_POSITION = new THREE.Vector3(0, 46, 80);
 const HUB_LOOK = new THREE.Vector3(0, 0, 0);
 const SETTLE_EPSILON = 0.05;
 
@@ -32,7 +32,7 @@ export default function CameraRig() {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as ControlsLike | null;
   const lookTarget = useRef(new THREE.Vector3(0, 0, 0));
-  const desired = useRef(new THREE.Vector3(0, 26, 46));
+  const desired = useRef(new THREE.Vector3(0, 46, 80));
   const returning = useRef(false);
 
   useFrame(() => {
@@ -53,14 +53,20 @@ export default function CameraRig() {
       // camera into the sun's corona on the innermost orbit AND vary the
       // camera-to-planet distance (blowing up the Html label scale up close).
       // ~60° off the sun line shows a mostly-lit face with a visible
-      // terminator, keeps ≥9 units of corona clearance everywhere, and holds
+      // terminator, keeps ≥7 units of corona clearance everywhere, and holds
       // label scale constant across all six planets.
+      //
+      // Approach distance tracks the 2026-08-12 rescale (planet-config.ts): it
+      // rose with the hub camera so the drei `distanceFactor` labels, which
+      // scale as factor/distance, keep the same on-screen size when a world is
+      // selected as they did before. Change one of the three together or the
+      // labels balloon on approach.
       if (len > 0.01) {
         const bx = -dirX * 0.5 - dirZ * 0.85; // sunward + tangent, ≈unit length
         const bz = -dirZ * 0.5 + dirX * 0.85;
-        desired.current.set(nx + bx * 9.5, 6, nz + bz * 9.5);
+        desired.current.set(nx + bx * 16.5, 6, nz + bz * 16.5);
       } else {
-        desired.current.set(nx + dirX * 11, 6, nz + dirZ * 11);
+        desired.current.set(nx + dirX * 19, 6, nz + dirZ * 19);
       }
       lookTarget.current.set(nx, 1.5, nz);
 

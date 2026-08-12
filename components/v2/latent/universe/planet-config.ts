@@ -9,6 +9,23 @@
 // and label instead of being painted across the surface.
 //
 // Spec: cowork references/autoresearch/2026-07-10-latent-space-realistic-universe-spec-v2-final.md
+//
+// ── 2026-08-12 rescale ───────────────────────────────────────────────────────
+// Bodies grew 1.4× (rings 1.25×) and the hub camera moved back to match. The
+// old camera at [0, 26, 46] did not fit the system it was pointing at: the
+// projected orbital disc overflowed the frame by 3.6× vertically, so the near
+// half of every outer orbit sat off-screen and Synthetica Prime — the outermost
+// world and the strongest story in the portfolio — was frequently not on the
+// map at all. Autorotate only changes azimuth, so this was not a bad frame, it
+// was every frame.
+//
+// Orbit radii deliberately did NOT change: they encode the solar-system zoning
+// this file is built on, and the belt sits in a gap measured against them.
+// Pulling the camera to fit shrinks everything on screen, so the bodies were
+// grown by roughly the same factor to hold their apparent size. Anything that
+// derives from these numbers (moon clearance in universe-data.ts, the corona in
+// Sun.tsx) scales with them automatically — only the camera distances and the
+// drei `distanceFactor` label scales had to move by hand.
 
 export type PlanetKind =
   | "sun"
@@ -45,7 +62,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   nexus: {
     kind: "sun",
     orbitRadius: 0,
-    visualRadius: 3.0,
+    visualRadius: 4.0,
     axialTilt: 0,
     spinSpeed: 0,
     palette: { base: "#fff3d6", low: "#ffdf9e", high: "#e4e4e7", detail: "#ffb35c" },
@@ -56,7 +73,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   "roast-pit": {
     kind: "rock",
     orbitRadius: 10,
-    visualRadius: 1.05,
+    visualRadius: 1.47,
     axialTilt: 0.06,
     spinSpeed: 0.05,
     palette: { base: "#2e211c", low: "#553526", high: "#8a5a3c", detail: "#e8622d" },
@@ -67,7 +84,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   bazaar: {
     kind: "terra",
     orbitRadius: 15.5,
-    visualRadius: 1.3,
+    visualRadius: 1.82,
     axialTilt: 0.41,
     spinSpeed: 0.06,
     palette: { base: "#0d2f52", low: "#1a5078", high: "#7d6f45", detail: "#44603a" },
@@ -79,7 +96,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   "simulation-sandbox": {
     kind: "cracked-ice",
     orbitRadius: 20.5,
-    visualRadius: 1.0,
+    visualRadius: 1.4,
     axialTilt: 0.1,
     spinSpeed: 0.04,
     palette: { base: "#8ba3b5", low: "#a7bdcc", high: "#e2ebf1", detail: "#3b7ea8" },
@@ -91,12 +108,12 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   "intellectual-hub": {
     kind: "banded-giant",
     orbitRadius: 27,
-    visualRadius: 2.1,
+    visualRadius: 2.94,
     axialTilt: 0.47,
     spinSpeed: 0.14,
     palette: { base: "#5c5178", low: "#7d719c", high: "#b9adcf", detail: "#453b60" },
     atmosphere: { color: "#a78bfa", opacity: 0.35 },
-    ring: { inner: 2.7, outer: 3.9, opacity: 0.85 },
+    ring: { inner: 3.4, outer: 4.9, opacity: 0.85 },
     cityLights: "#c4b5fd",
   },
   // Macro signals from a smooth, sideways world. Uranus-class: ~90° tilt, faint ring.
@@ -105,12 +122,12 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   "macro-vault": {
     kind: "smooth-giant",
     orbitRadius: 33.5,
-    visualRadius: 1.7,
+    visualRadius: 2.38,
     axialTilt: 1.62,
     spinSpeed: 0.1,
     palette: { base: "#25705f", low: "#35917b", high: "#8fd9c9", detail: "#1d5a4e" },
     atmosphere: { color: "#34d399", opacity: 0.32 },
-    ring: { inner: 2.35, outer: 2.65, opacity: 0.3 },
+    ring: { inner: 2.95, outer: 3.3, opacity: 0.3 },
     cityLights: "#fff4dc",
   },
   // Iteration storms until convergence. Neptune-class storm giant; arena
@@ -118,7 +135,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   "iteration-forge": {
     kind: "storm-giant",
     orbitRadius: 40,
-    visualRadius: 1.8,
+    visualRadius: 2.52,
     axialTilt: 0.49,
     spinSpeed: 0.12,
     palette: { base: "#10307a", low: "#1c4aa5", high: "#5b93dd", detail: "#0a1e52" },
@@ -134,7 +151,7 @@ export const PLANET_CONFIGS: Record<string, PlanetConfig> = {
   genesis: {
     kind: "rock",
     orbitRadius: 46,
-    visualRadius: 0.95,
+    visualRadius: 1.33,
     axialTilt: 0.22,
     spinSpeed: 0.045,
     palette: { base: "#2a2126", low: "#463038", high: "#7d5f6b", detail: "#f472b6" },

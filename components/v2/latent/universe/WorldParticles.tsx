@@ -25,7 +25,7 @@ export default function WorldParticles({
   glow: string;
 }) {
   return (
-    <Html position={[0, 0.3, 0]} center distanceFactor={26} zIndexRange={[50, 50]}>
+    <Html position={[0, 0.3, 0]} center distanceFactor={46} zIndexRange={[50, 50]}>
       <div style={{ position: "relative", width: 1, height: 1, pointerEvents: "none" }}>
         <style>{`
           @keyframes uvRise {

@@ -48,7 +48,7 @@ function MilkyWay() {
   useEffect(() => () => texture.dispose(), [texture]);
   return (
     <mesh rotation={[0.45, 0, 0.55]}>
-      <sphereGeometry args={[200, 32, 24]} />
+      <sphereGeometry args={[340, 32, 24]} />
       <meshBasicMaterial
         map={texture}
         side={THREE.BackSide}
@@ -71,7 +71,7 @@ function PortraitFraming() {
     const aspect = size.width / Math.max(size.height, 1);
     if (aspect < 0.9) {
       const f = Math.min(1.5, 0.9 / aspect);
-      camera.position.set(0, 26 * f, 46 * f);
+      camera.position.set(0, 46 * f, 80 * f);
       camera.updateProjectionMatrix();
     }
     // Mount-only by design; see note above.
@@ -188,19 +188,30 @@ export default function UniverseCanvas({
         className="pointer-events-none absolute inset-0"
         style={{ background: "radial-gradient(ellipse at 50% 38%, rgba(34,211,238,0.08), transparent 62%)" }}
       />
+      {/* Framing is derived, not chosen: this camera pose is the nearest one
+          whose frustum contains the whole projected orbital disc out to Genesis
+          at orbit 46, bodies and label headroom included. See planet-config.ts's
+          rescale note for what it replaced and why. */}
       <Canvas
-        camera={{ position: [0, 26, 46], fov: 55 }}
+        camera={{ position: [0, 46, 80], fov: 55 }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
         dpr={[1, 1.75]}
       >
         <color attach="background" args={["#050508"]} />
         {/* No fog, no grid, no studio key light — space has none of them.
-            The sun (inside Hub → Sun.tsx) is the only key light; this low
-            ambient keeps planet night sides barely readable. */}
-        <ambientLight intensity={0.15} />
-        {/* factor stays small: the old scene's fog hid most of these — with
-            the fog gone, factor 4 reads as bokeh blobs, not stars. */}
-        <Stars radius={140} depth={60} count={4200} factor={1.6} saturation={0} fade speed={0.25} />
+            The sun (inside Hub → Sun.tsx) is the only key light; this ambient
+            keeps planet night sides readable as spheres rather than crescents.
+            Deliberately low: a real star system has no fill, and the honest
+            reason this frame reads dark is that most of it IS empty space. */}
+        <ambientLight intensity={0.22} />
+        {/* Radius must stay outside OrbitControls' maxDistance (150) or the
+            camera flies through the star shell at full zoom-out. Count and
+            factor stay where they were on purpose: these are screen-filling
+            additive sprites, which is pure fill rate, and this scene already
+            has no measured budget on low-end GPUs. factor stays small for a
+            second reason — the old scene's fog hid most of these, and with the
+            fog gone, factor 4 reads as bokeh blobs, not stars. */}
+        <Stars radius={260} depth={90} count={4200} factor={1.6} saturation={0} fade speed={0.25} />
         <MilkyWay />
 
         <Hub worlds={worlds} agents={liveAgents} transits={transits} />
@@ -217,7 +228,7 @@ export default function UniverseCanvas({
           autoRotateSpeed={-0.45}
           onStart={() => setInteracted(true)}
           minDistance={14}
-          maxDistance={90}
+          maxDistance={150}
           maxPolarAngle={Math.PI / 2 - 0.03}
         />
       </Canvas>

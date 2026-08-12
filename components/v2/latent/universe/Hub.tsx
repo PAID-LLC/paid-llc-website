@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { FLOOR_THEMES } from "@/components/v2/latent/floor/themes";
 import { useUniverseStore } from "./useUniverseStore";
 import { planetFor, ECLIPTIC_Y } from "./planet-config";
+import { WORLD_ROUTES } from "./world-routes";
 import AgentNode from "./AgentNode";
 import WorldShell from "./WorldShell";
 import type { WorldNode, UniverseAgent } from "./universe-data";
@@ -64,7 +65,7 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
 
       {/* Fixed z-tier above agent labels (AgentNode) — room identity must
           never be occluded by a nearby agent's own name tag. */}
-      <Html distanceFactor={26} position={[0, labelY, 0]} center zIndexRange={[500, 500]}>
+      <Html distanceFactor={46} position={[0, labelY, 0]} center zIndexRange={[500, 500]}>
         <div
           style={{
             fontFamily: "var(--font-mono, monospace)",
@@ -82,7 +83,18 @@ function WorldNodeMesh({ node }: { node: WorldNode }) {
             pointerEvents: "none",
           }}
         >
-          {node.name.toUpperCase()}
+          {/* The WORLD's name leads; the room it hosts is the subtitle.
+              Until 2026-08-12 these ambient labels used the ROOM name, so the
+              map's most prominent text read "THE BAZAAR / THE ROAST PIT"
+              while the world directory in the same HUD read "Arclight / the
+              Crucible" and nothing on screen connected the two lists. The
+              selected-world card was fixed on 2026-08-09; the fix never
+              reached here, which is the copy a visitor actually reads first.
+              Keep these two in the same order as that card. */}
+          {(WORLD_ROUTES[node.theme]?.label ?? node.name).toUpperCase()}
+          <span style={{ display: "block", fontSize: 8, fontWeight: 400, color: "rgba(113,113,122,0.95)", marginTop: 3, textTransform: "none", letterSpacing: "0.04em" }}>
+            Room {node.id} &middot; {node.name}
+          </span>
           <span style={{ display: "block", fontSize: 8, fontWeight: 400, color: "rgba(161,161,170,0.75)", marginTop: 3, textTransform: "none", letterSpacing: "normal" }}>
             {theme.tagline}
           </span>
