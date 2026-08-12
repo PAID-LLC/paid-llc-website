@@ -7,7 +7,7 @@ const CALENDAR_URL = process.env.NEXT_PUBLIC_CALENDAR_URL ?? "/contact";
 export const metadata: Metadata = {
   title: "Agentic Commerce Readiness Audit | paiddev.com",
   description:
-    "A fixed-fee assessment of your business's readiness to deploy AI agents. Readiness score across 5 dimensions, an AI citation test showing what ChatGPT, Claude, and Gemini tell your customers about you, gap analysis, and a phased deployment roadmap — delivered in 5 business days.",
+    "A fixed-fee assessment of your business's readiness to deploy AI agents. Readiness score across 6 dimensions, an AI citation test showing what ChatGPT, Claude, and Gemini tell your customers about you, gap analysis, and a phased deployment roadmap — delivered in 5 business days.",
   openGraph: {
     title: "Agentic Commerce Readiness Audit | paiddev.com",
     description:
@@ -49,10 +49,16 @@ const DIMENSIONS = [
     description:
       "Can you track what agents do, set spending limits, and intervene when needed? We assess your audit trail, alerting, rate limiting, and kill-switch infrastructure.",
   },
+  {
+    num: "06",
+    name: "Crawler Economics & Discoverability",
+    description:
+      "AI crawlers can now be charged at the edge rather than blocked or served free, and Cloudflare returns HTTP 402 on your behalf to do it. Every dollar you charge is also a door you close: the crawler that pays is the crawler that could have recommended you. We model both sides on your actual traffic, tell you which paths are worth a toll and which must stay open, and show you what your current posture already costs you.",
+  },
 ];
 
 const DELIVERABLES = [
-  "Agentic readiness score across all 5 dimensions",
+  "Agentic readiness score across all 6 dimensions",
   "AI Citation & Buyer-Intent test: what ChatGPT, Claude, and Gemini tell your customers about you",
   "Gap analysis: what's blocking deployment and why",
   "Tool and integration recommendations specific to your stack",
@@ -78,7 +84,7 @@ const PROCESS = [
     phase: "02",
     label: "Audit",
     detail:
-      "We analyze your tools, APIs, data flows, and auth architecture against the 5 readiness dimensions. No access to production systems required.",
+      "We analyze your tools, APIs, data flows, and auth architecture against the 6 readiness dimensions. No access to production systems required.",
   },
   {
     phase: "03",
@@ -98,7 +104,7 @@ export default function AgenticCommerceAuditPage() {
           Before you deploy an agent, know if your stack can support one.
         </h1>
         <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
-          A fixed-scope assessment across 5 dimensions of agent readiness, plus
+          A fixed-scope assessment across 6 dimensions of agent readiness, plus
           a test of what ChatGPT, Claude, and Gemini actually tell your
           customers about you. Discovery call, written gap analysis, and a
           phased deployment roadmap, delivered in 5 business days.
@@ -150,12 +156,12 @@ export default function AgenticCommerceAuditPage() {
         </div>
       </section>
 
-      {/* 5 Dimensions */}
+      {/* 6 Dimensions */}
       <section className={v2.divider}>
         <div className={`${v2.section} ${v2.sectionPad}`}>
-          <p className={v2.kicker}>The 5 Dimensions</p>
+          <p className={v2.kicker}>The 6 Dimensions</p>
           <h2 className={`${v2.h2} mt-4 max-w-2xl`}>
-            Every audit scores your business across five areas of agent
+            Every audit scores your business across six areas of agent
             readiness.
           </h2>
           <p className={`${v2.body} mt-4 max-w-xl`}>
