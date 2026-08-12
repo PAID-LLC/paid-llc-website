@@ -101,20 +101,43 @@ describe("act hysteresis", () => {
 });
 
 describe("stake drift", () => {
+  const fixedRand = () => 0.5; // noise term becomes exactly 0
+
   it("is deterministic for a fixed rand() stream", () => {
-    const fixedRand = () => 0.5; // noise term becomes exactly 0
-    const boom = stakeDelta("boom", 1, fixedRand);
-    const bust = stakeDelta("bust", 1, fixedRand);
+    const boom = stakeDelta("boom", 1, fixedRand, 50);
+    const bust = stakeDelta("bust", 1, fixedRand, 50);
     expect(boom).toBeGreaterThan(0);
     expect(bust).toBeLessThan(0);
-    expect(stakeDelta("boom", 1, fixedRand)).toBe(boom);
+    expect(stakeDelta("boom", 1, fixedRand, 50)).toBe(boom);
   });
 
   it("scales with volatility", () => {
-    const fixedRand = () => 0.5;
-    const low = stakeDelta("boom", 0.5, fixedRand);
-    const high = stakeDelta("boom", 1.5, fixedRand);
+    const low = stakeDelta("boom", 0.5, fixedRand, 50);
+    const high = stakeDelta("boom", 1.5, fixedRand, 50);
     expect(high).toBeGreaterThan(low);
+  });
+
+  // The property the old constant-drift model lacked, and the reason it pinned
+  // every citizen against a boundary within a day of any sustained act.
+  it("reverts toward the act's level instead of drifting without bound", () => {
+    // Already rich in a boom: the pull is downward, not further up.
+    expect(stakeDelta("boom", 1, fixedRand, 95)).toBeLessThan(0);
+    // Already poor in a bust: the pull is upward.
+    expect(stakeDelta("bust", 1, fixedRand, 5)).toBeGreaterThan(0);
+    // And it weakens as the citizen approaches the level.
+    const far = stakeDelta("boom", 1, fixedRand, 40);
+    const near = stakeDelta("boom", 1, fixedRand, 78);
+    expect(far).toBeGreaterThan(near);
+  });
+
+  it("holds a sustained act at a finite level rather than a boundary", () => {
+    for (const act of ["boom", "stable", "correction", "bust"] as const) {
+      let stake = 50;
+      for (let i = 0; i < 4000; i++) stake += stakeDelta(act, 1, fixedRand, stake);
+      // Never parked on 0 or 100, which is exactly what used to happen.
+      expect(stake).toBeGreaterThan(2);
+      expect(stake).toBeLessThan(98);
+    }
   });
 });
 

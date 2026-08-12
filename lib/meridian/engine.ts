@@ -9,9 +9,11 @@
 // writes, so there is no injection surface.
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import { getEcon } from "@/lib/econ";
-import { readCounter } from "@/lib/usage-guard";
 import { hashStr, mulberry32 } from "@/lib/sim-field";
+import {
+  CIVIC_WINDOW_HOURS, EMPTY_COUNTS, civicNet, civicSummary, civicTarget,
+  type CivicCounts,
+} from "@/lib/meridian/signals";
 
 export const MERIDIAN_ROOM_ID = 3; // the Macro-Vault hosts the colony
 
@@ -155,6 +157,11 @@ async function sbWrite(path: string, method: "POST" | "PATCH", body: unknown): P
 // Maps a day's net (revenue - token cost, small USD figures at this stage of
 // the business) to an index swing. Tuned so a nickel of daily net moves the
 // index meaningfully without a single good/bad day saturating it outright.
+/**
+ * @deprecated Superseded 2026-08-11 by CIVIC_SCALE in lib/meridian/signals.ts.
+ * Kept only because it is denominated in dollars and documents what the index
+ * used to mean; nothing in the tick reads it any more.
+ */
 export const PROSPERITY_SCALE = 200;
 export const EMA_ALPHA = 0.15;
 export const EASE_RATE = 0.1;
@@ -218,17 +225,69 @@ export function nextActState(state: ActHysteresisState, index: number): ActHyste
   return { act: state.act, pendingAct: band, pendingTicks: 1, actChanged: false };
 }
 
-const ACT_BASE_DRIFT: Record<Act, number> = {
-  boom: 2.5,
-  stable: 0.2,
-  correction: -1.5,
-  bust: -3.5,
+/**
+ * The wealth level each act pulls the city toward, rather than a fixed drift
+ * per tick.
+ *
+ * The old model added a constant every tick: +2.5 in a boom, +0.2 in stable.
+ * With ticks 30 minutes apart that is +120 a day in a boom — so ANY act held
+ * for more than a few hours pinned every citizen against 0 or 100 and stopped
+ * the simulation dead. `stable` at +0.2 is what actually happened in
+ * production: a slow ratchet that walked four of six citizens to the ceiling
+ * over 277 ticks, where they stuck, with every recorded trough still sitting at
+ * the seed value of 50 because a stake that only ever rises never sets one. No
+ * troughs meant no rags-to-riches crossings, so the entire narrative engine was
+ * unreachable.
+ *
+ * Simply zeroing the drift would have fixed that one act and left the same trap
+ * in the other three — a long correction would pin everyone at 0 just as surely.
+ * Mean reversion removes the trap altogether: a sustained regime settles the
+ * city at that regime's wealth level and holds it there, while a CHANGE of
+ * regime is what actually moves fortunes. Which is the point of a boom.
+ */
+const ACT_TARGET: Record<Act, number> = {
+  boom: 82,
+  stable: 55,
+  correction: 34,
+  bust: 14,
 };
 
-/** A citizen's stake drift this tick — deterministic given a seeded rand(). */
-export function stakeDelta(act: Act, volatility: number, rand: () => number): number {
-  const noise = (rand() - 0.5) * 1.0; // ±0.5
-  return ACT_BASE_DRIFT[act] * volatility + noise;
+/** Pull per tick toward the act's target. 1/0.012 ≈ 83 ticks, so a regime
+ *  change takes about two days to fully express — slow enough that a returning
+ *  visitor sees a city mid-move rather than one already settled. */
+const REVERSION_RATE = 0.012;
+
+/**
+ * The fortunes that count as a rise and a fall worth recording.
+ *
+ * These were 75 and 25, chosen when stakes drifted without bound and any
+ * sustained act eventually drove everyone to 0 or 100 — at which point both
+ * thresholds were trivially reachable, and the crossing meant nothing. Under
+ * mean reversion the attainable range is roughly 14 to 86, so 75/25 sat almost
+ * at the extremes: replaying a real month of governance, the most volatile
+ * citizen in the city peaked at 70 and bottomed at 13, and produced no legend
+ * at all.
+ *
+ * 68/28 are the equivalent extremes for the range that actually exists. In that
+ * same month they yield a couple of crossings for the high-volatility citizens
+ * and none for the cautious ones, which is the intended shape: a legend should
+ * belong to someone who took a risk.
+ */
+export const LEGEND_HIGH = 68;
+export const LEGEND_LOW = 28;
+
+/**
+ * A citizen's stake drift this tick — deterministic given a seeded rand().
+ *
+ * Takes the current stake because reversion is relative to where the citizen
+ * already is. Volatility scales both how hard the market pulls them and how far
+ * they wander from it, so the cautious Gardener tracks the index closely while
+ * the ambitious Magnate overshoots it in both directions.
+ */
+export function stakeDelta(act: Act, volatility: number, rand: () => number, stake: number): number {
+  const pull = (ACT_TARGET[act] - stake) * REVERSION_RATE * volatility;
+  const noise = (rand() - 0.5) * 0.9 * volatility;
+  return pull + noise;
 }
 
 /** Decay bites twice as fast once the city can't afford upkeep. */
@@ -357,26 +416,61 @@ export interface MeridianTickResult {
 
 const TICK_SEED = hashStr("meridian-behavior");
 
+/**
+ * Gather the civic counts over the rolling window.
+ *
+ * Read-only and defensive: every source is optional, and a table that does not
+ * exist or returns nothing contributes zero rather than throwing. Meridian's
+ * tick must never fail because a neighbouring world's table moved — the whole
+ * point of this rebinding is that the city keeps reading something real, and a
+ * hard dependency on six tables would be less reliable than the dead counter it
+ * replaced, not more.
+ */
+export async function readCivicCounts(): Promise<CivicCounts> {
+  const sinceIso = new Date(Date.now() - CIVIC_WINDOW_HOURS * 3600 * 1000).toISOString();
+  const counts: CivicCounts = { ...EMPTY_COUNTS };
+
+  // The Genesis assembly's own log. `kind` carries the outcome.
+  const govern = await sbGet<{ kind: string }[]>(
+    `world_events?select=kind&created_at=gte.${sinceIso}&limit=2000`
+  );
+  for (const e of govern ?? []) {
+    if (e.kind === "enacted") counts.enacted++;
+    else if (e.kind === "rejected") counts.rejected++;
+    else if (e.kind === "ballot_opened") counts.ballotsOpened++;
+    else if (e.kind === "vote_cast") counts.votesCast++;
+  }
+
+  const [duels, sales, built] = await Promise.all([
+    sbGet<{ id: number }[]>(`arena_duels?select=id&created_at=gte.${sinceIso}&limit=500`),
+    sbGet<{ id: number }[]>(`sales_ledger?select=id&created_at=gte.${sinceIso}&limit=500`),
+    sbGet<{ id: number }[]>(`world_structures?select=id&created_at=gte.${sinceIso}&limit=500`),
+  ]);
+  counts.duels = duels?.length ?? 0;
+  counts.sales = sales?.length ?? 0;
+  counts.structuresBuilt = built?.length ?? 0;
+
+  return counts;
+}
+
 export async function runMeridianTick(): Promise<MeridianTickResult> {
   const state = await getMeridianState();
   if (!state) return { initialized: false };
 
   const tick = state.tick + 1;
 
-  // 1) Real economic signal → smoothed prosperity index.
-  const econ = await getEcon();
-  const [chatCalls, arenaCalls, revenueCents] = await Promise.all([
-    readCounter("gemini"),
-    readCounter("gemini_arena"),
-    readCounter("credit_revenue_cents"),
-  ]);
-  const perArenaCallUsd = econ.duelUsd / econ.duel_gemini_calls;
-  const estTokenCostUsd = chatCalls * econ.chatCallUsd + arenaCalls * perArenaCallUsd;
-  const revenueUsd = revenueCents / 100;
-  const net = revenueUsd - estTokenCostUsd;
+  // 1) Real civic signal → smoothed prosperity index.
+  //
+  // Was `credit_revenue − token cost` off three daily counters, which read
+  // exactly zero on essentially every tick and froze the whole world. See
+  // lib/meridian/signals.ts for the full account. Now the city reads whether
+  // the Genesis assembly can actually pass anything, plus the rare real
+  // commercial events, over a rolling six-hour window.
+  const counts = await readCivicCounts();
+  const net = civicNet(counts);
 
   const netEma = nextNetEma(state.net_ema, net);
-  const target = prosperityTarget(netEma);
+  const target = civicTarget(netEma);
   const prosperityIndex = easeIndex(state.prosperity_index, target);
 
   const actResult = nextActState(
@@ -384,7 +478,14 @@ export async function runMeridianTick(): Promise<MeridianTickResult> {
     prosperityIndex
   );
   if (actResult.actChanged) {
-    await appendEvent("act_change", ACT_LINES[actResult.act], tick, { from: state.act, to: actResult.act, index: prosperityIndex });
+    // The act line, then the receipt. A compiler world that announces a boom
+    // without saying what it read is just a mood ring.
+    await appendEvent(
+      "act_change",
+      `${ACT_LINES[actResult.act]} The assembly's last ${CIVIC_WINDOW_HOURS} hours: ${civicSummary(counts)}.`,
+      tick,
+      { from: state.act, to: actResult.act, index: prosperityIndex, counts, net }
+    );
   }
   const act = actResult.act;
   const actSinceTick = actResult.actChanged ? tick : state.act_since_tick;
@@ -399,7 +500,7 @@ export async function runMeridianTick(): Promise<MeridianTickResult> {
     const def = CAST_BY_NAME.get(citizen.name);
     if (!def) continue;
     const rand = mulberry32((TICK_SEED ^ Math.imul(tick, 2654435761) ^ hashStr(citizen.name)) >>> 0);
-    const delta = stakeDelta(act, def.volatility, rand);
+    const delta = stakeDelta(act, def.volatility, rand, citizen.stake);
     const prevStake = citizen.stake;
     const stake = clamp01to100(prevStake + delta);
 
@@ -408,32 +509,36 @@ export async function runMeridianTick(): Promise<MeridianTickResult> {
     let troughStake = citizen.trough_stake;
     let troughTick = citizen.trough_tick;
 
-    // Rags-to-riches: the first time a citizen crosses from a post-trough low
-    // (<25) up through a new high (>75). Riches-to-rags is the mirror image.
-    if (stake > 75 && stake > peakStake) {
-      if (troughStake < 25) {
-        crossings++;
-        await appendEvent(
-          "rags_to_riches",
-          `${citizen.name} ${citizen.epithet} climbs from a stake of ${troughStake.toFixed(0)} (tick ${troughTick}) to ${stake.toFixed(0)} — rags to riches, in full view of the record.`,
-          tick, { citizen: citizen.name, from: troughStake, to: stake, sinceTick: troughTick }
-        );
-      }
-      peakStake = stake;
-      peakTick = tick;
+    // Measurement and narrative are separated here, because conflating them
+    // was a bug. Peak and trough used to update ONLY past the 75/25 thresholds
+    // that fire the legends, so they were not running extremes at all: a
+    // citizen who fell from 100 to 30 still had a recorded trough of 50, their
+    // seed value, and the panel reported it as fact. Track the true extremes
+    // always; gate only the EVENTS on the thresholds.
+    const newPeak = stake > peakStake;
+    const newTrough = stake < troughStake;
+
+    // Rags-to-riches: a new high above 75 by someone who had previously bottomed
+    // out below 25. Riches-to-rags is the mirror image.
+    if (newPeak && stake > LEGEND_HIGH && troughStake < LEGEND_LOW) {
+      crossings++;
+      await appendEvent(
+        "rags_to_riches",
+        `${citizen.name} ${citizen.epithet} climbs from a stake of ${troughStake.toFixed(0)} (tick ${troughTick}) to ${stake.toFixed(0)} — rags to riches, in full view of the record.`,
+        tick, { citizen: citizen.name, from: troughStake, to: stake, sinceTick: troughTick }
+      );
     }
-    if (stake < 25 && stake < troughStake) {
-      if (peakStake > 75) {
-        crossings++;
-        await appendEvent(
-          "riches_to_rags",
-          `${citizen.name} ${citizen.epithet} falls from a stake of ${peakStake.toFixed(0)} (tick ${peakTick}) to ${stake.toFixed(0)} — riches to rags. The chronicle does not flatter anyone.`,
-          tick, { citizen: citizen.name, from: peakStake, to: stake, sinceTick: peakTick }
-        );
-      }
-      troughStake = stake;
-      troughTick = tick;
+    if (newTrough && stake < LEGEND_LOW && peakStake > LEGEND_HIGH) {
+      crossings++;
+      await appendEvent(
+        "riches_to_rags",
+        `${citizen.name} ${citizen.epithet} falls from a stake of ${peakStake.toFixed(0)} (tick ${peakTick}) to ${stake.toFixed(0)} — riches to rags. The chronicle does not flatter anyone.`,
+        tick, { citizen: citizen.name, from: peakStake, to: stake, sinceTick: peakTick }
+      );
     }
+
+    if (newPeak) { peakStake = stake; peakTick = tick; }
+    if (newTrough) { troughStake = stake; troughTick = tick; }
 
     const status =
       act === "boom" ? "riding the boom" :
@@ -444,7 +549,20 @@ export async function runMeridianTick(): Promise<MeridianTickResult> {
       stake, peak_stake: peakStake, peak_tick: peakTick, trough_stake: troughStake, trough_tick: troughTick,
       status, updated_at: new Date().toISOString(),
     });
+    // Write the whole updated row back, not just the stake.
+    //
+    // Only `stake` used to be copied onto the in-memory object, so `peak_tick`
+    // still held its pre-tick value when the level-up pass below tested
+    // `citizen.peak_tick !== tick`. That test therefore failed every time and
+    // the level-up path was unreachable — which is why all six ward structures
+    // were still level 1 after 277 ticks despite four citizens having climbed
+    // past the threshold. Unlike the other two faults this one is not about the
+    // economy at all; it would have survived any amount of fixing upstream.
     citizen.stake = stake;
+    citizen.peak_stake = peakStake;
+    citizen.peak_tick = peakTick;
+    citizen.trough_stake = troughStake;
+    citizen.trough_tick = troughTick;
   }
 
   // 3) Bonds and rifts from correlated fortunes: pairs whose stakes moved the
@@ -501,7 +619,7 @@ export async function runMeridianTick(): Promise<MeridianTickResult> {
   // stake newly crosses into "prosperous" territory (>=75), capped at 3 —
   // the same crossing that feeds the rags-to-riches check above.
   for (const citizen of citizens) {
-    if (citizen.stake < 75) continue;
+    if (citizen.stake < LEGEND_HIGH) continue;
     const structure = structures.find((s) => s.ward_kind === citizen.ward);
     if (!structure || structure.level >= 3) continue;
     if (citizen.peak_tick !== tick) continue; // only on the tick it just crossed
