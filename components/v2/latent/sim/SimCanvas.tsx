@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars, Html, Line } from "@react-three/drei";
@@ -8,9 +8,11 @@ import type { SimAgentRow, SimData, SimStructure } from "@/lib/simworld";
 import {
   CinematicDescent, CloudBand, GroundMist, GroundSky, MilkyWayBackdrop,
   NexusStar, ParticleField, Pulse, RealisticWater, RimMountains, RippleDisc,
-  ScatterField, SceneFX, SkyWorld, Spin, StormFlash, TrailLine, ageTier,
+  ScatterField, SkyWorld, Spin, StormFlash, TrailLine, ageTier,
   detailSeed, mixHex, type ParticleMode,
 } from "@/components/v2/latent/ground-fx";
+import { SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
+import { useSubstrateSurfaces, type SubstrateSurfaces } from "./surfaces";
 import {
   GROUND_SIZE, SHORE_END, SIM_ACCENT, SIM_ACCENT_SOFT, WATER_LEVEL,
   anomalySites, groundColor, hashStr, terrainHeight,
@@ -30,7 +32,24 @@ const WATER_COLOR = "#0a3d52";
 // ground as the ticks land; that visibility is the headline improvement over
 // the Genesis surface, which only shows what agents built, not the agents.
 
-const SLATE_ROCK = "#141a24";
+// The structure colour moved to ./surfaces.ts, where it was also lifted out of
+// the basement: #141a24 (RGB 20,26,36) -> #2b3547. Paint that dark carries no
+// information for a light or a normal map to reveal, which is why adding lights
+// to these worlds has never helped much. Let the light rig do the darkening.
+
+// Materials are built once at the scene root and reached from here, because the
+// structure meshes are eleven components deep and every one of them wants the
+// same rock. A provider is the only way this can work: r3f runs its own
+// reconciler, so a context declared OUTSIDE <Canvas> does not reach inside it —
+// the Provider has to be a child of the Canvas, as it is at the foot of this
+// file.
+const SurfaceContext = createContext<SubstrateSurfaces | null>(null);
+
+function useSurfaces(): SubstrateSurfaces {
+  const ctx = useContext(SurfaceContext);
+  if (!ctx) throw new Error("Substrate surfaces used outside the provider");
+  return ctx;
+}
 
 // Sky, fog, horizon glow, and particle behavior all follow the deterministic
 // weather regime so the territory has moods without spending anything: motes
@@ -75,7 +94,13 @@ function Terrain() {
     // placement math in lib/sim-field.ts stays authoritative): terrace scarps
     // darken toward cliff slate, mesa tops pick up a pale engineered sheen.
     const normal = g.attributes.normal as THREE.BufferAttribute;
-    const CLIFF = { r: 0.045, g: 0.06, b: 0.085 };
+    // Scarps lifted out of the basement: was 0.045/0.06/0.085, which is RGB
+    // 11,15,22 out of 255. A terrace wall painted that dark carries no
+    // information for a light OR a normal map to reveal, so it stayed a
+    // silhouette no matter what was done to the lighting — and the scarps are
+    // the most characteristic thing the terrain has. The darkness now comes
+    // from the key light raking across them, which is where it belongs.
+    const CLIFF = { r: 0.115, g: 0.145, b: 0.195 };
     const TOP = { r: 0.34, g: 0.43, b: 0.53 };
     for (let i = 0; i < pos.count; i++) {
       const ny = normal.getY(i);
@@ -99,11 +124,16 @@ function Terrain() {
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
-  return (
-    <mesh geometry={geometry} receiveShadow>
-      <meshStandardMaterial vertexColors flatShading roughness={1} metalness={0} />
-    </mesh>
-  );
+  const surfaces = useSurfaces();
+
+  // `flatShading` is gone from here on purpose, and it is the one change in
+  // this pass that alters the world's look rather than adding to it. Faceting
+  // and a normal map are two answers to the same question and the map is the
+  // better one: 150x150 segments of hard-edged geometry give relief only at the
+  // scale of a two-unit quad, where the map gives it at the scale of a
+  // centimetre and keeps giving it as the camera closes. The terraces still
+  // read as terraces — they are real geometry, not shading.
+  return <mesh geometry={geometry} material={surfaces.terrain} receiveShadow />;
 }
 
 // ── The Mast: SimCore's instrument pylon at the origin ──────────────────────
@@ -121,7 +151,7 @@ function Mast({ reduced }: { reduced: boolean }) {
       </mesh>
       <mesh position-y={11} castShadow>
         <cylinderGeometry args={[0.35, 0.7, 22, 8]} />
-        <meshStandardMaterial color={SLATE_ROCK} emissive={SIM_ACCENT} emissiveIntensity={0.12} flatShading roughness={1} />
+        <Rock emissiveIntensity={0.12} />
       </mesh>
       {[6, 13, 20].map((y, i) => (
         <Pulse key={y} speed={1.1} amp={0.1} phase={i * 1.4} reduced={reduced}>
@@ -262,16 +292,18 @@ function BondThreads({ sim }: { sim: SimData }) {
 
 // ── Structures ───────────────────────────────────────────────────────────────
 
+/**
+ * The shared structure material, attached as a child so all 32 call sites in
+ * this file keep the shape they already had.
+ *
+ * Before the surface pass each of those call sites declared its own
+ * MeshStandardMaterial inline, which meant 32 material compiles and 32 chances
+ * for a structure to drift out of step with the rest of the world. They now
+ * resolve to about six shared materials, one per distinct emissive intensity.
+ */
 function Rock({ emissiveIntensity = 0.1 }: { emissiveIntensity?: number }) {
-  return (
-    <meshStandardMaterial
-      color={SLATE_ROCK}
-      emissive={SIM_ACCENT}
-      emissiveIntensity={emissiveIntensity}
-      flatShading
-      roughness={1}
-    />
-  );
+  const surfaces = useSurfaces();
+  return <primitive object={surfaces.rock(emissiveIntensity)} attach="material" />;
 }
 
 // Every structure mesh takes an age tier (0 fresh / 1 established / 2 ancient):
@@ -356,7 +388,7 @@ function CairnMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
           <Pulse speed={0.9} amp={0.06} reduced={reduced}>
             <mesh position-y={3.6} castShadow>
               <icosahedronGeometry args={[0.45, 0]} />
-              <meshStandardMaterial color={SLATE_ROCK} flatShading roughness={0.5} emissive={SIM_ACCENT} emissiveIntensity={0.7} />
+              <Rock emissiveIntensity={0.7} />
             </mesh>
           </Pulse>
         </Spin>
@@ -527,7 +559,7 @@ function MonumentMesh({ reduced, tier }: { reduced: boolean; tier: number }) {
           <Pulse speed={0.8} amp={0.05} reduced={reduced}>
             <mesh position-y={6.4} castShadow>
               <coneGeometry args={[0.7, 1.1, 4]} />
-              <meshStandardMaterial color={SLATE_ROCK} flatShading roughness={0.5} emissive={SIM_ACCENT} emissiveIntensity={0.6} />
+              <Rock emissiveIntensity={0.6} />
             </mesh>
           </Pulse>
         </Spin>
@@ -895,6 +927,7 @@ export default function SimCanvas({
   const storm = sim.clock.weather === "static storm";
   // Camera belongs to the descent until it lands, then to OrbitControls.
   const [introDone, setIntroDone] = useState(false);
+  const surfaces = useSubstrateSurfaces(reduced);
 
   return (
     <Canvas
@@ -905,8 +938,28 @@ export default function SimCanvas({
     >
       <color attach="background" args={[look.sky]} />
       <fog attach="fog" args={[horizonHex, look.fogNear, look.fogFar]} />
-      <hemisphereLight args={[horizonHex, "#0e131b", 0.5]} />
-      <ambientLight color="#9fb4c8" intensity={0.2} />
+      {/* Image-based lighting, tracking the weather so a fog bank and a solar
+          flush light the rock differently rather than only tinting the sky.
+
+          `ground` is the deep sea, and it is DARK on purpose — open water has
+          an albedo around 0.06, one of the lowest of any natural surface. This
+          is the exact inverse of Waypoint, whose cloud sea below is one of the
+          brightest, and the two worlds sitting at opposite ends of that single
+          parameter is most of why they no longer read as the same place with a
+          different palette. */}
+      <SkyEnvironment
+        top={look.sky}
+        horizon={horizonHex}
+        ground={WATER_COLOR}
+        glow={look.glow}
+        intensity={0.85 + look.glowStrength * 0.5}
+      />
+
+      {/* Fills cut back now the environment map carries the ambient term. Left
+          at 0.5/0.2 the scene double-counts its own sky and the terraces flatten
+          out — the opposite of what the surface pass is for. */}
+      <hemisphereLight args={[horizonHex, "#0e131b", 0.26]} />
+      <ambientLight color="#9fb4c8" intensity={0.08} />
       {/* The key light casts real shadows — the single biggest "grounded" cue
           a low-poly scene can have. Ortho bounds cover the full roam radius. */}
       <directionalLight
@@ -956,43 +1009,45 @@ export default function SimCanvas({
       <RimMountains inner={148} outer={235} height={72} color="#0c1117" seed={5} />
       {storm && <StormFlash color="#c4b5fd" reduced={reduced} />}
 
-      <Terrain />
-      <RealisticWater
-        size={2 * SHORE_END}
-        y={WATER_LEVEL}
-        color={WATER_COLOR}
-        sunColor={flush ? "#ffe3b0" : "#cfe6ff"}
-        sunDirection={SUN_DIRECTION}
-        reduced={reduced}
-      />
-      <UnchartedShroud sim={sim} />
-      <Mast reduced={reduced} />
-      <BondThreads sim={sim} />
-
-      {sim.agents.map((a) => (
-        <Instance key={a.name} agent={a} reduced={reduced} title={titles?.get(a.name)?.[0] ?? null} />
-      ))}
-      {sim.structures.map((s) => (
-        <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} />
-      ))}
-      {/* Trails worn between the Mast and everything the cast has raised —
-          the territory reads as settled ground, not scattered objects. */}
-      {sim.structures.map((s) => (
-        <TrailLine
-          key={`trail-${s.id}`}
-          a={[0, 0]}
-          b={[s.x, s.z]}
-          color={SIM_ACCENT}
-          heightFn={terrainHeight}
-          opacity={0.22}
-          seed={s.id + 11}
+      <SurfaceContext.Provider value={surfaces}>
+        <Terrain />
+        <RealisticWater
+          size={2 * SHORE_END}
+          y={WATER_LEVEL}
+          color={WATER_COLOR}
+          sunColor={flush ? "#ffe3b0" : "#cfe6ff"}
+          sunDirection={SUN_DIRECTION}
+          reduced={reduced}
         />
-      ))}
-      {sites
-        .filter((s) => foundByKey.has(s.key))
-        .map((s) => (
-          <Anomaly key={s.key} site={s} foundBy={foundByKey.get(s.key)!} reduced={reduced} />
+        <UnchartedShroud sim={sim} />
+        <Mast reduced={reduced} />
+        <BondThreads sim={sim} />
+
+        {sim.agents.map((a) => (
+          <Instance key={a.name} agent={a} reduced={reduced} title={titles?.get(a.name)?.[0] ?? null} />
         ))}
+        {sim.structures.map((s) => (
+          <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} />
+        ))}
+        {/* Trails worn between the Mast and everything the cast has raised —
+            the territory reads as settled ground, not scattered objects. */}
+        {sim.structures.map((s) => (
+          <TrailLine
+            key={`trail-${s.id}`}
+            a={[0, 0]}
+            b={[s.x, s.z]}
+            color={SIM_ACCENT}
+            heightFn={terrainHeight}
+            opacity={0.22}
+            seed={s.id + 11}
+          />
+        ))}
+        {sites
+          .filter((s) => foundByKey.has(s.key))
+          .map((s) => (
+            <Anomaly key={s.key} site={s} foundBy={foundByKey.get(s.key)!} reduced={reduced} />
+          ))}
+      </SurfaceContext.Provider>
 
       {/* Ground truthing: instanced slate debris plus a few emissive shards
           along the outlands — one draw call each, seeded, never reshuffles. */}
@@ -1019,7 +1074,16 @@ export default function SimCanvas({
       {/* Weather made visible: the regime's particle field plus ground mist. */}
       <ParticleField mode={look.mode} color={look.particle} area={125} reduced={reduced} />
       <GroundMist color={mixHex(horizonHex, "#ffffff", 0.3)} opacity={look.mist} area={120} reduced={reduced} />
-      <SceneFX />
+      {/* Was SceneFX — the single-number grade seven worlds shared, and the
+          reason four of them read as "dark ground with glowing bits". Substrate
+          now has its own entry in world-kit's GRADE table: cool, deep, hue
+          rotated negative, and low bloom because the water already supplies the
+          highlights and blooming it turns the sea to milk.
+
+          Bloom tracks the weather's own glow strength, so a solar flush flares
+          and a fog bank does not — one number, driven by the same deterministic
+          field the engine runs on rather than by taste. */}
+      <WorldFX world="substrate" bloom={0.5 + look.glowStrength * 0.5} reduced={reduced} />
 
       <CinematicDescent
         from={[160, 180, 205]}

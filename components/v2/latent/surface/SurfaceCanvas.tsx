@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -11,8 +11,10 @@ import WorldAudio from "@/components/v2/latent/audio/WorldAudio";
 import {
   AuroraCurtain, CinematicDescent, CloudBand, GlyphPlaque, GroundMist,
   GroundSky, MilkyWayBackdrop, NexusStar, ParticleField, Pulse, RimMountains,
-  ScatterField, SceneFX, SkyWorld, Spin, TrailLine, ageTier, detailSeed, mixHex,
+  ScatterField, SkyWorld, Spin, TrailLine, ageTier, detailSeed, mixHex,
 } from "@/components/v2/latent/ground-fx";
+import { SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
+import { useGenesisSurfaces, type GenesisSurfaces } from "./surfaces";
 import SurfaceHUD from "./SurfaceHUD";
 import {
   GROUND_SIZE, PLOT_RADIUS, SURFACE_SEED, COMPASS_PLOTS, TERRAFORM_PALETTES,
@@ -32,6 +34,19 @@ import {
 const ROSE = "#f472b6";
 const ROSE_SOFT = "#f9a8d4";
 const ROCK_HEX = "#241a20";
+
+// Materials are built once at the scene root and reached from here, because the
+// structure meshes are several components deep and every one wants the same
+// rock. r3f runs its own reconciler, so a context declared OUTSIDE <Canvas>
+// does not reach inside it — the Provider has to be a child of the Canvas, as
+// it is at the foot of this file.
+const SurfaceContext = createContext<GenesisSurfaces | null>(null);
+
+function useSurfaces(): GenesisSurfaces {
+  const ctx = useContext(SurfaceContext);
+  if (!ctx) throw new Error("Genesis surfaces used outside the provider");
+  return ctx;
+}
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -69,7 +84,12 @@ function Terrain({ stage, terraform }: { stage: number; terraform: string | null
     // cliff rock, high ridges catch a pale dusting. This is what separates
     // "vertex-colored plane" from terrain that reads as geology.
     const normal = g.attributes.normal as THREE.BufferAttribute;
-    const CLIFF = { r: 0.09, g: 0.055, b: 0.075 };
+    // Scarps lifted out of the basement: was 0.09/0.055/0.075, RGB 23,14,19.
+    // Paint that dark carries no information for a light or a normal map to
+    // reveal, so the cliffs stayed silhouettes however the lighting was tuned —
+    // and the cliffs are where this terrain's geology actually reads. The
+    // darkness now comes from the key light raking across them.
+    const CLIFF = { r: 0.165, g: 0.105, b: 0.14 };
     const DUST = { r: 0.62, g: 0.5, b: 0.56 };
     for (let i = 0; i < pos.count; i++) {
       const ny = normal.getY(i);
@@ -93,11 +113,15 @@ function Terrain({ stage, terraform }: { stage: number; terraform: string | null
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
-  return (
-    <mesh geometry={geometry} receiveShadow>
-      <meshStandardMaterial vertexColors flatShading roughness={1} metalness={0} />
-    </mesh>
-  );
+  const surfaces = useSurfaces();
+
+  // `flatShading` is gone on purpose, and it is the one change here that alters
+  // the look rather than adding to it. Faceting and a normal map answer the
+  // same question and the map answers it better: 150x150 segments give relief
+  // only at the scale of a two-unit quad, where the map gives it at the scale
+  // of a centimetre and keeps giving it as the camera closes. The ridges and
+  // mesas still read — they are real geometry, not shading.
+  return <mesh geometry={geometry} material={surfaces.terrain} receiveShadow />;
 }
 
 // Settlement lights: they inhabit what they build. Same rule as the planet's
@@ -133,16 +157,15 @@ function SettlementLights({ stage, terraform }: { stage: number; terraform: stri
 
 const SIZE_SCALE: Record<string, number> = { small: 0.72, medium: 1, large: 1.32 };
 
+/**
+ * The shared structure material, attached as a child so all 22 call sites in
+ * this file keep the shape they already had. They resolve to a handful of
+ * shared materials, one per distinct emissive intensity, instead of 22
+ * separate compiles.
+ */
 function Rock(props: { emissiveIntensity?: number }) {
-  return (
-    <meshStandardMaterial
-      color={ROCK_HEX}
-      emissive={ROSE}
-      emissiveIntensity={props.emissiveIntensity ?? 0.08}
-      flatShading
-      roughness={1}
-    />
-  );
+  const surfaces = useSurfaces();
+  return <primitive object={surfaces.rock(props.emissiveIntensity ?? 0.08)} attach="material" />;
 }
 
 // Every structure mesh takes an age tier (0 fresh / 1 established / 2 ancient)
@@ -687,6 +710,7 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
 
   const claimed = new Set<string>(world.structures.map((s) => s.plot));
   const freshIds = new Set(live.freshStructureIds);
+  const surfaces = useGenesisSurfaces(reduced, stage, terraform);
 
   // One dark frame before the portal mounts, so there is no flash of chrome.
   if (!mounted) return <div className="fixed inset-0 z-[60] bg-[#07070b]" />;
@@ -705,8 +729,29 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         <color attach="background" args={[skyHex]} />
         {/* Fog melts distant terrain into the dome's horizon band, not the raw sky. */}
         <fog attach="fog" args={[horizonHex, 70, 240]} />
-        <hemisphereLight args={[horizonHex, "#17101a", 0.5]} />
-        <ambientLight color="#c4a2b4" intensity={0.22} />
+        {/* Image-based lighting, and on this world it is stage-driven like
+            everything else.
+
+            `ground` is the light arriving from below, so it is the terraform
+            direction's own deep tone mixed in by stage: a barren Synthetica
+            Prime bounces almost nothing, and one the assembly has voted five
+            stages of oceans onto throws blue up onto every overhang. That is
+            the whole terraform argument made physical rather than tinted —
+            before this pass the stages differed only in hue, and hue alone is
+            the weakest signal a world has. */}
+        <SkyEnvironment
+          top={skyHex}
+          horizon={horizonHex}
+          ground={terra ? mixHex("#0b0810", terra.deep, Math.min(1, stage / 5) * 0.8) : "#0b0810"}
+          glow={bright}
+          intensity={0.8 + glowStrength * 0.6}
+        />
+
+        {/* Fills cut back now the environment map carries the ambient term.
+            Left at 0.5/0.22 the scene double-counts its own sky and the cliffs
+            flatten out, which is the opposite of the point. */}
+        <hemisphereLight args={[horizonHex, "#17101a", 0.26]} />
+        <ambientLight color="#c4a2b4" intensity={0.09} />
         {/* The key light casts real shadows — the single biggest "grounded"
             cue a low-poly scene can have. Ortho bounds cover the full roam. */}
         <directionalLight
@@ -744,16 +789,18 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         <CloudBand color={mixHex(horizonHex, "#ffffff", 0.4)} opacity={0.4} reduced={reduced} />
         <RimMountains inner={126} outer={205} height={64} color="#171016" seed={3} />
 
-        <Terrain stage={stage} terraform={terraform} />
-        <SettlementLights stage={stage} terraform={terraform} />
-        <Assembly world={world} />
+        <SurfaceContext.Provider value={surfaces}>
+          <Terrain stage={stage} terraform={terraform} />
+          <SettlementLights stage={stage} terraform={terraform} />
+          <Assembly world={world} />
 
-        {world.structures.map((s) => (
-          <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} bright={bright} />
-        ))}
-        {COMPASS_PLOTS.filter((p) => !claimed.has(p)).map((p) => (
-          <OpenPlot key={p} plot={p} />
-        ))}
+          {world.structures.map((s) => (
+            <Structure key={s.id} s={s} fresh={freshIds.has(s.id)} reduced={reduced} bright={bright} />
+          ))}
+          {COMPASS_PLOTS.filter((p) => !claimed.has(p)).map((p) => (
+            <OpenPlot key={p} plot={p} />
+          ))}
+        </SurfaceContext.Provider>
         {/* Worn trails from the assembly out to every raised structure — the
             plots stop being scattered objects and start being a settlement. */}
         {world.structures.map((s) => {
@@ -805,7 +852,17 @@ export default function SurfaceCanvas({ initial }: { initial: WorldData }) {
         {terraform === "aurora" && stage > 0 && (
           <AuroraCurtain color={bright} intensity={0.25 + Math.min(1, stage / 5) * 0.35} reduced={reduced} />
         )}
-        <SceneFX />
+        {/* Was SceneFX — the single-number grade every world shared, and the
+            reason four of them read as "dark ground with glowing bits".
+            Genesis has its own entry in world-kit's GRADE table now, and it is
+            the last world to leave the shared one.
+
+            Bloom rides the stage: a barren world nobody has voted on is dim,
+            and one the assembly has terraformed five stages glows. Driven by
+            the same ballot record the ground colour and the audio already
+            read, so it cannot flatter the world beyond what was actually
+            enacted. */}
+        <WorldFX world="genesis" bloom={0.5 + Math.min(1, stage / 5) * 0.45} reduced={reduced} />
 
         <CinematicDescent
           from={[150, 170, 190]}

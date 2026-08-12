@@ -111,14 +111,22 @@ export const GRADE: Record<string, Grade> = {
   },
   // Amber cloud port, no ground. Bright and hazy: a dark vignette would put a
   // floor back into a world whose entire idea is that there isn't one.
+  //
+  // The hue push and the saturation lift are gone. Rendered, this world's
+  // frame is already 80% amber sky — a grade that adds warmth to it produced a
+  // single orange wash with no silhouette in it. On a world whose palette is
+  // this dominant the grade's job is to hold the other end, not to agree. The
+  // threshold goes up for the same reason: at 0.44 the lit cloud deck itself
+  // was over the bloom line, and blooming the background is how a bright world
+  // turns to soup.
   waypoint: {
     ...BASE,
     bloom: 0.72,
-    threshold: 0.44,
-    hue: 0.04,
-    saturation: 0.12,
-    brightness: 0.03,
-    contrast: 0.1,
+    threshold: 0.54,
+    hue: 0,
+    saturation: 0.04,
+    brightness: 0.02,
+    contrast: 0.14,
     vignette: 0.42,
   },
   // Desert colosseum under a red giant. Harsh daylight: bloom threshold sits
@@ -160,8 +168,21 @@ export const GRADE: Record<string, Grade> = {
   },
   // Ocean world. Cool and deep; the water already carries the highlights.
   substrate: { ...BASE, bloom: 0.62, threshold: 0.46, hue: -0.05, saturation: 0.12, vignette: 0.54 },
-  // Terraform surface, staged by its own progression.
-  genesis: { ...BASE, bloom: 0.66, saturation: 0.1 },
+  // Terraform surface. The only world whose look is meant to CHANGE over its
+  // run, so the static half of its grade stays deliberately mild and the
+  // variation is carried by the bloom the scene passes in from the enacted
+  // stage. Rose-warm hue and the portfolio's widest vignette: Synthetica Prime
+  // is a frontier, and a hard edge on the frame is what says so.
+  genesis: {
+    ...BASE,
+    bloom: 0.66,
+    threshold: 0.44,
+    hue: 0.09,
+    saturation: 0.12,
+    contrast: 0.11,
+    aberration: 0.0012,
+    vignette: 0.68,
+  },
 };
 
 export function gradeFor(world: string): Grade {

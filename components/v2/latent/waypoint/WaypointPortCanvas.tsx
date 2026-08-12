@@ -12,8 +12,9 @@ import {
   CinematicDescent, CloudBand, GroundSky, NexusStar, ParticleField, Pulse, Spin, mixHex,
 } from "@/components/v2/latent/ground-fx";
 import {
-  InstancedBlocks, LightShaft, TrafficStream, WorldFX, type Block,
+  InstancedBlocks, LightShaft, SkyEnvironment, TrafficStream, WorldFX, type Block,
 } from "@/components/v2/latent/world-kit";
+import { useWaypointSurfaces, type WaypointSurfaces } from "./surfaces";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 
 // ── Waypoint PORT: a platform in the cloud sea ───────────────────────────────
@@ -35,13 +36,24 @@ import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
 // The deck keeps the tarmac's exact footprint (348 x 90, |z| <= 45) because
 // tests/api/inhabitants-placement.test.ts pins the port crew to it. A narrower
 // deck would walk them off the edge and into the clouds.
+//
+// Surface pass 2026-08-12, the last of the eight. Everything above stays true;
+// what it adds is material. Waypoint had the biome and the mass but was still
+// solid-coloured boxes, so the structure read as a model of a port rather than
+// a port. See ./surfaces.ts for why an aerospace-plate story is the only one
+// that fits a world with no ground.
 
 const SCALE = 0.45;
 const DECK_W = FRAME.w * SCALE + 60;
 const DECK_D = 90;
 const BRANCH_DEPTH = 15;
 
-const DECK_METAL = "#2b2f3d";
+// The deck's own colour now lives in surfaces.ts, where it was also lifted out
+// of the basement: #2b2f3d -> #3d4356. That lift is not a brightening for its
+// own sake. A surface painted at RGB 43,47,61 carries no information for a
+// light to reveal, so the texture, the normal map and the environment map all
+// land on it and change nothing. Paint the darkness in and no surface pass can
+// ever be seen; let the LIGHT RIG do the darkening and it can.
 const AMBER = "#ffb968";
 const DEEP_SKY = "#3a1d4a";
 
@@ -67,7 +79,7 @@ function statusIntensity(status: GateStructure["status"]): number {
 
 // ── The deck ─────────────────────────────────────────────────────────────────
 
-function Deck() {
+function Deck({ surfaces }: { surfaces: WaypointSurfaces }) {
   const understructure = useMemo<Block[]>(() => {
     const rand = mulberry32(hashStr("waypoint-underdeck"));
     const blocks: Block[] = [];
@@ -75,14 +87,24 @@ function Deck() {
     // angle, these are what stop the platform reading as a floating slab.
     for (let i = 0; i < 22; i++) {
       const x = -DECK_W / 2 + 8 + (i / 21) * (DECK_W - 16);
-      blocks.push({ p: [x, -5.5, 0], s: [2.2, 7, DECK_D * 0.86] });
+      blocks.push({ p: [x, -5.5, 0], s: [2.2, 7, DECK_D * 0.86], c: "#4d5568" });
     }
     // Mooring pylons hanging down into the cloud, uneven so the platform reads
     // as built rather than extruded.
     for (let i = 0; i < 9; i++) {
       const x = -DECK_W / 2 + 20 + (i / 8) * (DECK_W - 40);
       const len = 26 + rand() * 54;
-      blocks.push({ p: [x, -9 - len / 2, (rand() - 0.5) * 40], s: [3.4, len, 3.4] });
+      const depth = Math.min(1, (9 + len) / 90);
+      blocks.push({
+        p: [x, -9 - len / 2, (rand() - 0.5) * 40],
+        s: [3.4, len, 3.4],
+        // Deeper pylons pale toward the cloud's LUMINANCE, not its hue. The
+        // first pass faded them toward the amber of the sea, which rendered as
+        // brown timber and turned an aerospace platform into a seaside pier.
+        // Aerial perspective washes contrast out; it does not repaint the
+        // object as the sky.
+        c: mixHex("#4d5568", "#8d95a6", depth * 0.65),
+      });
     }
     return blocks;
   }, []);
@@ -90,9 +112,8 @@ function Deck() {
   return (
     <group>
       {/* Main deck plate. */}
-      <mesh position-y={-1.2}>
+      <mesh position-y={-1.2} material={surfaces.deck}>
         <boxGeometry args={[DECK_W, 2.4, DECK_D]} />
-        <meshStandardMaterial color={DECK_METAL} roughness={0.62} metalness={0.55} />
       </mesh>
       {/* Lit edge trim along both long sides — the deck's outline against the
           clouds is the whole silhouette, so it gets its own light. */}
@@ -108,25 +129,40 @@ function Deck() {
           />
         </mesh>
       ))}
-      {/* The Concourse itself: the spine every gate branches off. */}
+      {/* The Concourse itself: the spine every gate branches off. Kept as its
+          own emissive material rather than the deck surface — this is the one
+          strip that is lit FROM WITHIN, and a triplanar plate texture would
+          break the continuous line that reads as a lit walkway from above. */}
       <mesh position-y={0.16}>
         <boxGeometry args={[(CONCOURSE.x2 - CONCOURSE.x1) * SCALE, 0.32, 7]} />
         <meshStandardMaterial color="#1c2230" emissive="#ffdf9e" emissiveIntensity={0.45} roughness={0.5} />
       </mesh>
-      <InstancedBlocks blocks={understructure} color="#181c26" roughness={0.75} metalness={0.5} />
+      {/* Tinted per instance so the pylons hanging deepest into the cloud read
+          hazier than the trusses tight under the deck — aerial perspective the
+          fog cannot supply, because fog is radial from the camera and this
+          needs to vary with depth BELOW the platform. */}
+      <InstancedBlocks blocks={understructure} color="#ffffff" material={surfaces.truss} />
     </group>
   );
 }
 
-function ControlTower({ traffic, reduced }: { traffic: number; reduced: boolean }) {
+function ControlTower({
+  traffic,
+  surfaces,
+  reduced,
+}: {
+  traffic: number;
+  surfaces: WaypointSurfaces;
+  reduced: boolean;
+}) {
   const x = worldX(CONTROL_TOWER.x);
   return (
     <group position={[x, 0, 0]}>
-      <mesh position-y={16}>
+      <mesh position-y={16} material={surfaces.tower}>
         <cylinderGeometry args={[2.2, 4.4, 32, 10]} />
-        <meshStandardMaterial color="#242a3a" emissive={AMBER} emissiveIntensity={0.28} roughness={0.5} metalness={0.45} />
       </mesh>
-      {/* Control cab. */}
+      {/* Control cab. Keeps its own bright material: this is a lit glass box on
+          top of a painted shaft, and it is the port's only interior. */}
       <mesh position-y={34}>
         <cylinderGeometry args={[6.2, 4.6, 5.4, 10]} />
         <meshStandardMaterial color="#2f3648" emissive="#ffe6b8" emissiveIntensity={0.55} roughness={0.35} metalness={0.5} />
@@ -158,7 +194,17 @@ function ControlTower({ traffic, reduced }: { traffic: number; reduced: boolean 
 // Cantilevered off the Concourse and out over open cloud, with a docking ring
 // and — only when the source world is actually lit — a departure beam.
 
-function Gate({ gate, showLabel, reduced }: { gate: GateStructure; showLabel: boolean; reduced: boolean }) {
+function Gate({
+  gate,
+  showLabel,
+  surfaces,
+  reduced,
+}: {
+  gate: GateStructure;
+  showLabel: boolean;
+  surfaces: WaypointSurfaces;
+  reduced: boolean;
+}) {
   const color = GATE_COLOR[gate.id];
   const intensity = statusIntensity(gate.status);
   const zSign = gate.side === "north" ? -1 : 1;
@@ -173,10 +219,11 @@ function Gate({ gate, showLabel, reduced }: { gate: GateStructure; showLabel: bo
         <boxGeometry args={[3.6, 0.8, Math.abs(pad) * 1.1]} />
         <meshStandardMaterial color="#232936" emissive={color} emissiveIntensity={0.12 + intensity * 0.3} roughness={0.6} metalness={0.4} />
       </mesh>
-      {/* Docking pad, hanging past the deck edge over nothing. */}
-      <mesh position={[x, 0, pad]}>
+      {/* Docking pad, hanging past the deck edge over nothing. Shares the deck
+          plate at a tighter tile, so a pad reads as the same material as the
+          platform rather than a disc parked on top of it. */}
+      <mesh position={[x, 0, pad]} material={surfaces.pad}>
         <cylinderGeometry args={[10, 11.5, 1.6, 12]} />
-        <meshStandardMaterial color="#20263a" roughness={0.6} metalness={0.5} />
       </mesh>
       {/* Docking ring: the gate's real status, in its source world's colour. */}
       <Pulse speed={1.4} amp={intensity > 0.3 ? 0.05 : 0} reduced={reduced}>
@@ -251,6 +298,7 @@ export default function WaypointPortCanvas({ state, reduced }: { state: Waypoint
   const traffic = state.traffic.level;
   const ambient = mixHex("#c9a6ff", "#ffdf9e", state.arrivals_level);
   const lanes = useLanes();
+  const surfaces = useWaypointSurfaces(reduced);
 
   // Real signal, not decoration: an idle crossroads has an empty sky.
   const highCraft = Math.round(4 + traffic * 22);
@@ -264,8 +312,16 @@ export default function WaypointPortCanvas({ state, reduced }: { state: Waypoint
     >
       <color attach="background" args={["#2a1830"]} />
       {/* Warm haze rather than darkness: distance here should read as depth of
-          atmosphere, not as an unlit void. */}
-      <fog attach="fog" args={["#8a5a52", 210, 900]} />
+          atmosphere, not as an unlit void.
+
+          Near plane pushed 210 -> 330. The deck is 348 long and the camera sits
+          at ~190, so at 210 the fog was landing on the SUBJECT — it repainted
+          the far half of the platform amber before the surface pass could show
+          anything, and no material change could have survived it. Fog belongs
+          between the viewer and the horizon, not on the thing being looked at.
+          The cloud sea still gets all of it, which is where the depth cue was
+          coming from anyway. */}
+      <fog attach="fog" args={["#8a5a52", 330, 1100]} />
 
       <GroundSky zenith={DEEP_SKY} horizon="#ff9a5c" glow="#ffd8a0" glowStrength={0.55} radius={620} />
       {/* The sun, low and enormous, sitting in the haze. */}
@@ -278,17 +334,58 @@ export default function WaypointPortCanvas({ state, reduced }: { state: Waypoint
       <CloudBand color="#c9755f" opacity={0.46} radius={560} y={-130} height={150} reduced={reduced} />
       <CloudBand color="#8a4a48" opacity={0.5} radius={700} y={-300} height={260} reduced={reduced} />
 
-      <hemisphereLight args={["#ffd7a8", "#6b3b3a", 0.85]} />
-      <ambientLight color="#ffcfa0" intensity={0.35} />
+      {/* Image-based lighting, and the one place Waypoint's physics differ from
+          every other world in the portfolio.
+
+          `ground` is the light arriving from BELOW. On a night city that is a
+          dim warm bounce off streets; on the Crucible it is hot rock. Here the
+          thing below is a sunlit cloud sea, and cloud tops are among the
+          brightest surfaces in nature — roughly 0.7-0.9 albedo against 0.1-0.3
+          for any kind of terrain. So Waypoint is lit MORE from underneath than
+          from overhead, which is physically correct and happens to serve the
+          one camera move unique to this world: OrbitControls open past the
+          horizontal, so the undersides of the trusses are geometry people
+          actually look at. Set this dark, as every other world does, and
+          dropping below the deck reveals a black skeleton.
+
+          Intensity was 1.05 on the first pass and rendered as a single orange
+          wash — sky, deck and pylons all one hue with no silhouette left. The
+          cloud sea is bright, but it is bright as FILL, and stacked on top of a
+          hemisphere, an ambient and a key light it stopped being fill and
+          started being the whole exposure. */}
+      <SkyEnvironment
+        top={DEEP_SKY}
+        horizon="#ff9a5c"
+        ground="#c98d6e"
+        glow="#ffd8a0"
+        intensity={0.7}
+      />
+
+      {/* Fills cut back now the environment map carries the ambient term. Left
+          where they were, this scene double-counts its own sky and the deck
+          washes out to flat cream.
+
+          The hemisphere is also the wrong way round and has been since the
+          rebuild: it was warm above and warm below, which is why a measured
+          frame came back 99% one hue with no silhouette in it. The zenith of
+          this world is VIOLET — it is the colour of DEEP_SKY, three lines up,
+          and the colour the environment map is already being fed. A warm sun
+          with a cool sky fill is what every real sunset actually does, and it
+          is the only light in this scene that can put a cool value on an
+          up-facing surface. The deck is the largest up-facing surface in the
+          frame, so this single swap is what lets it read as metal in an amber
+          sky rather than as more amber sky. */}
+      <hemisphereLight args={["#8a68bd", "#c98d6e", 0.6]} />
+      <ambientLight color="#ffcfa0" intensity={0.1} />
       {/* One key light, raking in from the sun's bearing. */}
       <directionalLight color="#ffd9ac" intensity={1.35 + traffic * 0.3} position={[-260, 90, -300]} />
       <pointLight color={AMBER} intensity={0.7} position={[0, 12, 0]} distance={220} />
 
-      <Deck />
-      <ControlTower traffic={traffic} reduced={reduced} />
+      <Deck surfaces={surfaces} />
+      <ControlTower traffic={traffic} surfaces={surfaces} reduced={reduced} />
 
       {state.city.gates.map((g, i) => (
-        <Gate key={g.id} gate={g} showLabel={i < 7} reduced={reduced} />
+        <Gate key={g.id} gate={g} showLabel={i < 7} surfaces={surfaces} reduced={reduced} />
       ))}
 
       <TrafficStream
