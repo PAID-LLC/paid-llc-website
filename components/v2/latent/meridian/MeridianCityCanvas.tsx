@@ -31,6 +31,7 @@ import {
 import { SkyEnvironment, WorldFX } from "@/components/v2/latent/world-kit";
 import { useMeridianSurfaces, type MeridianSurfaces } from "@/components/v2/latent/meridian/surfaces";
 import Inhabitants from "@/components/v2/latent/inhabitants/Inhabitants";
+import { wardVigour } from "@/lib/meridian/signals";
 import type { MeridianData } from "@/lib/meridian/engine";
 
 // ── Meridian CITY: the comprehensive 3D read ─────────────────────────────────
@@ -197,15 +198,19 @@ function WardBuildings({
   ward,
   level,
   prosperityIndex,
+  vigour,
   sf,
 }: {
   ward: Ward;
   level: 1 | 2 | 3;
   prosperityIndex: number;
+  /** This ward's own share of live activity. See the note at the call site. */
+  vigour: number;
   sf: MeridianSurfaces;
 }) {
   const kit = useMemo(() => buildWardKit(ward), [ward]);
-  const scale = structureScale(level) * (ward === "spire_row" ? spireBoost(prosperityIndex) : 1);
+  const scale =
+    structureScale(level) * (ward === "spire_row" ? spireBoost(prosperityIndex) : 1) * vigour;
   const body = sf.body[ward];
   const cap = ward === "spire_row" || ward === "ledger_house" ? sf.cap : sf.capWarm;
   return (
@@ -282,6 +287,7 @@ export default function MeridianCityCanvas({ state, reduced }: { state: Meridian
   const [introDone, setIntroDone] = useState(false);
   const index = state.clock.prosperityIndex;
   const sf = useMeridianSurfaces(reduced);
+  const vigour = useMemo(() => wardVigour(state.civic), [state.civic]);
 
   return (
     <Canvas
@@ -348,6 +354,15 @@ export default function MeridianCityCanvas({ state, reduced }: { state: Meridian
       <Ground sf={sf} />
       <AgoraObelisk prosperityIndex={index} reduced={reduced} sf={sf} />
 
+      {/* Six wedges, six different heights.
+          A wheel of six identical 60° sectors is the least interesting plan a
+          city can have: perfectly symmetric, no centre of gravity, nowhere for
+          the eye to go. It stayed that way because there was nothing to
+          differentiate the wards WITH — the world's only live number was a
+          prosperity index frozen at 50, and one number cannot make six things
+          differ. Now each ward reads the part of the record it is actually
+          about, so the skyline is an uneven read of where the Latent Space is
+          busy rather than a diagram of where its wards are. */}
       {WARDS.map((ward) => {
         const structure: MeridianStructureRow | undefined = structureByWard.get(ward);
         return (
@@ -356,6 +371,7 @@ export default function MeridianCityCanvas({ state, reduced }: { state: Meridian
             ward={ward}
             level={structure?.level ?? 1}
             prosperityIndex={index}
+            vigour={vigour[ward] ?? 1}
             sf={sf}
           />
         );

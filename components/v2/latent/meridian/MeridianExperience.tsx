@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { CIVIC_WINDOW_HOURS, civicSummary } from "@/lib/meridian/signals";
 import Link from "next/link";
 import type { MeridianLegends } from "@/lib/meridian/legends";
 import MeridianMap from "./MeridianMap";
@@ -77,6 +78,20 @@ function Hud({ state }: { state: MeridianData }) {
         {stat("prosperity", state.clock.prosperityIndex.toFixed(0))}
         {stat("act", state.clock.act.toUpperCase())}
         {stat("since tick", `${state.clock.actSinceTick}`)}
+      </div>
+      {/* What the index is a reading OF.
+          Every compiler world here owes the visitor its sources, and this one
+          owes them most: for 277 ticks the number above sat at exactly 50 while
+          claiming to track the city's economy, and nothing on screen would have
+          let anyone catch that. Naming the inputs makes a frozen index visibly
+          frozen. */}
+      <div className="mt-2 border-t border-black/10 pt-2">
+        <p className="mb-1 text-[9px] uppercase tracking-[0.2em] text-zinc-400">
+          compiled from · last {CIVIC_WINDOW_HOURS}h
+        </p>
+        <p className="text-[10px] leading-snug text-zinc-500">
+          the assembly: {civicSummary(state.civic)}
+        </p>
       </div>
       <div className="mt-2 space-y-1 border-t border-black/10 pt-2">
         {state.citizens.map((c) => (

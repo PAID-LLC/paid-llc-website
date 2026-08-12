@@ -3,6 +3,16 @@
 export interface BuildLogEntry { sha: string; date: string; subject: string }
 export const BUILD_LOG: BuildLogEntry[] = [
   {
+    "sha": "b340b75",
+    "date": "2026-08-11",
+    "subject": "Meridian tick: correct the route's own description of what it reads"
+  },
+  {
+    "sha": "9874ec1",
+    "date": "2026-08-11",
+    "subject": "Meridian: make something able to happen"
+  },
+  {
     "sha": "b422484",
     "date": "2026-08-11",
     "subject": "Meridian: fix the scale, then give it surfaces"
@@ -51,15 +61,5 @@ export const BUILD_LOG: BuildLogEntry[] = [
     "sha": "9b2d6fa",
     "date": "2026-08-10",
     "subject": "The pit becomes the Crucible, and the Lathe becomes a monument"
-  },
-  {
-    "sha": "db05037",
-    "date": "2026-08-09",
-    "subject": "The Lathe becomes a foundry city: real melt, real skyline, a real shift"
-  },
-  {
-    "sha": "f35f4e6",
-    "date": "2026-08-09",
-    "subject": "Add blog post: You Can Build Anything. That Is the Problem."
   }
 ];

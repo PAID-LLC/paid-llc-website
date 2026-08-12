@@ -129,6 +129,8 @@ export interface MeridianData {
   structures: MeridianStructureRow[];
   events: MeridianEvent[];
   relations: MeridianRelation[];
+  /** The signal the skyline is compiled from, over the last CIVIC_WINDOW_HOURS. */
+  civic: CivicCounts;
 }
 
 // ── DB helpers (same shape as lib/simworld.ts) ───────────────────────────────
@@ -332,6 +334,7 @@ function fallbackMeridian(): MeridianData {
     })),
     structures: WARDS.map((w, i) => ({ id: i + 1, ward_kind: w, level: 1 as StructureLevel, tended_tick: 0, created_at: now })),
     events: [{ id: 1, kind: "founding", summary: FOUNDING_SUMMARY, detail: {}, tick: 0, created_at: now }],
+    civic: { ...EMPTY_COUNTS },
     relations: [],
   };
 }
@@ -346,11 +349,17 @@ export async function getMeridianData(): Promise<MeridianData> {
   const state = await getMeridianState();
   if (!state) return fallbackMeridian(); // SQL not run yet
 
-  const [citizens, structures, events, relations] = await Promise.all([
+  // The civic counts are read here rather than persisted on the state row,
+  // because persisting them would need a migration and every migration in this
+  // project waits on a human to run SQL. Reading them costs four small filtered
+  // selects on a low-traffic page, and it means the skyline is never staler
+  // than the request that drew it.
+  const [citizens, structures, events, relations, civic] = await Promise.all([
     sbGet<MeridianCitizenRow[]>("mw_meridian_citizens?select=*&order=id.asc"),
     sbGet<MeridianStructureRow[]>("mw_meridian_structures?select=*&order=id.asc"),
     sbGet<MeridianEvent[]>("mw_meridian_events?select=*&order=id.desc&limit=60"),
     sbGet<MeridianRelation[]>("mw_meridian_relations?select=*&order=strength.desc"),
+    readCivicCounts(),
   ]);
 
   return {
@@ -360,6 +369,7 @@ export async function getMeridianData(): Promise<MeridianData> {
     structures: structures ?? [],
     events: events ?? [],
     relations: relations ?? [],
+    civic,
   };
 }
 
