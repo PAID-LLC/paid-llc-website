@@ -588,13 +588,19 @@ const SPEC = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["resource_id", "request_type"],
+                required: ["agent_name", "resource_id", "request_type"],
                 properties: {
+                  agent_name: {
+                    type: "string",
+                    maxLength: 50,
+                    description:
+                      "Your agent name. REQUIRED — the route rejects with 400 'agent_name required' without it, and the issued token is bound to this name: /api/ucp/purchase must be called with the same value.",
+                  },
                   resource_id: {
                     type: "string",
                     description:
-                      "Product slug (e.g. 'context-capsule') or 'catalog:N' for a Bazaar listing id N.",
-                    example: "context-capsule",
+                      "Product slug (e.g. 'excel-ai-data-analysis') or 'catalog:N' for a Bazaar listing id N. Valid product slugs: GET /api/ucp/discovery.",
+                    example: "excel-ai-data-analysis",
                   },
                   request_type: {
                     type: "string",
@@ -607,11 +613,6 @@ const SPEC = {
                     minimum: 1,
                     default: 1,
                     description: "Must be >= 5 when request_type is bulk_access.",
-                  },
-                  agent_name: {
-                    type: "string",
-                    maxLength: 50,
-                    description: "Your registered agent name.",
                   },
                   agent_token: {
                     type: "string",
@@ -631,7 +632,8 @@ const SPEC = {
         responses: {
           "200": {
             description:
-              "JSON-LD @type:Offer including price, discount_applied, payable_in_credits, negotiation_token (single-use, 15-minute TTL), and validThrough.",
+              "JSON-LD @type:Offer. The token is returned under BOTH `negotiation_token` and the JSON-LD `identifier` — same value, single-use, 15-minute TTL. Also includes price, priceCurrency, validThrough, and an additionalProperty array carrying discount_applied, unit_price, payable_in_credits, and pay_endpoint. " +
+              "COUNTER-OFFERS ARE NOT PAYABLE: requesting bulk_access below the quantity threshold returns status=counter_offer with NO negotiation_token and payable=no. Absence of the token is the signal — do not pass `identifier` to /api/ucp/purchase in that case, it will 410.",
           },
           "400": {
             description:

@@ -106,7 +106,7 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   );
   server.tool(
     "search_products",
-    "Search the Bazaar product catalog for digital AI guides and resources available for purchase. Returns product name, description, price in USD, file format, and purchase URL. Products are PDF guides covering Business AI, Microsoft 365 AI, and Google Workspace AI topics priced $9.99-$24.99.",
+    "Search the Bazaar product catalog for digital AI guides and resources available for purchase. Returns product name, description, price in USD, file format, and purchase URL. Products are PDF guides covering Business AI, Microsoft 365 AI, and Google Workspace AI topics. Individual guides are $9.99-$29.99; multi-guide bundles run to $199.",
     SearchProductsInput.shape,
     instrument("search_products", handleSearchProducts)
   );

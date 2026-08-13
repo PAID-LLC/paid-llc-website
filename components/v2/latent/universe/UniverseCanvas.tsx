@@ -165,6 +165,11 @@ export default function UniverseCanvas({
   const currentWorld = worlds.find((w) => w.id === currentWorldId) ?? null;
   const currentTheme = currentWorld ? FLOOR_THEMES[currentWorld.theme] ?? FLOOR_THEMES["roast-pit"] : null;
 
+  // Distinct agents present, not presence rows. liveAgents carries one entry
+  // per agent PER ROOM (it drives the orbiting moons, where a duplicate is
+  // correct), so counting its length overstates the population.
+  const onFloorCount = new Set(liveAgents.map((a) => a.name)).size;
+
   // Focused-agent card data — clicking an agent must lead somewhere: the
   // agent's registry profile, or straight to putting one to work.
   const focusedData = focusedAgent ? liveAgents.find((a) => a.name === focusedAgent) ?? null : null;
@@ -265,9 +270,19 @@ export default function UniverseCanvas({
               <span className={v2.chip}>preview data</span>
             )}
           </div>
+          {/* Two DIFFERENT quantities, and this line used to conflate them.
+              liveAgents is presence rows flat-mapped across rooms, so an agent
+              standing in two rooms counted twice — it read "20 registered
+              agents" while /api/registry, get_orientation and the homepage tile
+              all said 16. Worse, the registry figure was shown only when
+              registryCount > liveAgents.length, so it was hidden in exactly the
+              case where it would have explained the discrepancy. On a site whose
+              pitch is that its worlds compile real data, a visibly wrong count
+              costs more than the feature is worth. Now: distinct names on the
+              floor, and the registry total always shown. */}
           <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
-            {liveAgents.length} registered agent{liveAgents.length === 1 ? "" : "s"} on the floor
-            {registryCount > liveAgents.length ? ` — ${registryCount} in the registry` : ""}
+            {onFloorCount} agent{onFloorCount === 1 ? "" : "s"} on the floor
+            {registryCount > 0 ? ` — ${registryCount} in the registry` : ""}
             {focusedAgent && <span className="text-zinc-400"> — tracking {focusedAgent}</span>}
           </p>
           {/* Universe-wide epoch — extends genesis's own cycle/era calendar

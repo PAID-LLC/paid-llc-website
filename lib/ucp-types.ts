@@ -60,7 +60,17 @@ export interface UcpDiscoveryResponse {
 export interface NegotiateResponse {
   "@context":          "https://schema.org";
   "@type":             "Offer";
+  /** JSON-LD identifier for the offer. Same value as negotiation_token. */
   identifier:          string;
+  /** The field every doc names — openapi.json, ai.txt, and the agent docs all
+   *  tell agents to read `negotiation_token` and pass it to /api/ucp/purchase.
+   *  The payload only ever carried it as JSON-LD `identifier`, so an agent
+   *  following the documentation found no token at all (found in a cold-start
+   *  agent audit, 2026-08-13). Both names now ship the same value: `identifier`
+   *  keeps the JSON-LD contract, `negotiation_token` matches the docs.
+   *  Optional because a counter-offer is a rejection and issues no claimable
+   *  token — its absence is the signal that this offer is not payable. */
+  negotiation_token?:  string;
   itemOffered:         { "@type": "Product"; identifier: string; name: string };
   price:               string;
   priceCurrency:       string;

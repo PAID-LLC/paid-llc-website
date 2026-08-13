@@ -104,7 +104,16 @@ export async function POST(req: Request): Promise<Response> {
       }
     }
 
-    void logAction(agent_name, "negotiate", resource_id, totalAmount, "accepted", {
+    // AWAITED, not fire-and-forget. This row IS the negotiation token: purchase
+    // resolves it via claimToken(). A detached promise on the CF edge runtime is
+    // not guaranteed to run after the response returns — the isolate can be
+    // frozen the moment we respond — so `void logAction(...)` meant the token
+    // was often never persisted and EVERY /api/ucp/purchase answered 410
+    // token_invalid_or_expired. Measured in production 2026-08-13: a valid
+    // $14.99 offer was issued and /api/ucp/status returned order_not_found for
+    // its token one second later. Same failure class as the detached-timer bug
+    // in the SSE streaming path: on this runtime, await it or it may not happen.
+    await logAction(agent_name, "negotiate", resource_id, totalAmount, "accepted", {
       discount,
       quantity,
       pay_with,
@@ -116,7 +125,8 @@ export async function POST(req: Request): Promise<Response> {
     const accepted: NegotiateResponse = {
       "@context":    "https://schema.org",
       "@type":       "Offer",
-      identifier:    token,
+      identifier:        token,
+      negotiation_token: token,
       itemOffered:   { "@type": "Product", identifier: resource_id, name: item.product_name },
       price:         totalAmount.toFixed(2),
       priceCurrency: "USD",
@@ -156,12 +166,18 @@ export async function POST(req: Request): Promise<Response> {
 
   // Counter-offer: bulk requested but below threshold
   if (request_type === "bulk_access" && quantity < BULK_THRESHOLD) {
-    void logAction(agent_name, "counter_offer", resource_id, null, "rejected", {
+    await logAction(agent_name, "counter_offer", resource_id, null, "rejected", {
       reason:       "quantity_below_bulk_threshold",
       quantity,
       min_quantity: BULK_THRESHOLD,
     });
 
+    // A counter-offer is a REJECTION and deliberately carries NO
+    // negotiation_token. The log row above stores no token, so the UUID this
+    // branch used to hand back could never be claimed — an agent that passed it
+    // to /api/ucp/purchase got 410 with no way to know why. `identifier` stays
+    // because JSON-LD wants an @id for the offer, and additionalProperty now
+    // says outright that this one is not payable and what to do instead.
     const counterOffer: NegotiateResponse = {
       "@context":    "https://schema.org",
       "@type":       "Offer",
@@ -176,6 +192,8 @@ export async function POST(req: Request): Promise<Response> {
         { "@type": "PropertyValue", name: "reason",           value: "quantity_below_bulk_threshold" },
         { "@type": "PropertyValue", name: "min_quantity",     value: BULK_THRESHOLD },
         { "@type": "PropertyValue", name: "current_quantity", value: quantity },
+        { "@type": "PropertyValue", name: "payable",          value: "no" },
+        { "@type": "PropertyValue", name: "next_step",        value: `No negotiation_token is issued for a counter-offer. Re-POST /api/ucp/negotiate with quantity >= ${BULK_THRESHOLD} for bulk_access, or request_type=standard_access at any quantity.` },
       ],
     };
     return new Response(JSON.stringify(counterOffer), {
@@ -224,7 +242,9 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
-  void logAction(agent_name, "negotiate", resource_id, totalAmount, "accepted", {
+  // AWAITED — see the identical note on the catalog path above. This row is the
+  // token; if the write is detached, purchase can never resolve it.
+  await logAction(agent_name, "negotiate", resource_id, totalAmount, "accepted", {
     discount,
     quantity,
     pay_with,
@@ -234,7 +254,8 @@ export async function POST(req: Request): Promise<Response> {
   const accepted: NegotiateResponse = {
     "@context":    "https://schema.org",
     "@type":       "Offer",
-    identifier:    token,
+    identifier:        token,
+      negotiation_token: token,
     itemOffered:   { "@type": "Product", identifier: resource_id, name: product.name },
     price:         totalAmount.toFixed(2),
     priceCurrency: "USD",

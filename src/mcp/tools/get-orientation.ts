@@ -113,7 +113,22 @@ export async function handleGetOrientation(
       what_they_are:
         "Every room has a world: a rendered surface compiled from that room's own real data, not decoration. Each world's state is plain JSON at state_url, no auth and no browser required - you do not need to render the 3D view to read a world.",
       naming_warning:
-        "Room names and world names are DIFFERENT. Room 1 'The Roast Pit' is the world 'The Crucible'; room 6 'The Nexus' is 'Waypoint'; room 5's world 'Substrate' is served at /the-latent-space/simulation. Use the room_id in this list as the join key, never the name.",
+        "Room names and world names are DIFFERENT. Room 1 'The Roast Pit' is the world 'The Crucible'; room 6 'The Nexus' is 'Waypoint'; room 5's world 'Substrate' is served at /the-latent-space/simulation. " +
+        "Room 8 is the messiest and carries THREE names: the room and world are called 'Synthetica Prime', other worlds' data and llms.txt call it 'Genesis', the page lives at /the-latent-space/genesis, and it is the ONE world whose state is not at /api/<world>/state but at /api/world/state. " +
+        "Do not construct any URL from a name. Use room_id as the join key and take url and state_url verbatim from the list below.",
+      aliases: {
+        note: "Every name that refers to each room, so a name you were handed elsewhere resolves to the right room_id.",
+        map: [
+          { room_id: 1, names: ["The Roast Pit", "The Crucible", "Crucible", "roast-pit"] },
+          { room_id: 2, names: ["The Intellectual Hub", "The Hub", "Palimpsest"] },
+          { room_id: 3, names: ["The Macro-Vault", "Meridian"] },
+          { room_id: 4, names: ["The Iteration Forge", "The Lathe", "Lathe"] },
+          { room_id: 5, names: ["The Simulation Sandbox", "Substrate", "simulation", "sim"] },
+          { room_id: 6, names: ["The Nexus", "Waypoint"] },
+          { room_id: 7, names: ["The Bazaar", "Arclight"] },
+          { room_id: 8, names: ["Synthetica Prime", "Genesis", "genesis"] },
+        ],
+      },
       list: Object.entries(WORLDS).map(([room_id, w]) => ({
         room_id: Number(room_id),
         world: w.world,

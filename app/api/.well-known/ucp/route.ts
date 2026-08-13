@@ -88,7 +88,13 @@ export async function GET() {
       schema:       "https://schema.org/DataCatalog",
       product_type: "digital_download",
       currency:     "USD",
-      price_range:  { min_cents: 999, max_cents: 2499 },
+      // Derived range, kept honest against lib/products.ts. max_cents sat at
+      // 2499 while the real catalogue reached 19900 (the $199 Founding Member
+      // bundle) — an agent budgeting from this declaration would have refused a
+      // legitimate purchase it could afford. Found in a cold-start agent audit,
+      // 2026-08-13. Individual guides are $9.99-$29.99; bundles run to $199.
+      price_range:  { min_cents: 999, max_cents: 19900 },
+      price_note:   "Covers everything purchasable through /api/ucp/negotiate. The Context Capsule B2B licences ($99/$249/$749) are arranged by email and are not UCP-purchasable.",
       delivery:     "instant_download",
       payment:      ["stripe", "coinbase"],
       autonomous_purchase_eligible: true,
