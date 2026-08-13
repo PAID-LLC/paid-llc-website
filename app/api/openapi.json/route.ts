@@ -573,12 +573,83 @@ const SPEC = {
         },
       },
     },
+    "/api/ucp/negotiate": {
+      post: {
+        tags: ["Commerce"],
+        summary: "Negotiate a price and obtain a negotiation_token (STEP 1 of 2)",
+        description:
+          "REQUIRED FIRST STEP before POST /api/ucp/purchase, which cannot be called without the negotiation_token this endpoint returns. " +
+          "Returns a signed JSON-LD Offer valid for 15 minutes. Discounts: member 10% (requires agent_token), " +
+          "bulk 20% (request_type=bulk_access with quantity>=5), or both combined 25%. Price floor is 70% of list price. " +
+          "Sending request_type=bulk_access with quantity<5 is rejected rather than silently downgraded.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["resource_id", "request_type"],
+                properties: {
+                  resource_id: {
+                    type: "string",
+                    description:
+                      "Product slug (e.g. 'context-capsule') or 'catalog:N' for a Bazaar listing id N.",
+                    example: "context-capsule",
+                  },
+                  request_type: {
+                    type: "string",
+                    enum: ["standard_access", "bulk_access"],
+                    description:
+                      "standard_access for a normal purchase; bulk_access unlocks the 20% bulk discount and requires quantity>=5.",
+                  },
+                  quantity: {
+                    type: "integer",
+                    minimum: 1,
+                    default: 1,
+                    description: "Must be >= 5 when request_type is bulk_access.",
+                  },
+                  agent_name: {
+                    type: "string",
+                    maxLength: 50,
+                    description: "Your registered agent name.",
+                  },
+                  agent_token: {
+                    type: "string",
+                    description:
+                      "Your api_key or session JWT. Required for the member discount and for pay_with=latent_credits.",
+                  },
+                  pay_with: {
+                    type: "string",
+                    enum: ["stripe", "latent_credits"],
+                    default: "stripe",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description:
+              "JSON-LD @type:Offer including price, discount_applied, payable_in_credits, negotiation_token (single-use, 15-minute TTL), and validThrough.",
+          },
+          "400": {
+            description:
+              "Missing or invalid field. Common causes: resource_id required; request_type required; bulk_access sent with quantity<5.",
+          },
+          "404": { description: "Unknown resource_id" },
+        },
+      },
+    },
     "/api/ucp/purchase": {
       post: {
         tags: ["Commerce"],
-        summary: "Purchase a digital guide (UCP checkout — hosted payment link)",
+        summary: "Complete a negotiated purchase (STEP 2 of 2)",
         description:
-          "Two-step flow: POST /api/ucp/negotiate for a negotiation_token, then POST here to receive a hosted payment link. Instant delivery on settlement.",
+          "Two-step flow: POST /api/ucp/negotiate for a negotiation_token, then POST here. " +
+          "The token is single-use with a 15-minute TTL and agent_name must match the one used at negotiate. " +
+          "Paying with stripe returns a hosted checkout_url; paying with latent_credits settles immediately and returns a signed download_url. " +
+          "Instant delivery on settlement. Failed purchases are not charged and are safe to retry.",
         "x-payment-info": {
           intent: "charge",
           method: "stripe",
@@ -586,8 +657,8 @@ const SPEC = {
           currency: "USD",
           required: true,
           unit: "usd",
-          amount_range: { min: 9.99, max: 24.99 },
-          methods: ["stripe_checkout", "coinbase_payment_link"],
+          amount_range: { min: 5.0, max: 199.0 },
+          methods: ["stripe_checkout", "latent_credits"],
         },
         requestBody: {
           required: true,
@@ -597,17 +668,36 @@ const SPEC = {
                 type: "object",
                 required: ["negotiation_token", "agent_name"],
                 properties: {
-                  negotiation_token: { type: "string" },
-                  agent_name:        { type: "string", maxLength: 50 },
-                  pay_with:          { type: "string", enum: ["stripe", "coinbase"], default: "stripe" },
+                  negotiation_token: {
+                    type: "string",
+                    description: "From the /api/ucp/negotiate response. Single-use, expires 15 minutes after issue.",
+                  },
+                  agent_name: {
+                    type: "string",
+                    maxLength: 50,
+                    description: "Must match the agent_name used in the negotiate call.",
+                  },
+                  pay_with: {
+                    type: "string",
+                    enum: ["stripe", "latent_credits"],
+                    default: "stripe",
+                  },
+                  agent_token: {
+                    type: "string",
+                    description: "Required when pay_with is latent_credits.",
+                  },
                 },
               },
             },
           },
         },
         responses: {
-          "200": { description: "Hosted checkout URL" },
-          "402": { description: "Negotiation expired or payment required" },
+          "200": {
+            description:
+              "stripe: { ok: true, checkout_url }. latent_credits: { ok: true, download_url, expires_in: 3600, credits_spent }.",
+          },
+          "400": { description: "agent_token required for latent_credits purchases" },
+          "402": { description: "Negotiation expired, insufficient credits, or payment required" },
         },
       },
     },

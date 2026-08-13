@@ -9,9 +9,14 @@ import { NextResponse, type NextRequest } from "next/server";
 // the page. Nonce-based CSP requires SSR so every response can stamp the nonce
 // onto each inline script tag — not compatible with static export.
 
-// Paths with a markdown rendition served by app/api/md (homepage + blog posts).
+// Paths with a markdown rendition served by app/api/md (homepage, blog posts,
+// services). /services carries the only prices on the site that an agent cannot
+// otherwise reach: a 2026-08-13 agent audit found the $1,500-$5,000 engagement
+// pricing rendered for humans and absent from every manifest, while a $5
+// souvenir SVG had richer machine-readable metadata. Keep this list and
+// app/api/md in sync — a path here with no case there returns a 404 to agents.
 const MD_NEGOTIABLE = (pathname: string): boolean =>
-  pathname === "/" || /^\/blog\/[^/]+$/.test(pathname);
+  pathname === "/" || pathname === "/services" || /^\/blog\/[^/]+$/.test(pathname);
 
 export function middleware(request: NextRequest) {
   const isProd = process.env.NODE_ENV !== "development";
@@ -20,13 +25,16 @@ export function middleware(request: NextRequest) {
     "default-src 'self'",
     // unsafe-inline: required for Next.js SSG hydration scripts.
     // googletagmanager.com: loads gtag.js when NEXT_PUBLIC_GA_ID is set.
-    `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com`,
+    // static.cloudflareinsights.com: Cloudflare Web Analytics beacon script.
+    // It was omitted here, so the beacon this site injects had never once
+    // fired — CSP blocked every load (found in the 2026-08-13 agent audit).
+    `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com https://static.cloudflareinsights.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "img-src 'self' data: blob:",
     "media-src 'self'",
     // GA sends beacons here; GTM pings its own origin on init.
-    "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com",
+    "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://cloudflareinsights.com",
     "frame-ancestors 'none'",
   ].join("; ");
 

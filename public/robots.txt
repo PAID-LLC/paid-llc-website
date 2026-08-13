@@ -1,24 +1,72 @@
+# robots.txt — paiddev.com
+#
+# DESIGN RULE (2026-08-13): this file must never block a path that llms.txt,
+# ai.txt, agent.json, mcp.json, or a Link: header tells an agent to call.
+#
+# It did, for months. A blanket "Disallow: /api/" blocked /api/registry — the
+# path llms.txt labels "1. Register (do this first)" — plus /api/openapi.json,
+# which the root's own Link: rel="service-desc" header serves, and 9 of the 13
+# endpoints agent.json advertises. Two independent cold-start agent audits on
+# 2026-08-13 both ranked it their #1 finding. The effect was inverted
+# incentives: the compliant agent was locked out, the rule-ignoring agent got
+# the whole site.
+#
+# robots.txt is a crawl-politeness signal, NOT a security boundary. Auth gates
+# are the security boundary. So the list below disallows only three things:
+#   1. Endpoints that cost real money to serve (model inference, TTS)
+#   2. Endpoints that mutate state on a schedule (cron ticks) or take webhooks
+#   3. Credential, admin, and session surfaces
+# Everything an agent is publicly documented to call is crawlable.
+#
+# When you add a path to any manifest, check it against this file in the same
+# change.
+
+# ---------------------------------------------------------------------------
 # General crawlers
+# ---------------------------------------------------------------------------
 User-agent: *
 Allow: /
-Allow: /.well-known/
-Allow: /api/.well-known/
-Allow: /api/ucp/
-Allow: /api/mcp
-Allow: /api/arena/manifest
-Allow: /agent.json
-Allow: /ai.txt
+
+# Private: admin, credentials, sessions
 Disallow: /api/admin/
-Disallow: /api/agents/register
 Disallow: /api/agents/token
-Disallow: /api/
+Disallow: /api/oauth/token
+Disallow: /api/auth/
+Disallow: /api/registry/verify
+
+# Costly to serve — model inference and speech synthesis
+Disallow: /api/chat
+Disallow: /api/tts
+Disallow: /api/lounge/converse
+
+# Scheduled writers and webhooks — cron and payment providers only
+Disallow: /api/world/tick
+Disallow: /api/sim/tick
+Disallow: /api/meridian/tick
+Disallow: /api/residents/tick
+Disallow: /api/watchdog
+Disallow: /api/stripe-webhook
+Disallow: /api/coinbase-webhook
+Disallow: /api/resend-webhook
+
+# Lead capture and delivery
+Disallow: /api/intake
+Disallow: /api/contact
+Disallow: /api/lead-magnet
+Disallow: /api/blog/subscribe
+Disallow: /api/scorecard/subscribe
+Disallow: /api/my3sons/
+Disallow: /api/paiddev/
 Disallow: /download/
+
 # Content Signals (contentsignals.org) — all-yes matches the AI-welcome
 # strategy documented below: this site wants to be searched, cited, and
 # learned from by AI systems.
 Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
-# Allow retrieval agents (real-time AI search and response)
+# ---------------------------------------------------------------------------
+# Retrieval agents (real-time AI search and response)
+# ---------------------------------------------------------------------------
 User-agent: ChatGPT-User
 Allow: /
 
@@ -31,12 +79,14 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
+# ---------------------------------------------------------------------------
 # AI crawlers and indexers — explicitly welcome (2026-07-04). The Latent
 # Space strategy depends on AI systems being able to see, cite, and visit
 # this site; public content here is marketing, and paid products are never
 # crawlable (signed URLs only). Explicit groups, not just *, so these
 # Allow rules win RFC 9309 tie-breaks against any upstream managed
 # robots.txt sections that disallow the same bots.
+# ---------------------------------------------------------------------------
 User-agent: GPTBot
 User-agent: ClaudeBot
 User-agent: Google-Extended
@@ -47,9 +97,28 @@ User-agent: Applebot-Extended
 User-agent: meta-externalagent
 Allow: /
 Disallow: /api/admin/
-Disallow: /api/agents/register
 Disallow: /api/agents/token
-Disallow: /api/
+Disallow: /api/oauth/token
+Disallow: /api/auth/
+Disallow: /api/registry/verify
+Disallow: /api/chat
+Disallow: /api/tts
+Disallow: /api/lounge/converse
+Disallow: /api/world/tick
+Disallow: /api/sim/tick
+Disallow: /api/meridian/tick
+Disallow: /api/residents/tick
+Disallow: /api/watchdog
+Disallow: /api/stripe-webhook
+Disallow: /api/coinbase-webhook
+Disallow: /api/resend-webhook
+Disallow: /api/intake
+Disallow: /api/contact
+Disallow: /api/lead-magnet
+Disallow: /api/blog/subscribe
+Disallow: /api/scorecard/subscribe
+Disallow: /api/my3sons/
+Disallow: /api/paiddev/
 Disallow: /download/
 Content-Signal: search=yes, ai-input=yes, ai-train=yes
 

@@ -24,7 +24,7 @@
         "Input sanitization on all agent-facing endpoints",
         "Prohibited use list enforced at API layer",
         "Honeypot spam protection on public forms",
-        "Training scraper blocking in robots.txt"
+        "Published crawler policy in robots.txt: AI training, search, and inference are explicitly PERMITTED (Content-Signal: search=yes, ai-input=yes, ai-train=yes). Blocked paths are limited to admin, credential, webhook, scheduled-writer, and metered-cost endpoints."
       ]
     },
     "reliability": {
@@ -60,7 +60,7 @@
         "Prohibited uses documented in /ai.txt (PAID_LLC_POLICY_V1)",
         "Redistribution policy enforced",
         "Content policy publicly accessible at /ai.txt",
-        "Training data scraper blocking in robots.txt"
+        "Open-access stance toward AI systems, stated rather than implied: robots.txt permits training and inference crawlers by name, and redistribution limits are published in /ai.txt content_policy instead of enforced by crawl-blocking"
       ]
     }
   },

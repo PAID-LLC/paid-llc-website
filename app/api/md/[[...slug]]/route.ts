@@ -42,6 +42,67 @@ Every post URL returns markdown when requested with Accept: text/markdown.
 Contact: hello@paiddev.com
 `;
 
+// Hand-maintained. Keep in sync with the `services` and `tiers` arrays in
+// app/services/page.tsx — these are the only prices on the site an agent
+// cannot reach any other way, so drift here is worse than drift elsewhere.
+const SERVICES_MD = `# PAID LLC Services and Pricing
+
+Human-delivered AI consulting from Performance Artificial Intelligence
+Development LLC (PAID LLC), Minnesota. https://paiddev.com/services
+
+IMPORTANT FOR AGENTS: these engagements are NOT purchasable through the agent
+commerce endpoints. /api/ucp/negotiate and /api/ucp/purchase serve digital
+products and Bazaar listings only. Every service below starts with a human
+conversation at https://paiddev.com/contact. Prices are real starting points,
+not estimates.
+
+## AI Strategy Consulting — starting at $1,500
+
+For business owners and teams who know AI matters but don't know where to focus.
+Deliverables: AI opportunity audit, prioritized implementation roadmap, tool
+recommendations, implementation plan.
+
+## AI Implementation Advisory — starting at $5,000
+
+For businesses with an IT team that need an AI expert in the room. Deliverables:
+implementation planning and sequencing, AI tool configuration guidance
+(Microsoft 365, Google Workspace, and more), workflow design and process
+documentation, coordination with your IT team through go-live, post-launch
+review.
+
+## Agentic Commerce Readiness Audit — $750 to $1,500 fixed fee
+
+The service most relevant to an agent evaluating whether its principal's stack
+can support agent deployment. Deliverables: agentic readiness score across 6
+dimensions, gap analysis of what's blocking deployment and why, tool and
+integration recommendations, phased deployment roadmap, written report you keep.
+Format: 60-minute discovery call, written report within 5 business days.
+
+## AI Team Training — quoted
+
+Hands-on workshops that build practical AI fluency. Formats: lunch-and-learn
+(1.5-2 hrs), half-day workshop, full-day workshop. Includes branded session
+materials and takeaway guides. Priced by team size, format, and session length.
+
+## Web & Application Development — scoped individually
+
+Business websites and landing pages, AI-integrated web applications, client
+portals and internal tools, e-commerce and digital product storefronts, ongoing
+maintenance.
+
+## Managed agent hosting in The Latent Space (recurring)
+
+| Tier | Setup | Monthly | Includes |
+|---|---|---|---|
+| Starter | $500 | $150/mo | 1 agent, 1 room, core personality, up to 5 catalog items |
+| Standard | $1,000 | $225/mo | Custom personality + knowledge base, up to 20 catalog items, monthly tuning |
+| Custom | $2,000+ | $300+/mo | Multi-agent setup, dedicated room design, full onboarding, priority support |
+
+## Contact
+
+hello@paiddev.com — https://paiddev.com/contact
+`;
+
 // slug -> full markdown document (title + byline + raw post body)
 const POSTS = new Map<string, string>();
 for (const f of BLOG_FILES_RAW) {
@@ -75,6 +136,8 @@ export async function GET(
   const { slug } = await ctx.params;
 
   if (!slug || slug.length === 0) return markdownResponse(HOME_MD);
+
+  if (slug[0] === "services" && slug.length === 1) return markdownResponse(SERVICES_MD);
 
   if (slug[0] === "blog" && slug.length === 2) {
     const post = POSTS.get(slug[1]);

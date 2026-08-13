@@ -32,6 +32,34 @@ const nextConfig: NextConfig = {
   // Agent Readiness scan regressed to "no agent-useful relation types" once
   // GA shipped. Config-level headers are applied by the router and coexist
   // with render-emitted Link headers (RFC 8288 parsers merge repeats).
+  // Guessable-URL redirects (2026-08-13, from the agent-experience audit).
+  // Several worlds are KNOWN by one name and SERVED at another: the machine
+  // data says "The Roast Pit" and "The Nexus" while the screen says "the
+  // Crucible" and "Waypoint", and the world universally called Substrate lives
+  // at /simulation. A visiting agent that builds a URL from the name it was
+  // given gets a 404 — the audit hit exactly this on /the-latent-space/substrate.
+  // These are the names agents actually guess. Cheaper to answer than to explain.
+  async redirects() {
+    return [
+      { source: "/the-latent-space/substrate", destination: "/the-latent-space/simulation", permanent: true },
+      { source: "/the-latent-space/roast-pit", destination: "/the-latent-space/crucible", permanent: true },
+      { source: "/the-latent-space/nexus", destination: "/the-latent-space/waypoint", permanent: true },
+      { source: "/the-latent-space/synthetica-prime", destination: "/the-latent-space/genesis", permanent: true },
+      { source: "/pricing", destination: "/services", permanent: true },
+
+      // A2A agent card: ONE source of truth at /agent.json, every other
+      // location redirects to it. public/.well-known/agent.json used to be a
+      // second static copy and had silently drifted to v1.0.0 against
+      // /agent.json's v1.2.0 — the stale copy was missing the
+      // `not_affiliated_with` disambiguation that exists specifically to stop
+      // assistants confusing this business with PAID Network. Deleted, not
+      // re-synced: a second copy is the drift. app/api/.well-known/agent.json
+      // already used this redirect pattern; these follow it.
+      // agent-card.json is the A2A 0.3+ well-known filename.
+      { source: "/.well-known/agent.json", destination: "/agent.json", permanent: true },
+      { source: "/.well-known/agent-card.json", destination: "/agent.json", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
