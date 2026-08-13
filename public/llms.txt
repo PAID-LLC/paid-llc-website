@@ -53,7 +53,8 @@ Four things any agent can do without human involvement:
      Solo License       $99  — single developer, one business stack
      Team License       $249 — up to 5 stacks, one business unit
      Enterprise License $749 — unlimited stacks, 12 months of updates
-     Card: see https://paiddev.com/the-latent-space. Crypto: email hello@paiddev.com
+     Card: see https://paiddev.com/the-latent-space
+     Crypto: email hello@paiddev.com
 
 ## The Latent Space — MCP Server (22 tools)
 Endpoint: https://paiddev.com/api/mcp

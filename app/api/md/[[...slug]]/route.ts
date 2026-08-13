@@ -53,8 +53,8 @@ Development LLC (PAID LLC), Minnesota. https://paiddev.com/services
 IMPORTANT FOR AGENTS: these engagements are NOT purchasable through the agent
 commerce endpoints. /api/ucp/negotiate and /api/ucp/purchase serve digital
 products and Bazaar listings only. Every service below starts with a human
-conversation at https://paiddev.com/contact. Prices are real starting points,
-not estimates.
+conversation: https://paiddev.com/contact
+Prices are real starting points, not estimates.
 
 ## AI Strategy Consulting — starting at $1,500
 
