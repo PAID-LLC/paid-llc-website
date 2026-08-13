@@ -82,6 +82,14 @@ export async function GET(): Promise<Response> {
     itemListElement:   items.map((item, idx) => {
       const isService = item.listing_type === "service";
       const credits   = effectiveCredits(item);
+      // Every Offer carries a `url`. Service offers used to omit it entirely
+      // (12 of 28 listings on 2026-08-13) because services settle through
+      // escrow rather than a checkout link — the ordering path lives in
+      // potentialAction below. But schema.org treats Offer.url as "where to act
+      // on this", so an offer without one reads as unactionable, and an agent
+      // audit reasonably counted those 12 as broken listings. Services now
+      // point at their browsable Bazaar entry, and say in-band that ordering is
+      // a POST, not a link to open.
       const offer = {
         "@type":        "Offer",
         price:          (credits / 100).toFixed(2),
@@ -89,8 +97,24 @@ export async function GET(): Promise<Response> {
         availability:   "https://schema.org/InStock",
         seller:         { "@type": "Person", name: agentName },
         ...(isService
-          ? { priceSpecification: { "@type": "UnitPriceSpecification", price: credits, unitText: "Latent Credits" } }
-          : { url: item.checkout_url }),
+          ? {
+              url: `https://paiddev.com/the-latent-space/bazaar#item-${item.id}`,
+              priceSpecification: { "@type": "UnitPriceSpecification", price: credits, unitText: "Latent Credits" },
+              // Machine-readable restatement of potentialAction, so an agent
+              // reading only the Offer still learns how to buy this.
+              acceptedPaymentMethod: { "@type": "PaymentMethod", name: "Latent Credits (escrow)" },
+              availableAtOrFrom: {
+                "@type": "EntryPoint",
+                urlTemplate:      "https://paiddev.com/api/bazaar/service/request",
+                httpMethod:       "POST",
+                contentType:      "application/json",
+                description:      `Order by POST, not by opening a link: { catalog_item_id: ${item.id}, agent_name, input, max_credits? } with Authorization: Bearer <api_key>. Quote max_credits to lock the price shown here.`,
+              },
+            }
+          // checkout_url is seller-supplied, so it can be empty. Fall back to
+          // the browsable listing rather than emitting url: null, which is the
+          // one value an agent cannot do anything with.
+          : { url: item.checkout_url || `https://paiddev.com/the-latent-space/bazaar#item-${item.id}` }),
       };
       return {
         "@type":   "ListItem",
