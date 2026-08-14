@@ -25,13 +25,14 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_STAMP: `BUILD_${buildDate}`,
     NEXT_PUBLIC_BUILD_SHA: buildSha,
   },
-  // RFC 8288 agent-discovery Link header on the homepage, at the ROUTING layer.
-  // middleware.ts sets the same header, but the render pipeline's own Link
-  // (the GA gtag preload that arrived with NEXT_PUBLIC_GA_ID) replaces
-  // middleware-set values in the next-on-pages response assembly — the CF
-  // Agent Readiness scan regressed to "no agent-useful relation types" once
-  // GA shipped. Config-level headers are applied by the router and coexist
-  // with render-emitted Link headers (RFC 8288 parsers merge repeats).
+  // The RFC 8288 agent-discovery Link header lives in middleware.ts, NOT here.
+  // A `headers()` block was added here on 931fb87 on the theory that
+  // config-level headers are applied by the router and would coexist with
+  // render-emitted Link values. Measured in production minutes later: it
+  // produced no Link relation on any route, and the value actually being
+  // served on "/" was middleware's. Removed rather than left in place —
+  // config that reads as working and isn't is worse than no config.
+  //
   // Guessable-URL redirects (2026-08-13, from the agent-experience audit).
   // Several worlds are KNOWN by one name and SERVED at another: the machine
   // data says "The Roast Pit" and "The Nexus" while the screen says "the
@@ -58,37 +59,6 @@ const nextConfig: NextConfig = {
       // agent-card.json is the A2A 0.3+ well-known filename.
       { source: "/.well-known/agent.json", destination: "/agent.json", permanent: true },
       { source: "/.well-known/agent-card.json", destination: "/agent.json", permanent: true },
-    ];
-  },
-  async headers() {
-    const agentDiscoveryLink =
-      '</.well-known/api-catalog>; rel="api-catalog", ' +
-      '</api/openapi.json>; rel="service-desc"; type="application/json", ' +
-      '</the-latent-space/docs>; rel="service-doc", ' +
-      '<https://paiddev.com/api/mcp>; rel="mcp-server", ' +
-      '</agent.json>; rel="agent-description", ' +
-      '</llms.txt>; rel="alternate"; type="text/plain"; title="LLM index"';
-
-    return [
-      {
-        source: "/",
-        headers: [{ key: "Link", value: agentDiscoveryLink }],
-      },
-      // The Latent Space is the surface built FOR agents and it carried NO
-      // discovery Link headers — they were set on "/" only. A 2026-08-13 audit
-      // found this was the single remaining abandonment point: an agent landing
-      // directly here with a browser had no way to learn llms.txt exists, and
-      // the <noscript> fallback that would have told it is never rendered when
-      // JS runs. Headers reach both kinds of agent, cost nothing, and change
-      // nothing visually.
-      {
-        source: "/the-latent-space",
-        headers: [{ key: "Link", value: agentDiscoveryLink }],
-      },
-      {
-        source: "/the-latent-space/:path*",
-        headers: [{ key: "Link", value: agentDiscoveryLink }],
-      },
     ];
   },
 };

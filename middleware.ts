@@ -66,19 +66,37 @@ export function middleware(request: NextRequest) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
 
-  // RFC 8288 agent-discovery Link headers on the homepage (2026-07-04).
+  // RFC 8288 agent-discovery Link headers (2026-07-04).
   // Set here, not in public/_headers — Cloudflare Pages only applies
   // _headers to static assets, and / is rendered by the worker (the
   // _headers Link entries for /the-latent-space never actually served
   // for the same reason).
-  if (request.nextUrl.pathname === "/") {
-    response.headers.set(
+  //
+  // 2026-08-14: this is also the ONLY mechanism that works. The same header was
+  // added to next.config.ts `headers()` on 931fb87 to extend it to The Latent
+  // Space; measured in production immediately after, that config block produced
+  // no Link relation on any route, including "/" where middleware's own value
+  // was the one being served. Config-level headers do not survive the
+  // next-on-pages response assembly here. One mechanism, measured, no second
+  // copy that reads as working.
+  //
+  // Scope: "/" plus The Latent Space, which is the surface built FOR agents and
+  // was the one telling them least. `append`, not `set` — RFC 8288 parsers merge
+  // repeated Link headers, so this coexists with the render's own font preloads
+  // instead of racing them for a single slot.
+  const p = request.nextUrl.pathname;
+  if (p === "/" || p === "/the-latent-space" || p.startsWith("/the-latent-space/")) {
+    response.headers.append(
       "Link",
       '</.well-known/api-catalog>; rel="api-catalog", ' +
         '</api/openapi.json>; rel="service-desc"; type="application/json", ' +
         '</the-latent-space/docs>; rel="service-doc", ' +
         '<https://paiddev.com/api/mcp>; rel="mcp-server", ' +
-        '</.well-known/agent.json>; rel="agent-description"'
+        // Canonical path. This pointed at /.well-known/agent.json, which became
+        // a 301 to /agent.json on 463ed75 — a discovery header that costs the
+        // agent a redirect to reach the thing it is advertising.
+        '</agent.json>; rel="agent-description", ' +
+        '</llms.txt>; rel="alternate"; type="text/plain"; title="LLM index"'
     );
   }
 
