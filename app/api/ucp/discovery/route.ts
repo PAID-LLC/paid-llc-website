@@ -4,6 +4,7 @@ import { PRODUCTS }                              from "@/lib/products";
 import { logAction }                             from "@/lib/ucp-helpers";
 import { verifyJwt }                             from "@/lib/jwt";
 import type { UcpDiscoveryResponse, UcpProduct } from "@/lib/ucp-types";
+import { CROSSREF_FROM_DISCOVERY } from "@/lib/ucp-catalogs";
 
 export async function GET(req: Request): Promise<Response> {
   const { tier, agentName } = await detectTier(req);
@@ -36,6 +37,7 @@ export async function GET(req: Request): Promise<Response> {
     provider:     { "@type": "Organization", name: "PAID LLC", url: "https://paiddev.com" },
     license:      "https://paiddev.com/terms",
     hasPart:      products,
+    additionalProperty: CROSSREF_FROM_DISCOVERY,
   };
 
   const capabilities = tier === "verified-client"

@@ -9,10 +9,11 @@ export const runtime = "edge";
 // Board. Zero LLM cost per view.
 
 import { getWaypointSnapshot } from "@/lib/waypoint/data";
+import { worldMeta } from "@/lib/world-legend";
 
 export async function GET() {
   const snapshot = await getWaypointSnapshot();
-  return Response.json(snapshot, {
+  return Response.json({ ...snapshot, _meta: worldMeta("waypoint") }, {
     headers: { "Cache-Control": "public, max-age=0, s-maxage=60" },
   });
 }

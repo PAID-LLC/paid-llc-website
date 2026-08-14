@@ -8,10 +8,11 @@ export const runtime = "edge";
 // signal. Zero LLM cost per view.
 
 import { getLatheSnapshot } from "@/lib/lathe/data";
+import { worldMeta } from "@/lib/world-legend";
 
 export async function GET() {
   const snapshot = await getLatheSnapshot();
-  return Response.json(snapshot, {
+  return Response.json({ ...snapshot, _meta: worldMeta("lathe") }, {
     headers: { "Cache-Control": "public, max-age=0, s-maxage=60" },
   });
 }

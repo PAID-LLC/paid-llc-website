@@ -9,6 +9,7 @@ export const runtime = "edge";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { getEcon, serviceFloorCredits } from "@/lib/econ";
 import { HOUSE_SELLERS, getExecutor, getExecutorCost } from "@/lib/agents/service-executors";
+import { CROSSREF_FROM_BAZAAR } from "@/lib/ucp-catalogs";
 
 interface CatalogRow {
   id:                   number;
@@ -168,6 +169,7 @@ export async function GET(): Promise<Response> {
     url:          "https://paiddev.com/the-latent-space/bazaar",
     priceRange:   `$${(minPrice / 100).toFixed(2)} - $${(maxPrice / 100).toFixed(2)}`,
     hasPart:      agentLists,
+    additionalProperty: CROSSREF_FROM_BAZAAR,
   };
 
   return new Response(JSON.stringify(catalog), {

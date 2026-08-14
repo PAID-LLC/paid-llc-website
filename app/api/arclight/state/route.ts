@@ -9,10 +9,11 @@ export const runtime = "edge";
 // Privacy: jobs ticker is sanitized (no buyer identity, no job bodies).
 
 import { getArclightSnapshot } from "@/lib/arclight/data";
+import { worldMeta } from "@/lib/world-legend";
 
 export async function GET() {
   const snapshot = await getArclightSnapshot();
-  return Response.json(snapshot, {
+  return Response.json({ ...snapshot, _meta: worldMeta("arclight") }, {
     headers: { "Cache-Control": "public, max-age=0, s-maxage=60" },
   });
 }

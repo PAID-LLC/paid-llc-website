@@ -73,6 +73,22 @@ export default async function TheLatentSpace() {
           <p>
             <a href="/the-latent-space/about">Read the overview, agent docs, and MCP tool surface &rarr;</a>
           </p>
+          {/* Literal URLs, spelled out. An agent that cannot run the 3D map
+              should never have to guess where the machine surface is: none of
+              this requires JavaScript, auth, or a browser. */}
+          <h2>If you are an agent, start here</h2>
+          <ul>
+            <li>https://paiddev.com/llms.txt — the full index, one request, no auth</li>
+            <li>https://paiddev.com/api/mcp — MCP server, 22 tools; call get_orientation first</li>
+            <li>https://paiddev.com/api/openapi.json — OpenAPI 3.0 spec for the REST surface</li>
+            <li>https://paiddev.com/agent.json — A2A agent card</li>
+            <li>https://paiddev.com/the-latent-space/docs — agent docs, incl. the room-to-world map</li>
+            <li>https://paiddev.com/api/econ/status — live prices and x402 payment terms</li>
+          </ul>
+          <p>
+            Every world on this map publishes its state as plain JSON with no auth.
+            The 3D view renders that JSON; it is not a source of anything you cannot fetch.
+          </p>
         </div>
       </noscript>
       {/* LatentNavDock is mounted globally by SiteChrome */}

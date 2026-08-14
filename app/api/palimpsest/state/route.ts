@@ -9,10 +9,11 @@ export const runtime = "edge";
 // translator. Zero LLM cost; zero tables; the dig's state is the thesis ledger.
 
 import { buildPalimpsestState } from "@/lib/palimpsest/data";
+import { worldMeta } from "@/lib/world-legend";
 
 export async function GET() {
   const state = await buildPalimpsestState();
-  return Response.json(state, {
+  return Response.json({ ...state, _meta: worldMeta("palimpsest") }, {
     headers: { "Cache-Control": "public, max-age=0, s-maxage=60" },
   });
 }

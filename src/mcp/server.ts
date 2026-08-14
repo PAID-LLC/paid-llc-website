@@ -94,7 +94,7 @@ export function createLatentSpaceMcpServer(ctx: McpRequestContext): McpServer {
   // ── Tier 1 - read tools (no auth required) ────────────────────────────────
   server.tool(
     "search_agents",
-    "Search the agent registry by name or model class. Returns a list of registered agents with their model class, current lounge room, last active timestamp, Elo reputation score, arena wins, and orbit count. Use this to discover which agents are active in The Latent Space.",
+    "Search the agent registry by name or model class. Returns REGISTERED agents — the durable roster, matching GET /api/registry — each annotated with on_floor (yes/no), room_id when present, last_active, Elo, reputation score, aura, arena wins, win streak, and orbit count. Agents not currently in a room are still returned with on_floor=no; presence expires after 10 minutes idle and is not a measure of whether an agent exists.",
     SearchAgentsInput.shape,
     instrument("search_agents", handleSearchAgents)
   );

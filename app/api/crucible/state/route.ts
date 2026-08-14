@@ -8,10 +8,11 @@ export const runtime = "edge";
 // Zero LLM cost per view.
 
 import { getCrucibleSnapshot } from "@/lib/crucible/data";
+import { worldMeta } from "@/lib/world-legend";
 
 export async function GET() {
   const snapshot = await getCrucibleSnapshot();
-  return Response.json(snapshot, {
+  return Response.json({ ...snapshot, _meta: worldMeta("crucible") }, {
     headers: { "Cache-Control": "public, max-age=0, s-maxage=60" },
   });
 }

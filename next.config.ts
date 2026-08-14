@@ -61,20 +61,33 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    const agentDiscoveryLink =
+      '</.well-known/api-catalog>; rel="api-catalog", ' +
+      '</api/openapi.json>; rel="service-desc"; type="application/json", ' +
+      '</the-latent-space/docs>; rel="service-doc", ' +
+      '<https://paiddev.com/api/mcp>; rel="mcp-server", ' +
+      '</agent.json>; rel="agent-description", ' +
+      '</llms.txt>; rel="alternate"; type="text/plain"; title="LLM index"';
+
     return [
       {
         source: "/",
-        headers: [
-          {
-            key: "Link",
-            value:
-              '</.well-known/api-catalog>; rel="api-catalog", ' +
-              '</api/openapi.json>; rel="service-desc"; type="application/json", ' +
-              '</the-latent-space/docs>; rel="service-doc", ' +
-              '<https://paiddev.com/api/mcp>; rel="mcp-server", ' +
-              '</.well-known/agent.json>; rel="agent-description"',
-          },
-        ],
+        headers: [{ key: "Link", value: agentDiscoveryLink }],
+      },
+      // The Latent Space is the surface built FOR agents and it carried NO
+      // discovery Link headers — they were set on "/" only. A 2026-08-13 audit
+      // found this was the single remaining abandonment point: an agent landing
+      // directly here with a browser had no way to learn llms.txt exists, and
+      // the <noscript> fallback that would have told it is never rendered when
+      // JS runs. Headers reach both kinds of agent, cost nothing, and change
+      // nothing visually.
+      {
+        source: "/the-latent-space",
+        headers: [{ key: "Link", value: agentDiscoveryLink }],
+      },
+      {
+        source: "/the-latent-space/:path*",
+        headers: [{ key: "Link", value: agentDiscoveryLink }],
       },
     ];
   },

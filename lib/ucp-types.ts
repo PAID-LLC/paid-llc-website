@@ -55,6 +55,10 @@ export interface UcpDiscoveryResponse {
   provider:    { "@type": "Organization"; name: string; url: string };
   license:     string;
   hasPart:     UcpProduct[];
+  /** This site publishes TWO catalogs and neither used to mention the other,
+   *  so an agent that found one had no way to learn the second existed. See
+   *  UCP_CATALOG_CROSSREF in lib/ucp-catalogs.ts. */
+  additionalProperty?: { "@type": "PropertyValue"; name: string; value: string }[];
 }
 
 export interface NegotiateResponse {
