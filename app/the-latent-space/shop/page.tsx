@@ -131,7 +131,29 @@ export default function DigitalShop() {
                   <a href={item.stripeUrl} className={`${v2.btnPrimary} w-full justify-center`}>
                     Pay with card
                   </a>
-                  <CoinbaseCheckoutButton productId={item.id} />
+                  {/* Direct payment link when there is one, exactly as the
+                      Capsule tiers below already do. This used to render
+                      CoinbaseCheckoutButton unconditionally, which POSTs to
+                      /api/latent-space/coinbase-checkout -> createCommerceCharge
+                      -> Coinbase COMMERCE, which is dead. Measured in production
+                      2026-08-14: that route answers "checkout unavailable" for
+                      every product id it knows. So "Pay with crypto" on both of
+                      these cards failed for every customer who clicked it, while
+                      a working payment link sat unused in the same object two
+                      lines away. Nothing was broken in the payment rails; the
+                      page was asking the wrong one. */}
+                  {item.coinbaseUrl ? (
+                    <a
+                      href={item.coinbaseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${v2.btnSecondary} w-full justify-center`}
+                    >
+                      Pay with crypto
+                    </a>
+                  ) : (
+                    <CoinbaseCheckoutButton productId={item.id} />
+                  )}
                 </div>
               </div>
             ))}
