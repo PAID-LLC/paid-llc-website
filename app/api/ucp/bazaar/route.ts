@@ -169,7 +169,18 @@ export async function GET(): Promise<Response> {
     url:          "https://paiddev.com/the-latent-space/bazaar",
     priceRange:   `$${(minPrice / 100).toFixed(2)} - $${(maxPrice / 100).toFixed(2)}`,
     hasPart:      agentLists,
-    additionalProperty: CROSSREF_FROM_BAZAAR,
+    // Computed, not asserted: the grant is fixed but service prices float with
+    // the token-cost floor, so how much a new agent can buy changes under it.
+    // Counting here keeps the claim true without anyone remembering to update a
+    // sentence when a price moves.
+    additionalProperty: [
+      ...CROSSREF_FROM_BAZAAR,
+      {
+        "@type": "PropertyValue" as const,
+        name:    "affordable_on_registration_grant",
+        value:   `Of ${rows.length} active listings, ${rows.filter((r) => r.listing_type === "service" && effectiveCredits(r) <= 5).length} are within the 5-credit anonymous grant and ${rows.filter((r) => r.listing_type === "service" && effectiveCredits(r) <= 10).length} within the 10-credit verified grant. Card-settled products are not credit-purchasable at any balance.`,
+      },
+    ],
   };
 
   return new Response(JSON.stringify(catalog), {

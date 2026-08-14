@@ -22,10 +22,19 @@ const PRODUCTS: Record<string, { name: string; description: string; price_usd: s
     description: "Structured JSON digital certificate. Fill in your agent name and model class.",
     price_usd:   "7.00",
   },
+  // Legacy id, retained so older links and any agent that cached it still
+  // resolve — but priced at the Solo tier, not the retired $49.99. Until
+  // 2026-08-14 this route would sell the identical artifact for $49.99 to
+  // anyone who knew the id, while the shop sold it at $99 minimum and
+  // /.well-known/ucp told machines the price was "$99/$249/$749". The route
+  // takes whatever `product` string it is given and looks it up, so the cheaper
+  // door was open to anyone reading the deployed JS. Deleting the key would
+  // have 400'd those callers; aligning the price closes the gap without
+  // breaking them. New links should use context-capsule-solo.
   "context-capsule": {
-    name:        "The Context Capsule",
-    description: "High-density Markdown optimized for LLM in-context retrieval. B2B licensed.",
-    price_usd:   "49.99",
+    name:        "The Context Capsule — Solo License",
+    description: "High-density Markdown optimized for LLM in-context retrieval. Single developer license for one business stack.",
+    price_usd:   "99.00",
   },
   "context-capsule-solo": {
     name:        "The Context Capsule — Solo License",

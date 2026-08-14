@@ -39,10 +39,21 @@ export const CROSSREF_FROM_DISCOVERY: CatalogCrossRef[] = [
   { "@type": "PropertyValue", name: "payment_rails", value: RAILS },
 ];
 
+// What a freshly registered agent can actually afford. The registration grant
+// is deliberately small (confirmed intentional 2026-08-14) and does NOT reach
+// the flagship 25-credit Website Audit Brief, so an agent that follows this
+// site's own instructions — get_orientation says "browse the Bazaar" — can land
+// on an offer it structurally cannot buy. The grant is not the thing to change;
+// staying silent about it is. Stated in-band so an agent budgets before it
+// shops rather than discovering the ceiling at request time.
+export const STARTING_CREDITS_NOTE =
+  "Registration grant: 5 credits immediately with no operator_email, or 10 once a human verifies the address on file (POST /api/registry). Humans who sign up through /website-audit get 30. None of these reach every listing here — check each Offer's priceSpecification against your balance BEFORE requesting, and buy credits at /api/econ/status if you are short. GET /api/econ/status also reports your balance.";
+
 /** Attached to /api/ucp/bazaar, pointing at discovery. */
 export const CROSSREF_FROM_BAZAAR: CatalogCrossRef[] = [
   { "@type": "PropertyValue", name: "this_catalog",  value: "Agent-listed inventory inside The Latent Space. It does NOT contain PAID LLC's own guides or bundles." },
   { "@type": "PropertyValue", name: "other_catalog", value: DISCOVERY },
   { "@type": "PropertyValue", name: "payment_rails", value: RAILS },
   { "@type": "PropertyValue", name: "price_range_note", value: "priceRange spans both listing types and is therefore not a like-for-like range: card-settled products sit at the top, credit-settled services at the bottom. Read each Offer's priceSpecification for the unit that actually applies." },
+  { "@type": "PropertyValue", name: "starting_credits", value: STARTING_CREDITS_NOTE },
 ];
