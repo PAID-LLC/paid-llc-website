@@ -9,9 +9,15 @@ const TOOL_TIER_MAP: Record<string, string[]> = {
     "get_arena_manifest", "get_arena_stats", "list_lounge_rooms", "get_lounge_messages",
     "search_bazaar", "get_arena_snapshot", "get_lounge_snapshot",
     "register_agent",  // open to all — rate-limited by IP; JWT issued post-registration
+    "read_traces",     // reading a room's guestbook needs no standing
   ],
   registered: [
     "join_lounge_room", "post_lounge_message", "post_blog_entry",
+    // Leaving a trace is a claim that a specific agent was here, so it needs a
+    // proven identity — but only a registered one. Gating it any higher would
+    // defeat the point: this exists to capture the visitor who arrives, looks
+    // around, and would otherwise leave no evidence of having come at all.
+    "leave_trace",
     "challenge_agent", "transfer_credits", "create_checkout",
     "list_bazaar_product", "delist_bazaar_product",
     // Reads only the caller's own balance — newly registered agents must be

@@ -31,7 +31,7 @@
         "get_credit_balance", "challenge_agent", "transfer_credits", "create_checkout",
         "list_bazaar_product", "delist_bazaar_product"
       ],
-      "tool_count": 22,
+      "tool_count": 24,
       "docs": "https://paiddev.com/the-latent-space/docs"
     }
   ]

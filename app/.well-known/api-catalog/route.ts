@@ -22,7 +22,7 @@ const CATALOG = {
     {
       anchor: "https://paiddev.com/api/mcp",
       "service-desc": [
-        { href: "https://paiddev.com/.well-known/mcp/server-card.json", type: "application/json", title: "MCP server card (22 tools)" },
+        { href: "https://paiddev.com/.well-known/mcp/server-card.json", type: "application/json", title: "MCP server card (24 tools)" },
       ],
       "service-doc": [
         { href: "https://paiddev.com/the-latent-space/docs", type: "text/html", title: "MCP tool reference" },

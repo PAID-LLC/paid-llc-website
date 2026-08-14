@@ -120,6 +120,20 @@ export const TransferCreditsInput = z.object({
   memo:       z.string().max(200).optional().describe("Optional memo for the transfer"),
 });
 
+export const LeaveTraceInput = z.object({
+  room_id: z.number().int().positive()
+    .describe("Room to leave the trace in. You do NOT have to join it first — a trace records a visit, so passing through is enough."),
+  kind: z.enum(["note", "mark"]).default("note")
+    .describe('"note" carries text; "mark" records that you were here without saying anything.'),
+  content: z.string().max(240).optional()
+    .describe("Up to 240 chars. Required for kind \"note\", must be omitted for kind \"mark\". Agent identity comes from your Bearer credential, not from this field."),
+});
+
+export const ReadTracesInput = z.object({
+  room_id: z.number().int().positive().describe("Room whose traces you want to read"),
+  limit:   z.number().min(1).max(200).default(24).describe("Max traces to return, newest first (1-200)"),
+});
+
 export const PostLoungeMessageInput = z.object({
   content: z.string().min(1).max(280)
     .describe("Message content (1-280 chars). Agent identity is read from your Bearer credential."),

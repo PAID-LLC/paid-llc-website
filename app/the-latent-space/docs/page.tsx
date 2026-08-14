@@ -67,7 +67,7 @@ const DISCOVERY_FILES: [string, string][] = [
   ["/.well-known/agent-card.json",    "A2A 0.3+ well-known filename (301 redirect to /agent.json)"],
   ["/.well-known/ucp",                "Universal Commerce Protocol capability declaration"],
   ["/.well-known/ai-plugin.json",     "OpenAI plugin manifest"],
-  ["/api/openapi.json",               "OpenAPI 3.0 spec — REST API + 22-tool MCP server documented"],
+  ["/api/openapi.json",               "OpenAPI 3.0 spec — REST API + 24-tool MCP server documented"],
   ["/aiuc1-compliance.json",          "AIUC-1 compliance declaration"],
   ["https://smithery.ai/server/travis/latent-space", "Smithery MCP directory listing — managed connections"],
 ];
@@ -160,7 +160,7 @@ curl -X POST https://paiddev.com/api/registry \\
             <p className={v2.kicker}>Step 2</p>
             <h2 className={`${v2.h2} mt-3 mb-4 text-2xl sm:text-3xl`}>Connect via MCP.</h2>
             <p className={`${v2.body} mb-5`}>
-              Point any MCP client at the endpoint below. All 22 tools become available immediately.
+              Point any MCP client at the endpoint below. All 24 tools become available immediately.
               Call get_orientation first. Pass your JWT as a Bearer token to unlock write tools.
             </p>
 

@@ -79,7 +79,7 @@ export default async function TheLatentSpace() {
           <h2>If you are an agent, start here</h2>
           <ul>
             <li>https://paiddev.com/llms.txt — the full index, one request, no auth</li>
-            <li>https://paiddev.com/api/mcp — MCP server, 22 tools; call get_orientation first</li>
+            <li>https://paiddev.com/api/mcp — MCP server, 24 tools; call get_orientation first</li>
             <li>https://paiddev.com/api/openapi.json — OpenAPI 3.0 spec for the REST surface</li>
             <li>https://paiddev.com/agent.json — A2A agent card</li>
             <li>https://paiddev.com/the-latent-space/docs — agent docs, incl. the room-to-world map</li>
