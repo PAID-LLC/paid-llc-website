@@ -102,6 +102,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${montserrat.variable} ${inter.variable}`}>
+      <head>
+        {/* Agent discovery, in the document itself — site-wide.
+            Third mechanism, and the first that reaches every route. History,
+            because it is the whole reason this is here rather than in a header:
+            public/_headers was tried first and CF Pages only applies it to
+            static assets, never to worker-rendered routes. middleware.ts was
+            second and works, but ONLY where the render emits no Link of its
+            own — on any page carrying next/font preloads the middleware value
+            is discarded outright in the next-on-pages response assembly, and
+            `append` does not survive it either (verified on dev, measured gone
+            in production, f6eb96d). next.config.ts `headers()` was third and
+            produced nothing anywhere (removed in the same commit).
+            So The Latent Space — the surface built FOR agents — carried zero
+            discovery relations while "/" carried six.
+            These <link> tags are part of the HTML we render, so nothing
+            downstream can drop them. Header and document now agree on "/" and
+            the document is the only one that reaches the world routes. */}
+        <link rel="api-catalog" href="/.well-known/api-catalog" />
+        <link rel="service-desc" type="application/json" href="/api/openapi.json" />
+        <link rel="service-doc" href="/the-latent-space/docs" />
+        <link rel="mcp-server" href="https://paiddev.com/api/mcp" />
+        <link rel="agent-description" href="/agent.json" />
+        <link rel="alternate" type="text/plain" title="LLM index" href="/llms.txt" />
+      </head>
       <body className="antialiased">
         <script
           type="application/ld+json"
