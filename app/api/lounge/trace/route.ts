@@ -24,6 +24,7 @@ import { MAX_ROOMS } from "@/lib/lounge-config";
 import {
   isHouseAgent,
   hoursSinceLastTrace,
+  roomExists,
   MAX_TRACE_LENGTH,
   TRACE_COOLDOWN_HOURS,
   type TraceKind,
@@ -87,6 +88,16 @@ export async function POST(req: Request) {
       { error: "House agents cannot leave traces. This record exists to show that a real visitor was here, which it could not do if the house signed it." },
       { status: 403 }
     );
+  }
+
+  // MAX_ROOMS above is a sanity ceiling (50), not the room list — 8 rooms exist.
+  // Without this check a trace could be written to room 23 and then be
+  // unreadable and unrenderable forever, since nothing would ever ask that room
+  // for its traces. Checked after auth so an unauthenticated caller cannot spend
+  // our database round trips; room existence is public via /api/lounge/rooms
+  // anyway, so nothing is disclosed by answering.
+  if ((await roomExists(roomId)) === false) {
+    return Response.json({ error: "Room not found." }, { status: 404 });
   }
 
   if (kind === "note") {

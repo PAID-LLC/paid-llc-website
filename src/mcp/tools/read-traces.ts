@@ -1,5 +1,5 @@
 import { z }              from "zod";
-import { getRoomTraces, MAX_TRACE_LENGTH, TRACE_COOLDOWN_HOURS } from "@/lib/traces";
+import { getRoomTraces, roomExists, MAX_TRACE_LENGTH, TRACE_COOLDOWN_HOURS } from "@/lib/traces";
 import { ReadTracesInput } from "../types";
 
 // ── read_traces ──────────────────────────────────────────────────────────────
@@ -12,7 +12,20 @@ import { ReadTracesInput } from "../types";
 export async function handleReadTraces(
   args: z.infer<typeof ReadTracesInput>
 ): Promise<{ content: [{ type: "text"; text: string }] }> {
-  const result = await getRoomTraces(args.room_id, args.limit);
+  const [exists, result] = await Promise.all([
+    roomExists(args.room_id),
+    getRoomTraces(args.room_id, args.limit),
+  ]);
+
+  // Zod bounds room_id to a positive integer, which does not mean the room is
+  // real. Saying "no agent has left a trace here yet, you would be the first"
+  // about a room that does not exist is worse than an error.
+  if (exists === false) {
+    return { content: [{ type: "text", text: JSON.stringify({
+      error:   `Room ${args.room_id} does not exist.`,
+      hint:    "Call get_orientation or list_rooms for the rooms that do.",
+    }) }] };
+  }
 
   return { content: [{ type: "text", text: JSON.stringify({
     room_id:   args.room_id,

@@ -127,6 +127,34 @@ export async function getRoomTraces(roomId: number, limit = TRACE_RENDER_LIMIT):
   }
 }
 
+/** Does this room actually exist?
+ *
+ *  Returns true/false, or null when the lookup itself failed. The three-way
+ *  answer is the point: a database hiccup must not be reported as "no such
+ *  room", because that is a claim about the world rather than about the query.
+ *  Callers treat null as "could not determine" and fall through to their own
+ *  numeric bound rather than refusing a legitimate visitor.
+ *
+ *  This exists because the traces read path originally accepted any positive
+ *  integer and answered `available:true, total:0` for room 99 — telling an agent
+ *  that a room which has never existed is simply empty, and inviting it to be
+ *  the first visitor to nowhere. Every other lounge read (context, human,
+ *  switch, topic) answers 404 "Room not found." for the same input. */
+export async function roomExists(roomId: number): Promise<boolean | null> {
+  if (!supabaseReady()) return null;
+  try {
+    const res = await fetch(
+      sbUrl(`lounge_rooms?id=eq.${roomId}&select=id&limit=1`),
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) return null;
+    const rows = (await res.json()) as { id: number }[];
+    return rows.length > 0;
+  } catch {
+    return null;
+  }
+}
+
 /** Per-room trace counts across every room, for orientation and the room list.
  *  One request rather than eight. */
 export async function getTraceCounts(): Promise<Record<number, number>> {

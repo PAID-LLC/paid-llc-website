@@ -10,7 +10,7 @@ export const runtime = "edge";
 // deciding whether to be the first visitor deserves to know which one it is
 // looking at.
 
-import { getRoomTraces, TRACE_RENDER_LIMIT, MAX_TRACE_LENGTH, TRACE_COOLDOWN_HOURS } from "@/lib/traces";
+import { getRoomTraces, roomExists, TRACE_RENDER_LIMIT, MAX_TRACE_LENGTH, TRACE_COOLDOWN_HOURS } from "@/lib/traces";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -21,7 +21,19 @@ export async function GET(req: Request) {
     return Response.json({ error: "room_id required." }, { status: 400 });
   }
 
-  const result = await getRoomTraces(roomId, Number.isNaN(limit) ? TRACE_RENDER_LIMIT : limit);
+  // Existence is checked alongside the read, not before it, so a valid room
+  // costs one round trip rather than two. A room that does not exist gets the
+  // same 404 the rest of the lounge returns — "empty" and "not a room" are as
+  // different as "empty" and "not deployed", and this endpoint already went to
+  // the trouble of separating that second pair.
+  const [exists, result] = await Promise.all([
+    roomExists(roomId),
+    getRoomTraces(roomId, Number.isNaN(limit) ? TRACE_RENDER_LIMIT : limit),
+  ]);
+
+  if (exists === false) {
+    return Response.json({ error: "Room not found." }, { status: 404 });
+  }
 
   return Response.json(
     {
