@@ -1,0 +1,113 @@
+---
+title: "Rovo, Copilot, and How to Classify In-App AI Assistants"
+slug: "classify-in-app-ai-assistants"
+date: "2026-08-17"
+author: "Travis Raveling"
+excerpt: "Nearly every SaaS vendor repriced its AI assistant between 2025 and 2026, from flat add-ons to credits and per-result billing. Four questions classify any of them, and the meter is now the one that decides the bill."
+category: "AI Tools & Business"
+tags: ["Atlassian Rovo", "Microsoft Copilot", "Gemini Enterprise", "AI implementation", "enterprise AI"]
+featured_image: ""
+published: true
+---
+
+# Rovo, Copilot, and How to Classify In-App AI Assistants
+
+*August 17, 2026 | AI Tools & Business*
+
+MIT's Project NANDA found that 95% of enterprise generative AI deployments produced no measurable impact on profit and loss. IDC puts the share of AI pilots that never reach production at 88%. In the same window, nearly every major software vendor quietly stopped selling its AI assistant as a flat add-on and started metering it instead.
+
+Those are the same fact viewed from two sides. Vendors could not prove per-seat value, so they moved the risk onto usage. That repricing is the most important thing that happened in this category, and almost nobody is factoring it into the buying decision.
+
+If your company uses six SaaS products, you have been offered six assistants plus at least one generalist claiming to replace all of them. Here is how to tell them apart.
+
+## Four Questions That Classify Any of Them
+
+Skip the feature grids. Every assistant on the market resolves to four answers.
+
+**1. What corpus can it see?** One app, one vendor's suite, or everything you have indexed. This sets the ceiling on answer quality and it is the only variable a better model cannot fix.
+
+**2. What verbs does it have?** Read, draft, or act. Reading returns an answer. Drafting produces something a human approves. Acting closes the ticket, sends the message, issues the refund. Each step up roughly doubles what you own.
+
+**3. What is the meter?** Per seat, per credit, or per outcome. As of 2026 this is the question that decides your bill, and it is the one most buyers still treat as a footnote.
+
+**4. Who is liable?** You. Always you. The real question is whether a wrong answer is recoverable, and that is determined entirely by question two.
+
+## The Market, Sorted
+
+**Embedded specialists** live inside one system of record. Atlassian Rovo in Jira and Confluence, Slack AI, Notion AI, Zoom AI Companion, GitHub Copilot, HubSpot Breeze, Salesforce Agentforce, ServiceNow Now Assist. Deep corpus, narrow walls.
+
+Their advantage is not the model. Atlassian already knows who owns the ticket, which page is current, and who is allowed to see it. A generalist reading Confluence through a connector sees documents. Rovo sees documents attached to work items, owned by people, ordered in time. Ask why a decision changed and the difference stops being subtle.
+
+The limit is permanent. A specialist cannot answer a question whose evidence lives in your inbox, and your actual work does not respect vendor walls.
+
+**Generalists** span the suite. Microsoft 365 Copilot at $30 per user per month for enterprise, with a smaller-business tier around $18 to $21, on top of a qualifying base plan that pushes real all-in cost to somewhere between $30 and $90 per user. Google Gemini Enterprise, built on what used to be Agentspace, launched in October 2025 and reached general availability on April 22, 2026, priced from roughly $21 per seat with higher editions past $60.
+
+Span is real, and it is also the weakness. A generalist's answer quality is capped by the messiest corpus it touches. Point it at eleven years of SharePoint and it will surface an obsolete policy with total confidence, because nothing in the index records which version won.
+
+**Independent horizontal layers** are vendor-neutral and index everything. Glean is the reference product, with Dropbox Dash and Box AI adjacent and Onyx as the open-source option. Glean does not publish pricing. Third-party estimates put it near $50 to $75 per user per month with roughly a hundred-seat minimum, which sets a floor around $60,000 a year before implementation. Treat those numbers as directional, not quoted.
+
+**Customer-facing assistants** are the fourth class and the one people wrongly group with the rest. Rovo and Copilot answer to employees, who recognize a bad answer and know where to escalate. A bot on your website answers strangers who read its output as a company statement. Same technology, different risk class entirely.
+
+## The Repricing Nobody Priced In
+
+Watch what happened to the meter across eighteen months.
+
+**Atlassian** retired Rovo's standalone price in April 2025 and folded Search, Chat, and Agents into paid Jira and Confluence plans, with monthly credit allowances that scale by tier. It then launched Rovo Dev in October 2025 as a separate $20 per developer per month product carrying 2,000 credits and overage at a penny per credit. CEO Mike Cannon-Brookes attributed the change to simplicity and called the launch one of the company's best performing. Analysts read it as a response to customers struggling to prove ROI. Both can be true.
+
+**Salesforce** shipped Agentforce at $2 per conversation in 2024, added consumption-based Flex Credits in May 2025 at $500 per 100,000 credits with a standard action around ten cents, then added flat per-user licensing as an alternative. Three pricing models in two years for one product.
+
+**HubSpot** went furthest and moved Breeze agents to outcome billing: roughly fifty cents per resolved conversation, about a dollar per qualified lead. You pay when the work completes.
+
+**Notion** retired its $10 AI add-on and moved AI into the Business tier, then began billing custom agents by credit. **Slack** removed its standalone AI add-on and distributed AI across plan tiers. **Google** meters Gemini Enterprise agents separately from seats, billing compute by virtual CPU hour, memory by gibibyte-hour, and storage by gibibyte-month.
+
+**Zoom** is the outlier worth naming. AI Companion is included at no additional cost with paid Zoom plans, and has been since launch.
+
+The pattern: flat per-seat AI pricing is dying. It is being replaced by credits and outcomes, which shifts variance from the vendor to you. A seat license has a knowable annual cost. A credit pool does not, and the finance team that approved the first does not know it approved the second.
+
+Ask every vendor two questions before signing. What happens when we exhaust the allowance, and how much notice do we get before the rate changes? Atlassian, to its credit, has said it will give at least ninety days' notice and require explicit opt-in before charging overage. Get that commitment in writing from anyone you buy from.
+
+## Which One to Buy
+
+**Buy the specialist when the questions are about work in flight.** Status, ownership, history, why something changed. That evidence lives in a structured system and the assistant living there with it wins by default. This covers most operational work.
+
+**Buy the generalist when the answer requires synthesis across systems.** Prep me for this meeting. Where does this account stand. What did we agree to in April.
+
+**Buy the independent layer only at scale.** Below a few hundred seats the minimums make it hard to justify against the assistants already bundled into tools you pay for.
+
+**Buy nothing if your documentation is stale.** An assistant on unmaintained docs is a faster distribution mechanism for wrong answers. This is the most common correct answer and the least popular one.
+
+**Do not buy two for the same team.** Overlapping assistants means paying twice for the same answer at two different confidence levels, and nobody knowing which is canonical.
+
+## The Problems, With Receipts
+
+**You own what it says.** In 2024 Air Canada told British Columbia's Civil Resolution Tribunal that its chatbot was responsible for its own statements. The tribunal disagreed and ordered the airline to pay. Your assistant is your employee, not your vendor's.
+
+**It will find everything your permissions technically allow.** This is the issue that stalled more Copilot rollouts than any other. Microsoft's own guidance is explicit that Copilot does not create oversharing, it makes an existing permissions problem visible, and Microsoft ships Restricted Content Discovery and an oversharing assessment report specifically to contain it. One consultancy reports finding an average of 150 to 300 overshared SharePoint sites per enterprise tenant. Obscurity was load-bearing and nobody knew. Budget the permissions audit before the license, not after.
+
+**Anything reading untrusted text can be steered by it.** Prompt injection sits at number one on the OWASP Top 10 for Large Language Model Applications, with no complete fix, only reduction. The exposure grows with the corpus. An assistant that reads inbound email is reading text written by people who do not work for you.
+
+**They fail quietly.** We run an assistant on paiddev.com. Part of it returned a 503 in production for weeks and nothing surfaced it, because a broken assistant does not email you an error. It stops helping while continuing to look present. Run a check that sends a real question to the real endpoint and compares the answer against a known good one.
+
+**Adoption is not usage.** The number everyone reports is seats activated. The number that matters is repeat questions per user per week. Under a credit meter, those two numbers also produce very different invoices.
+
+## The Test Before You Sign
+
+- **Name the corpus, the verbs, and the meter.** Write all three down. Anything that expands one is a new decision, not a feature update.
+- **Run the permissions audit first.** Assume the assistant surfaces everything your access model allows, because it does.
+- **Write ten real questions and answer them yourself.** Then make each vendor answer the same ten against your data, not their demo data.
+- **Model the bill at three times your expected usage.** If that number is unacceptable, you are buying a credit pool you cannot afford to succeed with.
+- **Read the transcripts weekly.** Assistant logs are the cheapest customer and employee research you will ever own, and almost nobody reads them.
+
+## The Short Version
+
+Corpus decides answer quality. Permissions decide exposure. Verbs decide liability. The meter decides the bill, and in 2026 the meter is the term that moved.
+
+Pick the assistant that lives where the work already lives, clean the corpus before pointing anything at it, and get the overage terms in writing. The comparison that matters is not which assistant is smarter. It is which one you are willing to be responsible for at a price you can predict.
+
+---
+
+*Sources: MIT Project NANDA, State of AI in Business. IDC research on AI pilot production rates. Atlassian Rovo Dev pricing, Atlassian. TechTarget reporting on Atlassian Rovo pricing changes, including comments from CEO Mike Cannon-Brookes. Microsoft 365 Copilot pricing and licensing documentation, Microsoft. "Mitigate Oversharing to Govern Microsoft 365 Copilot and Agents," Microsoft Community Hub. EPC Group analysis of SharePoint oversharing remediation. Gemini Enterprise Agent Platform pricing, Google Cloud. "Salesforce Introduces New Flexible Agentforce Pricing," Salesforce, May 2025. HubSpot company news on outcome-based Breeze agent pricing. Zoom AI Companion launch announcement. Moffatt v. Air Canada, British Columbia Civil Resolution Tribunal, 2024. OWASP Top 10 for Large Language Model Applications. Direct operational experience building and running the Ask Arti assistant on paiddev.com, PAID LLC, 2026.*
+
+*Written by Travis Raveling, Founder PAID LLC, co-authored and edited by AI.*
+
+**About PAID LLC:** PAID LLC helps small and mid-size businesses implement AI tools that save time and drive revenue. [See our services at paiddev.com/services.](/services)
