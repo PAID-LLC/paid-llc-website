@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { placeTrace, isHouseAgent, roomExists, HOUSE_TRACE_DENYLIST, MAX_TRACE_LENGTH, type Trace } from "@/lib/traces";
 import { HOME_AGENTS, CURATOR_AGENT } from "@/lib/agents/home-agents";
+import { traceFloorPosition } from "@/components/v2/latent/floor/trace-placement";
+import { FLOOR_SIZE, PIT_RADIUS, FLOOR_MARGIN } from "@/components/v2/latent/floor/themes";
 
 // Traces are the record that a real visitor was here (db/room-traces.sql). Two
 // properties carry the whole feature and are pinned here: placement must be
@@ -164,5 +166,57 @@ describe("roomExists: a room that is not real is not an empty room", () => {
   it("returns null, not false, when the request throws", async () => {
     globalThis.fetch = (() => Promise.reject(new Error("network"))) as typeof fetch;
     expect(await roomExists(1)).toBeNull();
+  });
+});
+
+describe("traceFloorPosition: the floor cannot be drawn on badly", () => {
+  // placeTrace guarantees the unit footprint; this maps it onto real floor
+  // units, and the two guarantees that matter are geometric rather than
+  // aesthetic. A trace under the centerpiece is invisible forever, and a trace
+  // past the wall is outside the room it claims to record — neither is
+  // recoverable by tweaking a style later, so they are pinned here.
+  const HALF = FLOOR_SIZE / 2;
+
+  function radiusFor(id: number): number {
+    const p = traceFloorPosition(placeTrace(trace({ id })));
+    return Math.hypot(p.x - HALF, p.y - HALF);
+  }
+
+  it("never places a trace inside the centerpiece keep-out", () => {
+    for (let id = 1; id <= 300; id++) {
+      expect(radiusFor(id)).toBeGreaterThanOrEqual(PIT_RADIUS);
+    }
+  });
+
+  it("never places a trace beyond the agents' wander band", () => {
+    // FLOOR_MARGIN is where the walls begin taking the floor back.
+    for (let id = 1; id <= 300; id++) {
+      expect(radiusFor(id)).toBeLessThanOrEqual(HALF - FLOOR_MARGIN + 20);
+    }
+  });
+
+  it("keeps every trace inside the floor slab on both axes", () => {
+    for (let id = 1; id <= 300; id++) {
+      const p = traceFloorPosition(placeTrace(trace({ id })));
+      expect(p.x).toBeGreaterThan(0);
+      expect(p.x).toBeLessThan(FLOOR_SIZE);
+      expect(p.y).toBeGreaterThan(0);
+      expect(p.y).toBeLessThan(FLOOR_SIZE);
+    }
+  });
+
+  it("is deterministic, so a trace does not move between page loads", () => {
+    const a = traceFloorPosition(placeTrace(trace({ id: 42 })));
+    const b = traceFloorPosition(placeTrace(trace({ id: 42 })));
+    expect(a).toEqual(b);
+  });
+
+  it("spreads traces around the ring rather than clustering one arc", () => {
+    const quadrants = new Set<string>();
+    for (let id = 1; id <= 60; id++) {
+      const p = traceFloorPosition(placeTrace(trace({ id })));
+      quadrants.add(`${p.x > HALF ? "e" : "w"}${p.y > HALF ? "s" : "n"}`);
+    }
+    expect(quadrants.size).toBe(4);
   });
 });

@@ -21,7 +21,9 @@ import type { RoomExhibit } from "@/lib/room-exhibits";
 import GenesisBallotHUD from "@/components/v2/latent/floor/GenesisBallotHUD";
 import GenesisAssembly, { GenesisTerrain } from "@/components/v2/latent/floor/GenesisAssembly";
 import RoomTerrain from "@/components/v2/latent/floor/RoomTerrain";
+import FloorTraces from "@/components/v2/latent/floor/FloorTraces";
 import type { RoomActivity } from "@/lib/room-activity";
+import type { TracesResult } from "@/lib/traces";
 import { useWorldLive } from "@/components/v2/latent/floor/useWorldLive";
 import {
   FLOOR_SIZE,
@@ -112,6 +114,12 @@ function css(t: FloorTheme) {
 .fl-holo-beam { position: absolute; top: 100%; left: 50%; width: 1px; height: 54px; background: linear-gradient(180deg, ${t.accentSoft}, transparent); }
 .fl-empty { border: 1px dashed rgba(255,255,255,0.16); border-radius: 10px; padding: 10px 16px; background: rgba(5,5,10,0.6); font-family: var(--font-mono, monospace); font-size: 11px; color: #71717a; white-space: nowrap; transform: scale(calc(1 / var(--zoom))); transform-origin: bottom center; }
 
+/* Traces (FloorTraces.tsx). Deliberately inert: no bob, no pulse, no glow
+   animation. Everything else on this floor is alive and says so; a trace is
+   what got left behind, and it should read as sediment rather than presence. */
+.fl-trace { position: absolute; left: 0; top: 0; width: 30px; height: 30px; padding: 0; border: 1px solid; border-radius: 4px; cursor: pointer; }
+.fl-trace-card { width: 208px; border: 1px solid; border-radius: 10px; padding: 8px 10px; background: rgba(11,11,18,0.95); font-family: var(--font-mono, monospace); font-size: 11px; line-height: 1.45; text-align: left; transform: scale(calc(1 / var(--zoom))); transform-origin: bottom center; animation: flPop 0.25s ease-out; }
+
 .fl-neon { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 46px; letter-spacing: 0.22em; color: ${t.accent}; text-shadow: 0 0 6px ${t.accentSoft}, 0 0 22px ${t.accentSoft}, 0 0 48px ${t.accentSoft}; animation: flNeon 5.5s ease-in-out infinite; }
 .fl-neon-flicker { animation: flFlicker 4.1s linear infinite; }
 .fl-led { display: inline-block; width: 5px; height: 5px; border-radius: 50%; animation: flLed 1.9s steps(2) infinite; }
@@ -164,6 +172,7 @@ export default function FloorScene({
   world,
   exhibit,
   activity,
+  traces,
 }: {
   room: LoungeRoom;
   initial: LoungeMessage[];
@@ -175,6 +184,10 @@ export default function FloorScene({
   exhibit?: RoomExhibit | null;
   /** this room's own activity level (lib/room-activity.ts) — feeds RoomTerrain */
   activity?: RoomActivity;
+  /** who has actually been in this room (db/room-traces.sql). Fetched on the
+   *  server and not live-updated: a trace is a permanent record, so there is
+   *  nothing for a socket to keep in sync. */
+  traces?: TracesResult;
 }) {
   const t = FLOOR_THEMES[room.theme ?? ""] ?? FLOOR_THEMES["roast-pit"];
   const { messages, connected, speaker } = useRoomLive({ roomId: room.id, initial, live });
@@ -363,6 +376,11 @@ export default function FloorScene({
 
               {/* The room's signature exhibit — its verb, from real rows */}
               {exhibit && <RoomExhibitView exhibit={exhibit} t={t} />}
+
+              {/* Who has actually been here. Rendered before the agents so a
+                  live agent standing on a trace occludes it, which is the
+                  correct reading of the two. */}
+              <FloorTraces traces={traces} t={t} />
 
               {/* Genesis: agent-built structures, one per enacted ballot */}
               {genesis.world?.structures.map((s) => (

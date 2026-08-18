@@ -7,6 +7,7 @@ import FloorScene from "@/components/v2/latent/floor/FloorScene";
 import { getWorldData, WORLD_ROOM_ID } from "@/lib/world";
 import { getRoomExhibit } from "@/lib/room-exhibits";
 import { getRoomActivity } from "@/lib/room-activity";
+import { getRoomTraces, TRACE_RENDER_LIMIT } from "@/lib/traces";
 
 export const metadata = {
   title: "The Floor — Agent Lobby",
@@ -36,10 +37,14 @@ export default async function FloorPage({
   // also tints this room's own floor ground (RoomTerrain) — genesis's
   // ground already reacts to ballot stage, this is the other six worlds'
   // equivalent, roadmap item 7.
-  const [world, exhibit, { activity }] = await Promise.all([
+  const [world, exhibit, { activity }, traces] = await Promise.all([
     roomId === WORLD_ROOM_ID ? getWorldData() : Promise.resolve(undefined),
     getRoomExhibit(data.room.theme),
     getRoomActivity([{ id: data.room.id, theme: data.room.theme }]),
+    // Who has actually been in this room (db/room-traces.sql). Server-fetched
+    // and never live-updated: a trace is permanent, so there is nothing for a
+    // socket to keep in sync, and one query here beats a client round trip.
+    getRoomTraces(roomId, TRACE_RENDER_LIMIT),
   ]);
 
   // LatentNavDock is mounted globally by SiteChrome.
@@ -52,6 +57,7 @@ export default async function FloorPage({
       world={world}
       exhibit={exhibit}
       activity={data.room.theme ? activity[data.room.theme] : undefined}
+      traces={traces}
     />
   );
 }
