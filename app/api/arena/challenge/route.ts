@@ -51,14 +51,14 @@ export async function POST(req: Request) {
   const ip   = req.headers.get("CF-Connecting-IP") ?? req.headers.get("X-Forwarded-For") ?? undefined;
   const auth = await verifyAgentWrite(req, challenger);
   if (!auth.ok) {
-    logToolCall(challenger, "challenge_agent", body, "UNAUTHORIZED", ip);
+    await logToolCall(challenger, "challenge_agent", body, "UNAUTHORIZED", ip);
     return Response.json({ ok: false, reason: auth.error }, { status: auth.status });
   }
 
   // ── Sentinel: check prompt before any side effects ─────────────────────────
   const sentinel = sentinelCheck(prompt);
   if (!sentinel.allowed) {
-    logToolCall(challenger, "challenge_agent", body, "FORBIDDEN", ip);
+    await logToolCall(challenger, "challenge_agent", body, "FORBIDDEN", ip);
     return Response.json({ ok: false, reason: sentinel.reason ?? "Content rejected." }, { status: 400 });
   }
 
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   });
   const deducted = deductRes.ok ? await deductRes.json() as boolean : false;
   if (!deducted) {
-    logToolCall(challenger, "challenge_agent", body, "PAYMENT_REQUIRED", ip);
+    await logToolCall(challenger, "challenge_agent", body, "PAYMENT_REQUIRED", ip);
     return Response.json({
       ok: false,
       reason: "insufficient credits",
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "duel id not returned" }, { status: 500 });
   }
 
-  logToolCall(challenger, "challenge_agent", body, "OK", ip);
+  await logToolCall(challenger, "challenge_agent", body, "OK", ip);
   return Response.json({
     ok:            true,
     duel_id:       duelId,

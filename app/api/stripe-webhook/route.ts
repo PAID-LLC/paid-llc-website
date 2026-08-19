@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { defer } from "@/lib/defer";
 
 export const runtime = "edge";
 
@@ -437,7 +438,7 @@ export async function POST(req: NextRequest) {
 
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
-    void logWebhookFailure(req, "missing_signature");
+    await defer(logWebhookFailure(req, "missing_signature"), "webhook:missing_signature");
     return NextResponse.json({ error: "Missing signature." }, { status: 400 });
   }
 
@@ -445,7 +446,7 @@ export async function POST(req: NextRequest) {
 
   const valid = await verifyStripeSignature(payload, signature, secret);
   if (!valid) {
-    void logWebhookFailure(req, "invalid_signature");
+    await defer(logWebhookFailure(req, "invalid_signature"), "webhook:invalid_signature");
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
@@ -562,7 +563,7 @@ export async function POST(req: NextRequest) {
     // ── Guide / bazaar sale — ledger row first, provisioning result after ──
     const isBazaar = meta.source === "ucp_purchase";
     const slug     = meta.product ?? "";
-    await recordSale({
+    const ledgered = await recordSale({
       source:         "stripe",
       event_type:     isBazaar ? "bazaar_sale" : "guide_sale",
       external_id:    session.id,
@@ -572,6 +573,14 @@ export async function POST(req: NextRequest) {
       customer_email: session.customer_details?.email ?? undefined,
       agent_name:     meta.agent_name,
     });
+    // We still return 200 and still fulfill: the customer has paid and must get
+    // their guide. But the return value was previously discarded, so a Supabase
+    // outage produced a charged customer, a delivered product, and no ledger row,
+    // with nothing anywhere saying so. Stripe holds the authoritative record, so
+    // this gap is repairable via /api/admin/reconcile once flagged.
+    if (!ledgered) {
+      console.error("[stripe-webhook][LOST_SALE] paid but unledgered:", session.id);
+    }
 
     const souvenirToken = await issuePurchaseSouvenirs(session);
     const [, delivered] = await Promise.all([

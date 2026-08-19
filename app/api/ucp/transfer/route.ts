@@ -33,6 +33,7 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { verifyJwt }                       from "@/lib/jwt";
 import { logAction }                       from "@/lib/ucp-helpers";
 import { creditPaymentHeader, x402Headers } from "@/lib/x402";
+import { defer } from "@/lib/defer";
 
 const MAX_AMOUNT         = 500;
 const DAILY_TRANSFER_CAP = 20;
@@ -118,12 +119,15 @@ export async function POST(req: Request): Promise<Response> {
 
   const txId = crypto.randomUUID();
 
-  void logAction(fromAgent, "transfer", toAgent, amount / 100, "completed", {
+  // Deferred, not `void`: the transfer itself already committed above, so this
+  // row is an audit trail that could be rebuilt from balances if lost. It still
+  // must not be silently dropped by the edge isolate.
+  await defer(logAction(fromAgent, "transfer", toAgent, amount / 100, "completed", {
     to_agent: toAgent,
     amount,
     memo:     memo || undefined,
     tx_id:    txId,
-  });
+  }), "transfer");
 
   return Response.json({
     ok:           true,

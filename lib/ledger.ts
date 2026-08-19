@@ -80,9 +80,17 @@ export async function recordSale(entry: LedgerEntry): Promise<boolean> {
     }
   ).catch(() => null);
 
-  if (!res) return false;
-  if (!res.ok) {
-    console.error("[ledger] recordSale failed:", res.status, entry.external_id);
+  if (!res || !res.ok) {
+    // This log line is the ONLY remaining trace of the sale, so it carries the
+    // whole row rather than just the id. Stripe/Coinbase sales can be rebuilt
+    // from the processor; latent-credit and service-job sales cannot be rebuilt
+    // from anywhere, so a lost row there is permanent. Grep CF logs for
+    // LOST_SALE to replay by hand. The network-failure branch previously
+    // returned false while logging nothing at all.
+    console.error(
+      "[ledger][LOST_SALE]",
+      JSON.stringify({ reason: res ? `http_${res.status}` : "network", row })
+    );
     return false;
   }
   return true;

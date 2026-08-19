@@ -244,7 +244,12 @@ export async function settle(job: ServiceJob): Promise<boolean> {
   await creditAgent(job.seller_agent, sellerEarn);
 
   // Ledger view: gross = what the buyer paid; fee = seller payout; net = our cut.
-  void recordSale({
+  // Awaited for the same reason addRep below is: Cloudflare edge kills detached
+  // promises. This row is the ONLY record a service-job sale ever gets (there is
+  // no processor to rebuild it from), so `void` here risked losing the sale
+  // silently. A failed write does NOT fail settle — the seller has already been
+  // credited above, so aborting would be worse than a logged gap.
+  const ledgered = await recordSale({
     source:       "manual",
     event_type:   "bazaar_sale",
     external_id:  `svcjob_${job.id}`,
@@ -263,6 +268,9 @@ export async function settle(job: ServiceJob): Promise<boolean> {
       proof_hash:           job.proof_hash,
     },
   });
+  if (!ledgered) {
+    console.error("[service-jobs][LOST_SALE] settled with no ledger row:", `svcjob_${job.id}`);
+  }
 
   // Reputation: completing a paid job is a high-signal event for the seller.
   // (The rep system is award-only by design — scores never decrease — so a

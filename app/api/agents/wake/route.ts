@@ -17,6 +17,7 @@ import { getHomeAgent, getNexusAgents, NEXUS_ROOM_ID, HomeAgent } from "@/lib/ag
 import { getClientAgent }               from "@/lib/agents/client-agents";
 import { ACTION_POOLS, NEXUS_POOLS }   from "@/lib/agents/action-pools";
 import { addRep }                       from "@/lib/agents/reputation";
+import { defer } from "@/lib/defer";
 
 const STALE_MINUTES = 30;
 
@@ -59,7 +60,7 @@ async function wakeAgent(
     });
   }
 
-  void addRep(agent.name, "visit");
+  await defer(addRep(agent.name, "visit"), "wake:rep-visit");
 
   // Staleness check — scoped to targetRoomId so home vs nexus are independent
   const since = new Date(Date.now() - STALE_MINUTES * 60 * 1000).toISOString();
@@ -89,7 +90,7 @@ async function wakeAgent(
     }),
   });
 
-  if (msgRes.ok) void addRep(agent.name, "message");
+  if (msgRes.ok) await defer(addRep(agent.name, "message"), "wake:rep-message");
   return { woken: true, posted: msgRes.ok };
 }
 

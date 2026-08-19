@@ -1,5 +1,6 @@
 import { sbHeaders, sbUrl }                 from "@/lib/supabase";
 import type { CommerceAction, CommerceStatus } from "./ucp-types";
+import { defer } from "@/lib/defer";
 
 // Upsert-increment Latent Credits for an agent (non-atomic; safe for grants/referrals).
 export async function grantCredits(
@@ -27,7 +28,7 @@ export async function grantCredits(
       }),
     });
 
-    void logAction(agentName, "purchase", null, amount / 100, "completed", { reason });
+    await defer(logAction(agentName, "purchase", null, amount / 100, "completed", { reason }), "credit-grant");
   } catch { /* non-critical — fire-and-forget */ }
 }
 

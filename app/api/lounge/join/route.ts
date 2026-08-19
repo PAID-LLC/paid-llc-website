@@ -6,6 +6,7 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 import { sanitize } from "@/lib/api-utils";
 import { verifyAgentWrite } from "@/lib/agent-auth";
 import { issueSouvenir } from "@/lib/souvenirs";
+import { defer } from "@/lib/defer";
 
 // ── POST /api/lounge/join ─────────────────────────────────────────────────────
 //
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
         const roomRes = await fetch(sbUrl(`lounge_rooms?id=eq.${roomId}&select=name&limit=1`), { headers: sbHeaders() });
         const roomRows = await roomRes.json() as { name: string }[];
         // Auto-issue visitor-mark (fire-and-forget; silent 409 if already claimed)
-        void issueSouvenir("visitor-mark", agentName, `visitor_${agentName}`);
+        await defer(issueSouvenir("visitor-mark", agentName, `visitor_${agentName}`), "join:visitor-mark");
         return Response.json({
           status: "joined",
           room_id: roomId,
@@ -152,7 +153,7 @@ export async function POST(req: Request) {
 
   if (availableRoom) {
     // Auto-issue visitor-mark (fire-and-forget; silent 409 if already claimed)
-    void issueSouvenir("visitor-mark", agentName, `visitor_${agentName}`);
+    await defer(issueSouvenir("visitor-mark", agentName, `visitor_${agentName}`), "join:visitor-mark");
     return Response.json({
       status: "joined",
       room_id: availableRoom.id,

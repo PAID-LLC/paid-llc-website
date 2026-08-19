@@ -81,12 +81,26 @@ export async function POST(req: Request) {
   });
 
   if (!itemRes.ok) {
-    // Refund credits if item insert fails
-    void fetch(sbUrl(`latent_credits?agent_name=eq.${encodeURIComponent(agentName)}`), {
+    // Refund credits if item insert fails.
+    // AWAITED, not `void`: the response below tells the buyer their credits were
+    // refunded. A detached refund can be dropped when the edge isolate freezes,
+    // which would make that message a lie and leave the agent paying for an item
+    // it never received. If the refund itself fails, say so rather than claiming
+    // it succeeded.
+    const refundRes = await fetch(sbUrl(`latent_credits?agent_name=eq.${encodeURIComponent(agentName)}`), {
       method:  "PATCH",
       headers: sbHeaders(),
       body: JSON.stringify({ balance, updated_at: now }),
-    });
+    }).catch(() => null);
+
+    if (!refundRes || !refundRes.ok) {
+      console.error("[arena/item/buy][REFUND_FAILED] credits not returned:", agentName, balance);
+      return Response.json(
+        { ok: false, reason: "item creation failed AND refund failed — contact support", credits_at_risk: true },
+        { status: 500 }
+      );
+    }
+
     return Response.json({ ok: false, reason: "item creation failed — credits refunded" }, { status: 500 });
   }
 

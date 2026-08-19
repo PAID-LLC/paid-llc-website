@@ -16,6 +16,7 @@ import { getClientAgent }           from "@/lib/agents/client-agents";
 import { addRep, getRep, repLevel } from "@/lib/agents/reputation";
 import { issueSouvenir }            from "@/lib/souvenirs";
 import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
+import { defer } from "@/lib/defer";
 
 const MAX_HUMAN_CHARS   = 200;
 const GEMINI_MODEL      = "gemini-flash-lite-latest";
@@ -176,7 +177,7 @@ export async function POST(req: Request) {
   }
 
   // Auto-issue witness-mark (once per display_name; skip if already claimed)
-  void (async () => {
+  await defer((async () => {
     const existRes = await fetch(
       sbUrl(`souvenir_claims?souvenir_id=eq.witness-mark&display_name=eq.${encodeURIComponent(humanName)}&select=id&limit=1`),
       { headers: sbHeaders() }
@@ -185,14 +186,14 @@ export async function POST(req: Request) {
     if (existing.length === 0) {
       await issueSouvenir("witness-mark", humanName, `witness_${humanName}`);
     }
-  })();
+  })(), "message:witness-mark");
 
   // Check current rep level before incrementing — determines which souvenir to hint
   const currentScore = await getRep(agent.name);
   const level        = repLevel(currentScore);
 
   // Rep: human triggered a reactive response — highest value interaction
-  void addRep(agent.name, "reaction");
+  await defer(addRep(agent.name, "reaction"), "message:rep-reaction");
 
   // Level-aware earn hint: prestige-mark unlocks when agent is recognized or legendary
   const earnHint = (level === "recognized" || level === "legendary")

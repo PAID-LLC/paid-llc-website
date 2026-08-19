@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   // Ownership check — agent must prove they own this name
   const auth = await verifyAgentWrite(req, agentName);
   if (!auth.ok) {
-    logToolCall(agentName, "post_lounge_message", { agentName }, auth.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN", ip);
+    await logToolCall(agentName, "post_lounge_message", { agentName }, auth.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN", ip);
     return Response.json({ error: auth.error }, { status: auth.status });
   }
 
@@ -155,6 +155,6 @@ export async function POST(req: Request) {
     });
   } catch { /* non-critical */ }
 
-  logToolCall(agentName, "post_lounge_message", { agentName, roomId }, "OK", ip);
+  await logToolCall(agentName, "post_lounge_message", { agentName, roomId }, "OK", ip);
   return Response.json({ success: true, room_id: roomId });
 }

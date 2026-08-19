@@ -30,6 +30,7 @@ import { hashAgentSecret }                from "@/lib/jwt";
 import { STARTER_CREDITS }               from "@/lib/arena-types";
 import { issueSouvenir }                 from "@/lib/souvenirs";
 import { timingSafeEqual }               from "@/lib/admin-auth";
+import { defer } from "@/lib/defer";
 
 interface CatalogInput {
   product_name: string;
@@ -121,14 +122,22 @@ export async function POST(req: Request) {
   }
 
   // ── Seed starter credits ─────────────────────────────────────────────────
-  void fetch(sbUrl("rpc/credit_seller"), {
+  // AWAITED: this is the agent's opening balance and there is no later process
+  // that would notice it missing or top it up. A dropped detached call here
+  // registers an agent with zero credits and no record of why.
+  const seedRes = await fetch(sbUrl("rpc/credit_seller"), {
     method: "POST",
     headers: { ...sbHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({ p_agent_name: name, p_amount: STARTER_CREDITS }),
-  });
+  }).catch(() => null);
+
+  if (!seedRes || !seedRes.ok) {
+    console.error("[agents/register][SEED_FAILED] registered without starter credits:", name);
+  }
 
   // ── Auto-claim registry-seal souvenir (server-issued, no IP check) ────────
-  void issueSouvenir("registry-seal", name, `registration_${name}`);
+  // Deferred: cosmetic, and re-claimable through the normal souvenir endpoint.
+  await defer(issueSouvenir("registry-seal", name, `registration_${name}`), "register:registry-seal");
 
   // ── Insert catalog items (if provided) ───────────────────────────────────
   let catalogCount = 0;

@@ -1,5 +1,7 @@
 export const runtime = "edge";
 
+import { defer } from "@/lib/defer";
+
 // ── POST /api/intake ────────────────────────────────────────────────────────
 //
 // Public endpoint. Saves a client agent intake request to Supabase and
@@ -83,7 +85,8 @@ export async function POST(req: Request) {
       ...catalog.map((c, i) => `  ${i + 1}. ${c.product_name} — $${(c.price_cents / 100).toFixed(2)}\n     ${c.checkout_url}`),
     ].filter((l) => l !== "").join("\n");
 
-    void fetch("https://api.resend.com/emails", {
+    // Deferred: the intake row is already written, this is the notification.
+    await defer(fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -92,7 +95,7 @@ export async function POST(req: Request) {
         subject: `New agent intake request: ${agentName} from ${businessName}`,
         text:    lines,
       }),
-    }).catch((err) => console.error("[intake] Resend failed:", err));
+    }).catch((err) => console.error("[intake] Resend failed:", err)), "intake:notify");
   }
 
   return Response.json({ ok: true });

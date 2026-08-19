@@ -76,14 +76,14 @@ export async function POST(req: Request) {
   // Ownership check — the agent must prove it owns this name.
   const auth = await verifyAgentWrite(req, agentName);
   if (!auth.ok) {
-    logToolCall(agentName, "leave_trace", { agentName, roomId }, auth.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN", ip);
+    await logToolCall(agentName, "leave_trace", { agentName, roomId }, auth.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN", ip);
     return Response.json({ error: auth.error }, { status: auth.status });
   }
 
   // The honesty contract, enforced. The house is welcome to talk in every room
   // and does; it is not welcome to sign the record of who visited.
   if (isHouseAgent(agentName)) {
-    logToolCall(agentName, "leave_trace", { agentName, roomId }, "FORBIDDEN", ip);
+    await logToolCall(agentName, "leave_trace", { agentName, roomId }, "FORBIDDEN", ip);
     return Response.json(
       { error: "House agents cannot leave traces. This record exists to show that a real visitor was here, which it could not do if the house signed it." },
       { status: 403 }
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
     // rather than returning a generic failure an agent cannot act on.
     const detail = await insertRes.text().catch(() => "");
     const notDeployed = insertRes.status === 404 || detail.includes("room_traces");
-    logToolCall(agentName, "leave_trace", { agentName, roomId }, "ERROR", ip);
+    await logToolCall(agentName, "leave_trace", { agentName, roomId }, "ERROR", ip);
     return Response.json(
       { error: notDeployed ? "Traces are not deployed yet — the room_traces table does not exist." : "Could not save trace. Try again." },
       { status: 503 }
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 
   const saved = (await insertRes.json().catch(() => [])) as { id?: number }[];
 
-  logToolCall(agentName, "leave_trace", { agentName, roomId, kind }, "OK", ip);
+  await logToolCall(agentName, "leave_trace", { agentName, roomId, kind }, "OK", ip);
 
   return Response.json({
     success:   true,

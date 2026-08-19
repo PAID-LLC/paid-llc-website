@@ -5,6 +5,7 @@ import { slugToFile, PRODUCTS }             from "@/lib/products";
 import { logAction }                        from "@/lib/ucp-helpers";
 import { verifyJwt }                        from "@/lib/jwt";
 import { stripePaymentHeader, x402Headers } from "@/lib/x402";
+import { defer } from "@/lib/defer";
 
 const SITE_URL    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://paiddev.com";
 const TTL_MINUTES = 15;
@@ -76,13 +77,23 @@ async function claimToken(token: string, agentName: string): Promise<LogRow | nu
   return rows[0] ?? null;
 }
 
-// Re-open a token so the agent can retry with a different payment method
+// Re-open a token so the agent can retry with a different payment method.
+// Never throws: every caller is already on an error path and awaits this before
+// returning a 4xx/5xx, so a rejection here would replace the intended status
+// code with an unhandled 500. Callers are correct to ignore the result.
 async function reopenToken(id: number): Promise<void> {
-  await fetch(sbUrl(`agent_commerce_log?id=eq.${id}`), {
+  const res = await fetch(sbUrl(`agent_commerce_log?id=eq.${id}`), {
     method:  "PATCH",
     headers: sbHeaders(),
     body:    JSON.stringify({ status: "accepted" }),
-  });
+  }).catch(() => null);
+
+  // claimToken already consumed this token by PATCHing it to "completed". If the
+  // re-open fails, the retry we are about to advertise in the response is
+  // impossible, so say so loudly rather than leaving the agent to discover it.
+  if (!res || !res.ok) {
+    console.error("[purchase][TOKEN_STUCK] reopen failed, advertised retry will 410:", id);
+  }
 }
 
 // ── Latent credits deduction (atomic RPC) ────────────────────────────────────
@@ -245,7 +256,7 @@ export async function POST(req: Request): Promise<Response> {
     // Require JWT proving caller owns this agent_name
     const rawToken = agent_token?.trim();
     if (!rawToken) {
-      void reopenToken(log.id);
+      await reopenToken(log.id);
       return Response.json(
         { ok: false, reason: "agent_token required for latent_credits purchases" },
         { status: 401 }
@@ -253,7 +264,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     const jwtPayload = await verifyJwt(rawToken);
     if (!jwtPayload || jwtPayload.sub !== agent_name) {
-      void reopenToken(log.id);
+      await reopenToken(log.id);
       return Response.json(
         { ok: false, reason: "agent_token does not match agent_name" },
         { status: 403 }
@@ -265,7 +276,7 @@ export async function POST(req: Request): Promise<Response> {
 
     if (!deducted) {
       // Re-open the token so the agent can retry with stripe
-      void reopenToken(log.id);
+      await reopenToken(log.id);
       return Response.json(
         { ok: false, reason: "insufficient_credits", required_credits: creditsNeeded },
         { status: 402, headers: x402Headers(stripePaymentHeader(log.resource_id)) }
@@ -278,7 +289,10 @@ export async function POST(req: Request): Promise<Response> {
       const commission = await fetchCatalogCommission(catalogItemId);
       if (commission) {
         const sellerEarn = Math.floor(creditsNeeded * (commission.seller_earn_percent / 100));
-        if (sellerEarn > 0) void creditSeller(commission.agent_name, sellerEarn);
+        // Awaited: this is a seller's actual earnings and cannot be
+        // reconstructed from anywhere if the edge isolate drops it.
+        // creditSeller catches its own errors, so this cannot throw.
+        if (sellerEarn > 0) await creditSeller(commission.agent_name, sellerEarn);
       }
     }
 
@@ -288,13 +302,13 @@ export async function POST(req: Request): Promise<Response> {
     if (quantity > 1) {
       const licenseKey = await issueLicense(agent_name, resource_id, quantity, amount);
 
-      void logAction(agent_name, "purchase", resource_id, amount, "completed", {
+      await defer(logAction(agent_name, "purchase", resource_id, amount, "completed", {
         negotiation_token,
         pay_with:        "latent_credits",
         credits_deducted: creditsNeeded,
         license_key:     licenseKey,
         quantity,
-      });
+      }), "purchase:bulk-license");
 
       return Response.json({
         ok:            true,
@@ -308,11 +322,11 @@ export async function POST(req: Request): Promise<Response> {
     // Single purchase: return signed URL directly
     const downloadUrl = filename ? await getSignedUrl(filename) : null;
 
-    void logAction(agent_name, "download", resource_id, amount, "completed", {
+    await defer(logAction(agent_name, "download", resource_id, amount, "completed", {
       negotiation_token,
       pay_with:         "latent_credits",
       credits_deducted: creditsNeeded,
-    });
+    }), "purchase:download");
 
     return Response.json({
       ok:            true,
@@ -328,14 +342,14 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!checkoutUrl) {
     // Re-open token so agent can retry
-    void reopenToken(log.id);
+    await reopenToken(log.id);
     return Response.json({ ok: false, reason: "checkout_creation_failed" }, { status: 502 });
   }
 
-  void logAction(agent_name, "purchase", resource_id, amount, "initiated", {
+  await defer(logAction(agent_name, "purchase", resource_id, amount, "initiated", {
     negotiation_token,
     pay_with: "stripe",
-  });
+  }), "purchase:stripe-initiated");
 
   return Response.json({
     ok:           true,

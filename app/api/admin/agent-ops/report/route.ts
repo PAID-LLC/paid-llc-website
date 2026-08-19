@@ -7,6 +7,7 @@ export const runtime = "edge";
 
 import { parseAdminCookie, verifyAdminToken } from "@/lib/admin-auth";
 import { sbUrl, sbHeaders, supabaseReady }    from "@/lib/supabase";
+import { defer } from "@/lib/defer";
 
 async function checkAuth(req: Request): Promise<boolean> {
   // Accept cron secret header as bypass (used by /api/admin/agent-ops/cron)
@@ -239,11 +240,11 @@ ${actionItems.length > 0 ? actionItems.map((i) => `- ${i}`).join("\n") : "- None
         delivered_to = adminEmail;
         // Update delivered_to in saved report
         if (report_id) {
-          void fetch(`${sbUrl("admin_reports")}?id=eq.${report_id}`, {
+          await defer(fetch(`${sbUrl("admin_reports")}?id=eq.${report_id}`, {
             method:  "PATCH",
             headers: { ...sbHeaders(), Prefer: "return=minimal" },
             body:    JSON.stringify({ delivered_to: adminEmail, delivered_at: new Date().toISOString() }),
-          });
+          }), "admin-report:mark-delivered");
         }
       }
     }

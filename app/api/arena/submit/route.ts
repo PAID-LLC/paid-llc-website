@@ -16,6 +16,7 @@ import { updateArenaStats, postLossAudit, computeEloDelta, fetchElo, applyEloDel
 import { ArenaDuel, ArenaPuzzle, JuryScores, DuelRubric, SUDDEN_DEATH_MARGIN } from "@/lib/arena-types";
 import { sentinelCheck } from "@/lib/sentinel";
 import { verifyAgentWrite } from "@/lib/agent-auth";
+import { defer } from "@/lib/defer";
 
 // Must match the limit the public manifest advertises. These disagreed until
 // 2026-07-26: the manifest promised 2000 and this silently sliced to 1000, so
@@ -101,23 +102,38 @@ export async function POST(req: Request) {
   const responseField = isChallenger ? "challenger_response" : "defender_response";
   const tsField       = isChallenger ? "challenger_submitted_at" : "defender_submitted_at";
 
-  await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
+  // Write and read back in ONE round trip. PostgREST returns the updated row
+  // when asked with Prefer: return=representation, the same trick already used
+  // for the stake RPC above. This previously PATCHed, then issued a second GET
+  // to read the row it had just written.
+  //
+  // The .ok check matters more than the saved round trip. Neither call was
+  // checked before, so a failed PATCH fell straight through to a refetch of the
+  // pre-PATCH row: both responses read as absent, and the endpoint answered
+  // {ok:true, status:"pending"}. The submission was discarded and the caller was
+  // told everything was fine. 503 not 502, because Cloudflare replaces 502/504
+  // bodies with its own error page.
+  const patchRes = await fetch(sbUrl(`arena_duels?id=eq.${duelId}`), {
     method:  "PATCH",
-    headers: sbHeaders(),
+    headers: { ...sbHeaders(), Prefer: "return=representation" },
     body: JSON.stringify({ [responseField]: response, [tsField]: new Date().toISOString() }),
   });
 
-  // Re-fetch to check if both responses are now in
-  const updatedRes = await fetch(
-    sbUrl(`arena_duels?id=eq.${duelId}&select=challenger_response,defender_response&limit=1`),
-    { headers: sbHeaders() }
-  );
-  const updated = updatedRes.ok
-    ? (await updatedRes.json() as Pick<ArenaDuel, "challenger_response" | "defender_response">[])[0]
+  const updated = patchRes.ok
+    ? (await patchRes.json().catch(() => null) as Pick<ArenaDuel, "challenger_response" | "defender_response">[] | null)?.[0] ?? null
     : null;
 
-  const challResponse = isChallenger ? response : (updated?.challenger_response ?? null);
-  const defResponse   = isChallenger ? (updated?.defender_response ?? null) : response;
+  // No row back means the write did not land (bad status, unparseable body, or
+  // zero rows matched). Fail loudly instead of reporting a phantom "pending".
+  if (!updated) {
+    return Response.json(
+      { ok: false, reason: "failed to record submission, please retry" },
+      { status: 503 }
+    );
+  }
+
+  const challResponse = isChallenger ? response : (updated.challenger_response ?? null);
+  const defResponse   = isChallenger ? (updated.defender_response ?? null) : response;
 
   // If both responses are not yet in, return pending
   if (!challResponse || !defResponse) {
@@ -296,9 +312,12 @@ export async function POST(req: Request) {
 
   await finalizeDuel(duelId, winner, loser, juryScores, false, null, false, isChallengerWinner, winnerDelta, stakeCredits);
 
-  // Fire post-loss audit for the loser — non-critical, fire-and-forget
+  // Post-loss coaching tips for the loser. Genuinely non-critical, but it makes
+  // a full Gemini call, and it was AWAITED despite the old comment here claiming
+  // fire-and-forget — so every duel-loss response paid an LLM round trip before
+  // returning. Deferred: the response returns now, the tips still get written.
   const loserResponse = loser === duel.challenger ? challResponse : defResponse;
-  await postLossAudit(loser, duel.prompt, loserResponse, duel.room_id);
+  await defer(postLossAudit(loser, duel.prompt, loserResponse, duel.room_id), "arena:post-loss-audit");
 
   return Response.json({
     ok:     true,

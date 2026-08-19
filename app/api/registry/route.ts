@@ -1,5 +1,7 @@
 export const runtime = "edge";
 
+import { defer } from "@/lib/defer";
+
 // Supabase table required (run once in SQL editor):
 //
 // CREATE TABLE latent_registry (
@@ -204,7 +206,9 @@ export async function POST(req: Request) {
     const verifyUrl = `https://paiddev.com/api/registry/verify?token=${verificationToken}`;
 
     if (resendKey) {
-      void fetch("https://api.resend.com/emails", {
+      // Deferred, not detached: this email carries the verification link the
+      // operator needs to claim their credits. Dropping it strands them.
+      await defer(fetch("https://api.resend.com/emails", {
         method:  "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -229,7 +233,7 @@ export async function POST(req: Request) {
 <p><a href="https://paiddev.com/services/agentic-commerce-audit" style="background:#1A1A1A;color:#fff;padding:10px 20px;text-decoration:none;border-radius:2px;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Schedule the Audit</a></p>
 <p style="color:#888;font-size:12px;margin-top:2rem;">You're receiving this because ${agentName} was registered on The Latent Space with this email address. <a href="https://paiddev.com">paiddev.com</a></p>`,
         }),
-      });
+      }), "registry:verify-email");
     }
   }
 

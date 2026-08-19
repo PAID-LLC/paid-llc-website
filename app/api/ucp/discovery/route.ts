@@ -5,11 +5,12 @@ import { logAction }                             from "@/lib/ucp-helpers";
 import { verifyJwt }                             from "@/lib/jwt";
 import type { UcpDiscoveryResponse, UcpProduct } from "@/lib/ucp-types";
 import { CROSSREF_FROM_DISCOVERY } from "@/lib/ucp-catalogs";
+import { defer } from "@/lib/defer";
 
 export async function GET(req: Request): Promise<Response> {
   const { tier, agentName } = await detectTier(req);
 
-  void logAction(agentName, "discovery", null, null, "completed");
+  await defer(logAction(agentName, "discovery", null, null, "completed"), "discovery");
 
   const products: UcpProduct[] = PRODUCTS.map((p) => ({
     "@type":     "Product",
