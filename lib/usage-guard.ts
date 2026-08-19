@@ -22,7 +22,22 @@ import { sbHeaders, sbUrl } from "@/lib/supabase";
 // CREATE POLICY "service_role_only" ON usage_counters USING (false) WITH CHECK (false);
 // -- then run db/meter-daily-rpc.sql to install the atomic counter function.
 
-/** Daily ceiling on Gemini calls across all features (free tier is 1,500/day). */
+/**
+ * Daily ceiling on Gemini calls across all features.
+ *
+ * This is a COST cap, not a free-tier cap. Billing is attached to the Gemini
+ * project (confirmed 2026-08-19), so calls are billed rather than 429'd at a
+ * free-tier boundary. Observed spend is $0.01-$0.13/day against an unattended
+ * cron baseline of roughly 300-400 calls/day, so this 1000/day ceiling is worth
+ * on the order of $0.10-$0.37/day if it were ever reached.
+ *
+ * Do not re-label this as a free-tier limit. Two files previously did, and that
+ * belief is what would justify adding another unattended cron.
+ *
+ * Note the interaction with allowUsage() below: it fails OPEN when the counter
+ * table is unreachable. That was a free failure when Google's own free-tier 429
+ * sat behind it. It is now the only ceiling there is.
+ */
 export const GEMINI_DAILY_BUDGET = 1000;
 /** Daily ceiling on human chat messages per IP fingerprint. */
 export const HUMAN_CHAT_DAILY_PER_IP = 20;

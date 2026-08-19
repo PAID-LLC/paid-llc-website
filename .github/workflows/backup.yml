@@ -1,11 +1,38 @@
-# Weekly Supabase backup: exports critical tables as JSON and stores them as
-# a workflow artifact (90-day retention, only repo collaborators can download).
-# Free-tier Supabase has minimal backup retention — this is the disaster
-# hedge for a bad migration or accidental delete.
+# Weekly Supabase backup: exports critical tables as JSON and stores them as a
+# workflow artifact. Free-tier Supabase has minimal backup retention — this is
+# the disaster hedge for a bad migration or an accidental delete.
 #
 # Requires two repo secrets (Settings > Secrets and variables > Actions):
 #   SUPABASE_URL          — https://<project>.supabase.co
 #   SUPABASE_SERVICE_KEY  — service_role key
+#
+# ── Two defects fixed 2026-08-19, both found by checking runs rather than code ──
+#
+# 1. IT WAS A SILENT NO-OP. The missing-secrets branch was `exit 0`, so with the
+#    secrets unset the job did nothing and reported SUCCESS. Verified against the
+#    GitHub API: runs 8, 9 and 10 (2026-08-03, 08-10, 08-17) all concluded
+#    "success" and produced total_count:0 artifacts. Ten green weekly runs, zero
+#    bytes backed up, nobody notified. It now exits 1 so a missing secret shows
+#    up as a red X. A backup you have not restored from is a hypothesis; a backup
+#    that reports success while writing nothing is worse than none, because it
+#    stops you looking.
+#
+# 2. THIS REPO IS PUBLIC, AND ARTIFACTS ON A PUBLIC REPO ARE PUBLICLY
+#    DOWNLOADABLE. The old header comment claimed "only repo collaborators can
+#    download", which is not true for public repositories. Nothing leaked,
+#    because no artifact was ever produced — but the moment the secrets were
+#    added, `leads` and `sales_ledger` would have published customer names,
+#    emails and phone numbers to anyone with the run URL. PII keys are now
+#    stripped before upload (see REDACT_KEYS).
+#
+# What survives redaction is still enough to reconstruct the business record:
+# external_id, amounts, product, dates, agent_name. For Stripe and Coinbase rails
+# the processor holds the authoritative copy anyway; the rails that cannot be
+# rebuilt from anywhere (latent credits, agent service jobs) carry no human PII.
+#
+# If a full-fidelity backup including customer emails is ever needed, do NOT
+# widen this workflow. Either make the repository private first, or export to a
+# private destination.
 name: backup
 on:
   schedule:
@@ -21,23 +48,69 @@ jobs:
           SB_URL: ${{ secrets.SUPABASE_URL }}
           SB_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          if [ -z "$SB_URL" ] || [ -z "$SB_KEY" ]; then
-            echo "Supabase secrets not configured — skipping (add SUPABASE_URL and SUPABASE_SERVICE_KEY repo secrets)"
-            exit 0
+          set -euo pipefail
+
+          if [ -z "${SB_URL:-}" ] || [ -z "${SB_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_SERVICE_KEY repo secrets are not configured."
+            echo "::error::No backup was taken. Add them under Settings > Secrets and variables > Actions."
+            exit 1
           fi
+
+          # Keys stripped from every exported row before upload. This repo is
+          # public; artifacts are not.
+          REDACT_KEYS='["customer_email","email","phone","full_name","customer_name","ip","ip_address","contact_email","reply_to"]'
+
           mkdir -p backup
+          FAILED=""
+
           for t in leads sales_ledger latent_registry latent_credits latent_lounge \
-                   agent_catalog agent_catalog_sales x402_payments souvenir_claims \
-                   usage_counters econ_config intake_requests; do
+                   agent_catalog agent_catalog_sales agent_service_jobs x402_payments \
+                   souvenir_claims usage_counters econ_config intake_requests; do
             echo "exporting $t"
-            curl -s -f "$SB_URL/rest/v1/$t?select=*&limit=10000" \
-              -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
-              -o "backup/$t.json" || echo "[]" > "backup/$t.json"
+            if ! curl -s -f --max-time 120 \
+                  "$SB_URL/rest/v1/$t?select=*&limit=50000" \
+                  -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+                  -o "backup/$t.raw.json"; then
+              echo "::warning::export failed for $t"
+              FAILED="$FAILED $t"
+              continue
+            fi
+
+            # Must be a JSON array, or the export is not usable as a backup.
+            if ! jq -e 'type == "array"' "backup/$t.raw.json" >/dev/null 2>&1; then
+              echo "::warning::$t did not return a JSON array"
+              FAILED="$FAILED $t"
+              rm -f "backup/$t.raw.json"
+              continue
+            fi
+
+            jq --argjson drop "$REDACT_KEYS" \
+               'map(with_entries(select(.key as $k | $drop | index($k) | not)))' \
+               "backup/$t.raw.json" > "backup/$t.json"
+            rm -f "backup/$t.raw.json"
+
+            echo "  $t: $(jq 'length' "backup/$t.json") rows"
           done
+
+          # sales_ledger is the one table whose loss is unrecoverable for the
+          # credit and service-job rails. Never call the run green without it.
+          if [ ! -s backup/sales_ledger.json ]; then
+            echo "::error::sales_ledger export missing — failing the run."
+            exit 1
+          fi
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::one or more tables failed to export:$FAILED"
+            exit 1
+          fi
+
+          echo "--- backup contents ---"
           ls -la backup
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: supabase-backup-${{ github.run_id }}
           path: backup/
           retention-days: 90
+          if-no-files-found: error

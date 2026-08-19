@@ -4,14 +4,20 @@ You are an expert Next.js developer building the PAID LLC website. This is a pro
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
+*Corrected 2026-08-19. Every line below was wrong except styling, language, and fonts, and agent sessions were reading it first.*
+
+- **Framework:** Next.js 15.5.2 (App Router). Every API route must declare `export const runtime = "edge"` -- all 159 currently do.
 - **Styling:** Tailwind CSS
 - **Language:** TypeScript
-- **Hosting:** Vercel (free tier)
+- **Hosting:** Cloudflare Pages / Workers, NOT Vercel. Deploys via `scripts/build-cf.mjs`, a custom `@cloudflare/next-on-pages` pipeline.
 - **Fonts:** Montserrat (headings) + Inter (body) via Google Fonts
-- **Forms:** Formspree (no backend needed)
-- **Analytics:** Google Analytics 4 (add before deploy)
-- **Payments:** Gumroad embed for digital products
+- **Forms:** own API route (`app/api/contact`), not Formspree
+- **Payments:** Stripe (live), plus Coinbase and x402 rails. Not Gumroad. Every payment path must record through `lib/ledger.ts`.
+- **Data:** Supabase Postgres, service-key only, deny-all RLS on every table
+
+### Before bumping any dependency
+
+Read the pin comments in `scripts/build-cf.mjs:39-43` first. `vercel` is pinned to 54.19.0 because 54.20.x broke lambda route mapping. That script is excluded from lint and has no test coverage, so a broken patch step fails silently at deploy time, not in CI.
 
 ## Brand
 
@@ -45,14 +51,20 @@ You are an expert Next.js developer building the PAID LLC website. This is a pro
 /terms
 ```
 
-## Pages: Build Order (MVP)
+## Pages: Build Order (MVP) -- HISTORICAL, all shipped
 
-1. Homepage -- hero, how it works, services overview, final CTA
-2. Services page -- two service offerings with descriptions and CTAs
-3. Contact page -- Formspree form
-4. About page -- mission, founder bio, values
-5. Digital Products page -- "Coming Soon" layout until first guide is ready
-6. Legal pages (Privacy + ToS) -- generate content after domain confirmed
+Kept for context on original intent. The site launched ~2026-03-14 and has long
+since passed this list: all six pages are live, plus the digital products
+storefront, the Ask Arti chatbot, the admin surfaces, and The Latent Space
+(registry, rooms, Bazaar, arena, souvenirs, eight worlds). Do not treat this as
+a to-do list.
+
+1. ~~Homepage~~ -- shipped
+2. ~~Services page~~ -- shipped
+3. ~~Contact page~~ -- shipped, on its own API route (not Formspree)
+4. ~~About page~~ -- shipped
+5. ~~Digital Products page~~ -- shipped, 17 guides, Stripe checkout and delivery live
+6. ~~Legal pages~~ -- shipped
 
 ## Content Reference
 
@@ -75,5 +87,9 @@ Copy brand assets into `public/` before referencing them in code:
 
 ## Deployment
 
-Push to GitHub → auto-deploys to Vercel on merge to main.
+Push to GitHub → auto-deploys to **Cloudflare Pages** on merge to main.
 Repo name: `paid-llc-website`
+
+The Worker bundle sits near Cloudflare's 10 MiB cap (the $5/mo Workers Paid tier;
+the 3 MiB free cap was blown on 2026-07-06). Adding another three.js surface is a
+bundle-size decision before it is a design decision. Measure before adding one.
