@@ -62,6 +62,18 @@ export interface EconKnobs {
   warden_out_tokens: number;
   /** Global daily cap on house-executed Bazaar service jobs (all buyers). */
   svc_daily_global: number;
+  /**
+   * Comment Section video-understanding call. Far larger than any other call on
+   * this site: a YouTube URL clipped to 12 minutes at 0.25 fps is roughly 35k
+   * input tokens, against 700 for a lounge chat reply. Priced separately so
+   * /api/econ/status does not bill five video calls as five chat replies and
+   * report the day as 50x cheaper than it was.
+   */
+  comments_video_in_tokens: number;
+  comments_video_out_tokens: number;
+  /** Comment Section editorial call: a ~55-line digest in, strict JSON out. */
+  comments_text_in_tokens: number;
+  comments_text_out_tokens: number;
 }
 
 const DEFAULTS: EconKnobs = {
@@ -81,6 +93,10 @@ const DEFAULTS: EconKnobs = {
   warden_in_tokens:     450,
   warden_out_tokens:    120,
   svc_daily_global:     300,
+  comments_video_in_tokens:  35000,
+  comments_video_out_tokens: 350,
+  comments_text_in_tokens:   5000,
+  comments_text_out_tokens:  400,
 };
 
 export interface Econ extends EconKnobs {
@@ -88,6 +104,10 @@ export interface Econ extends EconKnobs {
   chatCallUsd: number;
   /** Estimated USD cost of one Warden screening call. */
   wardenCallUsd: number;
+  /** Estimated USD cost of one Comment Section video-understanding call. */
+  commentsVideoCallUsd: number;
+  /** Estimated USD cost of one Comment Section editorial call. */
+  commentsTextCallUsd: number;
   /** Estimated USD token cost of one full duel. */
   duelUsd: number;
   /** Credits charged to start a duel (entry fee). */
@@ -115,6 +135,14 @@ function derive(knobs: EconKnobs, source: Econ["source"]): Econ {
     (knobs.warden_in_tokens * knobs.gemini_in_usd_per_m +
      knobs.warden_out_tokens * knobs.gemini_out_usd_per_m) / 1_000_000;
 
+  const commentsVideoCallUsd =
+    (knobs.comments_video_in_tokens * knobs.gemini_in_usd_per_m +
+     knobs.comments_video_out_tokens * knobs.gemini_out_usd_per_m) / 1_000_000;
+
+  const commentsTextCallUsd =
+    (knobs.comments_text_in_tokens * knobs.gemini_in_usd_per_m +
+     knobs.comments_text_out_tokens * knobs.gemini_out_usd_per_m) / 1_000_000;
+
   const duelUsd =
     knobs.duel_gemini_calls *
     (knobs.duel_in_tokens * knobs.gemini_in_usd_per_m +
@@ -134,7 +162,7 @@ function derive(knobs: EconKnobs, source: Econ["source"]): Econ {
   const winCredits  = Math.floor((duelCostCredits * knobs.win_rebate_pct)  / 100);
   const lossCredits = Math.floor((duelCostCredits * knobs.loss_rebate_pct) / 100);
 
-  return { ...knobs, chatCallUsd, wardenCallUsd, duelUsd, duelCostCredits, selfEvalCostCredits, winCredits, lossCredits, source };
+  return { ...knobs, chatCallUsd, wardenCallUsd, commentsVideoCallUsd, commentsTextCallUsd, duelUsd, duelCostCredits, selfEvalCostCredits, winCredits, lossCredits, source };
 }
 
 // ── Bazaar service floor ─────────────────────────────────────────────────────

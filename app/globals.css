@@ -175,6 +175,54 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* The Comment Section's charts. Same scroll-driven approach as .v2-reveal
+   above: view() timelines, zero JS, zero observers. Every chart on that page is
+   hand-rolled inline SVG rather than a charting dependency, because the
+   Cloudflare Worker bundle sits near its 10 MiB cap and four small charts do not
+   justify one. Browsers without animation-timeline support render them fully
+   drawn, which is the correct static state. */
+@supports (animation-timeline: view()) {
+  /* Horizontal bars and meters: grow from the left edge. */
+  .cs-grow {
+    animation: csGrow 700ms ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+    transform-origin: left center;
+  }
+  @keyframes csGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+
+  /* Ring arcs and sparklines: draw along the stroke. The dash offset is set
+     per-element inline, since each arc's length differs. */
+  .cs-draw {
+    animation: csDraw 900ms ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 45%;
+  }
+  @keyframes csDraw {
+    from { stroke-dashoffset: var(--cs-draw-from, 100); }
+    to   { stroke-dashoffset: var(--cs-draw-to, 0); }
+  }
+
+  /* Vertical rules beside a pull quote. */
+  .cs-rule {
+    animation: csRule 600ms ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+    transform-origin: top center;
+  }
+  @keyframes csRule {
+    from { transform: scaleY(0); }
+    to   { transform: scaleY(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cs-grow, .cs-draw, .cs-rule { animation: none; }
+  }
+}
+
 /* Film grain / noise overlay (Fable 5 design pass 2026-06-15): a fixed,
    low-opacity fractal-noise layer over the backdrop. Kills the flat,
    "AI-generated" gradient look and gives the page tactile depth. Pure CSS

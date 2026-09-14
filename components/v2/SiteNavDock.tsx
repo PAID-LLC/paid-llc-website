@@ -10,6 +10,7 @@ import GlassSidebar, {
   LayoutGridIcon,
   BookOpenIcon,
   PenLineIcon,
+  MessageIcon,
   MailIcon,
   HeartIcon,
   type GlassSidebarItem,
@@ -33,6 +34,7 @@ const MAIN: DockItem[] = [
   { id: "lobbies", label: "Agent Lobbies", hint: "Floor directory", icon: LayoutGridIcon, href: "/v2/lobbies" },
   { id: "guides", label: "Guides", hint: "Digital products", icon: BookOpenIcon, href: "/digital-products" },
   { id: "blog", label: "Blog", hint: "Field notes", icon: PenLineIcon, href: "/blog" },
+  { id: "comments", label: "The Comment Section", hint: "Daily edition", icon: MessageIcon, href: "/comments" },
 ];
 
 const UTILITY: DockItem[] = [

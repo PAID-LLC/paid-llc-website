@@ -1,0 +1,152 @@
+# The Comment Section: builds one edition every morning.
+#
+# 12:05 UTC = 07:05 Central in summer, 06:05 in winter. The edition should be
+# there with the coffee, and its date boundary is Central (see editionDateToday
+# in lib/comments/edition.ts) so a run never publishes "tomorrow's" edition.
+#
+# FOUR STEPS, and the loop in the middle is the point. One request per video
+# keeps each call around 60-125 seconds instead of holding one connection for ten
+# minutes, and a crash costs one card rather than the whole edition: the claim in
+# lib/comments/store.ts marks a video 'processing' and releases it after ten
+# minutes, so the next iteration resumes exactly where the last one stopped.
+#
+# COST PER RUN: about 135 YouTube quota units of 10,000, and 10-12 Gemini calls
+# for roughly five cents. Both are double-gated in code (usage-guard counters
+# `comments_video` 8/day and `comments_text` 14/day inside the shared 1,000/day
+# budget), so a runaway loop here cannot produce a runaway bill.
+#
+# Requires the same repo secret as world-tick and lounge-pulse:
+#   CRON_SECRET — must match the CRON_SECRET env var in Cloudflare Pages.
+# Also requires YOUTUBE_API_KEY set in Cloudflare Pages (not here; the calls are
+# made server-side by the route, not by this workflow).
+name: comment-section
+on:
+  schedule:
+    - cron: "5 12 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Edition date to build (YYYY-MM-DD). Blank = today, Central."
+        required: false
+        type: string
+
+jobs:
+  edition:
+    runs-on: ubuntu-latest
+    steps:
+      # ── 1. Pick ──────────────────────────────────────────────────────────
+      # Reads the US most-popular chart and applies the editorial filter: live
+      # broadcasts, disabled or thin comment sections, Shorts, non-English
+      # videos, and anything already covered are all rejected, each with its
+      # reason in the response so a day that thins out explains itself here.
+      #
+      # Idempotent: an existing edition returns existing:true and spends no
+      # quota, so a re-run never re-picks the day.
+      - name: Pick today's videos
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DATE: ${{ inputs.date }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repo secret not set — skipping"
+            exit 0
+          fi
+          Q=""
+          [ -n "$DATE" ] && Q="&date=$DATE"
+          code=$(curl -s -o /tmp/pick.json -w "%{http_code}" --max-time 60 \
+            -X POST "https://paiddev.com/api/comments/cron?step=pick$Q" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "pick: $code"
+          cat /tmp/pick.json; echo
+          test "$code" = "200"
+          # initialized:false means the migration has not been run. Green, but
+          # there is nothing to do, so stop rather than looping on nothing.
+          if jq -e '.initialized == false' /tmp/pick.json >/dev/null 2>&1; then
+            echo "db/01-comment-section.sql has not been run yet — nothing to build"
+            echo "SKIP_REST=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          # Zero survivors is a real failure: the chart gave us nothing usable
+          # and somebody should look at the rejection list above.
+          jq -e '.picked > 0' /tmp/pick.json >/dev/null
+
+      # ── 2. Videos ────────────────────────────────────────────────────────
+      # One request per video, up to seven attempts for five videos. The two
+      # spares absorb claim contention and a single retry. Each call reports
+      # done:true only when nothing is left to claim.
+      - name: Analyse each video
+        if: env.SKIP_REST != '1'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DATE: ${{ inputs.date }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then exit 0; fi
+          Q=""
+          [ -n "$DATE" ] && Q="&date=$DATE"
+          for i in 1 2 3 4 5 6 7; do
+            code=$(curl -s -o /tmp/video.json -w "%{http_code}" --max-time 170 \
+              -X POST "https://paiddev.com/api/comments/cron?step=video$Q" \
+              -H "x-cron-secret: $CRON_SECRET" \
+              -H "Content-Type: application/json" \
+              -d '{}')
+            echo "video $i: $code"
+            cat /tmp/video.json; echo
+            test "$code" = "200"
+            if jq -e '.done == true' /tmp/video.json >/dev/null 2>&1; then
+              echo "all videos processed after $i request(s)"
+              break
+            fi
+          done
+
+      # ── 3. Publish ───────────────────────────────────────────────────────
+      # Aggregates the day, writes a templated headline (no model), picks the
+      # edition-wide underrated comment, and flips the edition to published.
+      # Returns 409 if any video is still pending, which fails this step on
+      # purpose: a red build beats a half edition marked final.
+      - name: Publish the edition
+        if: env.SKIP_REST != '1'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DATE: ${{ inputs.date }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then exit 0; fi
+          Q=""
+          [ -n "$DATE" ] && Q="&date=$DATE"
+          code=$(curl -s -o /tmp/publish.json -w "%{http_code}" --max-time 60 \
+            -X POST "https://paiddev.com/api/comments/cron?step=publish$Q" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "publish: $code"
+          cat /tmp/publish.json; echo
+          test "$code" = "200"
+
+      # ── 4. Refresh ───────────────────────────────────────────────────────
+      # The compliance step. YouTube requires stored API data to be refreshed or
+      # deleted within 30 days; this re-fetches anything past 25 days, leaving
+      # five days of retries. On a typical day it finds nothing and costs zero
+      # quota units.
+      #
+      # Deliberately NON-FATAL: a YouTube blip here must not turn a perfectly
+      # good edition into a red build. Five days of slack is what makes that
+      # safe, and a genuine failure shows up on five consecutive runs.
+      - name: Refresh stored comments approaching their retention limit
+        if: env.SKIP_REST != '1'
+        continue-on-error: true
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then exit 0; fi
+          code=$(curl -s -o /tmp/refresh.json -w "%{http_code}" --max-time 120 \
+            -X POST "https://paiddev.com/api/comments/cron?step=refresh" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "refresh: $code"
+          cat /tmp/refresh.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::warning::Retention refresh failed. Harmless once, but if this "\
+                 "repeats for five days stored comment data passes its 30-day limit."
+          fi

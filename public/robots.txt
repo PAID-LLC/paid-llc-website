@@ -54,6 +54,8 @@ Disallow: /api/intake
 Disallow: /api/contact
 Disallow: /api/lead-magnet
 Disallow: /api/blog/subscribe
+Disallow: /api/comments/subscribe
+Disallow: /api/comments/cron
 Disallow: /api/scorecard/subscribe
 Disallow: /api/my3sons/
 Disallow: /api/paiddev/
@@ -123,3 +125,7 @@ Disallow: /download/
 Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 Sitemap: https://paiddev.com/sitemap.xml
+# The Comment Section publishes ~6 new URLs a day (one edition plus its video
+# permalinks). They live in their own sitemap because app/sitemap.ts is a
+# synchronous hand-listed file, not a database read.
+Sitemap: https://paiddev.com/comments/sitemap.xml

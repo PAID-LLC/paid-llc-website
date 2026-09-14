@@ -52,12 +52,17 @@ const V2_NATIVE  = [
   "/the-latent-space/simulation",
   "/the-latent-space/arclight",
   "/the-latent-space/palimpsest",
+  "/comments",
+  "/comments/archive",
+  "/comments/about",
 ];
 // Prefixes for dynamic v2-native routes (e.g. /the-latent-space/registry/[agent])
 // where exact matching can't work.
 const V2_NATIVE_PREFIXES: string[] = [
   "/the-latent-space/registry/",
   "/the-latent-space/souvenirs/",
+  // Daily editions (/comments/2026-09-14) and video permalinks (/comments/v/ID).
+  "/comments/",
 ];
 
 // ── Global nav dock (2026-07-05) ─────────────────────────────────────────────

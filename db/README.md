@@ -20,6 +20,7 @@ Run each in the Supabase SQL editor. All are safe to re-run (idempotent).
 | 1 | `harden-rls-policies.sql` | Locks every table to service-role-only. Closes the agent-credential / lead-PII exposure. | Run the audit query (Step 3, below) and confirm **zero** rows with `rls_enabled = false` or a non-`false` policy. |
 | 2 | `credit-grant-idempotency.sql` | Creates `credit_grants` (payment-id idempotency for credit packs). Backs `lib/idempotency.ts`. | `SELECT to_regclass('public.credit_grants');` returns the table name, not null. |
 | 3 | `meter-daily-rpc.sql` | Atomic daily usage counters (cost guardrails, contact rate limit). | `SELECT proname FROM pg_proc WHERE proname = 'meter_daily';` returns a row. |
+| 4 | `01-comment-section.sql` | Creates `comment_editions`, `comment_videos`, `comment_featured` for the daily Comment Section. Holds the 30-day YouTube retention contract (see the file header). | `SELECT to_regclass('public.comment_editions'), to_regclass('public.comment_videos'), to_regclass('public.comment_featured');` returns three names, not null. |
 
 > The webhooks and the contact rate limit **fail open** if a migration has not
 > been run — the site keeps working, it just loses that specific protection until

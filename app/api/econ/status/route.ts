@@ -32,9 +32,11 @@ async function readMcpToolCounts(): Promise<Record<string, number>> {
 export async function GET() {
   const econ = await getEcon();
 
-  const [chatCalls, arenaCalls, revenueCents, creditsSold, mcpCalls, mcpByTool] = await Promise.all([
+  const [chatCalls, arenaCalls, commentsVideoCalls, commentsTextCalls, revenueCents, creditsSold, mcpCalls, mcpByTool] = await Promise.all([
     readCounter("gemini"),
     readCounter("gemini_arena"),
+    readCounter("comments_video"),
+    readCounter("comments_text"),
     readCounter("credit_revenue_cents"),
     readCounter("credits_sold"),
     readCounter("mcp_calls"),
@@ -42,7 +44,18 @@ export async function GET() {
   ]);
 
   const perArenaCallUsd = econ.duelUsd / econ.duel_gemini_calls;
-  const estTokenCostUsd = chatCalls * econ.chatCallUsd + arenaCalls * perArenaCallUsd;
+
+  // The Comment Section's video call is ~50x a chat reply (a clipped YouTube URL
+  // is roughly 35k input tokens against 700). Both of its counters are nested
+  // inside the global "gemini" one, so their calls are ALREADY in chatCalls at
+  // the chat rate; add only the difference rather than double-counting them.
+  // Without this the dashboard reports a five-cent day as a fraction of a cent.
+  const commentsExtraUsd =
+    commentsVideoCalls * Math.max(0, econ.commentsVideoCallUsd - econ.chatCallUsd) +
+    commentsTextCalls * Math.max(0, econ.commentsTextCallUsd - econ.chatCallUsd);
+
+  const estTokenCostUsd =
+    chatCalls * econ.chatCallUsd + arenaCalls * perArenaCallUsd + commentsExtraUsd;
   const revenueUsd      = revenueCents / 100;
 
   return Response.json({
@@ -57,6 +70,8 @@ export async function GET() {
     today: {
       gemini_chat_calls:    chatCalls,
       gemini_arena_calls:   arenaCalls,
+      comments_video_calls: commentsVideoCalls,
+      comments_text_calls:  commentsTextCalls,
       gemini_daily_budget:  GEMINI_DAILY_BUDGET,
       est_token_cost_usd:   Number(estTokenCostUsd.toFixed(4)),
       credit_revenue_usd:   Number(revenueUsd.toFixed(2)),

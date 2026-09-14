@@ -18,6 +18,7 @@ const v2Links = [
   { href: "/v2/lobbies", label: "Agent Lobbies" },
   { href: "/digital-products", label: "Guides" },
   { href: "/blog", label: "Blog" },
+  { href: "/comments", label: "Comments" },
   { href: "/contact", label: "Contact" },
 ];
 

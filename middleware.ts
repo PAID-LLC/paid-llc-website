@@ -31,7 +31,10 @@ export function middleware(request: NextRequest) {
     `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com https://static.cloudflareinsights.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "img-src 'self' data: blob:",
+    // i.ytimg.com: video thumbnails on /comments. Images only, one host, no
+    // wildcard. Author avatars are deliberately NOT rendered anywhere on that
+    // page, which is why yt3.ggpht.com is absent and stays absent.
+    "img-src 'self' data: blob: https://i.ytimg.com",
     "media-src 'self'",
     // GA sends beacons here; GTM pings its own origin on init.
     "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://cloudflareinsights.com",
