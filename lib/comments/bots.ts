@@ -49,7 +49,15 @@ const WEIGHTS = {
 
 /** Phrases that recur across engagement-farm and crypto-scam comment rings. */
 const SCAM_PATTERNS: RegExp[] = [
+  // "WhatsApp me", "DM him", "text us".
   /\b(dm|message|text|whats ?app|telegram|tele ?gram)\s*(me|him|her|us|@|\+)/i,
+  // "contact me on WhatsApp", "reach out to me via Telegram" -- the reversed
+  // word order the pattern above misses, and the most common cold-pitch CTA
+  // there is. Added 2026-09-15 after a real contact-form pitch using exactly
+  // this phrasing scored only 20 of 100.
+  /\b(contact|reach|message|text|ping|add)\s+(me|us|him|her)\b[^.]{0,30}\b(on|at|via|through)\s+(whats ?app|telegram|tele ?gram|signal|wechat|skype|viber)\b/i,
+  // A messaging channel named within a line of a phone number, either order.
+  /\b(whats ?app|telegram|signal|wechat|viber)\b[^.]{0,40}\+\d[\d\s().-]{7,}/i,
   /\b(invest|trading|forex|crypto|bitcoin|btc|eth|binary option)\b.{0,40}\b(profit|earn|income|expert|mentor|coach|signal)/i,
   /\b(earn|make)\s*\$?\d[\d,.]*\s*(k|usd|dollars?)?\s*(a|per|\/)\s*(day|week|month)/i,
   /\bgiveaway\b.{0,30}\b(click|link|claim|winner|selected)/i,

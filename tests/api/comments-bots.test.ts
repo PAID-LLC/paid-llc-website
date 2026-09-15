@@ -85,6 +85,33 @@ describe("scoreAutomation — things that should score high", () => {
     expect(scoreOne(c, [c]).score).toBeGreaterThanOrEqual(CLEAN_THRESHOLD);
   });
 
+  it("flags a channel-handoff pitch in either word order", () => {
+    // Regression, 2026-09-15. A real pitch arrived through the contact form
+    // reading "please contact me on WhatsApp" and scored only 20 of 100: the
+    // original pattern only matched "WhatsApp me", not the reversed order,
+    // which is the more common phrasing of the two.
+    const reversed = comment({
+      text: "For a demo or partnership discussion, please contact me on WhatsApp: +1 555 703 8289",
+    });
+    const forward = comment({ text: "WhatsApp me on +1 555 703 8289 for the demo" });
+    for (const c of [reversed, forward]) {
+      expect(scoreOne(c, [c]).signals).toContain("scam_phrase");
+      expect(scoreOne(c, [c]).score).toBeGreaterThanOrEqual(LIKELY_THRESHOLD);
+    }
+  });
+
+  it("does not fire on someone legitimately discussing those platforms", () => {
+    // The cost of the rule above is false positives on real messages that
+    // simply name a messaging app, which must stay clean.
+    const genuine = [
+      comment({ text: "Do you cover the WhatsApp Business API in any of the guides? We use it for support." }),
+      comment({ text: "We moved our team off Telegram last year and it was the right call." }),
+    ];
+    for (const c of genuine) {
+      expect(scoreOne(c, genuine).signals).not.toContain("scam_phrase");
+    }
+  });
+
   it("flags identical text posted by three different accounts", () => {
     const text = "this video deserves so many more views than it has right now";
     const ring = [
