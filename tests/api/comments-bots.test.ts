@@ -210,6 +210,21 @@ describe("summarizeAutomation — the published aggregate", () => {
     expect(s.signals.dup_text).toBe(1);
   });
 
+  it("counts signals only on flagged comments, not on ordinary people", () => {
+    // Regression, 2026-09-19. The first real dry run printed "396 accounts with
+    // no uploads" under an automated estimate of 0%, because weak signals were
+    // tallied across every comment. Most real viewers never upload; that line
+    // described the audience, not automation.
+    const s = summarizeAutomation(scored, 5);
+    expect(s.signals.auto_handle).toBe(1); // UCc, scored 35, counts
+    const lurkers = Array.from({ length: 50 }, (_, i) => ({
+      automation: 5,
+      signals: ["no_videos"],
+      authorChannelId: `UCl${i}`,
+    }));
+    expect(summarizeAutomation(lurkers, 50).signals.no_videos).toBeUndefined();
+  });
+
   it("LEAKS NO AUTHOR IDENTITY — the property the disclosure depends on", () => {
     const s = summarizeAutomation(scored, 5);
     const serialized = JSON.stringify(s);

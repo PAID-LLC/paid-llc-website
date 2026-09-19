@@ -222,10 +222,15 @@ function round(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Truncates on a word boundary and appends an ellipsis. */
+/**
+ * Truncates on a word boundary and appends an ellipsis. Counts code points, not
+ * UTF-16 units, so an emoji at the cut is dropped whole instead of halved into a
+ * lone surrogate that renders as a replacement box.
+ */
 export function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  const cut = chars.slice(0, max).join("");
   const space = cut.lastIndexOf(" ");
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }

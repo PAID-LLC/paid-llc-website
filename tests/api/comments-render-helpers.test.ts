@@ -198,6 +198,14 @@ describe("truncate", () => {
   it("cuts on a word boundary", () => {
     expect(truncate("the quick brown fox jumps over", 20)).toBe("the quick brown fox…");
   });
+
+  it("never halves an emoji into a lone surrogate", () => {
+    // Regression, 2026-09-19: a UTF-16 slice through an emoji at the cut left a
+    // lone high surrogate, which renders as a replacement box.
+    const out = truncate("abcdefghi😂xyz", 10);
+    expect(out).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+    expect(out).toBe("abcdefghi😂…");
+  });
 });
 
 describe("escapeXml — the RSS and sitemap routes depend on this", () => {

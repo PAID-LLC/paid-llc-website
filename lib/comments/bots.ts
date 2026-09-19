@@ -252,7 +252,15 @@ export function summarizeAutomation(
   for (const c of scored) {
     if (c.automation >= LIKELY_THRESHOLD) likely++;
     else if (c.automation >= SUSPICIOUS_THRESHOLD) suspicious++;
-    for (const s of c.signals) signals[s] = (signals[s] ?? 0) + 1;
+    // Signals are counted only on comments that crossed the suspicious line. Weak
+    // signals fire constantly on ordinary people (most viewers have never uploaded,
+    // and a third keep the handle YouTube assigned them), so counting them across
+    // the whole section put "396 accounts with no uploads" under an estimate of 0%
+    // on the first real dry run, 2026-09-19: a bot wave the number itself denied.
+    // The breakdown answers "why were the flagged ones flagged", nothing wider.
+    if (c.automation >= SUSPICIOUS_THRESHOLD) {
+      for (const s of c.signals) signals[s] = (signals[s] ?? 0) + 1;
+    }
     if (c.authorChannelId) authors.add(c.authorChannelId);
   }
 
