@@ -29,6 +29,17 @@ async function main() {
   const ytKey = process.env.YOUTUBE_API_KEY;
   if (!ytKey) {
     report(false, "YOUTUBE_API_KEY", "not set. Step 1 of SETUP-THIS.md.");
+  } else if (ytKey.startsWith("AQ.")) {
+    // A service-account-bound key, which the Cloud console creates when "Authenticate
+    // API calls through a service account" is ticked. YouTube Data rejects the whole
+    // type with a 401 reading "API keys are not supported by this API", which sounds
+    // like a wrong key rather than a wrong KIND of key. Hit for real on 2026-09-19.
+    report(
+      false,
+      "YOUTUBE_API_KEY",
+      "this is a service-account-bound key (starts AQ.). YouTube Data only accepts a\n" +
+        "         standard key (starts AIza). Create a new one with the service-account box UNticked."
+    );
   } else {
     try {
       const res = await fetch(
