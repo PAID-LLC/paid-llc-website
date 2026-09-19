@@ -633,8 +633,13 @@ async function stepRefresh(): Promise<StepResult> {
       for (const row of videosDue) {
         const fresh = live.get(row.video_id);
         if (fresh) {
+          const { title, channelTitle, thumbnailUrl, ...counts } = fresh;
           await store.patchVideo(row.video_id, {
-            stats: { ...row.stats, ...fresh, verified_at: now },
+            stats: { ...row.stats, ...counts, verified_at: now },
+            // Displayed snippet fields are API data on the same 30-day clock.
+            ...(title ? { title } : {}),
+            ...(channelTitle ? { channel_title: channelTitle } : {}),
+            ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : {}),
             refreshed_at: now,
           });
           videosUpdated++;

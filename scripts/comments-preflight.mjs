@@ -90,6 +90,29 @@ async function main() {
         report(false, `table ${table}`, err.message);
       }
     }
+
+    // ── 5. The budget meter every cap depends on ─────────────────────────────
+    // lib/usage-guard.ts fails OPEN when this function is missing, by design, so
+    // its absence looks like nothing at all. It was missing from 2026-06-16 (the
+    // commit that introduced it) until 2026-09-19, and every daily cap on the
+    // site, this page's included, was silently off the whole time. p_by 0 makes
+    // this probe a no-op on the counts.
+    try {
+      const res = await fetch(`${url}/rest/v1/rpc/meter_daily`, {
+        method: "POST",
+        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_counter: "preflight_probe", p_limit: 1, p_by: 0 }),
+      });
+      report(
+        res.ok,
+        "meter_daily budget function",
+        res.ok
+          ? "installed; the daily caps are enforced."
+          : "MISSING, so every daily cap fails open. Run db/meter-daily-rpc.sql in the SQL editor."
+      );
+    } catch (err) {
+      report(false, "meter_daily budget function", err.message);
+    }
   }
 
   console.log("\n" + "=".repeat(52));

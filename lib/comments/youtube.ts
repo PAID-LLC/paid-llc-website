@@ -291,13 +291,27 @@ export async function fetchVideoDetails(ids: string[]): Promise<VideoPick[]> {
  * Returns a map so the caller can tell which ids came back and which are gone —
  * a video deleted upstream simply does not appear in the response.
  */
-export async function fetchVideoStats(
-  ids: string[]
-): Promise<Map<string, { views: number; likes: number; comments: number }>> {
-  const out = new Map<string, { views: number; likes: number; comments: number }>();
+export interface VideoRefresh {
+  views: number;
+  likes: number;
+  comments: number;
+  title: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+}
+
+/**
+ * Statistics AND the snippet fields we display. Titles, channel names and
+ * thumbnails are YouTube API data under the same 30-day rule as view counts,
+ * and until 2026-09-19 only the counts were re-fetched, so a stored title could
+ * outlive the limit. Adding "snippet" costs nothing: videos.list is 1 unit per
+ * call whatever the parts.
+ */
+export async function fetchVideoStats(ids: string[]): Promise<Map<string, VideoRefresh>> {
+  const out = new Map<string, VideoRefresh>();
   for (const batch of chunk(ids, 50)) {
     const data = await call<{ items?: VideoItem[] }>("videos", {
-      part: "statistics",
+      part: "snippet,statistics",
       id: batch.join(","),
       maxResults: "50",
     });
@@ -307,6 +321,9 @@ export async function fetchVideoStats(
         views: num(item.statistics?.viewCount),
         likes: num(item.statistics?.likeCount),
         comments: num(item.statistics?.commentCount),
+        title: item.snippet?.title ?? "",
+        channelTitle: item.snippet?.channelTitle ?? "",
+        thumbnailUrl: bestThumbnail(item.snippet?.thumbnails),
       });
     }
   }

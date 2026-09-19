@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { pickCandidates, pickTopComments, humorScore, underratedThreshold } from "@/lib/comments/humor";
+import { pickCandidates, pickTopComments, humorScore, underratedThreshold, isQuoteBack } from "@/lib/comments/humor";
 import type { ScoredComment } from "@/lib/comments/types";
 
 const NOW = Date.parse("2026-09-14T12:00:00Z");
@@ -175,5 +175,26 @@ describe("humorScore — a reaction is not a joke", () => {
     ]) {
       expect(humorScore(joke)).toBeGreaterThan(humorScore(reaction));
     }
+  });
+});
+
+describe("isQuoteBack — the creator's joke, not the commenter's", () => {
+  it("flags a timestamp plus a quoted line with little else", () => {
+    // Regression, 2026-09-19: the re-run Supermarket card picked this one.
+    expect(isQuoteBack("28:29 “Don’t listen to my private thoughts that I’m saying out loud” I love mark 🤣")).toBe(true);
+  });
+
+  it("leaves timestamp riffs in the commenter's own words alone", () => {
+    expect(isQuoteBack("2:18 Mads Mikkelsen jumpscare")).toBe(false);
+    expect(isQuoteBack("2:20 HANNIBAL LECTORRR WHAT ARE YOU DOING HERE. Jk😂")).toBe(false);
+  });
+
+  it("leaves an invented quote without a timestamp alone, since that joke is the commenter's", () => {
+    expect(isQuoteBack('John to Sinestro: "What are you doing here? Speak UHP!" 😂')).toBe(false);
+  });
+
+  it("ranks the quote-back below a joke of the commenter's own", () => {
+    const quoteBack = "28:29 “Don’t listen to my private thoughts that I’m saying out loud” I love mark 🤣";
+    expect(humorScore("Not Mark narrating himself like The Stanley Parable. 😂😂")).toBeGreaterThan(humorScore(quoteBack));
   });
 });

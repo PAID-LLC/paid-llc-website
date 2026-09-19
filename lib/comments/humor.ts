@@ -57,6 +57,25 @@ const REACTION_RE =
 const REACTION_PENALTY = 3;
 
 /**
+ * A timestamp plus a quoted line with little else: the joke is the creator's,
+ * not the commenter's. After the edition 1 fix the Supermarket card picked
+ * "28:29 'Don't listen to my private thoughts that I'm saying out loud' I love
+ * mark". A comment that riffs on a timestamp in its own words ("2:18 Mads
+ * Mikkelsen jumpscare") has no quoted span and is untouched.
+ */
+export function isQuoteBack(text: string): boolean {
+  if (!/^\s*\d{1,2}:\d{2}/.test(text)) return false;
+  const quoted = text.match(/[“"]([^”"]{8,})[”"]/);
+  if (!quoted) return false;
+  const own = text
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/^\s*\d{1,2}:\d{2}(:\d{2})?/, "")
+    .trim();
+  return quoted[1].length / Math.max(1, own.length) >= 0.5;
+}
+const QUOTE_BACK_PENALTY = 2;
+
+/**
  * How much a comment reads like an attempt at a joke, 0-12ish.
  * Ranking only — this never decides whether something IS funny, it decides
  * which 25 comments are worth a model's attention.
@@ -95,6 +114,7 @@ export function humorScore(text: string): number {
   if (/\?$/.test(text.trim()) && len > 30) score += 0.5;
 
   if (REACTION_RE.test(text)) score -= REACTION_PENALTY;
+  if (isQuoteBack(text)) score -= QUOTE_BACK_PENALTY;
 
   return score;
 }
