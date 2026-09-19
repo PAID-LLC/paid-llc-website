@@ -184,6 +184,13 @@ describe("isQuoteBack — the creator's joke, not the commenter's", () => {
     expect(isQuoteBack("28:29 “Don’t listen to my private thoughts that I’m saying out loud” I love mark 🤣")).toBe(true);
   });
 
+  it("flags a signed quote as well as a quoted one", () => {
+    // Regression, first pooled run 2026-09-19: signed with ~ instead of quote marks.
+    expect(
+      isQuoteBack("5:27 and some fossilized dinosaur poop because you never know what you might encounter our there. ~jerryrigeverything 😂😂")
+    ).toBe(true);
+  });
+
   it("leaves timestamp riffs in the commenter's own words alone", () => {
     expect(isQuoteBack("2:18 Mads Mikkelsen jumpscare")).toBe(false);
     expect(isQuoteBack("2:20 HANNIBAL LECTORRR WHAT ARE YOU DOING HERE. Jk😂")).toBe(false);

@@ -64,12 +64,15 @@ const REACTION_PENALTY = 3;
  * Mikkelsen jumpscare") has no quoted span and is untouched.
  */
 export function isQuoteBack(text: string): boolean {
-  if (!/^\s*\d{1,2}:\d{2}/.test(text)) return false;
+  if (!/^\s*@?\d{1,2}:\d{2}/.test(text)) return false;
+  // Signed rather than quoted: "5:27 and some fossilized dinosaur poop because
+  // you never know... ~jerryrigeverything" (first pooled run, 2026-09-19).
+  if (/~\s*@?[\p{L}\p{N}_.]{3,}[\s\p{Extended_Pictographic}️]*$/u.test(text)) return true;
   const quoted = text.match(/[“"]([^”"]{8,})[”"]/);
   if (!quoted) return false;
   const own = text
     .replace(/\p{Extended_Pictographic}/gu, "")
-    .replace(/^\s*\d{1,2}:\d{2}(:\d{2})?/, "")
+    .replace(/^\s*@?\d{1,2}:\d{2}(:\d{2})?/, "")
     .trim();
   return quoted[1].length / Math.max(1, own.length) >= 0.5;
 }

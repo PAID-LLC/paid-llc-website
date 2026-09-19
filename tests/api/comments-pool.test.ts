@@ -174,6 +174,13 @@ describe("rejectReason — the noise a wider pool lets in", () => {
     expect(rejectReason(pick({ title: "Wait for it #shorts", durationS: 150 }), NONE, NOW)).toBe("short");
   });
 
+  it("rejects a title made only of hashtags, but not a one-word title", () => {
+    // Regression, first pooled run 2026-09-19: "#hoyoverse" over a reposted movie montage.
+    expect(rejectReason(pick({ title: "#hoyoverse" }), NONE, NOW)).toBe("hashtag_title");
+    expect(rejectReason(pick({ title: "#aesthetic #foryou 🔥" }), NONE, NOW)).toBe("hashtag_title");
+    expect(rejectReason(pick({ title: "Wolverine" }), NONE, NOW)).toBeNull();
+  });
+
   it("rejects uploads too new to have mature comments, and anything past three days", () => {
     expect(rejectReason(pick({ publishedAt: "2026-09-19T08:00:00Z" }), NONE, NOW)).toBe("too_new");
     expect(rejectReason(pick({ publishedAt: "2026-09-15T12:00:00Z" }), NONE, NOW)).toBe("too_old");

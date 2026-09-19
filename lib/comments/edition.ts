@@ -122,6 +122,7 @@ type RejectRule =
   | "too_few_comments"
   | "too_short"
   | "short"
+  | "hashtag_title"
   | "too_new"
   | "too_old"
   | "not_english"
@@ -175,6 +176,12 @@ export function rejectReason(
   // Shorts now run to three minutes, so length alone cannot catch them, and
   // they dominate any views-per-hour ranking. The tag is how uploaders mark them.
   if (/#shorts?\b/i.test(`${v.title} ${v.description}`)) return "short";
+  // A title that is nothing but hashtags is the other signature of Shorts and
+  // clip reposts: the first pooled run put "#hoyoverse", a reuploaded Doctor
+  // Strange montage, fourth on the page. One real word is enough ("Wolverine").
+  // Marks count as part of a word: scripts like Khmer write vowels as combining
+  // marks between letters, and without them a real title reads as no words.
+  if (!/[\p{L}\p{M}]{3,}/u.test(v.title.replace(/#[\p{L}\p{M}\p{N}_]+/gu, ""))) return "hashtag_title";
 
   const age = ageHours(v, now);
   if (age !== null && age < MIN_AGE_H) return "too_new";
