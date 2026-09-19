@@ -24,6 +24,8 @@ import {
   buildDigest,
   cleanProse,
   EDITORIAL_SCHEMA,
+  geminiHero,
+  validateHero,
 } from "@/lib/comments/gemini";
 import type { ScoredComment, VideoAnalysis } from "@/lib/comments/types";
 
@@ -310,5 +312,40 @@ describe("cleanProse", () => {
 
   it("strips wrapping quotes the model likes to add", () => {
     expect(cleanProse('"A quoted line"')).toBe("A quoted line");
+  });
+});
+
+describe("the edition hero", () => {
+  it("accepts only an in-range integer index", () => {
+    expect(validateHero('{"index":2}', 5)).toBe(2);
+    expect(validateHero('{"index":5}', 5)).toBeNull();
+    expect(validateHero('{"index":-1}', 5)).toBeNull();
+    expect(validateHero('{"index":1.5}', 5)).toBeNull();
+    expect(validateHero("not json", 5)).toBeNull();
+  });
+
+  it("spends no call when there is nothing to choose between", async () => {
+    const c = stub('{"index":0}');
+    expect(await geminiHero([])).toBeNull();
+    expect(await geminiHero([{ text: "only one", video: "A Video" }])).toBe(0);
+    expect(c.meterCalls).toHaveLength(0);
+    expect(c.geminiBodies).toHaveLength(0);
+  });
+
+  it("asks for a constrained index and returns it", async () => {
+    const c = stub('{"index":1}');
+    const picked = await geminiHero([
+      { text: "first", video: "Video A" },
+      { text: "second", video: "Video B" },
+    ]);
+    expect(picked).toBe(1);
+    expect(c.meterCalls).toEqual(["gemini", "comments_text"]);
+    const cfg = (c.geminiBodies[0] as { generationConfig: Record<string, unknown> }).generationConfig;
+    expect(cfg.responseMimeType).toBe("application/json");
+  });
+
+  it("falls back (null) when the model names a finalist that does not exist", async () => {
+    stub('{"index":7}');
+    expect(await geminiHero([{ text: "a", video: "A" }, { text: "b", video: "B" }])).toBeNull();
   });
 });

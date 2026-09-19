@@ -160,3 +160,20 @@ describe("pickTopComments", () => {
     expect(result).toHaveLength(0);
   });
 });
+
+describe("humorScore — a reaction is not a joke", () => {
+  it("ranks a comment that only reports laughing below real jokes", () => {
+    // Regression, 2026-09-19: edition 1 led with this reaction. Every surface
+    // marker rewarded it (laugh emoji, "funny", a quoted line) while the jokes
+    // it beat were about Captain Price's eyebrow dye and a Batman-heavy
+    // Green Lantern breakdown.
+    const reaction =
+      "This playthrough was so funny!!! 😂😂😂 The narrator parts were cracking me up so much !!! 🤣🤣🤣";
+    for (const joke of [
+      "Why is Price using just for men?! On his eyebrows too 😭",
+      "Not Mark narrating himself like The Stanley Parable. 😂😂",
+    ]) {
+      expect(humorScore(joke)).toBeGreaterThan(humorScore(reaction));
+    }
+  });
+});

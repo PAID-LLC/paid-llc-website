@@ -153,8 +153,41 @@ const ENGLISH_MARKERS = new Set([
   "she", "my", "me", "so", "just", "like", "all", "if", "would", "can", "im",
 ]);
 
+/**
+ * One WHOLE emoji per match, the way a reader sees it: a flag pair, or a
+ * pictograph with its selectors, skin tone, and any zero-width-joined parts.
+ * Matching code points one at a time split "🤦‍♂️" into a facepalm plus a bare
+ * "♂", which edition 1 (2026-09-19) printed in its emoji row.
+ */
 const EMOJI_RE =
-  /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2700}-\u{27BF}]/gu;
+  /\p{Regional_Indicator}{2}|\p{Extended_Pictographic}(?:️|\p{Emoji_Modifier})*(?:‍\p{Extended_Pictographic}(?:️|\p{Emoji_Modifier})*)*/gu;
+
+/** Extended_Pictographic includes these, but nobody reads them as emoji. */
+const NOT_EMOJI = new Set(["©", "®", "™", "‼", "⁉"]);
+
+/**
+ * EMOJI_VALENCE keyed without the U+FE0F presentation selector. The table is
+ * written with it ("❤️") but extraction strips it, so until 2026-09-19 six
+ * entries, hearts included, never matched anything and never counted.
+ */
+const VALENCE = new Map(
+  Object.entries(EMOJI_VALENCE).map(([k, v]) => [k.replace(/️/g, ""), v])
+);
+
+/** Valence of one extracted emoji; a ZWJ sequence falls back to its base. */
+function emojiValence(e: string): number | undefined {
+  return VALENCE.get(e) ?? VALENCE.get(String.fromCodePoint(e.codePointAt(0) ?? 0));
+}
+
+/**
+ * Skin tones merge into the base emoji and a lone presentation selector is
+ * dropped, so 👍🏽 and 👍, and ❤️ and ❤, each count as one thing on the page.
+ * ZWJ sequences keep their selectors so they still render as one glyph.
+ */
+function normalizeEmoji(e: string): string {
+  const noTone = e.replace(/\p{Emoji_Modifier}/gu, "");
+  return noTone.includes("‍") ? noTone : noTone.replace(/️/g, "");
+}
 
 /**
  * Lowercases, strips punctuation, and splits into word tokens.
@@ -174,8 +207,7 @@ export function tokenize(text: string): string[] {
 export function extractEmoji(text: string): string[] {
   const found = text.match(EMOJI_RE);
   if (!found) return [];
-  // Variation selectors match on their own; drop bare ones.
-  return found.filter((c) => c !== "️");
+  return found.map(normalizeEmoji).filter((e) => e.length > 0 && !NOT_EMOJI.has(e));
 }
 
 /**
@@ -195,7 +227,7 @@ export function scoreSentiment(text: string): number {
 
   // Emoji first; they carry polarity independent of the sentence.
   for (const e of extractEmoji(text)) {
-    const v = EMOJI_VALENCE[e];
+    const v = emojiValence(e);
     if (v !== undefined && v !== 0) {
       raw += v;
       hits++;

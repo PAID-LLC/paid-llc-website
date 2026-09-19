@@ -46,6 +46,17 @@ const JOKE_SHAPES: { re: RegExp; points: number }[] = [
 ];
 
 /**
+ * Comments that REPORT laughing rather than being the joke: "this playthrough
+ * was so funny", "the narrator parts were cracking me up". They carry every
+ * surface marker the scorer rewards (laugh emoji, the word "funny", a quoted
+ * line) and none of the wit, and edition 1 (2026-09-19) led with one. They stay
+ * eligible, since a reaction can still be charming, but they rank below jokes.
+ */
+const REACTION_RE =
+  /\b(so|really|too|super|actually) (funny|hilarious)\b|\bcracking me up\b|\bcracked me up\b|\bmade me (laugh|lol)\b|\blaugh(ed|ing) so hard\b|\b(this|that|the) (video|playthrough|episode|series|stream|part|parts|ending) (was|is|were|are) (so |really |too )?(funny|hilarious|gold)\b|\bfunniest (video|episode|part|thing)\b/i;
+const REACTION_PENALTY = 3;
+
+/**
  * How much a comment reads like an attempt at a joke, 0-12ish.
  * Ranking only — this never decides whether something IS funny, it decides
  * which 25 comments are worth a model's attention.
@@ -82,6 +93,8 @@ export function humorScore(text: string): number {
 
   // A question that is clearly rhetorical tends to be a bit.
   if (/\?$/.test(text.trim()) && len > 30) score += 0.5;
+
+  if (REACTION_RE.test(text)) score -= REACTION_PENALTY;
 
   return score;
 }

@@ -19,8 +19,14 @@
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { editionDateToday, rejectReason, buildFeaturedRows, isStepName } from "@/lib/comments/edition";
-import type { VideoPick, ScoredComment, EditorialJson } from "@/lib/comments/types";
+import {
+  editionDateToday,
+  rejectReason,
+  buildFeaturedRows,
+  isStepName,
+  rankHeroFinalists,
+} from "@/lib/comments/edition";
+import type { VideoPick, ScoredComment, EditorialJson, FeaturedRow } from "@/lib/comments/types";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -188,5 +194,46 @@ describe("isStepName", () => {
   it("accepts the four steps and nothing else", () => {
     for (const s of ["pick", "video", "publish", "refresh"]) expect(isStepName(s)).toBe(true);
     for (const s of ["", "PICK", "drop", null, undefined, 5]) expect(isStepName(s)).toBe(false);
+  });
+});
+
+describe("rankHeroFinalists — the fallback order for the day's winner", () => {
+  function row(over: Partial<FeaturedRow>): FeaturedRow {
+    return {
+      comment_id: `c${Math.random().toString(36).slice(2, 8)}`,
+      video_id: "v1",
+      role: "funniest",
+      position: 0,
+      author_display: "@someone",
+      author_channel_id: "UCx",
+      text: "a comment",
+      like_count: 0,
+      published_at: "2026-09-18T12:00:00Z",
+      why: null,
+      ...over,
+    };
+  }
+
+  it("breaks a 0-like tie on funniness, not on recency", () => {
+    // Regression, 2026-09-19: four of edition 1's five finalists sat at 0 likes
+    // and the newest one, a comment that only said the video was funny, won.
+    const reaction = row({
+      text: "This playthrough was so funny!!! The narrator parts were cracking me up 😂😂😂",
+      published_at: "2026-09-19T02:00:00Z",
+    });
+    const joke = row({
+      text: "Why is Price using just for men?! On his eyebrows too 😭",
+      published_at: "2026-09-18T02:00:00Z",
+    });
+    expect(rankHeroFinalists([reaction, joke])[0].comment_id).toBe(joke.comment_id);
+  });
+
+  it("still puts fewer likes first, and drops removed or non-funniest rows", () => {
+    const two = row({ like_count: 2, text: "Why is Price using just for men?! 😭" });
+    const zero = row({ like_count: 0, text: "decent line about the train" });
+    const removed = row({ like_count: 0, text: null });
+    const top = row({ like_count: 0, role: "top" });
+    const ranked = rankHeroFinalists([two, removed, zero, top]);
+    expect(ranked.map((r) => r.comment_id)).toEqual([zero.comment_id, two.comment_id]);
   });
 });

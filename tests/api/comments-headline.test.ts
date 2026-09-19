@@ -165,3 +165,17 @@ describe("buildHeadline", () => {
     }
   });
 });
+
+describe("buildHeadline — a rounded zero", () => {
+  it("says 'almost none' instead of printing about 0% automated", () => {
+    // Regression, 2026-09-19: edition 1's headline read "about 0% automated".
+    const line = buildHeadline(stats({ automationShare: 0.002 }), noChannel);
+    expect(line).toContain("almost none of it looked automated");
+    expect(line).not.toMatch(/about 0%/);
+  });
+
+  it("gives the figure once it rounds to something", () => {
+    const line = buildHeadline(stats({ automationShare: 0.03 }), noChannel);
+    expect(line).toContain("about 3% of it looked automated");
+  });
+});

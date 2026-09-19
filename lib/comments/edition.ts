@@ -32,11 +32,13 @@ import {
   geminiVideoSummary,
   geminiTextSummary,
   geminiEditorial,
+  geminiHero,
   geminiTeaser,
   buildDigest,
   fallbackEditorial,
 } from "./gemini";
 import { aggregateEdition, buildHeadline } from "./headline";
+import { humorScore } from "./humor";
 import * as store from "./store";
 import type {
   StepName,
@@ -394,6 +396,27 @@ function countUnits(commentCount: number, channelCount: number): number {
 
 // ── publish ──────────────────────────────────────────────────────────────────
 
+/**
+ * The per-video winners, best first by code alone: fewest likes, then the
+ * humour score, then newest.
+ *
+ * Likes alone cannot decide it. Every finalist already cleared the underrated
+ * bar, so most days several tie at 0, and on edition 1 (2026-09-19) a pure
+ * recency tiebreak led the page with a comment that only said the video was
+ * funny. The humour score demotes exactly that kind of reaction, so even with
+ * the model unavailable the fallback now prefers an actual joke.
+ */
+export function rankHeroFinalists(featured: FeaturedRow[]): FeaturedRow[] {
+  return featured
+    .filter((f) => f.role === "funniest" && f.text)
+    .sort((a, b) => {
+      if (a.like_count !== b.like_count) return a.like_count - b.like_count;
+      const humor = humorScore(b.text ?? "") - humorScore(a.text ?? "");
+      if (humor !== 0) return humor;
+      return Date.parse(b.published_at ?? "0") - Date.parse(a.published_at ?? "0");
+    });
+}
+
 async function stepPublish(date: string): Promise<StepResult> {
   const edition = await store.getEdition(date);
   if (!edition) return { step: "publish", http: 409, reason: "no_edition" };
@@ -419,14 +442,14 @@ async function stepPublish(date: string): Promise<StepResult> {
   const byId = new Map(videos.map((v) => [v.video_id, v]));
   const headline = buildHeadline(stats, (id) => (id ? byId.get(id)?.channel_title ?? null : null));
 
-  // The hero: of the day's five picks, the funniest with the fewest likes.
+  // The hero: the funniest of the day's per-video winners, judged by the model,
+  // with the code ranking as the fallback and as the order the model sees.
   const featured = await store.getFeaturedForVideos(analyzed.map((v) => v.video_id));
-  const hero = featured
-    .filter((f) => f.role === "funniest" && f.text)
-    .sort((a, b) => {
-      if (a.like_count !== b.like_count) return a.like_count - b.like_count;
-      return Date.parse(b.published_at ?? "0") - Date.parse(a.published_at ?? "0");
-    })[0];
+  const finalists = rankHeroFinalists(featured);
+  const heroIndex = await geminiHero(
+    finalists.map((f) => ({ text: f.text ?? "", video: byId.get(f.video_id)?.title ?? "" }))
+  );
+  const hero = finalists[heroIndex ?? 0];
 
   const teaser = (await geminiTeaser(headline, hero?.text ?? null)) ?? headline;
   const editionNo = (await store.countPublishedEditions()) + 1;

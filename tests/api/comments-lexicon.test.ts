@@ -165,3 +165,35 @@ describe("isLikelyEnglish — the gate that keeps unscorable sections out", () =
     expect(isLikelyEnglish("")).toBe(false);
   });
 });
+
+describe("extractEmoji — whole emoji, as a reader sees them", () => {
+  // Built from code points so no invisible joiner can be lost in an edit.
+  const facepalmMan = String.fromCodePoint(0x1f926, 0x200d, 0x2642, 0xfe0f);
+  const thumbsMedium = String.fromCodePoint(0x1f44d, 0x1f3fd);
+  const thumbs = String.fromCodePoint(0x1f44d);
+
+  it("keeps a zero-width-joined emoji whole instead of leaking its parts", () => {
+    // Regression, 2026-09-19: edition 1 printed a bare male sign in an emoji
+    // row, split off a man-facepalming by a matcher that worked per code point.
+    const found = extractEmoji(`bro ${facepalmMan} why`);
+    expect(found).toHaveLength(1);
+    expect(found).not.toContain(String.fromCodePoint(0x2642));
+  });
+
+  it("merges skin tones into the base emoji", () => {
+    expect(extractEmoji(`${thumbsMedium} ${thumbs}`)).toEqual([thumbs, thumbs]);
+  });
+
+  it("does not count copyright or trademark signs as emoji", () => {
+    expect(extractEmoji("Brand™ © 2026")).toEqual([]);
+  });
+});
+
+describe("scoreSentiment — emoji written with a presentation selector", () => {
+  it("counts a red heart, which the valence table had never matched", () => {
+    // Regression, 2026-09-19: the table keys the heart WITH U+FE0F and
+    // extraction strips it, so six entries including both hearts scored 0.
+    expect(scoreSentiment(String.fromCodePoint(0x2764, 0xfe0f))).toBeGreaterThan(0);
+    expect(scoreSentiment(String.fromCodePoint(0x2764))).toBeGreaterThan(0);
+  });
+});

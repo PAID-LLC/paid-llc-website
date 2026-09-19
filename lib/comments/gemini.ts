@@ -32,7 +32,7 @@ const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMI
 
 /** Video-understanding calls per day. Five videos plus retries. */
 export const COMMENTS_VIDEO_DAILY = 8;
-/** Editorial + fallback-summary + teaser calls per day. */
+/** Editorial + fallback-summary calls (5 + 5) plus hero and teaser (1 + 1). */
 export const COMMENTS_TEXT_DAILY = 14;
 
 /** Only the first 12 minutes are watched. Tokens scale linearly with duration. */
@@ -148,7 +148,8 @@ export async function geminiVideoSummary(
               `You are watching the first minutes of a public video titled ` +
               `${quarantine("TITLE", title)}.\n\n` +
               `Write 2 to 4 plain sentences for a reader who has not seen it: what it is, ` +
-              `who is in it, what actually happens, and why people might be watching. ` +
+              `who is in it, and what actually happens. Do not guess why people watch it ` +
+              `or what they get out of it; end on something that happens in the video. ` +
               `If it is a music video or a performance, say so and describe the mood.\n\n` +
               `Rules: no preamble, no markdown, no hashtags, no em dashes, no hype words ` +
               `like "stunning" or "incredible". Do not speculate about anyone's private ` +
@@ -335,7 +336,10 @@ export async function geminiEditorial(
               `- funniest: the index of the single funniest CANDIDATE, plus "why" in under ` +
               `120 characters. Judge it in the context of what the video is. Prefer wit, ` +
               `timing and observation over shock. Never pick something cruel about a real ` +
-              `person, and never pick an insult.\n` +
+              `person, and never pick an insult. A comment that only says the video was ` +
+              `funny ("this was so funny", "the narrator cracked me up") or only quotes a ` +
+              `line from the video back is a reaction, not a joke: pick the comment that ` +
+              `IS the joke.\n` +
               `- runners_up: exactly 2 other candidate indexes, next funniest.\n\n` +
               `Indexes must come from the CANDIDATES list and be between 0 and ` +
               `${candidateCount - 1}. All three indexes must be different. ` +
@@ -439,7 +443,86 @@ export function fallbackEditorial(
   };
 }
 
-// ── 3. The edition teaser ────────────────────────────────────────────────────
+// ── 3. The edition's hero ────────────────────────────────────────────────────
+
+export const HERO_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    index: { type: "INTEGER", description: "Index from the FINALISTS list only." },
+  },
+  required: ["index"],
+} as const;
+
+/**
+ * Picks the Underrated Comment of the Day from the per-video winners.
+ *
+ * Every finalist already cleared the underrated bar (a handful of likes at
+ * most), so likes cannot rank them: edition 1 had four of five at 0 likes, and a
+ * recency tiebreak led the page with the weakest joke on it. What ranks them is
+ * funniness, which is a model judgement. One small call, a few hundred tokens,
+ * once a day. Null on any failure; the caller falls back to the code ranking.
+ */
+export async function geminiHero(
+  finalists: { text: string; video: string }[]
+): Promise<number | null> {
+  if (finalists.length === 0) return null;
+  if (finalists.length === 1) return 0;
+
+  const lines = finalists
+    .map(
+      (f, i) =>
+        `F${i}, under the video ${quarantine("TITLE", f.video.slice(0, 100))}:\n` +
+        quarantine("C", f.text.slice(0, 280))
+    )
+    .join("\n\n");
+
+  const body = {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text:
+              `Each finalist below is the funniest overlooked comment from one of today's ` +
+              `most-watched videos. Choose the single funniest to lead a daily column.\n\n` +
+              `${lines}\n\n` +
+              `Judge each in the context of its video. Prefer the comment that is itself ` +
+              `the joke: wit, timing, a sharp observation. A comment that only says ` +
+              `something was funny, or only quotes the video back, is a reaction and loses ` +
+              `to any real joke. Never choose anything cruel about a real person.\n\n` +
+              `Return JSON with "index", an integer between 0 and ${finalists.length - 1}.`,
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: 40,
+      responseMimeType: "application/json",
+      responseSchema: HERO_SCHEMA,
+    },
+  };
+
+  const result = await callGemini(body, {
+    counter: "comments_text",
+    cap: COMMENTS_TEXT_DAILY,
+    timeoutMs: TEXT_TIMEOUT_MS,
+  });
+  return result ? validateHero(result.text, finalists.length) : null;
+}
+
+/** Parses and range-checks the hero response. Null on anything unexpected. */
+export function validateHero(raw: string, finalistCount: number): number | null {
+  try {
+    const o = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim());
+    const i = o?.index;
+    return Number.isInteger(i) && i >= 0 && i < finalistCount ? i : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── 4. The edition teaser ────────────────────────────────────────────────────
 
 /** One line for the OG card and social. Cheap: 60 output tokens, once a day. */
 export async function geminiTeaser(

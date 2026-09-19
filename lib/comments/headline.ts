@@ -148,8 +148,15 @@ export function buildHeadline(
     case "lovefest":
       return `A good day in the comments. ${pct(stats.positiveShare)} positive across ${comments} of them.`;
 
-    default:
-      return `${capitalize(videos)} videos, ${comments} comments. The room ran ${pct(stats.positiveShare)} positive and about ${pct(stats.automationShare)} automated.`;
+    default: {
+      // "about 0% automated" was edition 1's headline. Under half a percent rounds
+      // to zero, and a rounded zero reads as a glitch rather than as good news.
+      const automated =
+        stats.automationShare < 0.005
+          ? "almost none of it looked automated"
+          : `about ${pct(stats.automationShare)} of it looked automated`;
+      return `${capitalize(videos)} videos, ${comments} comments. The room ran ${pct(stats.positiveShare)} positive, and ${automated}.`;
+    }
   }
 }
 
