@@ -24,8 +24,10 @@ export const runtime = "edge";
 // cron stays green; the page renders its honest preview mode meanwhile.
 
 import { runSimTick } from "@/lib/simworld";
+import { LATENT_SPACE_PAUSED, pausedResponse } from "@/lib/latent-pause";
 
 export async function POST(req: Request) {
+  if (LATENT_SPACE_PAUSED) return pausedResponse("substrate");
   if (!process.env.SUPABASE_URL) {
     return Response.json({ ok: false, reason: "sim unavailable" }, { status: 503 });
   }

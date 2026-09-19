@@ -29,8 +29,10 @@ export const runtime = "edge";
 // never travel, speak or write.
 
 import { runAllResidentTicks } from "@/lib/residents/engine";
+import { LATENT_SPACE_PAUSED, pausedResponse } from "@/lib/latent-pause";
 
 export async function POST(req: Request) {
+  if (LATENT_SPACE_PAUSED) return pausedResponse("residents");
   if (!process.env.SUPABASE_URL) {
     return Response.json({ ok: false, reason: "residents unavailable" }, { status: 503 });
   }

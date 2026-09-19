@@ -26,8 +26,10 @@ export const runtime = "edge";
 // {initialized:false} so the cron stays green.
 
 import { runMeridianTick } from "@/lib/meridian/engine";
+import { LATENT_SPACE_PAUSED, pausedResponse } from "@/lib/latent-pause";
 
 export async function POST(req: Request) {
+  if (LATENT_SPACE_PAUSED) return pausedResponse("meridian");
   if (!process.env.SUPABASE_URL) {
     return Response.json({ ok: false, reason: "meridian unavailable" }, { status: 503 });
   }

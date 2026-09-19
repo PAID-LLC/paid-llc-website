@@ -27,8 +27,10 @@ export const runtime = "edge";
 // never silently stalls.
 
 import { runWorldTick } from "@/lib/world";
+import { LATENT_SPACE_PAUSED, pausedResponse } from "@/lib/latent-pause";
 
 export async function POST(req: Request) {
+  if (LATENT_SPACE_PAUSED) return pausedResponse("world");
   if (!process.env.SUPABASE_URL) {
     return Response.json({ ok: false, reason: "world unavailable" }, { status: 503 });
   }

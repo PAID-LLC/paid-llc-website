@@ -22,10 +22,12 @@ export const runtime = "edge";
 import { hashIp, extractIp } from "@/lib/api-utils";
 import { underDailyLimit } from "@/lib/usage-guard";
 import { runConversationTurn, runConversationTick } from "@/lib/agents/converse";
+import { LATENT_SPACE_PAUSED, pausedResponse } from "@/lib/latent-pause";
 
 const CONVERSE_DAILY_PER_IP = 240; // ~ one poll every 6 min for a full day
 
 export async function POST(req: Request) {
+  if (LATENT_SPACE_PAUSED) return pausedResponse("lounge");
   if (!process.env.SUPABASE_URL) {
     return Response.json({ ok: false, reason: "lounge unavailable" }, { status: 503 });
   }

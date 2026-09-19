@@ -18,6 +18,7 @@ import { getClientAgent }               from "@/lib/agents/client-agents";
 import { ACTION_POOLS, NEXUS_POOLS }   from "@/lib/agents/action-pools";
 import { addRep }                       from "@/lib/agents/reputation";
 import { defer } from "@/lib/defer";
+import { LATENT_SPACE_PAUSED, pausedResponse } from "@/lib/latent-pause";
 
 const STALE_MINUTES = 30;
 
@@ -97,6 +98,7 @@ async function wakeAgent(
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  if (LATENT_SPACE_PAUSED) return pausedResponse("wake");
   if (!supabaseReady()) return Response.json({ ok: false, reason: "supabase unavailable" });
 
   let body: Record<string, unknown>;
