@@ -1,7 +1,7 @@
 // ── The daily step machine ───────────────────────────────────────────────────
 // Four steps, driven by GitHub Actions against /api/comments/cron:
 //
-//   pick     choose the day's videos, create the edition           ~1 second
+//   pick     pool ~450 videos, rank by views/hour, keep five       ~5 seconds
 //   video    process ONE video, repeated until it reports done     ~60-125 s each
 //   publish  aggregate, headline, flip to published                ~2 seconds
 //   refresh  re-fetch anything approaching the 30-day limit        ~2 seconds
@@ -20,12 +20,13 @@
 // those genuinely mean there is nothing to write about.
 
 import {
-  fetchMostPopular,
+  fetchCandidatePool,
   fetchCommentThreads,
   fetchChannels,
   fetchCommentsById,
   fetchVideoStats,
   YouTubeError,
+  type CandidatePool,
 } from "./youtube";
 import { analyzeVideo } from "./analyze";
 import {
@@ -51,8 +52,22 @@ import type {
 
 /** Videos per edition. */
 const PICK_COUNT = 5;
-/** Chart rows fetched to choose from. More slack than we need, at 1 quota unit. */
-const CHART_SIZE = 25;
+/**
+ * Upload-age window for competing. Views per hour since upload is the ranking,
+ * and it only means "rising right now" for a recent upload: a month-old video
+ * with a big lifetime total would otherwise outrank today's actual story.
+ */
+const MAX_AGE_H = 72;
+/**
+ * Too new to judge. The funniest-comment shortlist only admits comments at least
+ * six hours old (humor.ts), so a two-hour-old video would arrive with nothing
+ * eligible to feature.
+ */
+const MIN_AGE_H = 8;
+/** Front-of-queue survivors checked against history, keeping that URL short. */
+const CANDIDATES_CHECKED = 40;
+/** Rejections echoed in full to the workflow log; the rest are counted. */
+const REJECTED_LOGGED = 25;
 /** Below this many comments there is nothing to analyse. */
 const MIN_COMMENTS = 200;
 /** Below this many actually fetched, the section is too thin to publish. */
@@ -106,13 +121,45 @@ type RejectRule =
   | "comments_disabled"
   | "too_few_comments"
   | "too_short"
+  | "short"
+  | "too_new"
+  | "too_old"
   | "not_english"
   | "already_analyzed"
-  | "recently_skipped";
+  | "recently_skipped"
+  | "same_channel";
+
+/** Hours since upload, or null when the timestamp is missing or unparseable. */
+function ageHours(v: VideoPick, now: number): number | null {
+  const t = Date.parse(v.publishedAt);
+  return Number.isFinite(t) ? (now - t) / 3_600_000 : null;
+}
+
+/**
+ * The ranking: average views per hour since upload. YouTube publishes no daily
+ * view counts for other people's videos, so this is the honest proxy for "rising
+ * fastest right now", and it is what the page says it shows. Age is floored at
+ * one hour so a brand-new upload cannot divide by nearly nothing.
+ */
+export function viewsPerHour(v: VideoPick, now = Date.now()): number {
+  return v.views / Math.max(1, ageHours(v, now) ?? Infinity);
+}
+
+/** The pool, fastest-rising first. */
+export function rankByVelocity(pool: VideoPick[], now = Date.now()): VideoPick[] {
+  return [...pool].sort((a, b) => viewsPerHour(b, now) - viewsPerHour(a, now));
+}
+
+/** Share of a title's letters that are Latin script, or 1 when it has too few to judge. */
+function latinShare(title: string): number {
+  const letters = title.match(/\p{L}/gu) ?? [];
+  if (letters.length < 4) return 1;
+  return letters.filter((c) => /[A-Za-zÀ-ɏ]/.test(c)).length / letters.length;
+}
 
 /**
  * The editorial filter, in priority order. The first rule a video fails is the
- * one reported, so the workflow log shows WHY the chart thinned out on a day it
+ * one reported, so the workflow log shows WHY the pool thinned out on a day it
  * produced fewer than five.
  */
 export function rejectReason(
@@ -125,10 +172,22 @@ export function rejectReason(
   if (v.comments < 0) return "comments_disabled";
   if (v.comments < MIN_COMMENTS) return "too_few_comments";
   if (v.durationS > 0 && v.durationS < MIN_DURATION_S) return "too_short";
+  // Shorts now run to three minutes, so length alone cannot catch them, and
+  // they dominate any views-per-hour ranking. The tag is how uploaders mark them.
+  if (/#shorts?\b/i.test(`${v.title} ${v.description}`)) return "short";
+
+  const age = ageHours(v, now);
+  if (age !== null && age < MIN_AGE_H) return "too_new";
+  if (age !== null && age > MAX_AGE_H) return "too_old";
 
   for (const lang of [v.defaultAudioLanguage, v.defaultLanguage]) {
     if (lang && !lang.toLowerCase().startsWith("en")) return "not_english";
   }
+  // Language metadata is optional and often unset. Two cheap tells catch most
+  // of what slips through: a title in another script, and "[Eng Sub]", which
+  // means the audio is not English. Both were in the pool on 2026-09-19.
+  if (latinShare(v.title) < 0.8) return "not_english";
+  if (/\beng(lish)?[\s-]*sub(s|bed|titles?)?\b/i.test(v.title)) return "not_english";
 
   const prior = seen.get(v.videoId);
   if (prior) {
@@ -153,29 +212,22 @@ async function stepPick(date: string): Promise<StepResult> {
     };
   }
 
-  let chart: VideoPick[];
+  let pool: CandidatePool;
   try {
-    chart = await fetchMostPopular("US", CHART_SIZE);
+    pool = await fetchCandidatePool("US");
   } catch (err) {
     const kind = err instanceof YouTubeError ? err.kind : "network";
     await store.upsertEdition({ edition_date: date, status: "failed", region: "US" });
     return { step: "pick", picked: 0, error: kind, http: 500 };
   }
 
-  const seen = await store.getExistingVideoRows(chart.map((v) => v.videoId));
-  const rejected: { id: string; title: string; rule: RejectRule }[] = [];
-  const picked: VideoPick[] = [];
-
-  for (const v of chart) {
-    if (picked.length >= PICK_COUNT) break;
-    const rule = rejectReason(v, seen);
-    if (rule) rejected.push({ id: v.videoId, title: v.title.slice(0, 60), rule });
-    else picked.push(v);
-  }
+  const now = Date.now();
+  const { picked, rejected, rejectedCounts } = await choosePicks(pool.videos, now);
+  const log = { pool: pool.videos.length, sources: pool.sources, rejected, rejected_counts: rejectedCounts };
 
   if (picked.length === 0) {
     await store.upsertEdition({ edition_date: date, status: "failed", region: "US" });
-    return { step: "pick", picked: 0, rejected, http: 500 };
+    return { step: "pick", picked: 0, ...log, http: 500 };
   }
 
   await store.upsertEdition({
@@ -201,13 +253,61 @@ async function stepPick(date: string): Promise<StepResult> {
         views: v.views,
         likes: v.likes,
         comments: v.comments,
+        views_per_hour: Math.round(viewsPerHour(v, now)),
         verified_at: new Date().toISOString(),
       },
     }))
   );
 
-  return { step: "pick", picked: picked.length, ids: picked.map((v) => v.videoId), rejected };
+  return { step: "pick", picked: picked.length, ids: picked.map((v) => v.videoId), ...log };
 }
+
+/**
+ * The five, fastest-rising first, after the editorial filter and at most one
+ * video per channel (the 2026-09-19 pool held three episodes of one TV serial).
+ *
+ * History is only looked up for the front of the queue: the first forty videos
+ * that pass every other rule. The loop stops at five picks long before it gets
+ * past them, and checking all ~450 ids would put them all in one request URL.
+ */
+export async function choosePicks(
+  pool: VideoPick[],
+  now = Date.now()
+): Promise<{
+  picked: VideoPick[];
+  rejected: { id: string; title: string; rule: RejectRule }[];
+  rejectedCounts: Partial<Record<RejectRule, number>>;
+}> {
+  const ranked = rankByVelocity(pool, now);
+  const front = ranked
+    .filter((v) => rejectReason(v, NO_HISTORY, now) === null)
+    .slice(0, CANDIDATES_CHECKED);
+  const seen = await store.getExistingVideoRows(front.map((v) => v.videoId));
+
+  const picked: VideoPick[] = [];
+  const rejected: { id: string; title: string; rule: RejectRule }[] = [];
+  const rejectedCounts: Partial<Record<RejectRule, number>> = {};
+  const channels = new Set<string>();
+
+  for (const v of ranked) {
+    if (picked.length >= PICK_COUNT) break;
+    let rule = rejectReason(v, seen, now);
+    if (!rule && channels.has(v.channelId)) rule = "same_channel";
+    if (rule) {
+      rejectedCounts[rule] = (rejectedCounts[rule] ?? 0) + 1;
+      if (rejected.length < REJECTED_LOGGED) {
+        rejected.push({ id: v.videoId, title: v.title.slice(0, 60), rule });
+      }
+    } else {
+      picked.push(v);
+      channels.add(v.channelId);
+    }
+  }
+
+  return { picked, rejected, rejectedCounts };
+}
+
+const NO_HISTORY = new Map<string, { status: string; created_at: string }>();
 
 // ── video ────────────────────────────────────────────────────────────────────
 
@@ -566,7 +666,8 @@ async function stepRefresh(): Promise<StepResult> {
 /** Exported for the dry-run script and tests. */
 export const RULES = {
   PICK_COUNT,
-  CHART_SIZE,
+  MAX_AGE_H,
+  MIN_AGE_H,
   MIN_COMMENTS,
   MIN_FETCHED,
   MIN_DURATION_S,

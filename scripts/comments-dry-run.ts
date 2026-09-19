@@ -23,10 +23,10 @@
  * YouTube quota (about 27 units) and real Gemini tokens (about five cents).
  */
 
-import { fetchMostPopular, fetchCommentThreads, fetchChannels, fetchVideoDetails } from "../lib/comments/youtube";
+import { fetchCandidatePool, fetchCommentThreads, fetchChannels, fetchVideoDetails } from "../lib/comments/youtube";
 import { analyzeVideo } from "../lib/comments/analyze";
 import { geminiVideoSummary, geminiEditorial, buildDigest, fallbackEditorial } from "../lib/comments/gemini";
-import { rejectReason } from "../lib/comments/edition";
+import { choosePicks, viewsPerHour } from "../lib/comments/edition";
 import { signalLabel } from "../lib/comments/bots";
 import { formatCount, pct } from "../lib/comments/render-helpers";
 
@@ -52,29 +52,26 @@ async function main() {
 
 /** No argument: show what today's edition WOULD pick, and why it rejected the rest. */
 async function showPicks() {
-  console.log("\nFetching the US most-popular chart...\n");
-  const chart = await fetchMostPopular("US", 25);
+  console.log("\nBuilding the candidate pool (11 charts + 2 searches, ~215 quota units)...\n");
+  const pool = await fetchCandidatePool("US");
+  const now = Date.now();
+  const { picked, rejected, rejectedCounts } = await choosePicks(pool.videos, now);
 
-  const picked: string[] = [];
-  const rejected: string[] = [];
+  console.log(`POOL: ${pool.videos.length} unique videos`);
+  console.log(`  ${Object.entries(pool.sources).map(([k, n]) => `${k} +${n}`).join("  ")}\n`);
 
-  for (const v of chart) {
-    const rule = rejectReason(v, new Map());
-    const label = `${v.videoId}  ${v.title.slice(0, 52).padEnd(52)}`;
-    if (rule || picked.length >= 5) {
-      rejected.push(`  ✗ ${label} ${rule ?? "over the limit of five"}`);
-    } else {
-      picked.push(
-        `  ✓ ${label} ${formatCount(v.comments)} comments, ${formatCount(v.views)} views`
-      );
-    }
+  console.log(`WOULD PICK (${picked.length}), fastest-rising first:`);
+  for (const v of picked) {
+    console.log(
+      `  ✓ ${v.videoId}  ${v.title.slice(0, 50).padEnd(50)} ${formatCount(Math.round(viewsPerHour(v, now)))}/hr, ` +
+        `${formatCount(v.views)} views, ${formatCount(v.comments)} comments`
+    );
   }
+  if (picked.length === 0) console.log("  nothing survived the filter");
 
-  console.log(`WOULD PICK (${picked.length}):`);
-  console.log(picked.join("\n") || "  nothing survived the filter");
-  console.log(`\nREJECTED (${rejected.length}):`);
-  console.log(rejected.join("\n"));
-  console.log(`\nQuota spent: 1 unit. Re-run with a video id for a full analysis.\n`);
+  console.log(`\nREJECTED ahead of the last pick: ${JSON.stringify(rejectedCounts)}`);
+  for (const r of rejected) console.log(`  ✗ ${r.id}  ${r.title.slice(0, 50).padEnd(50)} ${r.rule}`);
+  console.log(`\nRe-run with a video id for a full analysis.\n`);
 }
 
 /** With an id: run the whole per-video pipeline and print every intermediate. */

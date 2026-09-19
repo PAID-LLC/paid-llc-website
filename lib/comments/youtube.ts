@@ -7,13 +7,16 @@
 // counter, and the per-call costs are documented at each function:
 //
 //   videos.list          1 unit per call, up to 50 ids or one chart page
+//   search.list          100 units per call (counted at the classic rate)
 //   commentThreads.list  1 unit per PAGE of up to 100 comments
 //   channels.list        1 unit per call, up to 50 ids
 //   comments.list        1 unit per call, up to 50 ids
 //
-// One edition of five videos costs about 135 units, so the budget is not close
-// to binding. It would only bind if something retried in a loop, which is why
-// the step machine is idempotent and the workflow's loop is bounded.
+// One edition of five videos costs about 350 units: roughly 215 to build the
+// candidate pool (eleven charts, two searches) and 135 to read five comment
+// sections. The budget is not close to binding. It would only bind if something
+// retried in a loop, which is why the step machine is idempotent and the
+// workflow's loop is bounded.
 
 import { bumpCounter } from "@/lib/usage-guard";
 import type { CommentInput, ChannelInfo, VideoPick } from "./types";
@@ -165,6 +168,107 @@ export async function fetchMostPopular(region = "US", max = 25): Promise<VideoPi
   });
   await bumpCounter("yt_units", 1);
   return (data.items ?? []).map(toPick);
+}
+
+/**
+ * Categories whose US most-popular chart still exists, verified live 2026-09-19.
+ *
+ * Since 2025-07-21 the plain chart (no category) carries only YouTube's Trending
+ * Music, Movies and Gaming charts, so on its own it is a music-and-games list,
+ * not the day's most-watched: edition 1 had no news, sports or comedy at all.
+ * Education (27), Movies (30) and Trailers (44) return 404/400 and are left out.
+ * A category YouTube retires later is skipped, never fatal.
+ */
+export const POOL_CATEGORIES = ["1", "10", "17", "20", "22", "23", "24", "25", "26", "28"] as const;
+
+/** search.list, counted at the classic rate so the daily counter never under-reports. */
+const SEARCH_UNITS = 100;
+
+/**
+ * Views-sorted searches. The charts can miss the single biggest upload of the
+ * day entirely (MrBeast's 10.4M-views-in-22-hours video on 2026-09-19 was in no
+ * chart), and a views-sorted search finds it. Search is only a supplement: it
+ * returns nothing without a query term (hence "*"), "US" there means viewable in
+ * the US rather than popular in it, and YouTube documents its date-filtered
+ * results as approximate and incomplete. The rank filters do the rest.
+ */
+const POOL_SEARCHES: { label: string; hours: number; videoDuration?: string }[] = [
+  { label: "search:24h", hours: 24 },
+  { label: "search:48h-long", hours: 48, videoDuration: "long" },
+];
+
+export interface CandidatePool {
+  videos: VideoPick[];
+  /** New unique videos each source contributed, for the workflow log. */
+  sources: Record<string, number>;
+}
+
+/**
+ * Every video that could lead today's edition: the default chart, each category
+ * chart, and two views-sorted searches, de-duplicated. Roughly 450 videos for
+ * about 215 quota units. Ranking and filtering happen in edition.ts.
+ *
+ * Only a quota failure on the CHARTS is fatal. A retired category chart or a
+ * failed search costs that source, not the edition.
+ */
+export async function fetchCandidatePool(region = "US", now = Date.now()): Promise<CandidatePool> {
+  const byId = new Map<string, VideoPick>();
+  const sources: Record<string, number> = {};
+  const add = (label: string, picks: VideoPick[]) => {
+    let fresh = 0;
+    for (const p of picks) {
+      if (!byId.has(p.videoId)) {
+        byId.set(p.videoId, p);
+        fresh++;
+      }
+    }
+    sources[label] = fresh;
+  };
+
+  for (const category of [null, ...POOL_CATEGORIES]) {
+    const label = category ? `chart:${category}` : "chart";
+    try {
+      await bumpCounter("yt_units", 1);
+      const data = await call<{ items?: VideoItem[] }>("videos", {
+        part: "snippet,statistics,contentDetails",
+        chart: "mostPopular",
+        regionCode: region,
+        maxResults: "50",
+        ...(category ? { videoCategoryId: category } : {}),
+      });
+      add(label, (data.items ?? []).map(toPick));
+    } catch (err) {
+      if (err instanceof YouTubeError && err.kind === "quota_exceeded") throw err;
+      sources[label] = 0;
+    }
+  }
+
+  for (const s of POOL_SEARCHES) {
+    try {
+      await bumpCounter("yt_units", SEARCH_UNITS);
+      const data = await call<{ items?: { id?: { videoId?: string } }[] }>("search", {
+        part: "id",
+        type: "video",
+        order: "viewCount",
+        q: "*",
+        publishedAfter: new Date(now - s.hours * 3_600_000).toISOString(),
+        regionCode: region,
+        relevanceLanguage: "en",
+        maxResults: "50",
+        ...(s.videoDuration ? { videoDuration: s.videoDuration } : {}),
+      });
+      const ids = (data.items ?? [])
+        .map((i) => i.id?.videoId)
+        .filter((id): id is string => !!id && !byId.has(id));
+      add(s.label, ids.length > 0 ? await fetchVideoDetails(ids) : []);
+    } catch {
+      // Including quota: search has its own bucket, and the charts already
+      // produced a usable pool.
+      sources[s.label] = 0;
+    }
+  }
+
+  return { videos: [...byId.values()], sources };
 }
 
 /** Full details for specific ids, batched 50 per call. 1 unit per batch. */

@@ -41,7 +41,7 @@ export interface ScoredComment extends CommentInput {
   humor: number;
 }
 
-/** A video as it comes off the most-popular chart. */
+/** A video as it comes out of the candidate pool (charts plus search). */
 export interface VideoPick {
   videoId: string;
   title: string;
@@ -178,7 +178,15 @@ export interface VideoRow {
   thumbnail_url: string | null;
   duration_s: number | null;
   published_at: string | null;
-  stats: { views?: number; likes?: number; comments?: number; verified_at?: string; removed?: boolean };
+  stats: {
+    views?: number;
+    likes?: number;
+    comments?: number;
+    /** Average views per hour since upload, at pick time. The ranking. */
+    views_per_hour?: number;
+    verified_at?: string;
+    removed?: boolean;
+  };
   summary: string | null;
   analysis: Partial<VideoAnalysis>;
   gemini: GeminiUsageMap;

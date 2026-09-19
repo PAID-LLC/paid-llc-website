@@ -21,8 +21,8 @@ export function EmptyEdition() {
           <span className="text-cyan-400">tomorrow morning.</span>
         </h1>
         <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
-          Every day this page takes the most-watched videos in the United States and
-          reads their comment sections: what the video actually is, which way the
+          Every day this page takes the fastest-rising videos on YouTube in the United
+          States and reads their comment sections: what the video actually is, which way the
           room leaned, how much of it was automated, and the funniest comment nobody
           liked.
         </p>
@@ -35,7 +35,7 @@ export function EmptyEdition() {
               <p className={v2.kicker}>What lands each morning</p>
               <ul className="mt-6 space-y-4">
                 {[
-                  ["Five videos", "The day's most-watched, with what each one actually is in two sentences."],
+                  ["Five videos", "The day's fastest-rising, with what each one actually is in two sentences."],
                   ["The mood", "Sentiment across every comment we can read, roughly a thousand per video."],
                   ["The bot estimate", "How much of the section did not look like a person typing, in aggregate."],
                   ["The underrated comment", "The funniest one with the fewest likes, and why it lands."],

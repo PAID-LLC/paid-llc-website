@@ -831,7 +831,8 @@ const SPEC = {
         tags: ["Content"],
         summary: "Today's edition of The Comment Section, or a specific date",
         description:
-          "The day's most-watched US videos read through their comment sections: what each video is, " +
+          "The day's fastest-rising US videos (ranked by views per hour since upload) read through " +
+          "their comment sections: what each video is, " +
           "sentiment shares, recurring themes, an aggregate automation estimate, and the funniest " +
           "overlooked comment. Optional ?date=YYYY-MM-DD for an archived edition. " +
           "Sentiment, themes and automation figures are PAID LLC's own derived estimates and are NOT " +

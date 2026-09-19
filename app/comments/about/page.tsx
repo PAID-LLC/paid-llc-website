@@ -42,19 +42,28 @@ export default function AboutPage() {
           How this page is <span className="text-cyan-400">built</span>.
         </h1>
         <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
-          Every morning an automated pipeline reads the day&apos;s most-watched public
-          videos and their comment sections. Nobody edits the result by hand. Here is
+          Every morning an automated pipeline reads the fastest-rising public videos
+          on YouTube and their comment sections. Nobody edits the result by hand. Here is
           exactly what it does, what it keeps, and what its numbers are worth.
         </p>
       </section>
 
       <Section kicker="Selection" title="How the five videos are chosen">
         <p className={v2.body}>
-          We read the top 25 of YouTube&apos;s most-popular chart for the United States
-          and take the first five that pass a fixed filter. A video is skipped if it
-          is a live broadcast, if comments are turned off, if it has fewer than 200
-          comments, if it is under a minute, if its language is set to anything other
-          than English, or if it has already had its day here.
+          YouTube does not publish daily view counts for other people&apos;s videos, so
+          nobody outside YouTube can list the day&apos;s most-watched with certainty.
+          What can be measured is momentum. Each morning we gather around 450
+          candidates from YouTube&apos;s public charts for the United States, across ten
+          categories from news and sports to music and gaming, plus a search for the
+          most-viewed uploads of the last two days. We rank them by average views per
+          hour since upload and take the first five that pass a fixed filter.
+        </p>
+        <p className={v2.body}>
+          A video is skipped if it is a live broadcast or a Short, if it went up less
+          than eight hours or more than three days ago, if comments are turned off or
+          there are fewer than 200, if it is under a minute, if it is not in English,
+          if it has already had its day here, or if its channel is already in the
+          edition.
         </p>
         <p className={v2.body}>
           Nothing is chosen editorially and nothing is chosen for how it will read.

@@ -484,7 +484,7 @@ export async function geminiHero(
           {
             text:
               `Each finalist below is the funniest overlooked comment from one of today's ` +
-              `most-watched videos. Choose the single funniest to lead a daily column.\n\n` +
+              `fastest-rising videos. Choose the single funniest to lead a daily column.\n\n` +
               `${lines}\n\n` +
               `Judge each in the context of its video. Prefer the comment that is itself ` +
               `the joke: wit, timing, a sharp observation. A comment that only says ` +

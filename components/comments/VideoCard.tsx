@@ -96,6 +96,17 @@ export function VideoCard({
 
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-zinc-500">
             {video.stats.views !== undefined && <span>{formatCount(video.stats.views)} views</span>}
+            {video.stats.views_per_hour ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span
+                  className="text-[#E8714C]"
+                  title="Average views per hour since upload, when this edition was picked. The edition ranks by this."
+                >
+                  {formatCount(video.stats.views_per_hour)}/hr
+                </span>
+              </>
+            ) : null}
             {a.analyzed !== undefined && (
               <>
                 <span aria-hidden="true">·</span>
@@ -172,6 +183,19 @@ export function VideoCard({
                 When people showed up
               </p>
               <VelocitySparkline velocity={a.velocity} busiestHour={a.busiestHour ?? 0} />
+            </div>
+          )}
+
+          {/* The crowd's pick first, then ours: the most-liked comment is what
+              the section agreed on, and the underrated one below is the
+              contrast the whole page is built around. The permalink page
+              shows all three most-liked, so this is the collapsed card only. */}
+          {!expanded && top[0] && (
+            <div className="mt-6">
+              <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                Most liked
+              </p>
+              <CommentQuote comment={top[0]} videoId={video.video_id} />
             </div>
           )}
 
