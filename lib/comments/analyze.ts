@@ -19,7 +19,7 @@ import type {
 } from "./types";
 import { scoreSentiment, labelOf, isLikelyEnglish, tokenize, extractEmoji, STOPWORDS } from "./lexicon";
 import { buildAutomationContext, scoreAutomation, summarizeAutomation } from "./bots";
-import { pickCandidates, pickTopComments } from "./humor";
+import { pickCandidatesTiered, pickTopComments } from "./humor";
 
 const HISTOGRAM_BINS = 10;
 const VELOCITY_BUCKETS = 24;
@@ -83,6 +83,8 @@ export function analyzeVideo(
 
   const velocity = velocityBuckets(scored, video.publishedAt);
 
+  const shortlist = pickCandidatesTiered(scored, 25, now);
+
   return {
     analysis: {
       analyzed,
@@ -99,13 +101,17 @@ export function analyzeVideo(
       englishRatio: n ? englishCount / n : 0,
       medianLikes,
       maxLikes,
+      // The age gate the shortlist actually ran at. Six hours is the standard;
+      // anything lower means the section moved too fast for it and the tiered
+      // fallback took over. edition.ts turns this into a degradation marker.
+      candidateAgeGateH: Math.round((shortlist.minAgeMs / 3_600_000) * 100) / 100,
       degraded: [],
       summarySource: "none",
       vibe: "",
       ytUnits: 0,
     },
     top: pickTopComments(scored, 30),
-    candidates: pickCandidates(scored, 25, now),
+    candidates: shortlist.candidates,
   };
 }
 

@@ -4,13 +4,24 @@
 # there with the coffee, and its date boundary is Central (see editionDateToday
 # in lib/comments/edition.ts) so a run never publishes "tomorrow's" edition.
 #
-# WHY :37 AND NOT :05. GitHub runs scheduled workflows on a shared queue and
-# delays them under load, worst at the top of the hour. The first scheduled run
-# here (2026-09-19, cron "5 12 * * *") fired at 15:42 UTC, three hours and
-# thirty-seven minutes late. An odd minute earlier in the hour is the only lever
-# available, since the delay is best-effort by design and cannot be waived. The
-# run still takes 6-12 minutes, so the target is an edition on the page before
-# 7am Central rather than at a precise second.
+# WHY FOUR SCHEDULES AND NOT ONE. GitHub runs scheduled workflows on a shared
+# queue, delays them under load, and sometimes drops a fire entirely. Both
+# happened here in two days: the 2026-09-19 run (cron "5 12 * * *") started
+# 3h37m late at 15:42 UTC, and on 2026-09-20 nothing fired at all, so the page
+# sat on yesterday's edition until it was built by hand. A daily publication
+# cannot have its only trigger be best-effort.
+#
+# So the schedule is redundant rather than precise. The 11:37 fire is the one
+# meant to land, and the three later ones are catch-ups. Every step here is
+# idempotent by design, so a catch-up on a day that already worked is four HTTP
+# requests and zero quota: `pick` sees the existing edition and returns without
+# touching YouTube, the video loop returns done immediately, `publish` reports
+# the edition it already published, and `refresh` finds nothing due. The odd
+# minutes are deliberate; the top of the hour is the busiest slot on that queue.
+#
+# Concurrency is safe without a lock. If a delayed fire overlaps a catch-up, the
+# claim in lib/comments/store.ts hands each video to exactly one request, which
+# is the same mechanism that makes a crashed run resumable.
 #
 # FOUR STEPS, and the loop in the middle is the point. One request per video
 # keeps each call around 60-125 seconds instead of holding one connection for ten
@@ -18,10 +29,11 @@
 # lib/comments/store.ts marks a video 'processing' and releases it after ten
 # minutes, so the next iteration resumes exactly where the last one stopped.
 #
-# COST PER RUN: about 350 YouTube quota units of 10,000 (215 to build the
-# candidate pool from eleven charts and two searches, 135 to read five comment
-# sections), and 10-12 Gemini calls
-# for roughly five cents. Both are double-gated in code (usage-guard counters
+# COST PER RUN, for the run that actually builds the edition (a catch-up that
+# finds the work already done costs nothing): about 350 YouTube quota units of
+# 10,000, being 215 to build the candidate pool from eleven charts and two
+# searches plus 135 to read five comment sections, and 10-12 Gemini calls for
+# roughly two cents. Both are double-gated in code (usage-guard counters
 # `comments_video` 8/day and `comments_text` 14/day inside the shared 1,000/day
 # budget), so a runaway loop here cannot produce a runaway bill.
 #
@@ -32,7 +44,10 @@
 name: comment-section
 on:
   schedule:
-    - cron: "37 11 * * *"
+    - cron: "37 11 * * *"   # 06:37 Central, the one meant to land
+    - cron: "23 13 * * *"   # catch-up, no-op if the edition exists
+    - cron: "11 16 * * *"
+    - cron: "41 19 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -78,8 +93,18 @@ jobs:
             echo "SKIP_REST=1" >> "$GITHUB_ENV"
             exit 0
           fi
-          # Zero survivors is a real failure: the chart gave us nothing usable
-          # and somebody should look at the rejection list above.
+          # An edition already exists. That is the normal answer on a catch-up
+          # fire, and also on a re-run of a day that half-finished: pick reports
+          # the ids it published, which is an EMPTY list while the edition is
+          # still building. Gating on .picked here would fail the run and strand
+          # a half-built edition forever, so existing:true short-circuits and
+          # lets the later steps carry on where they stopped.
+          if jq -e '.existing == true' /tmp/pick.json >/dev/null 2>&1; then
+            echo "edition for this date already exists (status: $(jq -r '.status' /tmp/pick.json)); continuing"
+            exit 0
+          fi
+          # Zero survivors on a FIRST pick is a real failure: the pool gave us
+          # nothing usable and somebody should look at the rejection list above.
           jq -e '.picked > 0' /tmp/pick.json >/dev/null
 
       # ── 2. Videos ────────────────────────────────────────────────────────

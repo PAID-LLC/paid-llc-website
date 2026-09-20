@@ -416,6 +416,14 @@ async function stepVideo(date: string): Promise<StepResult> {
     }
   }
 
+  // A section that fills faster than the six-hour "overlooked" rule can see had
+  // its age gate relaxed to the section's own median comment age. Worth showing:
+  // it is a weaker claim about the pick than the standard one, and on 2026-09-20
+  // the unrelaxed rule left a MrBeast card with no underrated comment at all.
+  const gateH = analysis.candidateAgeGateH;
+  if (typeof gateH === "number" && gateH < 6) degraded.push(`candidates:fast_section_${gateH}h`);
+  if (candidates.length === 0) degraded.push("candidates:none");
+
   // ── Editorial: the one judgement call ─────────────────────────────────────
   const digest = buildDigest(claimed.title, summary, analysis, top, candidates);
   const editorialCall = await geminiEditorial(digest, candidates.length);

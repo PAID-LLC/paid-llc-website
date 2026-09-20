@@ -108,6 +108,12 @@ export interface VideoAnalysis {
   /** Median and max likes, for the "underrated" framing. */
   medianLikes: number;
   maxLikes: number;
+  /**
+   * The age gate the underrated shortlist ran at, in hours. 6 is the standard.
+   * Lower means the section filled faster than that rule can see, so the gate
+   * fell back to the section's own median comment age. See pickCandidatesTiered.
+   */
+  candidateAgeGateH?: number;
   /** What degraded on this run, e.g. "summary:text_fallback". */
   degraded: string[];
   /** Where the summary came from. */

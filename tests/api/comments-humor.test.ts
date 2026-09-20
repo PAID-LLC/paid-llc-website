@@ -14,7 +14,15 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { pickCandidates, pickTopComments, humorScore, underratedThreshold, isQuoteBack } from "@/lib/comments/humor";
+import {
+  pickCandidates,
+  pickCandidatesTiered,
+  pickTopComments,
+  humorScore,
+  underratedThreshold,
+  isQuoteBack,
+  medianCommentAge,
+} from "@/lib/comments/humor";
 import type { ScoredComment } from "@/lib/comments/types";
 
 const NOW = Date.parse("2026-09-14T12:00:00Z");
@@ -143,6 +151,80 @@ describe("pickCandidates — shape of the shortlist", () => {
     const a = pickCandidates(pool, 25, NOW).map((c) => c.id);
     const b = pickCandidates(pool, 25, NOW).map((c) => c.id);
     expect(a).toEqual(b);
+  });
+});
+
+describe("the fast-section age gate — the MrBeast starvation case", () => {
+  /**
+   * Measured on 2026-09-20, edition 2. Of 1,000 comments sampled from
+   * "I Built A City To Save Kids From Illegal Labor", 705 sat at or below the
+   * like threshold and 523 survived the length rules. Every one of those 523
+   * was under six hours old; the oldest was one hour ten. The card published
+   * with no underrated comment at all, which is the publication's hook missing
+   * from its largest video.
+   *
+   * The rule was right and the constant was wrong: on a section taking
+   * thousands of comments an hour, an hour of being ignored IS being
+   * overlooked. These lock the fix and, just as importantly, its limits.
+   */
+  function fastSection(count: number, minutesOld: (i: number) => number): ScoredComment[] {
+    return Array.from({ length: count }, (_, i) =>
+      scored({
+        id: `fast${i}`,
+        likeCount: 0,
+        publishedAt: new Date(NOW - minutesOld(i) * 60_000).toISOString(),
+      })
+    );
+  }
+
+  it("still finds candidates when the whole section is younger than six hours", () => {
+    // 200 comments spread over the last 70 minutes, exactly the measured shape.
+    const section = fastSection(200, (i) => (i % 70) + 1);
+    expect(pickCandidates(section, 25, NOW)).not.toHaveLength(0);
+
+    const { minAgeMs } = pickCandidatesTiered(section, 25, NOW);
+    expect(minAgeMs).toBeLessThan(6 * 60 * 60 * 1000);
+    expect(minAgeMs).toBeGreaterThan(0);
+  });
+
+  it("only surfaces comments the section itself has moved past", () => {
+    const section = fastSection(200, (i) => (i % 70) + 1);
+    const { candidates, minAgeMs } = pickCandidatesTiered(section, 25, NOW);
+    for (const c of candidates) {
+      expect(NOW - Date.parse(c.publishedAt)).toBeGreaterThanOrEqual(minAgeMs);
+    }
+  });
+
+  it("leaves a normal section on the strict six hours", () => {
+    // Everything two days old: the strict gate is satisfiable, so nothing moves.
+    const section = Array.from({ length: 200 }, (_, i) => scored({ id: `slow${i}`, likeCount: 0 }));
+    expect(pickCandidatesTiered(section, 25, NOW).minAgeMs).toBe(6 * 60 * 60 * 1000);
+  });
+
+  it("does NOT relax for a small section, where nothing has been overlooked yet", () => {
+    // The distinction the first version of this fix got wrong: a fresh comment
+    // in a quiet section has not been passed over, it has merely been posted.
+    const tiny = fastSection(20, () => 5);
+    expect(pickCandidates(tiny, 25, NOW)).toHaveLength(0);
+    expect(pickCandidatesTiered(tiny, 25, NOW).minAgeMs).toBe(6 * 60 * 60 * 1000);
+  });
+
+  it("never relaxes past the strict gate when the strict gate is already fine", () => {
+    const mixed = [
+      ...Array.from({ length: 150 }, (_, i) => scored({ id: `old${i}`, likeCount: 0 })),
+      ...fastSection(50, () => 3),
+    ];
+    expect(pickCandidatesTiered(mixed, 25, NOW).minAgeMs).toBe(6 * 60 * 60 * 1000);
+  });
+
+  it("reads the median age of the section", () => {
+    const section = [
+      scored({ publishedAt: new Date(NOW - 60_000).toISOString() }),
+      scored({ publishedAt: new Date(NOW - 120_000).toISOString() }),
+      scored({ publishedAt: new Date(NOW - 180_000).toISOString() }),
+    ];
+    expect(medianCommentAge(section, NOW)).toBe(120_000);
+    expect(medianCommentAge([], NOW)).toBe(0);
   });
 });
 

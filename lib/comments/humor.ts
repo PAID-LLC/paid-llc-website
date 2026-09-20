@@ -23,8 +23,32 @@ import { sentinelCheck } from "@/lib/sentinel";
 const MIN_LEN = 15;
 /** Maximum characters: longer than this does not read as a punchline on a card. */
 const MAX_LEN = 280;
-/** A comment must have been visible this long before "few likes" means anything. */
+/**
+ * A comment must have been visible this long before "few likes" means anything.
+ *
+ * This is the STRICT gate, and on a fast comment section it is unreachable by
+ * construction. Measured on the MrBeast video in edition 2 (2026-09-20): of
+ * 1,000 comments sampled, 705 sat at or below the like threshold, 523 survived
+ * the length rules, and every single one of those 523 was under six hours old.
+ * The oldest was one hour and ten minutes. The card shipped with no underrated
+ * comment at all, which is the publication's entire hook missing from its
+ * biggest video.
+ *
+ * The cause is not the rule, it is the constant. YouTube's relevance ordering
+ * returns the most-engaged comments plus recent ones, so on a section taking
+ * thousands of comments an hour, every low-like comment in the sample arrived
+ * in the last seventy minutes. Six hours assumes an hour is a short time. On
+ * that video an hour is thousands of readers who scrolled past and did not
+ * press like, which is exactly what "overlooked" is supposed to mean.
+ *
+ * So the gate falls back to the section's own median comment age (see
+ * pickCandidatesTiered), which says the same thing in the section's own units:
+ * half the comments here arrived after this one.
+ */
 const MIN_AGE_MS = 6 * 60 * 60 * 1000;
+
+/** Below this many candidates, the shortlist is too thin to be worth judging. */
+const MIN_CANDIDATES = 5;
 
 /** Comedic structures that recur in comment sections. */
 const JOKE_SHAPES: { re: RegExp; points: number }[] = [
@@ -151,10 +175,11 @@ export function underratedThreshold(comments: ScoredComment[]): number {
  *   - six hours old, so "few likes" means overlooked and not merely new
  *   - deduped by normalized text, so a copypasta cannot win
  */
-export function pickCandidates(
+function collect(
   comments: ScoredComment[],
-  n = 25,
-  now = Date.now()
+  n: number,
+  now: number,
+  minAgeMs: number
 ): ScoredComment[] {
   const threshold = underratedThreshold(comments);
   const seen = new Set<string>();
@@ -168,7 +193,7 @@ export function pickCandidates(
     if (text.length < MIN_LEN || text.length > MAX_LEN) continue;
 
     const posted = Date.parse(c.publishedAt);
-    if (Number.isFinite(posted) && now - posted < MIN_AGE_MS) continue;
+    if (Number.isFinite(posted) && now - posted < minAgeMs) continue;
 
     // Links never get featured, regardless of how the automation score landed.
     if (/https?:\/\/|www\./i.test(text)) continue;
@@ -194,6 +219,67 @@ export function pickCandidates(
   });
 
   return eligible.slice(0, n);
+}
+
+/** Median age of the sampled comments, in milliseconds. */
+export function medianCommentAge(comments: ScoredComment[], now = Date.now()): number {
+  const ages = comments
+    .map((c) => now - Date.parse(c.publishedAt))
+    .filter((ms) => Number.isFinite(ms) && ms >= 0)
+    .sort((a, b) => a - b);
+  return ages.length === 0 ? 0 : ages[Math.floor(ages.length / 2)];
+}
+
+/**
+ * How many comments a section needs before "the older half" means anything.
+ * Matches MIN_FETCHED in edition.ts, the count below which a video is skipped
+ * outright, so the two thresholds cannot drift apart.
+ */
+const MIN_SAMPLE_FOR_RELAX = 100;
+
+/**
+ * The shortlist, with the age gate relaxed only where volume makes that honest.
+ *
+ * Two tiers. The strict six hours first. If that starves the shortlist AND the
+ * section is big enough for the word "overlooked" to carry weight, fall back to
+ * the section's own median comment age, which says the same thing in the
+ * section's units: half of these comments arrived after this one.
+ *
+ * There is deliberately NO third tier that drops the gate entirely. On a small
+ * or slow section an empty shortlist is the correct answer, and a comment
+ * posted five minutes ago into a quiet comment section has not been overlooked
+ * by anybody. Publishing no underrated pick is better than publishing a
+ * meaningless one, and `candidates:none` records it either way.
+ *
+ * `minAgeMs` in the result is what the caller records as a degradation, so a
+ * relaxed tier is visible on the card and in the run output instead of being a
+ * silent change of editorial standard.
+ */
+export function pickCandidatesTiered(
+  comments: ScoredComment[],
+  n = 25,
+  now = Date.now()
+): { candidates: ScoredComment[]; minAgeMs: number } {
+  const strict = collect(comments, n, now, MIN_AGE_MS);
+  if (strict.length >= MIN_CANDIDATES) return { candidates: strict, minAgeMs: MIN_AGE_MS };
+  if (comments.length < MIN_SAMPLE_FOR_RELAX) return { candidates: strict, minAgeMs: MIN_AGE_MS };
+
+  const median = Math.min(medianCommentAge(comments, now), MIN_AGE_MS);
+  if (median <= 0) return { candidates: strict, minAgeMs: MIN_AGE_MS };
+
+  const relaxed = collect(comments, n, now, median);
+  return relaxed.length > strict.length
+    ? { candidates: relaxed, minAgeMs: median }
+    : { candidates: strict, minAgeMs: MIN_AGE_MS };
+}
+
+/** The shortlist. Kept as the plain call for tests and any non-pipeline caller. */
+export function pickCandidates(
+  comments: ScoredComment[],
+  n = 25,
+  now = Date.now()
+): ScoredComment[] {
+  return pickCandidatesTiered(comments, n, now).candidates;
 }
 
 /**
