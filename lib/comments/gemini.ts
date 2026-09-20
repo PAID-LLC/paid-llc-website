@@ -24,6 +24,7 @@
 
 import { underDailyLimit, GEMINI_DAILY_BUDGET } from "@/lib/usage-guard";
 import { quarantine } from "@/lib/agents/service-executors";
+import { readsHuman, STOCK_MOOD_OPENER, machineTell } from "./voice";
 import type { EditorialJson, ScoredComment, VideoAnalysis } from "./types";
 import { signalLabel } from "./bots";
 
@@ -329,17 +330,28 @@ export async function geminiEditorial(
               `You are writing a short daily column about what a video's comment section ` +
               `was actually like. Below is a digest of one section.\n\n${digest}\n\n` +
               `Return JSON with four fields.\n` +
-              `- vibe: one sentence, under 140 characters, describing the mood of the room. ` +
-              `Specific and plain. No em dashes, no hype, no hashtags.\n` +
+              `- vibe: one sentence, under 140 characters, saying what the room was ` +
+              `actually like. Name the specific thing people reacted to. Do NOT begin it ` +
+              `with "Viewers are", "Fans are" or "Players are", and do not use the word ` +
+              `"chaotic". Write it the way you would say it to someone sitting next to ` +
+              `you. No em dashes, no hype, no hashtags.\n` +
               `- themes: exactly 3 short phrases (1-3 words) for what people are talking ` +
               `about. Use the computed terms as a guide but write them readably.\n` +
-              `- funniest: the index of the single funniest CANDIDATE, plus "why" in under ` +
-              `120 characters. Judge it in the context of what the video is. Prefer wit, ` +
-              `timing and observation over shock. Never pick something cruel about a real ` +
-              `person, and never pick an insult. A comment that only says the video was ` +
-              `funny ("this was so funny", "the narrator cracked me up") or only quotes a ` +
-              `line from the video back is a reaction, not a joke: pick the comment that ` +
-              `IS the joke.\n` +
+              `- funniest: the index of the single funniest CANDIDATE, plus a "why" of ` +
+              `under 120 characters. Judge it in the context of what the video is. Prefer ` +
+              `wit, timing and observation over shock. Never pick something cruel about a ` +
+              `real person, and never pick an insult. A comment that only says the video ` +
+              `was funny ("this was so funny", "the narrator cracked me up") or only ` +
+              `quotes a line from the video back is a reaction, not a joke: pick the ` +
+              `comment that IS the joke.\n` +
+              `  The "why" is NOT an explanation of the joke. Explaining a joke beside ` +
+              `the joke kills it, and calling it brilliant, spot on, witty or hilarious ` +
+              `tells the reader nothing. Give the ONE fact from the video that someone ` +
+              `who has not watched it would need in order to get it, in plain words, or ` +
+              `return an empty string if the joke stands on its own. Good: "Price is the ` +
+              `only character in the trailer with visible eyebrows." Bad: "A spot-on ` +
+              `critique of the design." Never write "the user" or "the commenter"; their ` +
+              `name is printed beside the quote.\n` +
               `- runners_up: exactly 2 other candidate indexes, next funniest.\n\n` +
               `Indexes must come from the CANDIDATES list and be between 0 and ` +
               `${candidateCount - 1}. All three indexes must be different. ` +
@@ -381,8 +393,13 @@ export function validateEditorial(raw: string, candidateCount: number): Editoria
   if (!parsed || typeof parsed !== "object") return null;
   const o = parsed as Record<string, unknown>;
 
-  const vibe = typeof o.vibe === "string" ? cleanProse(o.vibe).slice(0, 200) : "";
-  if (!vibe) return null;
+  // Voice checks are per FIELD, never for the whole response. A mood line that
+  // drifted back into "Viewers are cracking up over..." must not cost us the
+  // comment pick, which is the expensive half of this call and the part code
+  // cannot do. A rejected field falls back; a rejected response loses the lot.
+  const rawVibe = typeof o.vibe === "string" ? cleanProse(o.vibe).slice(0, 200) : "";
+  const vibe = rawVibe && readsHuman(rawVibe) && !STOCK_MOOD_OPENER.test(rawVibe) ? rawVibe : "";
+  if (!rawVibe) return null;
 
   const themes = Array.isArray(o.themes)
     ? o.themes.filter((t): t is string => typeof t === "string" && t.trim().length > 0)
@@ -394,7 +411,11 @@ export function validateEditorial(raw: string, candidateCount: number): Editoria
   const f = o.funniest as Record<string, unknown> | undefined;
   if (!f || typeof f.index !== "number" || !Number.isInteger(f.index)) return null;
   if (f.index < 0 || f.index >= candidateCount) return null;
-  const why = typeof f.why === "string" ? cleanProse(f.why).slice(0, 160) : "";
+  // A why line that explains the joke is worse than no why line, so it is
+  // dropped rather than published. The card then shows the comment alone, which
+  // is how it would run in a magazine anyway.
+  const rawWhy = typeof f.why === "string" ? cleanProse(f.why).slice(0, 160) : "";
+  const why = rawWhy && readsHuman(rawWhy) ? rawWhy : "";
 
   const runners = Array.isArray(o.runners_up)
     ? o.runners_up.filter(
@@ -420,10 +441,7 @@ export function validateEditorial(raw: string, candidateCount: number): Editoria
  * already ranked by humorScore, so taking the top three is a defensible pick
  * rather than a random one; only the "why" line is lost.
  */
-export function fallbackEditorial(
-  analysis: VideoAnalysis,
-  candidates: ScoredComment[]
-): EditorialJson {
+export function templatedVibe(analysis: VideoAnalysis): string {
   const mood =
     analysis.positiveShare > 0.6
       ? "The room was warm about this one."
@@ -431,12 +449,17 @@ export function fallbackEditorial(
         ? "The room was not having it."
         : "The room was split.";
 
-  const top = analysis.automation.shareLikely > 0.15
+  return analysis.automation.shareLikely > 0.15
     ? `${mood} A noticeable share of the section looked automated.`
     : mood;
+}
 
+export function fallbackEditorial(
+  analysis: VideoAnalysis,
+  candidates: ScoredComment[]
+): EditorialJson {
   return {
-    vibe: top,
+    vibe: templatedVibe(analysis),
     themes: analysis.themes.slice(0, 3),
     funniest: { index: candidates.length > 0 ? 0 : -1, why: "" },
     runners_up: candidates.length > 2 ? [1, 2] : candidates.length > 1 ? [1] : [],
@@ -536,9 +559,17 @@ export async function geminiTeaser(
         parts: [
           {
             text:
-              `Write one sentence, under 120 characters, to preview today's edition of a ` +
-              `daily column about video comment sections. It should make someone curious ` +
-              `enough to click, without overselling.\n\n` +
+              `Write one sentence, under 120 characters, previewing today's edition of a ` +
+              `daily column about video comment sections.\n\n` +
+              `Say the most specific true thing about today. Do NOT write a teaser that ` +
+              `withholds it: never open with "See why", "Find out why", "Here is why" or ` +
+              `"Discover", and never use the word "sparked". If the featured comment is ` +
+              `the interesting part, the sentence can just be about what it noticed. ` +
+              `Write it flat and concrete, the way a person describes something they ` +
+              `read.\n` +
+              `Good: Somebody decided the new iPhone camera looks like a stove burner, ` +
+              `and nobody liked the comment.\n` +
+              `Bad: See why a strange camera angle sparked thousands of comments today.\n\n` +
               `Today's headline: ${quarantine("HEADLINE", headline)}\n` +
               (funniestText
                 ? `Today's featured comment: ${quarantine("COMMENT", funniestText.slice(0, 200))}\n`
@@ -556,7 +587,19 @@ export async function geminiTeaser(
     cap: COMMENTS_TEXT_DAILY,
     timeoutMs: TEXT_TIMEOUT_MS,
   });
-  return result ? cleanProse(result.text).slice(0, 200) : null;
+  if (!result) return null;
+
+  // Both teasers published before this check went in opened with "Find out why"
+  // or "See why" and used the word "sparked". Null falls back to the templated
+  // headline, which is plain and always true, so a rejected teaser costs
+  // nothing but a little colour.
+  const teaser = cleanProse(result.text).slice(0, 200);
+  const tell = machineTell(teaser);
+  if (tell) {
+    console.warn(`[comments][teaser] rejected, reads as machine copy (${tell}): ${teaser}`);
+    return null;
+  }
+  return teaser;
 }
 
 /** Re-exported so the UI can label automation signals without importing bots.ts. */

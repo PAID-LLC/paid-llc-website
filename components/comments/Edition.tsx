@@ -17,9 +17,11 @@ import { CommentQuote } from "./CommentQuote";
 import { SentimentRing } from "./Charts";
 import { Disclosure, AttributionFooter, YouTubeMark } from "./Attribution";
 import { SubscribeForm } from "./SubscribeForm";
+import { LikeTest } from "./LikeTest";
 import { v2 } from "@/components/v2/tokens";
 import { houseAdFor } from "@/lib/comments/house-ads";
 import { STANDFIRST } from "@/lib/comments/headline";
+import { buildLikeTest } from "@/lib/comments/like-test";
 import {
   formatCount,
   formatEditionDate,
@@ -44,6 +46,10 @@ export function Edition({
 
   const hero = featured.find((f) => f.comment_id === edition.hero_comment_id);
   const heroVideo = hero ? videos.find((v) => v.video_id === hero.video_id) : undefined;
+
+  // Null on a day where no video can pose a fair question; the section is then
+  // simply absent rather than approximated.
+  const likeTest = buildLikeTest(bundle);
 
   const ad = houseAdFor(edition.edition_date);
   const idx = recent.findIndex((e) => e.edition_date === edition.edition_date);
@@ -234,7 +240,20 @@ export function Edition({
         </div>
       </section>
 
-      {/* ── 5. Past editions ─────────────────────────────────────────────── */}
+      {/* ── 5. The like test ─────────────────────────────────────────────── */}
+      {/* Sits AFTER the videos on purpose. The question spoils one video's
+          underrated pick, so the reader should have met the cards first. It is
+          also the one thing on the page that asks for a click, and the research
+          is that how often a reader comes back beats how much they read. */}
+      {likeTest && (
+        <section className={v2.divider}>
+          <div className={`${v2.section} py-12`}>
+            <LikeTest test={likeTest} editionDate={edition.edition_date} />
+          </div>
+        </section>
+      )}
+
+      {/* ── 6. Past editions ─────────────────────────────────────────────── */}
       {recent.length > 1 && (
         <section className={v2.divider}>
           <div className={`${v2.section} py-12`}>
@@ -273,7 +292,7 @@ export function Edition({
         </section>
       )}
 
-      {/* ── 6. Subscribe ─────────────────────────────────────────────────── */}
+      {/* ── 7. Subscribe ─────────────────────────────────────────────────── */}
       <section className={v2.divider}>
         <div className={`${v2.section} py-16`}>
           <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
@@ -306,7 +325,7 @@ export function Edition({
         </div>
       </section>
 
-      {/* ── 7. Sponsor ───────────────────────────────────────────────────── */}
+      {/* ── 8. Sponsor ───────────────────────────────────────────────────── */}
       <section className={v2.divider}>
         <div className={`${v2.section} py-12`}>
           <div className={`${v2.cardStatic} flex flex-wrap items-center justify-between gap-6`}>
@@ -332,7 +351,7 @@ export function Edition({
         </div>
       </section>
 
-      {/* ── 8. The legal footing ─────────────────────────────────────────── */}
+      {/* ── 9. The legal footing ─────────────────────────────────────────── */}
       <section className={v2.divider}>
         <div className={`${v2.section} py-10`}>
           <Disclosure />

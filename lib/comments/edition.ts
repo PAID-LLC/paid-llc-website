@@ -37,6 +37,7 @@ import {
   geminiTeaser,
   buildDigest,
   fallbackEditorial,
+  templatedVibe,
 } from "./gemini";
 import { aggregateEdition, buildHeadline } from "./headline";
 import { humorScore } from "./humor";
@@ -434,7 +435,15 @@ async function stepVideo(date: string): Promise<StepResult> {
     degraded.push("editorial:fallback");
   }
 
-  analysis.vibe = editorial.vibe;
+  // An empty vibe means the model's mood line carried a house-style tell (the
+  // "Viewers are cracking up over..." opener that eight of the first ten used)
+  // and was dropped in validation. The computed one is plainer and always true.
+  if (editorial.vibe) {
+    analysis.vibe = editorial.vibe;
+  } else {
+    analysis.vibe = templatedVibe(analysis);
+    degraded.push("vibe:house_style");
+  }
   if (editorial.themes.length > 0) analysis.themes = editorial.themes;
   analysis.degraded = degraded;
   analysis.ytUnits = countUnits(comments.length, channels.size);
