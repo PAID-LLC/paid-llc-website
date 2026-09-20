@@ -1,8 +1,16 @@
 # The Comment Section: builds one edition every morning.
 #
-# 12:05 UTC = 07:05 Central in summer, 06:05 in winter. The edition should be
+# 11:37 UTC = 06:37 Central in summer, 05:37 in winter. The edition should be
 # there with the coffee, and its date boundary is Central (see editionDateToday
 # in lib/comments/edition.ts) so a run never publishes "tomorrow's" edition.
+#
+# WHY :37 AND NOT :05. GitHub runs scheduled workflows on a shared queue and
+# delays them under load, worst at the top of the hour. The first scheduled run
+# here (2026-09-19, cron "5 12 * * *") fired at 15:42 UTC, three hours and
+# thirty-seven minutes late. An odd minute earlier in the hour is the only lever
+# available, since the delay is best-effort by design and cannot be waived. The
+# run still takes 6-12 minutes, so the target is an edition on the page before
+# 7am Central rather than at a precise second.
 #
 # FOUR STEPS, and the loop in the middle is the point. One request per video
 # keeps each call around 60-125 seconds instead of holding one connection for ten
@@ -24,7 +32,7 @@
 name: comment-section
 on:
   schedule:
-    - cron: "5 12 * * *"
+    - cron: "37 11 * * *"
   workflow_dispatch:
     inputs:
       date:

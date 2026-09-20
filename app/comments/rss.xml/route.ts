@@ -6,14 +6,27 @@ export const runtime = "edge";
 // a daily publication has, and it is what a MailerLite RSS-to-email campaign
 // reads when the digest send goes live.
 //
-// Each item carries the headline, the day's numbers, and the featured comment
-// with attribution, so a feed reader gets something worth reading rather than a
-// bare link.
+// Each item carries BOTH renderings from lib/comments/feed-html.ts:
+//   <description>      plain text, for readers that take the first thing they find
+//   <content:encoded>  the full edition as email-safe HTML
+// A campaign mails whatever the item holds, so the HTML is the difference
+// between a subscriber getting the edition and getting a link to it. See that
+// module's header for the compliance lines that have to travel with the item.
 
 import { listEditions, getEditionBundle } from "@/lib/comments/store";
-import { escapeXml, formatEditionDate, formatCount, pct } from "@/lib/comments/render-helpers";
+import { editionHtml, editionText } from "@/lib/comments/feed-html";
+import { escapeXml, formatEditionDate } from "@/lib/comments/render-helpers";
 
 const SITE = "https://paiddev.com";
+
+/**
+ * Wraps HTML in CDATA. The split on "]]>" is the only way to carry that
+ * sequence inside a CDATA section, and a comment containing it would otherwise
+ * end the section early and break the whole feed.
+ */
+function cdata(html: string): string {
+  return `<![CDATA[${html.replace(/]]>/g, "]]]]><![CDATA[>")}]]>`;
+}
 
 export async function GET() {
   const editions = await listEditions(20);
@@ -22,49 +35,28 @@ export async function GET() {
     editions.slice(0, 20).map(async (e) => {
       const bundle = await getEditionBundle(e.edition_date);
       const url = `${SITE}/comments/${e.edition_date}`;
-      const stats = e.stats ?? {};
 
-      const lines: string[] = [];
-      if (e.headline) lines.push(escapeXml(e.headline));
-      if (stats.commentsAnalyzed) {
-        lines.push(
-          `${formatCount(stats.commentsAnalyzed)} comments read. ` +
-            `${pct(stats.positiveShare ?? 0)} positive, ` +
-            `${pct(stats.negativeShare ?? 0)} negative, ` +
-            `about ${pct(stats.automationShare ?? 0)} estimated automated.`
-        );
-      }
-
-      if (bundle) {
-        const hero = bundle.featured.find((f) => f.comment_id === bundle.edition.hero_comment_id);
-        if (hero?.text) {
-          lines.push(
-            `Underrated comment of the day (${hero.like_count} likes): ` +
-              `"${escapeXml(hero.text)}" — ${escapeXml(hero.author_display ?? "Unknown")}`
-          );
-        }
-        const titles = bundle.videos
-          .filter((v) => v.status === "analyzed")
-          .map((v) => `- ${escapeXml(v.title)} (${escapeXml(v.channel_title)})`);
-        if (titles.length) lines.push("Today's videos:", ...titles);
-      }
-
+      // Matches the workflow's cron so a reader orders editions by when they
+      // actually went out, not by when this route happened to be called.
       const pubDate = e.edition_date
-        ? new Date(`${e.edition_date}T12:05:00Z`).toUTCString()
+        ? new Date(`${e.edition_date}T11:37:00Z`).toUTCString()
         : new Date().toUTCString();
+
+      const description = bundle ? editionText(bundle) : (e.headline ?? "The Comment Section");
+      const content = bundle ? `\n      <content:encoded>${cdata(editionHtml(bundle))}</content:encoded>` : "";
 
       return `    <item>
       <title>${escapeXml(`${formatEditionDate(e.edition_date)}: ${e.headline ?? "The Comment Section"}`)}</title>
       <link>${url}</link>
       <guid isPermaLink="true">${url}</guid>
       <pubDate>${pubDate}</pubDate>
-      <description>${escapeXml(lines.join("\n\n"))}</description>
+      <description>${escapeXml(description)}</description>${content}
     </item>`;
     })
   );
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>The Comment Section | PAID LLC</title>
     <link>${SITE}/comments</link>
