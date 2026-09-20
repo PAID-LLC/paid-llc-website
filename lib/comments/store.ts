@@ -8,7 +8,7 @@
 // Supabase renders its empty state rather than a 500.
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
-import type { EditionRow, VideoRow, FeaturedRow, EditionBundle } from "./types";
+import type { EditionRow, VideoRow, FeaturedRow, EditionBundle, VideoIndexRow } from "./types";
 
 /** The tables exist and Supabase is configured. */
 export async function commentsReady(): Promise<boolean> {
@@ -61,6 +61,42 @@ export async function getVideosForEdition(date: string): Promise<VideoRow[]> {
   return get<VideoRow>(
     `comment_videos?first_edition=eq.${encodeURIComponent(date)}&order=rank.asc`
   );
+}
+
+/**
+ * Every analyzed video, newest edition first, as narrow rows.
+ *
+ * Backs /comments/videos, the video titles on the archive, and the permalink
+ * list in the sitemap. One query for all three, because the alternative each of
+ * them would otherwise reach for is a request per edition, and the point of the
+ * index is that it stays cheap as the archive grows.
+ *
+ * `views` and `analyzed` come out of JSONB by path so the heavy columns
+ * (`analysis`, `gemini`) never enter the payload. PostgREST returns a JSON
+ * number for `->` and a string for `->>`; both are coerced here so callers get
+ * a number or null and never a surprise string.
+ */
+export async function listAnalyzedVideos(limit = 1000): Promise<VideoIndexRow[]> {
+  const rows = await get<Record<string, unknown>>(
+    "comment_videos?status=eq.analyzed" +
+      "&select=video_id,title,channel_title,first_edition,rank,views:stats->views,analyzed:analysis->analyzed" +
+      `&order=first_edition.desc,rank.asc&limit=${limit}`
+  );
+
+  const num = (v: unknown): number | null => {
+    const n = typeof v === "string" ? Number(v) : v;
+    return typeof n === "number" && Number.isFinite(n) ? n : null;
+  };
+
+  return rows.map((r) => ({
+    video_id: String(r.video_id ?? ""),
+    title: String(r.title ?? ""),
+    channel_title: String(r.channel_title ?? ""),
+    first_edition: String(r.first_edition ?? ""),
+    rank: num(r.rank),
+    views: num(r.views),
+    analyzed: num(r.analyzed),
+  }));
 }
 
 export async function getVideo(videoId: string): Promise<VideoRow | null> {

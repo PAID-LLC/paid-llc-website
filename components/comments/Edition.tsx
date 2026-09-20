@@ -71,8 +71,14 @@ export function Edition({
                 {formatShortDate(older.edition_date)} →
               </Link>
             )}
+            {/* Both of these live here rather than only in the rail below,
+                because the rail is hidden until a second edition exists and
+                these are the two ways to find anything already published. */}
             <Link href="/comments/archive" className="transition-colors hover:text-cyan-300">
               archive
+            </Link>
+            <Link href="/comments/videos" className="transition-colors hover:text-cyan-300">
+              every video
             </Link>
           </div>
         </div>
@@ -254,7 +260,13 @@ export function Edition({
                 href="/comments/archive"
                 className="shrink-0 rounded-md border border-white/10 px-3 py-1.5 font-mono text-[11px] text-zinc-400 transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
               >
-                all →
+                all editions →
+              </Link>
+              <Link
+                href="/comments/videos"
+                className="shrink-0 rounded-md border border-white/10 px-3 py-1.5 font-mono text-[11px] text-zinc-400 transition-colors hover:border-cyan-400/40 hover:text-cyan-300"
+              >
+                every video →
               </Link>
             </div>
           </div>

@@ -216,6 +216,27 @@ export interface EditionBundle {
   featured: FeaturedRow[];
 }
 
+/**
+ * One row of the video index: the few columns needed to list and filter a video,
+ * and nothing else.
+ *
+ * Why a narrow type rather than VideoRow: the index lists every video ever
+ * analyzed, and `analysis` alone runs to a kilobyte or two per video (a 10-bin
+ * histogram, 24 velocity buckets, themes, emoji, the automation summary). At
+ * five videos a day, selecting whole rows would put megabytes into a page whose
+ * job is to render a list of titles.
+ */
+export interface VideoIndexRow {
+  video_id: string;
+  title: string;
+  channel_title: string;
+  first_edition: string;
+  rank: number | null;
+  views: number | null;
+  /** How many comments were read, from analysis.analyzed. */
+  analyzed: number | null;
+}
+
 // ── Step machine ─────────────────────────────────────────────────────────────
 
 export type StepName = "pick" | "video" | "publish" | "refresh";

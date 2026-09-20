@@ -4,12 +4,19 @@ export const runtime = "edge";
 // Every edition, grouped by month. This is the SEO surface: the daily page is
 // one URL that changes, the archive is where the accumulated pages live and
 // where a crawler finds them all.
+//
+// Each row also names the videos that ran that day, because a headline alone
+// does not answer "which day was the iPhone one". Titles come from one extra
+// query rather than one per edition, and they are rendered as a single muted
+// line: the row links to the edition, so five more links here would be five
+// more things to miss the target on. Finding a video WITHOUT knowing its date
+// is /comments/videos, which is linked below the heading.
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listEditions } from "@/lib/comments/store";
+import { listEditions, listAnalyzedVideos } from "@/lib/comments/store";
 import { v2 } from "@/components/v2/tokens";
-import { formatEditionDate, editionPath, formatCount } from "@/lib/comments/render-helpers";
+import { formatEditionDate, editionPath, formatCount, truncate } from "@/lib/comments/render-helpers";
 import type { EditionRow } from "@/lib/comments/types";
 
 export const metadata: Metadata = {
@@ -29,6 +36,14 @@ function monthOf(date: string): string {
 
 export default async function ArchivePage() {
   const editions = await listEditions(400);
+  const videos = await listAnalyzedVideos(2500);
+
+  const titlesByDate = new Map<string, string[]>();
+  for (const v of videos) {
+    const list = titlesByDate.get(v.first_edition);
+    if (list) list.push(v.title);
+    else titlesByDate.set(v.first_edition, [v.title]);
+  }
 
   const byMonth = new Map<string, EditionRow[]>();
   for (const e of editions) {
@@ -53,6 +68,16 @@ export default async function ArchivePage() {
           {editions.length === 0
             ? "Nothing published yet. The first edition prints tomorrow morning."
             : `${editions.length} ${editions.length === 1 ? "edition" : "editions"} so far.`}
+        </p>
+        <p className={`${v2.bodySm} mt-4`}>
+          Know the video but not the day?{" "}
+          <Link
+            href="/comments/videos"
+            className="text-cyan-300 transition-colors hover:text-cyan-200"
+          >
+            Every video is listed and filterable
+          </Link>
+          .
         </p>
       </section>
 
@@ -79,6 +104,14 @@ export default async function ArchivePage() {
                     {e.stats?.commentsAnalyzed ? (
                       <span className="font-mono text-[11px] text-zinc-600">
                         {formatCount(e.stats.commentsAnalyzed)} comments
+                      </span>
+                    ) : null}
+                    {titlesByDate.get(e.edition_date)?.length ? (
+                      <span className="w-full font-mono text-[11px] leading-relaxed text-zinc-600">
+                        {titlesByDate
+                          .get(e.edition_date)!
+                          .map((t) => truncate(t, 52))
+                          .join("  ·  ")}
                       </span>
                     ) : null}
                   </Link>

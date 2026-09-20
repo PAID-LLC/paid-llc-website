@@ -21,7 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   return [
-    // The Comment Section's three fixed pages. Individual editions and video
+    // The Comment Section's four fixed pages. Individual editions and video
     // permalinks are served by app/comments/sitemap.xml/route.ts, which reads
     // Supabase; this file is synchronous and stays that way.
     {
@@ -32,6 +32,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE}/comments/archive`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.5,
+    },
+    {
+      url: `${BASE}/comments/videos`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.5,
