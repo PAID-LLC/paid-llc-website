@@ -1,27 +1,47 @@
 # The Comment Section: builds one edition every morning.
 #
-# 11:37 UTC = 06:37 Central in summer, 05:37 in winter. The edition should be
-# there with the coffee, and its date boundary is Central (see editionDateToday
-# in lib/comments/edition.ts) so a run never publishes "tomorrow's" edition.
+# The edition should be there with the coffee, and its date boundary is Central
+# (see editionDateToday in lib/comments/edition.ts) so a run never publishes
+# "tomorrow's" edition. 09:47 UTC is 04:47 Central in summer, comfortably inside
+# the same Central day, and a video still has to be eight hours old to qualify,
+# so nothing is picked too green.
 #
-# WHY FOUR SCHEDULES AND NOT ONE. GitHub runs scheduled workflows on a shared
-# queue, delays them under load, and sometimes drops a fire entirely. Both
-# happened here in two days: the 2026-09-19 run (cron "5 12 * * *") started
-# 3h37m late at 15:42 UTC, and on 2026-09-20 nothing fired at all, so the page
-# sat on yesterday's edition until it was built by hand. A daily publication
-# cannot have its only trigger be best-effort.
+# WHY FIVE SCHEDULES, AND WHY THE FIRST ONE IS SO EARLY. GitHub runs scheduled
+# workflows on a shared queue, delays them under load, and sometimes drops a
+# fire entirely. Every fire observed so far, against the cron it belonged to:
 #
-# So the schedule is redundant rather than precise. The 11:37 fire is the one
-# meant to land, and the three later ones are catch-ups. Every step here is
-# idempotent by design, so a catch-up on a day that already worked is four HTTP
-# requests and zero quota: `pick` sees the existing edition and returns without
-# touching YouTube, the video loop returns done immediately, `publish` reports
-# the edition it already published, and `refresh` finds nothing due. The odd
-# minutes are deliberate; the top of the hour is the busiest slot on that queue.
+#   2026-09-19  due 12:05  fired 15:42   +217 min
+#   2026-09-20  due 11:37  never         DROPPED
+#   2026-09-20  due 13:23  fired 14:48    +85 min
+#   2026-09-20  due 16:11  fired 16:51    +40 min
+#
+# Zero of four on time, one dropped, median delay 85 minutes. That is not a bad
+# week, it is how the trigger behaves, and no choice of minute fixes it.
+#
+# Two separate problems, two separate answers. EXISTENCE is solved by
+# redundancy: on 2026-09-20 the first fire was dropped and a later one would
+# have built the edition regardless. PUNCTUALITY cannot be solved here at all,
+# so it is absorbed instead. The first fire is set roughly two hours before the
+# edition is actually wanted, which is about the median delay, and three more
+# follow inside the morning. Something lands before 7am Central on most days,
+# and the late-afternoon fire is a last resort rather than a target.
+#
+# This is mitigation, not a fix. The real fix is a trigger that keeps time,
+# which on this stack means a Cloudflare Worker cron hitting the same four
+# endpoints. That needs a separate Worker and dashboard access, so it is worth
+# doing only if the morning window keeps being missed.
+#
+# A catch-up on a day that already worked is four HTTP requests and zero quota:
+# `pick` sees the existing edition and returns without touching YouTube, the
+# video loop returns done immediately, `publish` reports the edition it already
+# published, and `refresh` finds nothing due. Measured on the 16:51 scheduled
+# run: green in seven seconds. The odd minutes are deliberate; the top of the
+# hour is the busiest slot on that queue.
 #
 # Concurrency is safe without a lock. If a delayed fire overlaps a catch-up, the
 # claim in lib/comments/store.ts hands each video to exactly one request, which
-# is the same mechanism that makes a crashed run resumable.
+# is the same mechanism that makes a crashed run resumable. The spacing below
+# also exceeds the 6-12 minutes a real build takes.
 #
 # FOUR STEPS, and the loop in the middle is the point. One request per video
 # keeps each call around 60-125 seconds instead of holding one connection for ten
@@ -44,10 +64,11 @@
 name: comment-section
 on:
   schedule:
-    - cron: "37 11 * * *"   # 06:37 Central, the one meant to land
-    - cron: "23 13 * * *"   # catch-up, no-op if the edition exists
-    - cron: "11 16 * * *"
-    - cron: "41 19 * * *"
+    - cron: "47 9 * * *"    # 04:47 Central. Early on purpose: absorbs the median delay
+    - cron: "31 10 * * *"   # 05:31 Central
+    - cron: "17 11 * * *"   # 06:17 Central
+    - cron: "3 13 * * *"    # 08:03 Central, still a morning edition
+    - cron: "41 19 * * *"   # 02:41 Central, last resort rather than a target
   workflow_dispatch:
     inputs:
       date:

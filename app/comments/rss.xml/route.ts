@@ -36,10 +36,13 @@ export async function GET() {
       const bundle = await getEditionBundle(e.edition_date);
       const url = `${SITE}/comments/${e.edition_date}`;
 
-      // Matches the workflow's cron so a reader orders editions by when they
-      // actually went out, not by when this route happened to be called.
+      // Matches the workflow's first cron so a reader orders editions by when
+      // they went out rather than by when this route happened to be called.
+      // A fixed stamp is deliberate: GitHub's scheduler has never once fired on
+      // time here, and a feed whose item times jump around by two hours reorders
+      // itself in a reader for no reason the reader can see.
       const pubDate = e.edition_date
-        ? new Date(`${e.edition_date}T11:37:00Z`).toUTCString()
+        ? new Date(`${e.edition_date}T09:47:00Z`).toUTCString()
         : new Date().toUTCString();
 
       const description = bundle ? editionText(bundle) : (e.headline ?? "The Comment Section");
