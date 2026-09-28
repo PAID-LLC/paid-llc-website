@@ -94,6 +94,12 @@ h1, h2, h3, h4, h5, h6 {
 .mdx-content a:hover {
   color: #1A1A1A;
 }
+.mdx-content .listen-active {
+  background: rgba(193, 72, 38, 0.08);
+  box-shadow: -8px 0 0 rgba(193, 72, 38, 0.08), 8px 0 0 rgba(193, 72, 38, 0.08);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
 .mdx-content strong {
   font-weight: 600;
   color: #1A1A1A;
@@ -322,6 +328,12 @@ section.v2-crossmarks::after {
 .v2-blog .mdx-content h2 a:hover,
 .v2-blog .mdx-content h3 a:hover,
 .v2-blog .mdx-content h4 a:hover { color: #E8714C; }
+/* Listen player: paragraph being read aloud */
+.v2-blog .mdx-content .listen-active {
+  background: rgba(232, 113, 76, 0.12);
+  box-shadow: -8px 0 0 rgba(232, 113, 76, 0.12), 8px 0 0 rgba(232, 113, 76, 0.12);
+  color: #e4e4e7;
+}
 
 /* ── .v2-blog form controls — dark-skinned inputs (contact, lead magnet) ── */
 .v2-blog input[type="text"],

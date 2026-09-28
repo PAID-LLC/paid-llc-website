@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import ArticleHeader from "@/components/ArticleHeader";
 import SocialShare from "@/components/SocialShare";
+import ListenButton from "@/components/ListenButton";
 import ReadingProgress from "@/components/ReadingProgress";
 import TableOfContents from "@/components/TableOfContents";
 import NewsletterSignup from "@/components/NewsletterSignup";
@@ -182,7 +183,8 @@ export default async function PostPage({
           <div className="max-w-6xl mx-auto px-6">
             <div className="lg:grid lg:grid-cols-[1fr_260px] lg:gap-16">
               <article className="max-w-2xl">
-                <div className="mb-10">
+                <div className="mb-10 space-y-4">
+                  <ListenButton title={post.title} />
                   <SocialShare title={post.title} slug={post.slug} />
                 </div>
                 <div

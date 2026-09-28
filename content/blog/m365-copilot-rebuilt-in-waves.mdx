@@ -1,0 +1,133 @@
+---
+title: "It's Not a Copilot Update. It's Microsoft 365 Being Rebuilt, One Wave at a Time."
+slug: "m365-copilot-rebuilt-in-waves"
+date: "2026-09-28"
+author: "Travis Raveling"
+excerpt: "Word, Excel, PowerPoint, Outlook and Teams are all changing at once, in staggered waves with a new pricing model. Here's what's actually changing, how the waves fit together, and what to do before it lands in your tenant."
+category: "AI Tools & Business"
+tags: ["Microsoft 365", "Copilot", "AI agents", "Copilot Cowork", "AI strategy"]
+featured_image: ""
+published: true
+---
+
+# It's Not a Copilot Update. It's Microsoft 365 Being Rebuilt, One Wave at a Time.
+
+*September 28, 2026 | AI Tools & Business*
+
+If you've been reading this fall's headlines as "Microsoft updated the Copilot app," you're missing most of the story.
+
+Yes, there's a new Copilot app. But at the same time, Word, Excel, PowerPoint, Outlook, Teams, SharePoint, OneDrive and OneNote are all changing underneath you. The changes are coming out in staggered waves, on different timelines and with different licensing rules. Taken together, they change what "using Office" means. Copilot is moving from an assistant you ask questions to an agent that does the work inside your files, and increasingly outside them too.
+
+Here's what's actually changing, how the waves fit together, and what to do about it before it lands in your tenant.
+
+---
+
+## The short version
+
+- **Copilot now edits your documents instead of just drafting text for you.** Agent-style editing went generally available in Word and Excel in the spring and has since expanded to PowerPoint and Outlook.
+- **The Copilot app has been rebuilt** around three areas: **Home**, **Code** and **Autopilot**. Microsoft announced them on September 25. Word, Excel and PowerPoint files can now be created and edited right inside Copilot.
+- **The pricing model has split in two.** Everyday Chat and Copilot inside the Office apps stay on a per-user license. The heavier agent features (Cowork, Code, Autopilot) are billed by usage.
+- **Nothing arrives all at once.** Features reach the Frontier early-access program first, then roll out gradually to everyone else, and many of them are tied to specific licenses.
+
+---
+
+## How the waves stack up
+
+It helps to see this as a sequence rather than a pile of announcements.
+
+| When | What shipped | Why it matters |
+|---|---|---|
+| **March 2026** | Microsoft announces "Wave 3" of Microsoft 365 Copilot: agent-style editing inside the apps, Copilot Cowork for long-running multi-step work, and a choice of AI models (Anthropic's Claude alongside OpenAI) | Microsoft's shift from assistant to agent |
+| **April–May 2026** | Agent-style Word and Excel reach general availability. **Agent 365** (a control panel for governing agents, $15/user/month) and the **Microsoft 365 E7** bundle ($99/user/month) launch May 1 | The agents now come with governance tools and a license tier built around them |
+| **August 2026** | A large release across every app: Python in Excel's Copilot, email-to-deck in PowerPoint, scheduling and writing coaching in classic Outlook, web and work chat merged into one experience, and the Microsoft 365 app renamed **Microsoft Copilot** | The features show up in the places people actually work |
+| **September 2026** | Excel change tracking, PowerPoint custom skills, a Copilot pane in Forms, MCP-based connectors reaching GA, and then the Sept 25 rebuild: Home, Code and Autopilot | The Copilot app becomes a place to get work done, not just a chat box |
+| **Late 2026 onward** | Home and Code roll out to Frontier customers first. Autopilot starts in private preview | This is the next wave to plan for |
+
+---
+
+## App by app: what's actually different
+
+### Word: from "draft this" to "edit this with me"
+Copilot in Word now changes the document itself and shows you exactly what it changed. It highlights the specific words it edited so you can review them instead of re-reading the whole page. It can also add hyperlinks, read the images inside your reference documents, and answer questions by voice while Word reads the document aloud. On the web, you can now choose Anthropic models, with **Claude Sonnet 5** as the default for more complex tasks. Microsoft is also adding role-specific **skills**, starting with legal work.
+
+### Excel: auditable AI in the spreadsheet
+This is where the changes are most practical. Copilot can now **run Python** while it edits, for more advanced analysis and data transformation, and the results land directly in the workbook. Its replies include **links that take you straight to what changed**: new sheets, tables, ranges and charts. The **Show Changes** pane now labels which edits Copilot made. Excel also keeps your chat history and suggests the best chart for your data. For finance teams, the ability to trace every change matters more than any single new feature.
+
+### PowerPoint: on-brand by default
+PowerPoint got the longest list of changes this cycle. Copilot now keeps decks **on-brand automatically**, applies custom templates, and can use approved images from **Adobe Experience Manager**. It can build a deck **from your emails**, pull in current **web sources**, and edit SmartArt directly on the slide. Users can now write **custom skills**, which are reusable instructions for how their team builds decks. During PowerPoint Live, attendees can highlight text and ask Copilot to explain it.
+
+### Outlook: triage, scheduling and coaching
+Copilot can now do more to manage your inbox: delete, move, copy and categorize messages, and manage rules and folders, with a confirmation step before bulk changes. **Scheduling and meeting prep** have reached classic Outlook for Windows. That matters because many companies still run the classic client. **Writing coaching** gives feedback while you draft. Custom agents built by your organization can now run inside classic Outlook as well.
+
+### Teams, Planner and OneNote: the connective tissue
+In Teams channels, **@Copilot** now picks up the channel's context and can pull in reviews from other functions. The **Planner agent** can write status reports and handle task questions in plain language, and it now works in the basic plans tied to Microsoft 365 groups. You can add **Teams meetings** (transcripts, chat and shared files) and **Outlook emails** to **Copilot Notebooks**, which now come in two versions: a lightweight one inside Copilot and a full workspace in OneNote.
+
+### SharePoint and OneDrive: grounding and governance
+Admins can now mark SharePoint sites as **authoritative**, so official policies and news rank higher when Copilot answers questions. Skills can be saved to OneDrive and reused anywhere. Copilot pages created after mid-August are stored in **OneDrive**, which puts them under your existing compliance controls.
+
+---
+
+## The new Copilot app: Home, Code and Autopilot
+
+The September 25 announcement pulls all of this into one place.
+
+- **Home** combines Chat and Cowork into a single starting screen that shows your recent activity and suggests what to work on next. It includes what Microsoft calls "Office in Copilot": fully editable Word, Excel and PowerPoint files that stay in sync for everyone working on them, not read-only previews.
+- **Code** lets people who aren't developers describe an app, tracker or dashboard in plain language and have Copilot build it. It runs in a sandboxed environment built on GitHub Copilot technology.
+- **Autopilot** (previously code-named Scout) is an agent that keeps running in the background. It has its own identity and memory inside your tenant and handles recurring work such as supplier reviews and follow-ups. It can show up in Teams, Outlook and your documents. Microsoft sums it up this way: "Give it a name, a role and a goal, and it goes to work."
+
+Home and Code start with Frontier customers in the coming weeks. Autopilot opens as a private preview at the end of September.
+
+---
+
+## The part your finance team will care about: two ways to pay
+
+This is the change most likely to catch organizations off guard.
+
+- **Per-user license:** Chat, Copilot inside Word, Excel, PowerPoint and Outlook, and automatic model selection. This is a fixed monthly cost for each user.
+- **Usage-based billing:** Cowork, Code, Autopilot and the choice of top-tier models. You pay for how much you use.
+
+According to early coverage, these pay-as-you-go features **stay switched off until an admin creates a spending policy** in the Microsoft 365 admin center. You won't get a surprise bill. The trade-off is that your users won't get these features until someone makes a budget decision. Cowork already lets users set an **effort level**: faster runs use fewer credits, and more thorough runs cost more. A `/cost` command shows how much of the monthly budget has been used, and new dashboards let admins track consumption.
+
+---
+
+## Why this is more than an update
+
+Put the pieces together and a pattern shows up:
+
+1. **The document itself is now the workspace for AI.** Copilot edits your files directly and shows what it changed. It no longer just produces text for you to paste in.
+2. **Work is moving into Copilot.** With full Office apps, Notebooks, Pages and emails available inside Copilot, it's becoming the place you go to get work done, not just a sidebar in each app.
+3. **Agents are being treated like colleagues.** Autopilot has its own identity and memory, and Agent 365 exists to govern agents the same way you manage employee accounts.
+4. **You can choose the AI model.** Claude, GPT and Microsoft's own models sit side by side, and Microsoft openly supports switching between them.
+5. **Costs now depend on how much you use.** The more autonomous the feature, the more it behaves like a cloud service with a metered bill.
+
+---
+
+## What to do this quarter
+
+- **Check your license assignments.** Many new features require a Microsoft 365 Copilot license rather than the free Copilot Chat.
+- **Decide on a usage budget before your users ask for one.** Create a spending policy, even a small pilot one, so Cowork and Code can be tested in a controlled way.
+- **Clean up your content.** Mark authoritative SharePoint sites, fix oversharing, and tidy up permissions. Better-organized content means better answers from Copilot.
+- **Update your training materials.** The app name, its web address (copilot.cloud.microsoft) and its home screen have all changed. Screenshots and help articles from last spring are already out of date.
+- **Pick one pilot for each app.** For example: Excel change tracking for finance, on-brand PowerPoint for marketing, and Outlook scheduling for executive assistants. Measure the results and expand from there.
+- **Keep an eye on the Frontier program.** That's where the next wave appears first, and it's the best signal of what will reach everyone next.
+
+---
+
+## The bottom line
+
+Microsoft isn't shipping one big Copilot release. It's rebuilding Microsoft 365 in stages: first the apps, then the Copilot app, then the pricing model, and next, agents that keep working after you log off. The organizations that get the most value won't be the ones that wait for everything to arrive. They'll be the ones that plan for each wave before it lands.
+
+---
+
+### Sources
+- Microsoft: [Introducing the new Copilot with Home, Code and Autopilot](https://blogs.microsoft.com/blog/2026/09/25/introducing-the-new-copilot-with-home-code-and-autopilot/) (Sept 25, 2026)
+- Microsoft: [Powering Frontier Transformation with Copilot and agents](https://www.microsoft.com/en-us/copilot/blog/2026/03/09/powering-frontier-transformation-with-copilot-and-agents/) (Mar 9, 2026)
+- Microsoft Learn: [Release Notes for Microsoft 365 Copilot](https://learn.microsoft.com/en-us/microsoft-365/copilot/release-notes) (Aug 11, Aug 25, Sept 23 entries)
+- Microsoft Support: [The Microsoft 365 app transition to the Microsoft Copilot app](https://support.microsoft.com/en-us/microsoft-365-copilot/the-microsoft-365-app-transition-to-the-microsoft-365-copilot-app)
+- TechXplore: [Microsoft integrates Word and Excel more deeply into Copilot](https://techxplore.com/news/2026-09-microsoft-word-excel-deeply-copilot.html)
+- Super Simple 365: [New Copilot Home, Code and Autopilot](https://supersimple365.com/the-new-copilot-home-code-autopilot-and-interface-changes/)
+- A Guide to Cloud & AI: [What's New in Microsoft 365 Copilot: September 2026](https://www.aguidetocloud.com/blog/microsoft-365-copilot-september-2026-updates/)
+
+*Written by Travis Raveling, Founder PAID LLC, co-authored and edited by AI.*
+
+**About PAID LLC:** PAID LLC helps small and mid-size businesses implement AI tools that save time and drive revenue. [See our services at paiddev.com/services.](https://paiddev.com/services)
