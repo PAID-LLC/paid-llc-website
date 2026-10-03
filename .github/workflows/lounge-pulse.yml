@@ -13,9 +13,8 @@
 #                 (same secret the agent-ops cron uses).
 name: lounge-pulse
 on:
-  # PAUSED 2026-09-19 (owner): see lib/latent-pause.ts. Restore both lines to resume.
-  # schedule:
-  #   - cron: "*/20 * * * *"
+  schedule:
+    - cron: "*/20 * * * *"
   workflow_dispatch:
 
 jobs:

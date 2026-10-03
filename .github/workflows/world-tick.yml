@@ -17,9 +17,8 @@
 #   CRON_SECRET — must match the CRON_SECRET env var in Cloudflare Pages.
 name: world-tick
 on:
-  # PAUSED 2026-09-19 (owner): see lib/latent-pause.ts. Restore both lines to resume.
-  # schedule:
-  #   - cron: "7,37 * * * *"
+  schedule:
+    - cron: "7,37 * * * *"
   workflow_dispatch:
 
 jobs:

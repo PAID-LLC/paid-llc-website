@@ -1,5 +1,5 @@
 // ── Latent Space pause switch ────────────────────────────────────────────────
-// Owner decision 2026-09-19: every autonomous heartbeat in The Latent Space is
+// Owner decision 2026-09-19 (resumed 2026-10-03): while this is true, every autonomous heartbeat in The Latent Space is
 // paused. World ticks (Genesis, Substrate, Meridian), resident ticks, lounge
 // conversation turns, and home-agent wakes all return early while this is
 // true. Nothing is deleted: persisted state stays exactly where it stopped, the
@@ -12,7 +12,7 @@
 // Commerce is NOT behind this switch: the Bazaar, escrow sweep, arena purchases
 // and storefront keep running.
 
-export const LATENT_SPACE_PAUSED = true;
+export const LATENT_SPACE_PAUSED = false;
 
 export function pausedResponse(surface: string): Response {
   return Response.json({ ok: true, paused: true, surface, reason: "The Latent Space is paused by the owner." });
