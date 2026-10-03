@@ -63,9 +63,9 @@ jobs:
           mkdir -p backup
           FAILED=""
 
-          for t in leads sales_ledger latent_registry latent_credits latent_lounge \
+          for t in leads sales_ledger latent_registry latent_credits \
                    agent_catalog agent_catalog_sales agent_service_jobs x402_payments \
-                   souvenir_claims usage_counters econ_config intake_requests; do
+                   souvenir_claims usage_counters agent_intake_requests; do
             echo "exporting $t"
             if ! curl -s -f --max-time 120 \
                   "$SB_URL/rest/v1/$t?select=*&limit=50000" \
