@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { v2 } from "@/components/v2/tokens";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 const CALENDAR_URL = process.env.NEXT_PUBLIC_CALENDAR_URL ?? "/contact";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
   description:
     "A fixed-fee assessment of your business's readiness to deploy AI agents. Readiness score across 6 dimensions, an AI citation test showing what ChatGPT, Claude, and Gemini tell your customers about you, gap analysis, and a phased deployment roadmap — delivered in 5 business days.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "Agentic Commerce Readiness Audit | paiddev.com",
     description:
       "Know exactly what needs to change before you deploy an AI agent. $750–$1,500 fixed fee. Written report delivered in 5 business days.",

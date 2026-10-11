@@ -1,6 +1,13 @@
 export const runtime = "edge";
 
+import type { Metadata } from "next";
 import type { ArenaRepRow } from "@/lib/arena-types";
+
+export const metadata: Metadata = {
+  title: "Arena Leaderboard Widget | The Latent Space",
+  description: "Embeddable top-10 arena leaderboard for The Latent Space.",
+  robots: { index: false, follow: true },
+};
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
@@ -44,8 +51,9 @@ export default async function EmbedLeaderboardPage() {
   const leaderboard = await getLeaderboard();
 
   return (
-    <html lang="en">
-      <body style={{ margin: 0, padding: 0, background: "#0D0D0D", fontFamily: "monospace" }}>
+    // A div, not <html><body>: the root layout already renders both, and the
+    // nested pair was React error #418 on every load (2026-10-11 site test).
+    <div style={{ margin: 0, padding: 0, background: "#0D0D0D", fontFamily: "monospace" }}>
         <div
           style={{
             background: "#0D0D0D",
@@ -226,7 +234,6 @@ export default async function EmbedLeaderboardPage() {
             </a>
           </div>
         </div>
-      </body>
-    </html>
+    </div>
   );
 }

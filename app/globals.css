@@ -23,6 +23,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Blog article content */
+/* Long bare URLs in source lists pushed posts to 437px wide at a 390px
+   viewport (2026-10-11 site test). Break them instead of the page. */
+.mdx-content {
+  overflow-wrap: anywhere;
+}
+
 .mdx-content h2 {
   font-family: var(--font-montserrat), sans-serif;
   font-weight: 700;

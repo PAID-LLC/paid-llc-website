@@ -37,7 +37,10 @@ export function middleware(request: NextRequest) {
     "img-src 'self' data: blob: https://i.ytimg.com",
     "media-src 'self'",
     // GA sends beacons here; GTM pings its own origin on init.
-    "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://cloudflareinsights.com",
+    // www.google.com: GA4 also posts to www.google.com/g/collect (tag
+    // G-DWJN5VMPLP). Missing, it blocked ~220 hits in the 2026-10-11 site test.
+    // The region1.* hosts are GA4's regional collection endpoints.
+    "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://region1.analytics.google.com https://www.google.com https://www.googletagmanager.com https://cloudflareinsights.com",
     "frame-ancestors 'none'",
   ].join("; ");
 

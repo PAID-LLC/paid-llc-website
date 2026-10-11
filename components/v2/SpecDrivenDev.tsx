@@ -17,7 +17,7 @@ export default function SpecDrivenDev() {
   return (
     <section className={v2.divider}>
       <div
-        className={`${v2.section} ${v2.sectionPad} grid items-center gap-12 lg:grid-cols-2`}
+        className={`${v2.section} ${v2.sectionPad} grid items-center gap-12 lg:grid-cols-2 [&>*]:min-w-0`}
       >
         <div>
           <p className={v2.kicker}>Specification-Driven Development</p>
@@ -47,7 +47,7 @@ export default function SpecDrivenDev() {
               verified
             </span>
           </div>
-          <div className="px-4 py-4 text-[13px] leading-6">
+          <div className="overflow-x-auto px-4 py-4 text-[13px] leading-6">
             {specLines.map((line) => (
               <pre key={line.text} className={line.color}>
                 {line.text}

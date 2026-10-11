@@ -8,6 +8,7 @@
 // Supabase renders its empty state rather than a 500.
 
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { reliableThumbnail } from "./youtube";
 import type { EditionRow, VideoRow, FeaturedRow, EditionBundle, VideoIndexRow } from "./types";
 
 /** The tables exist and Supabase is configured. */
@@ -58,9 +59,14 @@ export async function listEditions(limit = 14): Promise<EditionRow[]> {
 }
 
 export async function getVideosForEdition(date: string): Promise<VideoRow[]> {
-  return get<VideoRow>(
+  const rows = await get<VideoRow>(
     `comment_videos?first_edition=eq.${encodeURIComponent(date)}&order=rank.asc`
   );
+  return rows.map(withReliableThumbnail);
+}
+
+function withReliableThumbnail(v: VideoRow): VideoRow {
+  return { ...v, thumbnail_url: reliableThumbnail(v.thumbnail_url) };
 }
 
 /**
@@ -103,7 +109,7 @@ export async function getVideo(videoId: string): Promise<VideoRow | null> {
   const rows = await get<VideoRow>(
     `comment_videos?video_id=eq.${encodeURIComponent(videoId)}&limit=1`
   );
-  return rows[0] ?? null;
+  return rows[0] ? withReliableThumbnail(rows[0]) : null;
 }
 
 export async function getFeaturedForVideos(videoIds: string[]): Promise<FeaturedRow[]> {

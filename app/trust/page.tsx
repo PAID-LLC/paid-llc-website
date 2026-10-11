@@ -182,7 +182,7 @@ export default function TrustPage() {
       {/* UCP */}
       <section id="ucp" className={v2.divider}>
         <div className={`${v2.section} ${v2.sectionPad}`}>
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-start [&>*]:min-w-0">
             <div>
               <p className={kickerTeal}>Standard 02</p>
               <h2 className={`${v2.h2} mt-4`}>
@@ -192,7 +192,7 @@ export default function TrustPage() {
                 UCP is the Google-led open standard (with Shopify, Stripe,
                 Walmart, Etsy, and Wayfair) for agent-to-merchant discovery and
                 checkout. Agents query{" "}
-                <code className="font-mono text-sm text-cyan-300">
+                <code className="min-w-0 font-mono text-sm text-cyan-300 [overflow-wrap:anywhere]">
                   /.well-known/ucp
                 </code>{" "}
                 to discover a merchant&apos;s capabilities, services, and payment
@@ -209,7 +209,7 @@ export default function TrustPage() {
                       <span className="mt-0.5 flex-shrink-0 text-cyan-400/70">
                         &rarr;
                       </span>
-                      <code className="font-mono text-sm text-zinc-400">
+                      <code className="min-w-0 font-mono text-sm text-zinc-400 [overflow-wrap:anywhere]">
                         {item}
                       </code>
                     </li>
@@ -229,7 +229,7 @@ export default function TrustPage() {
                         &rarr;
                       </span>
                       <span className={v2.bodySm}>
-                        <code className="font-mono text-sm text-cyan-300">
+                        <code className="min-w-0 font-mono text-sm text-cyan-300 [overflow-wrap:anywhere]">
                           {path}
                         </code>
                         : {desc}
@@ -270,7 +270,7 @@ Authorization: Bearer <token>  # optional
       {/* A2A */}
       <section id="a2a" className={v2.divider}>
         <div className={`${v2.section} ${v2.sectionPad}`}>
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-start [&>*]:min-w-0">
             <div>
               <p className={v2.kicker}>Standard 03</p>
               <h2 className={`${v2.h2} mt-4`}>
@@ -281,7 +281,7 @@ Authorization: Bearer <token>  # optional
                 under Linux Foundation governance with 50+ partners (Salesforce,
                 SAP, PayPal, Workday, Atlassian). Agents discover each other via
                 Agent Cards published at{" "}
-                <code className="font-mono text-sm text-cyan-300">
+                <code className="min-w-0 font-mono text-sm text-cyan-300 [overflow-wrap:anywhere]">
                   /.well-known/agent.json
                 </code>
                 .
@@ -298,7 +298,7 @@ Authorization: Bearer <token>  # optional
                         &rarr;
                       </span>
                       <span className={v2.bodySm}>
-                        <code className="font-mono text-sm text-cyan-300">
+                        <code className="min-w-0 font-mono text-sm text-cyan-300 [overflow-wrap:anywhere]">
                           {path}
                         </code>
                         : {desc}

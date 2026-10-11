@@ -22,6 +22,7 @@ import {
   parseVideoId,
   parseIsoDuration,
   bestThumbnail,
+  reliableThumbnail,
   YouTubeError,
 } from "@/lib/comments/youtube";
 
@@ -237,12 +238,40 @@ describe("parseIsoDuration", () => {
 });
 
 describe("bestThumbnail", () => {
-  it("prefers the largest available", () => {
-    expect(bestThumbnail({ default: { url: "d" }, maxres: { url: "m" } })).toBe("m");
+  it("prefers hqdefault, which every video has, over maxres, which can 404", () => {
+    expect(bestThumbnail({ high: { url: "h" }, maxres: { url: "m" } })).toBe("h");
     expect(bestThumbnail({ default: { url: "d" }, high: { url: "h" } })).toBe("h");
+    expect(bestThumbnail({ default: { url: "d" }, maxres: { url: "m" } })).toBe("d");
+  });
+
+  it("rewrites a lone maxres URL to hqdefault", () => {
+    expect(
+      bestThumbnail({ maxres: { url: "https://i.ytimg.com/vi/abc/maxresdefault.jpg" } })
+    ).toBe("https://i.ytimg.com/vi/abc/hqdefault.jpg");
   });
 
   it("returns an empty string when there is nothing", () => {
     expect(bestThumbnail(undefined)).toBe("");
+  });
+});
+
+describe("reliableThumbnail", () => {
+  it("maps stored maxres and sd URLs to hqdefault", () => {
+    expect(reliableThumbnail("https://i.ytimg.com/vi/BFc2W5OF3BM/maxresdefault.jpg")).toBe(
+      "https://i.ytimg.com/vi/BFc2W5OF3BM/hqdefault.jpg"
+    );
+    expect(reliableThumbnail("https://i.ytimg.com/vi/x/sddefault.jpg")).toBe(
+      "https://i.ytimg.com/vi/x/hqdefault.jpg"
+    );
+  });
+
+  it("leaves everything else alone", () => {
+    expect(reliableThumbnail("https://i.ytimg.com/vi/x/hqdefault.jpg")).toBe(
+      "https://i.ytimg.com/vi/x/hqdefault.jpg"
+    );
+    expect(reliableThumbnail(null)).toBeNull();
+    expect(reliableThumbnail("https://example.com/maxresdefault.jpg")).toBe(
+      "https://example.com/maxresdefault.jpg"
+    );
   });
 });

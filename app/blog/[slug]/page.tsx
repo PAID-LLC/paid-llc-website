@@ -182,7 +182,7 @@ export default async function PostPage({
         <section className="py-16 bg-white">
           <div className="max-w-6xl mx-auto px-6">
             <div className="lg:grid lg:grid-cols-[1fr_260px] lg:gap-16">
-              <article className="max-w-2xl">
+              <article className="min-w-0 max-w-2xl">
                 <div className="mb-10 space-y-4">
                   <ListenButton title={post.title} />
                   <SocialShare title={post.title} slug={post.slug} />

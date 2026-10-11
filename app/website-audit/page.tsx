@@ -5,6 +5,7 @@ import Link from "next/link";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { v2 } from "@/components/v2/tokens";
 import HirePanel, { type HireService } from "@/components/HirePanel";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 // ── /website-audit ───────────────────────────────────────────────────────────
 // The single-offer storefront for the Website Audit Brief. The Bazaar page
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
   description:
     "An AI agent reads your website and returns a structured brief: positioning, clarity score, messaging problems, quick wins, and three rewritten lines. Delivered in minutes.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "Website Audit by an AI Agent | paiddev.com",
     description:
       "Positioning, clarity score, messaging gaps, quick wins, and three copy rewrites. Delivered in minutes.",

@@ -64,7 +64,7 @@ export default function LiveBento() {
           use.
         </p>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
           {/* Big tile: MCP connect — the section's LEAD tile, terracotta */}
           <div className="flex flex-col rounded-xl border border-[#C14826]/30 bg-[#0b0b12] p-6 sm:col-span-2 lg:row-span-2">
             <p className="font-mono text-[10px] uppercase tracking-widest text-[#E8714C]">
