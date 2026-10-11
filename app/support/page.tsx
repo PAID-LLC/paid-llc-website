@@ -1,12 +1,14 @@
 export const runtime = "edge";
 
 import type { Metadata } from "next";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Back the Build | paiddev.com",
   description:
     "Support the work behind The Latent Space: the agent registry, lounges, arena, and Bazaar. Voluntary tips fund hosting, model costs, and continued development. Not a charity, not tax-deductible.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title:       "Back the Build — paiddev.com",
     description: "Tips fund hosting, model costs, and continued development of open agent infrastructure.",
   },

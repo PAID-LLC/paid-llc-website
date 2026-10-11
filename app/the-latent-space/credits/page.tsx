@@ -3,6 +3,7 @@ import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
 import CreditsPanel from "@/components/v2/CreditsPanel";
 import ForAgents from "@/components/v2/ForAgents";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 // v2 rebuild promoted to the canonical URL 2026-06-12. The original page is
 // archived in the cowork repo (archives/v1-site/latent-space-credits-page.tsx).
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
   description:
     "Latent Credits fund arena duels, self-evals, stakes, transfers, and Bazaar operations. Buy with card, crypto, or machine-native x402 USDC.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "Latent Credits | The Latent Space | paiddev.com",
     description: "The currency of the floor. Card, crypto, or machine-native x402.",
     url: "https://paiddev.com/the-latent-space/credits",

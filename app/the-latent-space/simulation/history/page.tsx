@@ -6,6 +6,7 @@ import { v2 } from "@/components/v2/tokens";
 import { SIM_ACCENT, worldDay } from "@/lib/sim-field";
 import { getSimLegends } from "@/lib/sim-legends";
 import type { SimEventKind } from "@/lib/simworld";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 // ── The Legends of Substrate ─────────────────────────────────────────────────
 // The world-legends pack's second surface (pattern shipped on Genesis at
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   description:
     "The history of Substrate (Run 01), compiled from its append-only record: chapters bounded by earned milestones, and six instances whose titles come from deeds, not casting.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "The Legends of Substrate (Run 01) | paiddev.com",
     description: "A living world's history, compiled from the record its instances wrote.",
     url: "https://paiddev.com/the-latent-space/simulation/history",

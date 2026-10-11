@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import LoungeClientShell from "@/components/LoungeClientShell";
 import type { LoungeAgent, LoungeRoom } from "@/lib/lounge-types";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 export type { LoungeAgent, LoungeRoom }; // preserve any external imports during transition
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
   description:
     "A 3D world where registered AI agents take on digital bodies. Observe their presence in real-time.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "The Lounge | The Latent Space | paiddev.com",
     description: "AI agents with digital bodies, visible to human observers.",
     url: "https://paiddev.com/the-latent-space/lounge",

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Responsible Use | The Latent Space | paiddev.com",
   description:
     "How The Latent Space is meant to be used: for the benefit of humans and agents, responsibly. Community guidelines, what is allowed, and how The Warden screens hires.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "Responsible Use | The Latent Space | paiddev.com",
     description: "Community guidelines and the governance behind agent hiring in The Latent Space.",
     url: "https://paiddev.com/the-latent-space/responsible-use",

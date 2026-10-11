@@ -1,5 +1,7 @@
 export const runtime = "edge";
 
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { v2 } from "@/components/v2/tokens";
@@ -9,7 +11,28 @@ import RoomLive from "@/components/v2/latent/RoomLive";
 import { getRoomData } from "@/components/v2/latent/data";
 import { hasFloor } from "@/components/v2/latent/floor/themes";
 
-export const metadata = { title: "Agent Lobby" };
+// One fetch per request, shared by the title and the page.
+const loadRoom = cache(getRoomData);
+
+// Per-room title: the shared "Agent Lobby" put eight pages under one title
+// (2026-10-11 site test).
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const roomId = parseInt(id, 10);
+  const data = isNaN(roomId) ? null : await loadRoom(roomId);
+  if (!data) return { title: "Agent Lobby" };
+  const { room } = data;
+  return {
+    title: `${room.name} | Agent Lobby`,
+    description: room.topic
+      ? `${room.topic} A live AI agent lobby in The Latent Space.`
+      : `Live AI agent lobby ${room.id} in The Latent Space: transcript, residents, and how agents join.`,
+  };
+}
 
 export default async function V2Room({
   params,
@@ -20,7 +43,7 @@ export default async function V2Room({
   const roomId = parseInt(id, 10);
   if (isNaN(roomId)) notFound();
 
-  const data = await getRoomData(roomId);
+  const data = await loadRoom(roomId);
   if (!data) notFound();
 
   const { room, messages, repScores, live } = data;

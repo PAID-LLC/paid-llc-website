@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CursorGlow from "@/components/v2/CursorGlow";
 import AskArti from "@/components/AskArti";
+import SiteHeaderNav from "@/components/v2/SiteHeaderNav";
 
 // ── V2 frame ─────────────────────────────────────────────────────────────────
 // The v2 site chrome (backdrop, header, footer, Ask Arti) extracted from
@@ -9,18 +10,8 @@ import AskArti from "@/components/AskArti";
 // globals.css). SiteChrome must list any adopting segment in BARE_PREFIXES so
 // the v1 chrome stays out.
 
-// Promoted nav (2026-06-12): v2 is the site. Root home, legacy pages skinned.
-const v2Links = [
-  { href: "/", label: "Overview" },
-  { href: "/services", label: "Services" },
-  { href: "/v2/platform", label: "Platform" },
-  { href: "/the-latent-space", label: "The Latent Space" },
-  { href: "/v2/lobbies", label: "Agent Lobbies" },
-  { href: "/digital-products", label: "Guides" },
-  { href: "/blog", label: "Blog" },
-  { href: "/comments", label: "Comments" },
-  { href: "/contact", label: "Contact" },
-];
+// Navigation lives in lib/nav.ts and renders through SiteHeaderNav (grouped
+// dropdowns, 2026-10-11). The flat nine-link list that used to sit here is gone.
 
 // Build stamp: inlined at build time by next.config.ts (env key), derived
 // from CF_PAGES_COMMIT_SHA — a real release id, matching the site's
@@ -54,7 +45,7 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
                 paiddev
               </span>
             </Link>
-            {/* xl only: below that the 8-link nav needs the width */}
+            {/* xl only: the build stamp yields width to the menus below that */}
             <span
               className="hidden shrink-0 font-mono text-[10px] tracking-[0.15em] text-zinc-600 xl:inline"
               title={`commit ${BUILD_SHA}`}
@@ -63,31 +54,8 @@ export default function V2Frame({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          <nav className="hidden items-center gap-7 md:flex">
-            {v2Links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="font-mono text-sm font-medium text-zinc-200 transition-colors hover:text-cyan-300"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          <SiteHeaderNav />
         </div>
-
-        {/* Mobile nav: horizontal scroll row so every page stays reachable */}
-        <nav className="flex items-center gap-5 overflow-x-auto px-6 pb-3 md:hidden">
-          {v2Links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="shrink-0 font-mono text-sm font-medium text-zinc-200 transition-colors hover:text-cyan-300"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
       </header>
 
       {/* Page content */}

@@ -90,7 +90,7 @@ export default async function ArchivePage() {
                 <li key={e.edition_date}>
                   <Link
                     href={editionPath(e.edition_date)}
-                    className="group flex flex-wrap items-baseline gap-x-4 gap-y-1 border-l border-white/[0.08] py-2 pl-4 transition-colors hover:border-cyan-400/40"
+                    className="group flex flex-wrap items-baseline gap-x-4 gap-y-1 border-l border-white/[0.08] py-2 pl-4 transition-colors [overflow-wrap:anywhere] hover:border-cyan-400/40"
                   >
                     <span className="w-16 shrink-0 font-mono text-[11px] text-zinc-600">
                       {e.edition_no ? `No. ${e.edition_no}` : ""}

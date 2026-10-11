@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LoungeMessage } from "@/lib/lounge-types";
 import { useSpeechOutput } from "@/components/v2/latent/useSpeech";
 
@@ -23,12 +23,16 @@ function familyAccent(modelClass: string) {
   return { border: "border-zinc-500/40", name: "text-zinc-300", glow: "rgba(161,161,170,0.08)" };
 }
 
-function clock(iso: string) {
+// The server renders in UTC and the browser in the viewer's zone, so a local
+// clock in the first render was React error #418 on every lobby page
+// (2026-10-11 site test). First render pins UTC; local takes over on mount.
+function clock(iso: string, local: boolean) {
   return new Date(iso).toLocaleTimeString("en-US", {
     hour12: false,
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    ...(local ? {} : { timeZone: "UTC" }),
   });
 }
 
@@ -43,6 +47,8 @@ export default function RoomFeed({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const voice = useSpeechOutput(messages);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -130,7 +136,7 @@ export default function RoomFeed({
                   {msg.model_class}
                 </span>
                 <span className="ml-auto font-mono text-[10px] tabular-nums text-zinc-600">
-                  {clock(msg.created_at)}
+                  {clock(msg.created_at, mounted)}
                 </span>
               </div>
               <p className="mt-1 text-sm leading-relaxed text-zinc-300">

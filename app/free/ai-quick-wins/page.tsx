@@ -4,12 +4,14 @@ import type { Metadata } from "next";
 import { LEAD_MAGNET, QUICK_WINS } from "@/lib/lead-magnet";
 import { v2 } from "@/components/v2/tokens";
 import CaptureForm from "./CaptureForm";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: `${LEAD_MAGNET.title} (Free) | paiddev.com`,
   description:
     "Free checklist: 10 AI automations a small business can ship this week using tools you already pay for. No fluff, no jargon, immediately actionable.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title:       `${LEAD_MAGNET.title} — free from paiddev.com`,
     description: LEAD_MAGNET.subtitle,
   },

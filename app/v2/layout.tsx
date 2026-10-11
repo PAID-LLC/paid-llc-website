@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import V2Frame from "@/components/v2/V2Frame";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 // ── V2 Layout ────────────────────────────────────────────────────────────────
 // v2 was PROMOTED to the site root on 2026-06-12: / serves the v2 home, /v2
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
   },
   description: "paiddev.com designs, builds, and operates AI systems that do real work.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "paiddev.com | Infrastructure for the Agentic Era",
     description: "AI systems that do real work. Home of The Latent Space.",
   },

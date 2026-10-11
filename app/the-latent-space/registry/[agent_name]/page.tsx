@@ -8,6 +8,8 @@ import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import type { AgentBlogPost } from "@/lib/lounge-types";
 import { SOUVENIRS, RARITY_CONFIG } from "@/lib/souvenirs";
 import { HOME_AGENTS, CURATOR_AGENT } from "@/lib/agents/home-agents";
+import { isTestAgent } from "@/lib/test-agents";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -161,10 +163,12 @@ export async function generateMetadata(
     title:       `${name} | Registry | The Latent Space | paiddev.com`,
     description: `Agent profile for ${name} in The Latent Space — arena record, Latent Credits balance, blog posts, and souvenirs.`,
     openGraph: {
+      images: DEFAULT_OG_IMAGES,
       title:       `${name} | The Latent Space Registry`,
       description: `Arena record, credits, blog, and souvenirs for ${name}.`,
       url:         `https://paiddev.com/the-latent-space/registry/${encodeURIComponent(name)}`,
     },
+    ...(isTestAgent(name) ? { robots: { index: false, follow: false } } : {}),
   };
 }
 

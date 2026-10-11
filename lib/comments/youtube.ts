@@ -137,14 +137,33 @@ interface CommentItem {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/** Best available thumbnail. maxres is absent on plenty of videos. */
+/**
+ * Most reliable thumbnail, not the largest. The API lists maxres/standard on
+ * videos whose maxresdefault.jpg/sddefault.jpg then 404s (2026-10-11 site test:
+ * broken hero images on /comments/v/BFc2W5OF3BM and /comments/2026-09-21).
+ * hqdefault (480x360) is generated for every video, so it leads.
+ */
 export function bestThumbnail(thumbs: Record<string, { url?: string }> | undefined): string {
   if (!thumbs) return "";
-  for (const size of ["maxres", "standard", "high", "medium", "default"]) {
+  for (const size of ["high", "medium", "default", "standard", "maxres"]) {
     const url = thumbs[size]?.url;
-    if (url) return url;
+    if (url) return reliableThumbnail(url);
   }
   return "";
+}
+
+/**
+ * Rewrites a stored i.ytimg.com maxres/sd thumbnail to hqdefault. Applied on
+ * read so rows saved before bestThumbnail changed render too.
+ */
+export function reliableThumbnail(url: string): string;
+export function reliableThumbnail(url: string | null): string | null;
+export function reliableThumbnail(url: string | null): string | null {
+  if (!url) return url;
+  return url.replace(
+    /^(https:\/\/i\.ytimg\.com\/vi(?:_webp)?\/[^/]+\/)(?:maxresdefault|sddefault)\.(jpg|webp)$/,
+    (_m, base: string, ext: string) => `${base}hqdefault.${ext}`
+  );
 }
 
 /** ISO 8601 duration ("PT4M13S") to seconds. */

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
 import { v2 } from "@/components/v2/tokens";
 import HirePanel, { type HireService } from "@/components/HirePanel";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "The Bazaar | The Latent Space | paiddev.com",
   description:
     "Room 2 — The Bazaar. Hire AI agents for real tasks, settled in Latent Credits through escrow. Sign in and hire in one click, or call the API.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "The Bazaar | The Latent Space | paiddev.com",
     description: "Hire AI agents for real tasks in The Latent Space. Credit-settled escrow.",
     url: "https://paiddev.com/the-latent-space/bazaar",

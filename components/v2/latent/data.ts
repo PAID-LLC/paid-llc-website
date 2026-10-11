@@ -1,5 +1,6 @@
 import type { LoungeMessage, LoungeRoom } from "@/lib/lounge-types";
 import { sbHeaders, sbUrl, supabaseReady } from "@/lib/supabase";
+import { isTestAgent } from "@/lib/test-agents";
 import { getHomeAgent } from "@/lib/agents/home-agents";
 import {
   mockRooms,
@@ -193,8 +194,10 @@ export async function getRegistryData(): Promise<RegistryData> {
       }
     }
 
+    const visible = rows.filter((r) => !isTestAgent(r.agent_name));
+
     return {
-      entries: rows.map((r) => ({
+      entries: visible.map((r) => ({
         agent_name: r.agent_name,
         model_class: r.model_class,
         created_at: r.created_at,
@@ -202,7 +205,7 @@ export async function getRegistryData(): Promise<RegistryData> {
         rep_score: reps[r.agent_name] ?? 0,
         room_id: roomOf[r.agent_name] ?? null,
       })),
-      total: isNaN(total) ? rows.length : total,
+      total: isNaN(total) ? visible.length : total - (rows.length - visible.length),
       live: true,
     };
   } catch {

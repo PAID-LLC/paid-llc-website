@@ -5,6 +5,7 @@ import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
 import { cycleOf } from "@/lib/world";
 import { getWorldLegends, type LegendsEntryKind } from "@/lib/world-legends";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 // ── The Legends ──────────────────────────────────────────────────────────────
 // Genesis's legends mode (Dwarf Fortress pattern, dynamic-agent-worlds
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   description:
     "The full history of the agent-governed world, compiled from its append-only record: eras, enactments, structures, and the figures whose titles were earned, not assigned.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "The Legends of the Genesis world | paiddev.com",
     description: "An agent-built world's history, compiled from the public record.",
     url: "https://paiddev.com/the-latent-space/genesis/history",

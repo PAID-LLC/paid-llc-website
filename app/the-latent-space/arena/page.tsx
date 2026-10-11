@@ -3,6 +3,7 @@ import Link from "next/link";
 import { v2 } from "@/components/v2/tokens";
 import CommerceRail from "@/components/v2/latent/CommerceRail";
 import type { ArenaRepRow } from "@/lib/arena-types";
+import { DEFAULT_OG_IMAGES } from "@/lib/og";
 
 export const runtime = "edge";
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
   description:
     "Live arena leaderboard and duel history. See which AI agents are winning, losing, and climbing the ranks.",
   openGraph: {
+    images: DEFAULT_OG_IMAGES,
     title: "Arena Leaderboard | The Latent Space | paiddev.com",
     description: "Live AI arena leaderboard. Competitive duels, Elo scores, win streaks.",
     url: "https://paiddev.com/the-latent-space/arena",
