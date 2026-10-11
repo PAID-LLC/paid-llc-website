@@ -30,7 +30,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { MotionConfig, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 
 const COLLAPSED_W = 68;
 const EXPANDED_W = 252;
@@ -115,6 +115,12 @@ const ChevronsRightIcon = (p: IconProps) => (
   </IconBase>
 );
 
+const ChevronDownIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="m6 9 6 6 6-6" />
+  </IconBase>
+);
+
 export const LayoutGridIcon = (p: IconProps) => (
   <IconBase {...p}>
     <rect width="7" height="7" x="3" y="3" rx="1" />
@@ -185,6 +191,15 @@ export const MailIcon = (p: IconProps) => (
   </IconBase>
 );
 
+export const UsersIcon = (p: IconProps) => (
+  <IconBase {...p}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </IconBase>
+);
+
 export const HeartIcon = (p: IconProps) => (
   <IconBase {...p}>
     <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -206,6 +221,12 @@ export type GlassSidebarItem = {
    * only switch local view state.
    */
   href?: string;
+  /**
+   * Sub-pages. When present, the expanded dock shows a chevron that opens a
+   * nested list under the row (the row itself still goes to `href`). Children
+   * render as plain links; their icon is ignored.
+   */
+  children?: Omit<GlassSidebarItem, "children">[];
 };
 
 export const DEFAULT_NAV_ITEMS: GlassSidebarItem[] = [
@@ -228,6 +249,8 @@ export type GlassSidebarProps = {
   activeId?: string;
   /** Initial selection when uncontrolled. Defaults to the first nav item. */
   defaultActiveId?: string;
+  /** href of the active child link, highlighted inside its open group. */
+  activeChildHref?: string;
   /** Fires with the item id on every click — hook camera moves / router here. */
   onNavigate?: (id: string) => void;
   /** Fires whenever the effective expanded state changes (hover, focus, or pin). */
@@ -324,12 +347,50 @@ function NavRow({
   );
 }
 
+// Nested links under an open group row. Expanded dock only: collapsed, the
+// rail is icons, and the group icon itself still reaches the group's page.
+function SubList({
+  items,
+  activeHref,
+}: {
+  items: NonNullable<GlassSidebarItem["children"]>;
+  activeHref?: string;
+}) {
+  return (
+    <motion.ul
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="ml-[22px] overflow-hidden border-l border-white/[0.08] pl-3"
+    >
+      {items.map((c) => {
+        const on = c.href === activeHref;
+        return (
+          <li key={c.id}>
+            <Link
+              href={c.href ?? "#"}
+              aria-current={on ? "page" : undefined}
+              className={`block truncate whitespace-nowrap rounded-md px-2 py-1.5 font-mono text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-cyan-400/60 ${
+                on ? "text-cyan-300" : "text-zinc-500 hover:text-zinc-100"
+              }`}
+            >
+              {c.label}
+            </Link>
+          </li>
+        );
+      })}
+    </motion.ul>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function GlassSidebar({
   items = DEFAULT_NAV_ITEMS,
   utilityItems = DEFAULT_UTILITY_ITEMS,
   activeId,
+  activeChildHref,
   defaultActiveId,
   onNavigate,
   onToggle,
@@ -353,6 +414,11 @@ export default function GlassSidebar({
 
   const active = activeId ?? internalActive;
   const expanded = pinned || (expandOnHover && (hovered || focused));
+
+  // Which group's sub-list is open. Follows the active page until the visitor
+  // toggles one themselves; navigating resets it to the new page's group.
+  const [openGroup, setOpenGroup] = useState<string | null>(active || null);
+  useEffect(() => setOpenGroup(active || null), [active]);
 
   // Report expansion changes (skip mount).
   const prevExpanded = useRef(expanded);
@@ -431,16 +497,41 @@ export default function GlassSidebar({
           </Link>
 
           {/* main nav */}
-          <nav className="flex flex-col gap-1 px-3" aria-label="Views">
-            {items.map((item) => (
-              <NavRow
-                key={item.id}
-                item={item}
-                active={active === item.id}
-                expanded={expanded}
-                onSelect={() => select(item.id)}
-              />
-            ))}
+          <nav className="flex min-h-0 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3" aria-label="Views">
+            {items.map((item) => {
+              const hasSub = !!item.children?.length;
+              const subOpen = hasSub && expanded && openGroup === item.id;
+              return (
+                <div key={item.id}>
+                  <div className="relative">
+                    <NavRow
+                      item={item}
+                      active={active === item.id}
+                      expanded={expanded}
+                      onSelect={() => select(item.id)}
+                    />
+                    {hasSub && expanded && (
+                      <button
+                        type="button"
+                        onClick={() => setOpenGroup(subOpen ? null : item.id)}
+                        aria-expanded={subOpen}
+                        aria-label={`${subOpen ? "Hide" : "Show"} ${item.label} pages`}
+                        className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-500 outline-none transition-colors hover:bg-white/[0.06] hover:text-zinc-100 focus-visible:ring-1 focus-visible:ring-cyan-400/60"
+                      >
+                        <ChevronDownIcon
+                          className={`h-4 w-4 transition-transform ${subOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    )}
+                  </div>
+                  <AnimatePresence initial={false}>
+                    {subOpen && (
+                      <SubList key="sub" items={item.children!} activeHref={activeChildHref} />
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </nav>
 
           {/* utility group + status footer */}

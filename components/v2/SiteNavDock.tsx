@@ -5,69 +5,66 @@ import { usePathname, useRouter } from "next/navigation";
 import GlassSidebar, {
   HomeIcon,
   BriefcaseIcon,
-  LayersIcon,
   GlobeIcon,
-  LayoutGridIcon,
   BookOpenIcon,
-  PenLineIcon,
-  MessageIcon,
+  UsersIcon,
   MailIcon,
-  HeartIcon,
   type GlassSidebarItem,
 } from "@/components/v2/GlassSidebar";
+import { NAV_GROUPS, NAV_CTA, activeGroup, activeLink, type NavGroup } from "@/lib/nav";
 
 // ── SiteNavDock ──────────────────────────────────────────────────────────────
 //
-// Route-mapped GlassSidebar for the main site — same destinations as the
-// V2Frame header nav, so the dock and the header never disagree. Mounted
-// globally by components/SiteChrome.tsx on every non-latent page, desktop
-// only (lg+); mobile keeps the header's horizontal scroll nav. Latent Space
-// routes get LatentNavDock instead (SiteChrome decides).
+// Route-mapped GlassSidebar for the main site, rendered from lib/nav.ts — the
+// same model as the header menus, so the two never disagree. Collapsed it is
+// five icons (home + the four groups); expanded, each group opens to its
+// pages, and the current page's group opens by itself. Mounted globally by
+// components/SiteChrome.tsx on every non-latent page, desktop only (lg+);
+// mobile uses the header's menu button. Latent Space routes get
+// LatentNavDock instead (SiteChrome decides).
 
-type DockItem = GlassSidebarItem & { href: string };
+const GROUP_ICON: Record<NavGroup["id"], GlassSidebarItem["icon"]> = {
+  services: BriefcaseIcon,
+  latent: GlobeIcon,
+  resources: BookOpenIcon,
+  company: UsersIcon,
+};
 
-const MAIN: DockItem[] = [
-  { id: "overview", label: "Overview", hint: "Home", icon: HomeIcon, href: "/" },
-  { id: "services", label: "Services", hint: "Consulting + builds", icon: BriefcaseIcon, href: "/services" },
-  { id: "platform", label: "Platform", hint: "The stack", icon: LayersIcon, href: "/v2/platform" },
-  { id: "latent", label: "The Latent Space", hint: "Agent universe", icon: GlobeIcon, href: "/the-latent-space" },
-  { id: "lobbies", label: "Agent Lobbies", hint: "Floor directory", icon: LayoutGridIcon, href: "/v2/lobbies" },
-  { id: "guides", label: "Guides", hint: "Digital products", icon: BookOpenIcon, href: "/digital-products" },
-  { id: "blog", label: "Blog", hint: "Field notes", icon: PenLineIcon, href: "/blog" },
-  { id: "comments", label: "The Comment Section", hint: "Daily edition", icon: MessageIcon, href: "/comments" },
+const MAIN: GlassSidebarItem[] = [
+  { id: "home", label: "Overview", hint: "Home", icon: HomeIcon, href: "/" },
+  ...NAV_GROUPS.map((g) => ({
+    id: g.id,
+    label: g.label,
+    hint: g.hint,
+    icon: GROUP_ICON[g.id],
+    href: g.href,
+    children: g.links.map((l) => ({ id: l.href, label: l.label, hint: l.hint, icon: GROUP_ICON[g.id], href: l.href })),
+  })),
 ];
 
-const UTILITY: DockItem[] = [
-  { id: "contact", label: "Contact", hint: "Start a project", icon: MailIcon, href: "/contact" },
-  { id: "support", label: "Back the Build", hint: "Tips + support", icon: HeartIcon, href: "/support" },
+const UTILITY: GlassSidebarItem[] = [
+  { id: "cta", label: NAV_CTA.label, hint: NAV_CTA.hint, icon: MailIcon, href: NAV_CTA.href },
 ];
-
-const ALL: DockItem[] = [...MAIN, ...UTILITY];
-
-// Longest prefix wins so /services/agentic-commerce-audit maps to services.
-// "/" only matches exactly (its prefix form "//" never fires), so unlisted
-// pages like /about or /terms simply show no active pill.
-const BY_LENGTH: DockItem[] = [...ALL].sort((a, b) => b.href.length - a.href.length);
 
 export default function SiteNavDock() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const activeId = useMemo(() => {
-    const hit = BY_LENGTH.find(
-      (i) => pathname === i.href || pathname.startsWith(`${i.href}/`),
-    );
-    return hit?.id ?? "";
-  }, [pathname]);
+  const activeId = useMemo(
+    () => (pathname === "/" ? "home" : activeGroup(pathname)?.id ?? ""),
+    [pathname],
+  );
+  const activeChildHref = useMemo(() => activeLink(pathname)?.href, [pathname]);
 
   return (
     <GlassSidebar
       items={MAIN}
       utilityItems={UTILITY}
       activeId={activeId}
+      activeChildHref={activeChildHref}
       onNavigate={(id) => {
-        const target = ALL.find((i) => i.id === id);
-        if (target && target.href !== pathname) router.push(target.href);
+        const target = [...MAIN, ...UTILITY].find((i) => i.id === id);
+        if (target?.href && target.href !== pathname) router.push(target.href);
       }}
       zClassName="z-[60]"
       className="hidden lg:block"
