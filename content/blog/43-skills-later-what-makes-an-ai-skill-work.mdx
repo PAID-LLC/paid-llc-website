@@ -1,0 +1,71 @@
+---
+title: "43 Skills Later: What Actually Makes an AI Skill Work"
+slug: "43-skills-later-what-makes-an-ai-skill-work"
+date: "2026-10-15"
+author: "Travis Raveling"
+excerpt: "I have written 43 Skills for my AI agents. The ones that earn their keep share three traits: a sharp trigger, hard rules, and real tools attached. Here is what I learned building them."
+category: "AI Tools & Business"
+tags: ["AI Skills", "claude code", "agents", "automation", "building in public"]
+featured_image: ""
+published: true
+---
+
+# 43 Skills Later: What Actually Makes an AI Skill Work
+
+*October 15, 2026 | AI Tools & Business*
+
+My project folder for PAID LLC holds 43 Skills I wrote myself. They draft this blog, write social posts, prep sales calls, build invoices, test the website after a deploy, and even build new Skills. In June I wrote about [what a Skill is](/blog/ai-skills-turn-claude-into-a-specialist). This post is about what I learned writing them.
+
+Short version: the file is easy. The judgment that goes into the file is the whole job.
+
+## A Skill, in one paragraph
+
+A Skill is a folder with a `SKILL.md` file in it. The file tells an AI agent when to use it and how to do one repeatable task. In the Agent Skills format the top of the file carries a `name` and a `description`, and the agent reads that description to decide whether the Skill fits the request in front of it. It only loads the full instructions when it needs them. Claude Code reads Skills, and so do a growing number of other agent tools, including the ones I run in VS Code and Cursor.
+
+I do my day job in finance at a large corporate retailer, and I work on NFL Next Gen Stats. PAID is where I experiment, and it brings in a small amount of revenue. Skills are how one person keeps that many things running without retyping the same instructions every night.
+
+## Lesson 1: The trigger matters more than the steps
+
+The first section of every Skill I write is "When to Use This Skill," with the actual phrases I say. My blog Skill fires on "write a blog post about X" or "today's blog post is X." It also says what it is not for: social posts go to `social-post`, and guides go to `content-creation`.
+
+That "do not use for" line fixed more bad output than any instruction about tone. When two Skills overlap, the agent picks the wrong one, or blends them. A sharp boundary is worth more than a long procedure.
+
+## Lesson 2: Hard rules belong in the Skill, not in your head
+
+My outreach Skill opens with a Hard Rules block. Never send email; drafts only, and I review and send. Ten new targets per batch at most. Public business contacts only. A CAN-SPAM footer on every draft. No em dashes.
+
+Those rules exist because each one is a mistake I did not want to make twice. Writing them into the Skill means they apply on every run, including the runs at 5 AM when I am not watching. The agent does not have to remember my preferences. The file remembers them.
+
+My invoice Skill works the same way. It numbers invoices with a fixed pattern, defaults to Net 15, and says in plain words never to store bank account numbers in the repo. That last line is the most important one in the file.
+
+## Lesson 3: The best Skills carry tools, not just words
+
+The Skills I trust most do not stop at instructions. My guide QA Skill runs a script that checks a draft and formats the PDF. My invoice Skill fills an HTML template that sits in the same folder. My QA agent Skill runs a full test suite against the live site and writes a report.
+
+Prose tells the agent what good looks like. A script makes the check happen the same way every time. When a step has a right answer, I put code there.
+
+## Lesson 4: Build a Skill that builds Skills, and give it a gate
+
+One of my 43 is `skill-builder`. Its first step is a gate, not a template. Has this request come up at least twice? Does an existing Skill already cover 80% of it? Is the workflow stable, or still changing every run? If any answer is wrong, it stops and adds a line to a backlog instead.
+
+I added that gate because I was building too much. Skills cost almost nothing to create, and every one of them is something I have to keep accurate.
+
+## Lesson 5: A Skill that says "weekly" is not a schedule
+
+In July I audited my own setup. Eight Skills described a recurring cadence in their own documentation. None of them had a scheduler. Nothing broke. The work just quietly stopped.
+
+A Skill describes how to do a job. It does not make the job happen. My recurring work now runs as scheduled tasks: a Monday brief, a Friday closeout, a revenue check, and a monthly close for the books. Each one is still a `SKILL.md`, with a clock attached.
+
+## Where to start
+
+Do not start with 43. Start with the task you have explained to an AI three times this month. Write down when it applies, what it must never do, and what done looks like. Then run it, fix what it got wrong, and edit the file instead of the prompt.
+
+That last habit is the real shift. When the output is wrong, I do not argue with the agent. I fix the Skill, and every future run gets the fix.
+
+---
+
+*Sources: [Anthropic: Introducing Agent Skills](https://www.anthropic.com/news/skills). Internal Skills library and July 2026 cadence audit, PAID LLC.*
+
+*Written by Travis Raveling, Founder PAID LLC, co-authored and edited by AI.*
+
+**About PAID LLC:** PAID LLC helps small and mid-size businesses implement AI tools that save time and drive revenue. [See our services at paiddev.com/services.](/services)
