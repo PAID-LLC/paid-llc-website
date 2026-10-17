@@ -13,6 +13,7 @@ import { notFound } from "next/navigation";
 import { Edition } from "@/components/comments/Edition";
 import { getEditionBundle, listEditions } from "@/lib/comments/store";
 import { isValidEditionDate, formatEditionDate } from "@/lib/comments/render-helpers";
+import { editionArticleJsonLd, serializeJsonLd } from "@/lib/comments/video-jsonld";
 
 const load = cache(async (date: string) => {
   if (!isValidEditionDate(date)) return null;
@@ -64,27 +65,11 @@ export default async function EditionPage({ params }: { params: Promise<{ date: 
 
   const { bundle, recent } = data;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: bundle.edition.headline,
-    datePublished: bundle.edition.published_at,
-    url: `https://paiddev.com/comments/${bundle.edition.edition_date}`,
-    description: bundle.edition.teaser,
-    author: { "@type": "Organization", name: "PAID LLC", url: "https://paiddev.com" },
-    publisher: { "@id": "https://paiddev.com/#organization" },
-    isPartOf: {
-      "@type": "Periodical",
-      name: "The Comment Section",
-      url: "https://paiddev.com/comments",
-    },
-  };
-
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(editionArticleJsonLd(bundle)) }}
       />
       <Edition bundle={bundle} recent={recent} />
     </>

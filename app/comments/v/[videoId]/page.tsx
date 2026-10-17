@@ -24,6 +24,7 @@ import {
   editionPath,
   truncate,
 } from "@/lib/comments/render-helpers";
+import { serializeJsonLd, videoPageArticleJsonLd } from "@/lib/comments/video-jsonld";
 
 const load = cache(async (videoId: string) => {
   if (!isValidVideoId(videoId)) return null;
@@ -77,28 +78,11 @@ export default async function VideoPage({ params }: { params: Promise<{ videoId:
   const { video, featured } = data;
   const recent = await listEditions(8);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: `What ${video.channel_title}'s comment section said`,
-    url: `https://paiddev.com/comments/v/${video.video_id}`,
-    description: video.analysis.vibe,
-    author: { "@type": "Organization", name: "PAID LLC", url: "https://paiddev.com" },
-    publisher: { "@id": "https://paiddev.com/#organization" },
-    about: {
-      "@type": "VideoObject",
-      name: video.title,
-      url: `https://www.youtube.com/watch?v=${video.video_id}`,
-      thumbnailUrl: video.thumbnail_url ?? undefined,
-      uploadDate: video.published_at ?? undefined,
-    },
-  };
-
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(videoPageArticleJsonLd(video)) }}
       />
 
       <section className={`${v2.section} pt-20 pb-8`}>
