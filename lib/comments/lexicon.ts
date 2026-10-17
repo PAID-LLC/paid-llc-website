@@ -285,8 +285,8 @@ export function labelOf(score: number): "positive" | "neutral" | "negative" {
 /**
  * Cheap English check. Two or more English function words, or a decent ratio of
  * ASCII letters with at least one marker. Emoji-only and non-Latin strings come
- * back false, which is the point: they are not scorable by this lexicon and the
- * caller skips a video whose section is mostly unscorable.
+ * back false, which is the point: they are not scorable by this lexicon. A
+ * section that is mostly unscorable still publishes; the card offers Translate.
  */
 export function isLikelyEnglish(text: string): boolean {
   const tokens = tokenize(text);

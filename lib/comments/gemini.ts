@@ -149,8 +149,10 @@ export async function geminiVideoSummary(
               `You are watching the first minutes of a public video titled ` +
               `${quarantine("TITLE", title)}.\n\n` +
               `Write 2 to 4 plain sentences for a reader who has not seen it: what it is, ` +
-              `who is in it, and what actually happens. Do not guess why people watch it ` +
-              `or what they get out of it; end on something that happens in the video. ` +
+              `who is in it, and what actually happens. Write those sentences in English ` +
+              `even when the video or its dialogue is in another language. Do not guess ` +
+              `why people watch it or what they get out of it; end on something that happens ` +
+              `in the video. ` +
               `If it is a music video or a performance, say so and describe the mood.\n\n` +
               `Rules: no preamble, no markdown, no hashtags, no em dashes, no hype words ` +
               `like "stunning" or "incredible". Do not speculate about anyone's private ` +
@@ -201,7 +203,8 @@ export async function geminiTextSummary(
               `${quarantine("TITLE", title)}\n\n` +
               `${quarantine("DESCRIPTION", description.slice(0, 1200))}\n\n` +
               `${quarantine("TOP_REACTIONS", reactions)}\n\n` +
-              `Write 2 to 3 plain sentences: what the video appears to be and what its ` +
+              `Write 2 to 3 plain sentences in English, even when the title or the reactions ` +
+              `are in another language: what the video appears to be and what its ` +
               `audience is reacting to. No preamble, no markdown, no em dashes, no hype. ` +
               `Do not speculate about anyone's private life. If the material is too thin ` +
               `to say anything specific, say what it is in one sentence and stop.`,

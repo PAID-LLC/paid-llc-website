@@ -57,8 +57,8 @@ import type {
 const PICK_COUNT = 5;
 /**
  * Backups stored with the five. Promoted only when a pick is skipped, so a thin
- * or non-English section costs a card instead of a hole. No comment quota until
- * promotion: the workflow's video loop has room for both.
+ * section costs a card instead of a hole. Language is not a skip. No comment
+ * quota until promotion: the workflow's video loop has room for both.
  */
 const RESERVE_COUNT = 2;
 /**
@@ -125,8 +125,6 @@ const MAX_PER_CATEGORY = 2;
 const CHANNEL_COOLDOWN_DAYS = 3;
 /** Token-set overlap that counts as the same upload under two titles. */
 const NEAR_DUP_JACCARD = 0.6;
-/** Below this share of scorable English, the lexicon cannot speak to it. */
-const MIN_ENGLISH_RATIO = 0.4;
 /** A skipped video can be reconsidered after a week. */
 const SKIP_RETRY_DAYS = 7;
 /** Re-fetch stored YouTube data at 25 days, five short of the 30-day limit. */
@@ -178,7 +176,6 @@ type RejectRule =
   | "hashtag_title"
   | "too_new"
   | "too_old"
-  | "not_english"
   | "already_analyzed"
   | "recently_skipped"
   | "same_channel"
@@ -239,13 +236,6 @@ export function rankScore(v: VideoPick, now = Date.now()): number {
 /** The pool, best rank score first. */
 export function rankByVelocity(pool: VideoPick[], now = Date.now()): VideoPick[] {
   return [...pool].sort((a, b) => rankScore(b, now) - rankScore(a, now));
-}
-
-/** Share of a title's letters that are Latin script, or 1 when it has too few to judge. */
-function latinShare(title: string): number {
-  const letters = title.match(/\p{L}/gu) ?? [];
-  if (letters.length < 4) return 1;
-  return letters.filter((c) => /[A-Za-zÀ-ɏ]/.test(c)).length / letters.length;
 }
 
 const TITLE_STOP = new Set([
@@ -333,10 +323,8 @@ export function rejectReason(
   if (age !== null && age < MIN_AGE_H) return "too_new";
   if (age !== null && age > MAX_AGE_H) return "too_old";
 
-  for (const lang of [v.defaultAudioLanguage, v.defaultLanguage]) {
-    if (lang && !lang.toLowerCase().startsWith("en")) return "not_english";
-  }
-  if (looksNonEnglish(v)) return "not_english";
+  // Language is not a gate. A non-English upload that clears the floors keeps
+  // its place, and the card offers Translate. See lib/comments/language.ts.
 
   const prior = seen.get(v.videoId);
   if (prior) {
@@ -348,26 +336,6 @@ export function rejectReason(
   }
 
   return null;
-}
-
-/**
- * Language metadata is optional and often unset. The tells here are the ones
- * that actually shipped: another script, "[Eng Sub]" (2026-09-19), and
- * "(Sub)" on a Latin-script drama title (Mitti De Baway, edition of 2026-10-16,
- * ranked second, comments in Roman Urdu). A long description in another script
- * catches the same uploads when the title was translated and the tag was not.
- */
-function looksNonEnglish(v: VideoPick): boolean {
-  if (latinShare(v.title) < 0.8) return true;
-  const title = v.title;
-  if (/\beng(lish)?[\s-]*sub(s|bed|titles?)?\b/i.test(title)) return true;
-  if (/\(\s*subs?\s*\)/i.test(title)) return true;
-  if (/\bsubbed\b/i.test(title)) return true;
-  if (/\bdigitally presented\b/i.test(title)) return true;
-  if (/\b(hindi|urdu|punjabi|tamil|telugu|malayalam|bangla|bengali)\b/i.test(title)) return true;
-  const letters = v.description.match(/\p{L}/gu) ?? [];
-  if (letters.length >= 80 && latinShare(v.description) < 0.6) return true;
-  return false;
 }
 
 async function stepPick(date: string): Promise<StepResult> {
@@ -439,6 +407,8 @@ function videoInsert(v: VideoPick, date: string, rank: number, now: number) {
       comments_per_hour: Math.round(commentsPerHour(v, now)),
       rank_score: Math.round(rankScore(v, now)),
       category_id: v.categoryId ?? null,
+      default_audio_language: v.defaultAudioLanguage,
+      default_language: v.defaultLanguage,
       verified_at: new Date().toISOString(),
     },
   };
@@ -460,6 +430,8 @@ function toReserve(v: VideoPick, now: number): ReserveVideo {
     commentsPerHour: Math.round(commentsPerHour(v, now)),
     rankScore: Math.round(rankScore(v, now)),
     categoryId: v.categoryId ?? null,
+    defaultAudioLanguage: v.defaultAudioLanguage,
+    defaultLanguage: v.defaultLanguage,
   };
 }
 
@@ -616,6 +588,8 @@ async function skipAndPromote(date: string, videoId: string, reason: string): Pr
         comments_per_hour: next.commentsPerHour,
         rank_score: next.rankScore,
         category_id: next.categoryId ?? null,
+        default_audio_language: next.defaultAudioLanguage ?? null,
+        default_language: next.defaultLanguage ?? null,
         verified_at: new Date().toISOString(),
       },
     },
@@ -691,18 +665,8 @@ async function stepVideo(date: string): Promise<StepResult> {
     channels
   );
 
-  if (analysis.englishRatio < MIN_ENGLISH_RATIO) {
-    const promoted = await skipAndPromote(date, claimed.video_id, "non_english_comments");
-    return {
-      step: "video",
-      done: false,
-      video_id: claimed.video_id,
-      status: "skipped",
-      reason: "non_english_comments",
-      english_ratio: Number(analysis.englishRatio.toFixed(2)),
-      promoted,
-    };
-  }
+  // Language does not skip the video. englishRatio stays on the analysis so the
+  // card can offer Translate when the section is not in English.
 
   // ── Summary: watch it, else describe it, else say nothing ─────────────────
   let summary: string | null = null;
@@ -1017,7 +981,6 @@ export const RULES = {
   MAX_PER_CATEGORY,
   CHANNEL_COOLDOWN_DAYS,
   NEAR_DUP_JACCARD,
-  MIN_ENGLISH_RATIO,
   SKIP_RETRY_DAYS,
   REFRESH_AFTER_DAYS,
 };

@@ -85,6 +85,9 @@ export interface ReserveVideo {
   commentsPerHour: number;
   rankScore: number;
   categoryId?: string | null;
+  /** YouTube language codes, kept so a promoted backup can still offer Translate. */
+  defaultAudioLanguage?: string | null;
+  defaultLanguage?: string | null;
 }
 
 /** Aggregate automation reading for one comment section. Aggregate ONLY. */
@@ -131,7 +134,10 @@ export interface VideoAnalysis {
   /** Index of the busiest velocity bucket. */
   busiestHour: number;
   automation: AutomationSummary;
-  /** Share of comments that look like English. Below 0.4 the video is skipped. */
+  /**
+   * Share of comments that look like English. Below 0.4 the card offers
+   * Translate. It is not a reason to skip the video.
+   */
   englishRatio: number;
   /** Median and max likes, for the "underrated" framing. */
   medianLikes: number;
@@ -228,6 +234,10 @@ export interface VideoRow {
     /** Geometric mean of the two velocities, after the age penalty. The sort key. */
     rank_score?: number;
     category_id?: string | null;
+    /** snippet.defaultAudioLanguage at pick time. Null when YouTube left it unset. */
+    default_audio_language?: string | null;
+    /** snippet.defaultLanguage at pick time. */
+    default_language?: string | null;
     verified_at?: string;
     removed?: boolean;
   };

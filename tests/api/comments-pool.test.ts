@@ -11,8 +11,8 @@
  *   1. Every category chart and both searches are read, and a single retired
  *      chart or failed search never costs the edition.
  *   2. The ranking is velocity since upload (views and comments), not lifetime totals.
- *   3. The noise a wider pool lets in (Shorts, foreign-language uploads with no
- *      language metadata, stale videos, one channel filling the page) is filtered.
+ *   3. The noise a wider pool lets in (Shorts, stale videos, one channel filling
+ *      the page) is filtered. Language is detected for the card and is not a filter.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -25,6 +25,7 @@ import {
   choosePicks,
   nearDuplicateTitle,
 } from "@/lib/comments/edition";
+import { needsTranslation } from "@/lib/comments/language";
 import type { VideoPick } from "@/lib/comments/types";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -220,16 +221,22 @@ describe("rejectReason — the noise a wider pool lets in", () => {
     expect(rejectReason(pick({ publishedAt: "2026-09-15T12:00:00Z" }), NONE, NOW)).toBe("too_old");
   });
 
-  it("catches non-English uploads whose language metadata is unset", () => {
+  it("keeps non-English uploads whose language metadata is unset, and flags them for Translate", () => {
     const unset = { defaultAudioLanguage: null, defaultLanguage: null };
     // Both of these were in the real pool on 2026-09-19.
-    expect(rejectReason(pick({ ...unset, title: "Nashtar Episode 09 [Eng Sub] Digitally Presented" }), NONE, NOW)).toBe("not_english");
-    expect(rejectReason(pick({ ...unset, title: "អាបឺតនេះ រឿង" }), NONE, NOW)).toBe("not_english");
+    const subbed = pick({ ...unset, title: "Nashtar Episode 09 [Eng Sub] Digitally Presented" });
+    const khmer = pick({ ...unset, title: "អាបឺតនេះ រឿង" });
+    expect(rejectReason(subbed, NONE, NOW)).toBeNull();
+    expect(rejectReason(khmer, NONE, NOW)).toBeNull();
+    expect(needsTranslation(subbed)).toBe(true);
+    expect(needsTranslation(khmer)).toBe(true);
   });
 
   it("does not mistake accented English titles for another language", () => {
     const unset = { defaultAudioLanguage: null, defaultLanguage: null };
-    expect(rejectReason(pick({ ...unset, title: "ROSÉ - new trick (OFFICIAL MUSIC VIDEO)" }), NONE, NOW)).toBeNull();
+    const rose = pick({ ...unset, title: "ROSÉ - new trick (OFFICIAL MUSIC VIDEO)" });
+    expect(rejectReason(rose, NONE, NOW)).toBeNull();
+    expect(needsTranslation(rose)).toBe(false);
   });
 
   it("rejects the dead id called out on the thumbnail note, and videos YouTube says are not watchable", () => {
@@ -246,13 +253,17 @@ describe("rejectReason — the noise a wider pool lets in", () => {
     expect(rejectReason(pick({ views: 20_000_000, comments: 500 }), NONE, NOW)).toBe("thin_discussion");
   });
 
-  it("rejects a subtitled upload whose title is Latin script, and a description in another script", () => {
-    // Edition of 2026-10-16, ranked second. The old "[Eng Sub]" rule did not match "(Sub)".
-    expect(
-      rejectReason(pick({ title: "Mitti De Baway Ep 08 (Sub) 15 Oct 26 | Green TV" }), NONE, NOW)
-    ).toBe("not_english");
-    expect(rejectReason(pick({ title: "Nashtar Episode 09 Digitally Presented" }), NONE, NOW)).toBe("not_english");
-    expect(rejectReason(pick({ title: "A Punjabi hit", description: "ਇ".repeat(80) }), NONE, NOW)).toBe("not_english");
+  it("keeps a subtitled Latin-script title and a description in another script, and flags both", () => {
+    // Edition of 2026-10-16, ranked second. "(Sub)" is a translate signal, not a rejection.
+    const mitti = pick({ title: "Mitti De Baway Ep 08 (Sub) 15 Oct 26 | Green TV" });
+    const presented = pick({ title: "Nashtar Episode 09 Digitally Presented" });
+    const gurmukhi = pick({ title: "A Punjabi hit", description: "ਇ".repeat(80) });
+    expect(rejectReason(mitti, NONE, NOW)).toBeNull();
+    expect(rejectReason(presented, NONE, NOW)).toBeNull();
+    expect(rejectReason(gurmukhi, NONE, NOW)).toBeNull();
+    expect(needsTranslation(mitti)).toBe(true);
+    expect(needsTranslation(presented)).toBe(true);
+    expect(needsTranslation(gurmukhi)).toBe(true);
   });
 
   it("rejects #sportsshorts and a short clip with a small section, and keeps a short trailer with a real one", () => {

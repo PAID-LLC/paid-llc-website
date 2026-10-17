@@ -65,16 +65,23 @@ export default function AboutPage() {
           A video is skipped if it is a live broadcast or a Short (including a hashtag
           like #sportsshorts), or a clip of three minutes or less with fewer than 800
           comments; if it went up less than eight hours or more than three days ago; if
-          comments are off, fewer than 400, or thinner than one per 20,000 views; if it
-          is not in English, including a &ldquo;(Sub)&rdquo; or &ldquo;Eng Sub&rdquo; title
-          or a description in another script; if YouTube reports it private, deleted, or
-          region-blocked, or it is on a short list of ids already known to be gone; if it
-          has already had its day here; or if its channel is already in the edition. A
-          channel that ran in the last three days waits, near-duplicate titles are
-          dropped, and at most two videos come from any one category. Those last three
-          give way only when keeping them would leave the edition short. Two backups are
-          saved with the five, and one is promoted if a pick&apos;s comments turn out
-          unreadable, instead of publishing a hole.
+          comments are off, fewer than 400, or thinner than one per 20,000 views; if
+          YouTube reports it private, deleted, or region-blocked, or it is on a short
+          list of ids already known to be gone; if it has already had its day here; or
+          if its channel is already in the edition. A channel that ran in the last three
+          days waits, near-duplicate titles are dropped, and at most two videos come
+          from any one category. Those last three give way only when keeping them would
+          leave the edition short. Two backups are saved with the five, and one is
+          promoted if a pick&apos;s comments turn out unreadable, instead of publishing
+          a hole.
+        </p>
+        <p className={v2.body}>
+          Language is not part of that filter. A video in any language keeps its place
+          when the numbers say it earned one. When YouTube&apos;s language tag, the
+          title, or the comments we read are not English, the card and the video page
+          offer a Translate link to this page, label the description as an English
+          summary, and point at YouTube, where captions can be auto-translated. The
+          summary is the same model call as every other card, asked to write in English.
         </p>
         <p className={v2.body}>
           Nothing is chosen editorially and nothing is chosen for how it will read.
@@ -93,10 +100,10 @@ export default function AboutPage() {
         <p className={v2.body}>
           A model is used for exactly two things per video, because neither is
           possible in code. It watches the first twelve minutes of the video to say
-          what the video is. And it picks the funniest comment from a shortlist of
-          about 25 that code has already narrowed down by likes, length, and
-          cleanliness. Everything else it is shown is a summary of numbers we
-          computed first.
+          what the video is, in English, including when the video itself is not. And
+          it picks the funniest comment from a shortlist of about 25 that code has
+          already narrowed down by likes, length, and cleanliness. Everything else
+          it is shown is a summary of numbers we computed first.
         </p>
       </Section>
 
@@ -109,9 +116,11 @@ export default function AboutPage() {
           intensifiers scale it, shouting amplifies it, and emoji count.
         </p>
         <p className={v2.body}>
-          It cannot detect sarcasm. It only reads English. On a single comment it is
-          noisy and sometimes simply wrong. Across a thousand comments the direction
-          is meaningful, which is the only level the page reports it at.
+          It cannot detect sarcasm. It only reads English, so on a card that is not
+          in English the mood figure is a weaker signal and the Translate link is
+          how to read the section. On a single comment it is noisy and sometimes
+          simply wrong. Across a thousand comments the direction is meaningful,
+          which is the only level the page reports it at.
         </p>
       </Section>
 

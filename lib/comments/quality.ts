@@ -7,6 +7,7 @@
 // to 2026-10-16 reading that motivated the ranking change.
 
 import { rejectReason, RULES } from "./edition";
+import { needsTranslation } from "./language";
 import { UNAVAILABLE_VIDEO_IDS } from "./youtube";
 import type { VideoPick } from "./types";
 
@@ -56,8 +57,10 @@ export interface EditionScore {
   shortForm: number;
   duplicateIds: string[];
   deadLinks: string[];
-  /** Hard rules the current picker would apply. Capped comment totals are not judged for density. */
+  /** Hard rules the current picker would apply. Language is not one of them. */
   wouldReject: { videoId: string; title: string; rule: string }[];
+  /** Titles the card would offer Translate for. Counted, not rejected. */
+  nonEnglish: { videoId: string; title: string }[];
 }
 
 export interface RunScore {
@@ -73,6 +76,8 @@ export interface RunScore {
   /** channel -> how many editions it appeared in. */
   channelCounts: { channel: string; editions: number }[];
   wouldReject: { editionDate: string; videoId: string; title: string; rule: string }[];
+  /** Kept. The card offers Translate; the picker does not drop them. */
+  nonEnglish: { editionDate: string; videoId: string; title: string }[];
 }
 
 export function median(values: number[]): number | null {
@@ -145,6 +150,9 @@ export function scoreEdition(edition: QualityEdition): EditionScore {
       const rule = replayReject(v);
       return rule ? [{ videoId: v.videoId, title: v.title, rule }] : [];
     }),
+    nonEnglish: videos.flatMap((v) =>
+      needsTranslation({ title: v.title }) ? [{ videoId: v.videoId, title: v.title }] : []
+    ),
   };
 }
 
@@ -175,6 +183,13 @@ export function scoreRun(editions: QualityEdition[]): RunScore {
         return rule ? [{ editionDate: e.editionDate, videoId: v.videoId, title: v.title, rule }] : [];
       })
     ),
+    nonEnglish: editions.flatMap((e) =>
+      e.videos.flatMap((v) =>
+        needsTranslation({ title: v.title })
+          ? [{ editionDate: e.editionDate, videoId: v.videoId, title: v.title }]
+          : []
+      )
+    ),
   };
 }
 
@@ -196,13 +211,17 @@ export function formatQualityReport(editions: QualityEdition[]): string {
   for (const r of run.wouldReject) {
     lines.push(`  ${r.editionDate}  ${r.videoId}  ${r.rule}  ${r.title.slice(0, 70)}`);
   }
+  lines.push(`Non-English, kept and offered Translate: ${run.nonEnglish.length}`);
+  for (const r of run.nonEnglish) {
+    lines.push(`  ${r.editionDate}  ${r.videoId}  ${r.title.slice(0, 70)}`);
+  }
   lines.push("");
   for (const e of editions) {
     const s = scoreEdition(e);
     lines.push(
       `${s.editionDate}  picked ${s.picked}  skipped ${s.skipped}  ` +
         `median ${n(s.medianViewsPerHour)}/hr  comments ${n(s.medianCommentsRead)}  ` +
-        `thin ${s.thin}  short ${s.shortForm}  reject ${s.wouldReject.length}`
+        `thin ${s.thin}  short ${s.shortForm}  reject ${s.wouldReject.length}  translate ${s.nonEnglish.length}`
     );
   }
   return lines.join("\n");

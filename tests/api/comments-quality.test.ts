@@ -4,7 +4,8 @@
  * The fixture is the public pages as they rendered: views per hour, comments
  * read, duration, title, channel. It is the before-measurement for the picker
  * change. The assertions lock both that measurement and which of those cards
- * the new hard gate would turn away. Repeat channels are counted, not rejected
+ * the new hard gate would turn away. Language is counted and not rejected.
+ * Repeat channels are counted, not rejected
  * here: cooldown only means something once the rest of that morning's pool is
  * in the room, and the fixture is the five that won, not the 450 that competed.
  */
@@ -12,6 +13,7 @@
 import { describe, it, expect } from "vitest";
 import editions from "../fixtures/comment-editions-2026-10.json";
 import { replayReject, scoreRun, type QualityEdition, type QualityVideo } from "@/lib/comments/quality";
+import { needsTranslation } from "@/lib/comments/language";
 
 const RUN = editions as QualityEdition[];
 
@@ -48,8 +50,11 @@ describe("2026-10-03 to 2026-10-16 editions", () => {
     ]);
   });
 
-  it("turns away the thin, short, and subtitled picks and keeps the ones with a real section", () => {
-    expect(replayReject(find("dgV7wo5hcqE"))).toBe("not_english");
+  it("turns away the thin and short picks, and keeps a subtitled one with Translate", () => {
+    // Mitti De Baway, 2026-10-16. "(Sub)" used to be a rejection. It stays.
+    expect(replayReject(find("dgV7wo5hcqE"))).toBeNull();
+    expect(needsTranslation({ title: find("dgV7wo5hcqE").title })).toBe(true);
+    expect(run.nonEnglish.map((v) => v.videoId)).toEqual(["dgV7wo5hcqE"]);
     expect(replayReject(find("LPztP1mrKkw"))).toBe("too_few_comments");
     expect(replayReject(find("ZkKdJiCDlPo"))).toBe("too_few_comments");
     expect(replayReject(find("gDJ-ini7fF0"))).toBe("too_few_comments");
@@ -66,8 +71,8 @@ describe("2026-10-03 to 2026-10-16 editions", () => {
       acc[r.rule] = (acc[r.rule] ?? 0) + 1;
       return acc;
     }, {});
-    expect(run.wouldReject).toHaveLength(13);
-    expect(rules).toEqual({ too_few_comments: 7, short: 5, not_english: 1 });
+    expect(run.wouldReject).toHaveLength(12);
+    expect(rules).toEqual({ too_few_comments: 7, short: 5 });
   });
 
   it("counts a known-dead id as a dead link", () => {

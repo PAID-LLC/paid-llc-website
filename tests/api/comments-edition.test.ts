@@ -26,6 +26,7 @@ import {
   isStepName,
   rankHeroFinalists,
 } from "@/lib/comments/edition";
+import { needsTranslation } from "@/lib/comments/language";
 import type { VideoPick, ScoredComment, EditorialJson, FeaturedRow } from "@/lib/comments/types";
 
 afterEach(() => vi.restoreAllMocks());
@@ -87,14 +88,22 @@ describe("rejectReason — the editorial filter", () => {
     expect(rejectReason(pick({ durationS: 45 }), NONE, NOW)).toBe("too_short");
   });
 
-  it("rejects non-English videos, which the lexicon cannot score", () => {
-    expect(rejectReason(pick({ defaultAudioLanguage: "es" }), NONE, NOW)).toBe("not_english");
-    expect(rejectReason(pick({ defaultAudioLanguage: null, defaultLanguage: "ja" }), NONE, NOW)).toBe("not_english");
+  it("keeps a non-English video; language is not a gate", () => {
+    const spanish = pick({ defaultAudioLanguage: "es" });
+    const japanese = pick({ defaultAudioLanguage: null, defaultLanguage: "ja" });
+    expect(rejectReason(spanish, NONE, NOW)).toBeNull();
+    expect(rejectReason(japanese, NONE, NOW)).toBeNull();
+    expect(needsTranslation(spanish)).toBe(true);
+    expect(needsTranslation(japanese)).toBe(true);
   });
 
-  it("accepts en-GB and an unset language", () => {
-    expect(rejectReason(pick({ defaultAudioLanguage: "en-GB" }), NONE, NOW)).toBeNull();
-    expect(rejectReason(pick({ defaultAudioLanguage: null, defaultLanguage: null }), NONE, NOW)).toBeNull();
+  it("accepts en-GB and an unset language without offering Translate", () => {
+    const british = pick({ defaultAudioLanguage: "en-GB" });
+    const unset = pick({ defaultAudioLanguage: null, defaultLanguage: null });
+    expect(rejectReason(british, NONE, NOW)).toBeNull();
+    expect(rejectReason(unset, NONE, NOW)).toBeNull();
+    expect(needsTranslation(british)).toBe(false);
+    expect(needsTranslation(unset)).toBe(false);
   });
 
   it("never re-analyses a video that already had its day", () => {

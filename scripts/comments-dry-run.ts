@@ -27,6 +27,7 @@ import { fetchCandidatePool, fetchCommentThreads, fetchChannels, fetchVideoDetai
 import { analyzeVideo } from "../lib/comments/analyze";
 import { geminiVideoSummary, geminiEditorial, buildDigest, fallbackEditorial } from "../lib/comments/gemini";
 import { choosePicks, viewsPerHour, commentsPerHour, rankScore } from "../lib/comments/edition";
+import { needsTranslation } from "../lib/comments/language";
 import { signalLabel } from "../lib/comments/bots";
 import { formatCount, pct } from "../lib/comments/render-helpers";
 
@@ -116,7 +117,15 @@ async function analyseOne(videoId: string) {
   console.log(`  positive  ${bar(analysis.positiveShare)} ${pct(analysis.positiveShare)}`);
   console.log(`  neutral   ${bar(analysis.neutralShare)} ${pct(analysis.neutralShare)}`);
   console.log(`  negative  ${bar(analysis.negativeShare)} ${pct(analysis.negativeShare)}`);
-  console.log(`\n  English:   ${pct(analysis.englishRatio)}  ${analysis.englishRatio < 0.4 ? "(WOULD BE SKIPPED)" : ""}`);
+  const offerTranslate = needsTranslation({
+    title: video.title,
+    description: video.description,
+    defaultAudioLanguage: video.defaultAudioLanguage,
+    defaultLanguage: video.defaultLanguage,
+    englishRatio: analysis.englishRatio,
+    commentTexts: top.map((c) => c.text),
+  });
+  console.log(`\n  English:   ${pct(analysis.englishRatio)}  ${offerTranslate ? "(card offers Translate)" : ""}`);
   console.log(`  automated: ${pct(analysis.automation.shareLikely)} likely, ${pct(analysis.automation.shareSuspicious)} suspicious (confidence: ${analysis.automation.confidence})`);
   for (const [sig, count] of Object.entries(analysis.automation.signals).sort((a, b) => b[1] - a[1]).slice(0, 5)) {
     console.log(`      ${String(count).padStart(4)}  ${signalLabel(sig)}`);

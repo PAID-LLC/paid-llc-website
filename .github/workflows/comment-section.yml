@@ -86,9 +86,9 @@ jobs:
       # ── 1. Pick ──────────────────────────────────────────────────────────
       # Reads the US charts and applies the editorial filter: unavailable or
       # region-blocked videos, live broadcasts, disabled or thin comment
-      # sections, Shorts and short clips, non-English videos, near-duplicates,
-      # and anything already covered are rejected, each with its reason in the
-      # response so a day that thins out explains itself here. Two backups are
+      # sections, Shorts and short clips, near-duplicates, and anything already
+      # covered are rejected, each with its reason in the response so a day that
+      # thins out explains itself here. Language is not a filter. Two backups are
       # held and promoted only if a pick is skipped.
       #
       # Idempotent: an existing edition returns existing:true and spends no
