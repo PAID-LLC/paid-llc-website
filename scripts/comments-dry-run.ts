@@ -61,7 +61,7 @@ async function showPicks() {
   console.log(`POOL: ${pool.videos.length} unique videos`);
   console.log(`  ${Object.entries(pool.sources).map(([k, n]) => `${k} +${n}`).join("  ")}\n`);
 
-  console.log(`WOULD PICK (${picked.length}), fastest-rising first:`);
+  console.log(`WOULD PICK (${picked.length}), US chart first:`);
   for (const v of picked) {
     console.log(
       `  ✓ ${v.videoId}  ${v.title.slice(0, 50).padEnd(50)} ` +

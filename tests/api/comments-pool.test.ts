@@ -24,6 +24,7 @@ import {
   viewsPerHour,
   choosePicks,
   nearDuplicateTitle,
+  seriesStem,
 } from "@/lib/comments/edition";
 import { needsTranslation } from "@/lib/comments/language";
 import type { VideoPick } from "@/lib/comments/types";
@@ -107,6 +108,11 @@ describe("fetchCandidatePool — the feed", () => {
     // News: exactly what the plain chart stopped carrying in July 2025.
     expect(ids).toContain("c-25");
     expect(ids).toContain("s1");
+    // First source wins: the plain chart is read before category charts and search.
+    expect(pool.videos.find((v) => v.videoId === "c-default")?.chartTier).toBe("plain");
+    expect(pool.videos.find((v) => v.videoId === "c-25")?.chartTier).toBe("category");
+    expect(pool.videos.find((v) => v.videoId === "s1")?.chartTier).toBe("search");
+    expect(pool.videos.find((v) => v.videoId === "shared")?.chartTier).toBe("plain");
     expect(calls.filter((u) => u.includes("chart=mostPopular"))).toHaveLength(1 + POOL_CATEGORIES.length);
 
     const searches = calls.filter((u) => u.includes("/search?"));
@@ -219,6 +225,26 @@ describe("rejectReason — the noise a wider pool lets in", () => {
   it("rejects uploads too new to have mature comments, and anything past three days", () => {
     expect(rejectReason(pick({ publishedAt: "2026-09-19T08:00:00Z" }), NONE, NOW)).toBe("too_new");
     expect(rejectReason(pick({ publishedAt: "2026-09-15T12:00:00Z" }), NONE, NOW)).toBe("too_old");
+  });
+
+  it("keeps a plain US-chart video for two weeks, and still drops one past that", () => {
+    // Four days is past the search window and inside the chart window.
+    const fourDays = pick({ chartTier: "plain", publishedAt: "2026-09-15T12:00:00Z" });
+    expect(rejectReason(fourDays, NONE, NOW)).toBeNull();
+    // A category-chart or search video at the same age stays too old.
+    expect(rejectReason(pick({ chartTier: "category", publishedAt: "2026-09-15T12:00:00Z" }), NONE, NOW)).toBe("too_old");
+    expect(rejectReason(pick({ publishedAt: "2026-09-04T12:00:00Z", chartTier: "plain" }), NONE, NOW)).toBe("too_old");
+  });
+
+  it("keeps an untagged 81-second Short when the section clears 800 comments", () => {
+    // Edition 29, 2026-10-17: "Egg 1 vs 1000 Whisk #cooking #food", 1:21.
+    const egg = pick({
+      title: "Egg 1 vs 1000 Whisk #cooking #food",
+      durationS: 81,
+      comments: 917,
+      views: 12_000_000,
+    });
+    expect(rejectReason(egg, NONE, NOW)).toBeNull();
   });
 
   it("keeps non-English uploads whose language metadata is unset, and flags them for Translate", () => {
@@ -354,5 +380,241 @@ describe("choosePicks — the five", () => {
     const { picked, rejectedCounts } = await choosePicks(pool, NOW, []);
     expect(picked.map((v) => v.videoId)).toEqual(["a", "c"]);
     expect(rejectedCounts.near_duplicate).toBe(1);
+  });
+
+  it("takes a plain-chart video before a faster search-only video", async () => {
+    const search = pick({
+      videoId: "search",
+      channelId: "UCs",
+      chartTier: "search",
+      views: 9_000_000,
+      comments: 8_000,
+    });
+    const chart = pick({
+      videoId: "chart",
+      channelId: "UCc",
+      chartTier: "plain",
+      views: 1_000_000,
+      comments: 800,
+    });
+    const { picked } = await choosePicks([search, chart], NOW, []);
+    expect(picked.map((v) => v.videoId)).toEqual(["chart", "search"]);
+  });
+
+  it("does not let a channel from outside the three-day window block a pick", async () => {
+    const pool = [
+      pick({ videoId: "again", channelId: "UCa", views: 9_000_000 }),
+      ...Array.from({ length: 5 }, (_, i) =>
+        pick({ videoId: `o${i}`, channelId: `UCo${i}`, views: (5 - i) * 1_000_000 })
+      ),
+    ];
+    const { picked, rejectedCounts } = await choosePicks(pool, NOW, [
+      { channel_id: "UCa", title: "An older upload", first_edition: "2026-09-01" },
+    ]);
+    expect(picked[0]?.videoId).toBe("again");
+    expect(rejectedCounts.recent_channel).toBeUndefined();
+  });
+});
+
+describe("series cooldown", () => {
+  it("treats Day 12 and Day 16 as one series, and leaves an unrelated title alone", () => {
+    const day12 = seriesStem("HALLELUJAH CHALLENGE || OCT 2026 || DAY 12");
+    const day16 = seriesStem("HALLELUJAH CHALLENGE || OCT 2026 || DAY 16");
+    expect(day12).toBe(day16);
+    expect(day12).toBe("hallelujah challenge");
+    expect(seriesStem("Mitti De Baway Ep 08 (Sub) 15 Oct 26 | Green TV")).toBe(
+      seriesStem("Mitti De Baway Ep 09 (Sub) 16 Oct 26 | Green TV")
+    );
+    expect(seriesStem("KAALI HOODIE")).toBeNull();
+    expect(seriesStem("295")).toBeNull();
+    expect(seriesStem("The Beekeeper 2")).toBeNull();
+    expect(seriesStem("Official Trailer Part 1")).toBeNull();
+  });
+
+  it("keeps the next episode out even when that leaves the edition short", async () => {
+    const day16 = pick({
+      videoId: "d16",
+      channelId: "UCnb",
+      title: "HALLELUJAH CHALLENGE || OCT 2026 || DAY 16",
+      views: 9_000_000,
+    });
+    const others = Array.from({ length: 4 }, (_, i) =>
+      pick({ videoId: `o${i}`, channelId: `UCo${i}`, views: (4 - i) * 1_000_000 })
+    );
+    const { picked, rejectedCounts, relaxed } = await choosePicks([day16, ...others], NOW, [
+      {
+        channel_id: "UCother",
+        title: "HALLELUJAH CHALLENGE || OCT 2026 || DAY 12",
+        first_edition: "2026-09-10",
+      },
+    ]);
+    expect(picked.map((v) => v.videoId)).toEqual(["o0", "o1", "o2", "o3"]);
+    expect(rejectedCounts.series).toBe(1);
+    expect(relaxed).toBe(true);
+  });
+
+  it("keeps only the first episode when two land in the same pool", async () => {
+    const pool = [
+      pick({ videoId: "d12", channelId: "UCa", title: "HALLELUJAH CHALLENGE || OCT 2026 || DAY 12", views: 9_000_000 }),
+      pick({ videoId: "d16", channelId: "UCb", title: "HALLELUJAH CHALLENGE || OCT 2026 || DAY 16", views: 8_000_000 }),
+      ...Array.from({ length: 4 }, (_, i) =>
+        pick({ videoId: `o${i}`, channelId: `UCo${i}`, views: (4 - i) * 1_000_000 })
+      ),
+    ];
+    const { picked, reserves, rejectedCounts } = await choosePicks(pool, NOW, []);
+    expect(picked.map((v) => v.videoId)).not.toContain("d16");
+    expect(reserves.map((v) => v.videoId)).not.toContain("d16");
+    expect(picked[0]?.videoId).toBe("d12");
+    expect(rejectedCounts.series).toBe(1);
+  });
+});
+
+describe("2026-10-17 replay — plain US chart before search", () => {
+  // Reconstruction, not the stored pool. The morning pool and its reserves were
+  // not saved. These figures are the public chart and watch-page counts, and
+  // the five that shipped are marked search because they were absent from the
+  // published US top 20 except Kaali Hoodie. Olivia Rodrigo and The Beekeeper 2
+  // were already analyzed that morning, so they are not in this pool.
+  const PICK = Date.parse("2026-10-17T13:12:58Z");
+
+  function row(over: Partial<VideoPick>): VideoPick {
+    return pick({ publishedAt: "2026-10-16T00:00:00Z", ...over });
+  }
+
+  const pool: VideoPick[] = [
+    row({
+      videoId: "-zvixJnZuUU",
+      title: "KAALI HOODIE",
+      channelId: "UCkaali",
+      chartTier: "plain",
+      categoryId: "10",
+      views: 11_000_000,
+      comments: 116_100,
+      durationS: 170,
+      publishedAt: new Date(PICK - (11_000_000 / 373_000) * 3_600_000).toISOString(),
+    }),
+    row({
+      videoId: "AYkPRN874m8",
+      title: "Ramayana",
+      channelId: "UCram",
+      chartTier: "plain",
+      categoryId: "1",
+      views: 11_000_000,
+      comments: 16_400,
+      publishedAt: "2026-10-15T19:00:00Z",
+    }),
+    row({
+      videoId: "9-j9GWjyWpY",
+      title: "1000 Players Simulate End Prison in Minecraft",
+      channelId: "UCparrot",
+      chartTier: "plain",
+      categoryId: "20",
+      views: 4_400_000,
+      comments: 29_500,
+      publishedAt: "2026-10-15T19:00:00Z",
+    }),
+    row({
+      videoId: "5dPwBWvmcbQ",
+      title: "Justice - Flower In A Hurricane",
+      channelId: "UCjustice",
+      chartTier: "plain",
+      categoryId: "10",
+      views: 2_900_000,
+      comments: 7_000,
+      publishedAt: "2026-10-15T19:00:00Z",
+    }),
+    row({
+      videoId: "RgvsbigEylQ",
+      title: "Cyberpunk: Edgerunners 2 Official Trailer",
+      channelId: "UCedge",
+      chartTier: "plain",
+      categoryId: "1",
+      views: 3_400_000,
+      comments: 6_100,
+      publishedAt: "2026-10-14T19:00:00Z",
+    }),
+    row({
+      videoId: "LB72Mbd88mU",
+      title: "Zara Larsson - Blue Moon",
+      channelId: "UCzara",
+      chartTier: "plain",
+      categoryId: "10",
+      views: 3_400_000,
+      comments: 8_300,
+      publishedAt: "2026-10-14T19:00:00Z",
+    }),
+    row({
+      videoId: "2ZTcvsdMR1c",
+      title: "Ayra Starr - Heaven Baby ft. ZAYN",
+      channelId: "UCayra",
+      chartTier: "plain",
+      categoryId: "10",
+      views: 12_300_000,
+      comments: 10_800,
+      publishedAt: "2026-10-05T19:00:00Z",
+    }),
+    row({
+      videoId: "NyDXTX1ghK0",
+      title: "HALLELUJAH CHALLENGE || OCT 2026 || DAY 12",
+      channelId: "UChallelujah",
+      chartTier: "search",
+      categoryId: "10",
+      views: 2_500_000,
+      comments: 19_000,
+      durationS: 8786,
+      publishedAt: new Date(PICK - (2_500_000 / 223_000) * 3_600_000).toISOString(),
+    }),
+    row({
+      videoId: "I6q9q2ZZX_Y",
+      title: "DON'T OPEN THE DOOR AT NIGHT",
+      channelId: "UCtechno",
+      chartTier: "search",
+      categoryId: "20",
+      views: 2_100_000,
+      comments: 5_700,
+      durationS: 2393,
+      publishedAt: new Date(PICK - (2_100_000 / 220_000) * 3_600_000).toISOString(),
+    }),
+    row({
+      videoId: "A4Q8q0KQQ14",
+      title: "Tesla Saves Owner From Prison",
+      channelId: "UCtesla",
+      chartTier: "search",
+      categoryId: "25",
+      views: 1_300_000,
+      comments: 23_000,
+      durationS: 3569,
+      publishedAt: new Date(PICK - (1_300_000 / 77_000) * 3_600_000).toISOString(),
+    }),
+    row({
+      videoId: "g2Bs33SZ9ok",
+      title: "Egg 1 vs 1000 Whisk #cooking #food",
+      channelId: "UCegg",
+      chartTier: "search",
+      categoryId: "26",
+      views: 12_000_000,
+      comments: 8_200,
+      durationS: 81,
+      publishedAt: new Date(PICK - (12_000_000 / 351_000) * 3_600_000).toISOString(),
+    }),
+  ];
+
+  it("would have led with the plain chart instead of the search hits", async () => {
+    const before = ["-zvixJnZuUU", "NyDXTX1ghK0", "I6q9q2ZZX_Y", "A4Q8q0KQQ14", "g2Bs33SZ9ok"];
+    const { picked, reserves, rejectedCounts, relaxed } = await choosePicks(pool, PICK, []);
+    expect(before[0]).toBe("-zvixJnZuUU");
+    expect(picked.map((v) => v.videoId)).toEqual([
+      "-zvixJnZuUU",
+      "AYkPRN874m8",
+      "9-j9GWjyWpY",
+      "5dPwBWvmcbQ",
+      "RgvsbigEylQ",
+    ]);
+    expect(reserves.map((v) => v.videoId)).toEqual(["2ZTcvsdMR1c", "NyDXTX1ghK0"]);
+    expect(rejectedCounts.same_category).toBe(1);
+    expect(relaxed).toBe(false);
+    // No prior Hallelujah episode in the last 14 days, so the series rule does
+    // not change today's five. It is what keeps Day 16 out next week.
+    expect(rejectedCounts.series).toBeUndefined();
   });
 });

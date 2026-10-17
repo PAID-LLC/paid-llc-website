@@ -86,10 +86,12 @@ jobs:
       # ── 1. Pick ──────────────────────────────────────────────────────────
       # Reads the US charts and applies the editorial filter: unavailable or
       # region-blocked videos, live broadcasts, disabled or thin comment
-      # sections, Shorts and short clips, near-duplicates, and anything already
-      # covered are rejected, each with its reason in the response so a day that
-      # thins out explains itself here. Language is not a filter. Two backups are
-      # held and promoted only if a pick is skipped.
+      # sections, Shorts and short clips, near-duplicates, numbered series
+      # inside two weeks, and anything already covered are rejected, each with
+      # its reason in the response so a day that thins out explains itself here.
+      # Plain US-chart videos are taken before category charts, and those before
+      # search. Language is not a filter. Two backups are held and promoted
+      # only if a pick is skipped.
       #
       # Idempotent: an existing edition returns existing:true and spends no
       # quota, so a re-run never re-picks the day.

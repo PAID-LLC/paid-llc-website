@@ -41,6 +41,16 @@ export interface ScoredComment extends CommentInput {
   humor: number;
 }
 
+/**
+ * Where a candidate entered the pool.
+ *
+ * `plain` is the uncategorized US mostPopular chart, which is the list the
+ * page means by US trending. `category` is one of the ten category charts.
+ * `search` is a views-sorted search: viewable in the US, not popular there.
+ * The first source wins, and charts are read before search.
+ */
+export type ChartTier = "plain" | "category" | "search";
+
 /** A video as it comes out of the candidate pool (charts plus search). */
 export interface VideoPick {
   videoId: string;
@@ -64,6 +74,8 @@ export interface VideoPick {
   uploadStatus?: string | null;
   /** contentDetails.regionRestriction excludes the US. */
   regionBlocked?: boolean;
+  /** Which fetch put this id in the pool. Absent on rows built before the field existed. */
+  chartTier?: ChartTier;
 }
 
 /**
@@ -88,6 +100,7 @@ export interface ReserveVideo {
   /** YouTube language codes, kept so a promoted backup can still offer Translate. */
   defaultAudioLanguage?: string | null;
   defaultLanguage?: string | null;
+  chartTier?: ChartTier;
 }
 
 /** Aggregate automation reading for one comment section. Aggregate ONLY. */
@@ -238,6 +251,8 @@ export interface VideoRow {
     default_audio_language?: string | null;
     /** snippet.defaultLanguage at pick time. */
     default_language?: string | null;
+    /** plain US chart, a category chart, or search. Stored so a later watch can see which. */
+    chart_tier?: ChartTier | null;
     verified_at?: string;
     removed?: boolean;
   };

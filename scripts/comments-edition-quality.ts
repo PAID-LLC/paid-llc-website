@@ -7,10 +7,10 @@
  *
  * The default input is the 2026-10-03 to 2026-10-16 fixture checked into the
  * repo: views per hour and comment counts as the public pages rendered them,
- * with no YouTube quota and no Supabase. --live refetches the last 14 edition
- * dates from paiddev.com (the public API plus each edition page) and scores
- * that. It does not change what tomorrow's edition will pick; it measures
- * what already shipped.
+ * with no YouTube quota and no Supabase. --live refetches 14 edition dates
+ * from paiddev.com, today through 13 days back (the public API plus each
+ * edition page) and scores that. It does not change what tomorrow's edition
+ * will pick; it measures what already shipped.
  *
  * "Would reject" is the current hard gate replayed on those cards. It is not a
  * reconstruction of the day's pool: a video this report keeps might still lose
@@ -46,7 +46,7 @@ interface LiveEdition {
 async function fetchLive(): Promise<QualityEdition[]> {
   const today = new Date();
   const editions: QualityEdition[] = [];
-  for (let back = 1; back <= 14; back++) {
+  for (let back = 0; back <= 13; back++) {
     const day = new Date(today.getTime() - back * 86_400_000);
     const date = new Intl.DateTimeFormat("en-CA", {
       timeZone: "America/Chicago",

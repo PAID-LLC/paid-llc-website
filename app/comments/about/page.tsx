@@ -42,8 +42,8 @@ export default function AboutPage() {
           How this page is <span className="text-cyan-400">built</span>.
         </h1>
         <p className={`${v2.body} mt-6 max-w-2xl text-lg`}>
-          Every morning an automated pipeline reads the fastest-rising public videos
-          on YouTube and their comment sections. Nobody edits the result by hand. Here is
+          Every morning an automated pipeline reads the public videos on YouTube&apos;s
+          US trending chart and their comment sections. Nobody edits the result by hand. Here is
           exactly what it does, what it keeps, and what its numbers are worth.
         </p>
       </section>
@@ -52,10 +52,14 @@ export default function AboutPage() {
         <p className={v2.body}>
           YouTube does not publish daily view counts for other people&apos;s videos, so
           nobody outside YouTube can list the day&apos;s most-watched with certainty.
-          What can be measured is momentum in two directions. Each morning we gather
-          around 450 candidates from YouTube&apos;s public charts for the United States,
-          across ten categories from news and sports to music and gaming, plus a search
-          for the most-viewed uploads of the last two days. We rank them by the geometric
+          What can be measured is the US trending chart, and momentum inside it. Each
+          morning we gather around 450 candidates from YouTube&apos;s public charts for
+          the United States, the plain most-popular list first and then ten categories
+          from news and sports to music and gaming, plus a search for the most-viewed
+          uploads of the last two days. A video on the plain US chart that clears the
+          comment floors is taken before a category-chart video, and a category-chart
+          video before a search-only one. Search with a US region only means the video
+          can be watched here. Inside each of those three groups we rank by the geometric
           mean of views per hour and comments per hour since upload, with a small penalty
           after a day and a half, and take the first five that pass a fixed filter. A
           view-count spike whose comment section never showed up sorts behind a video
@@ -64,16 +68,19 @@ export default function AboutPage() {
         <p className={v2.body}>
           A video is skipped if it is a live broadcast or a Short (including a hashtag
           like #sportsshorts), or a clip of three minutes or less with fewer than 800
-          comments; if it went up less than eight hours or more than three days ago; if
-          comments are off, fewer than 400, or thinner than one per 20,000 views; if
-          YouTube reports it private, deleted, or region-blocked, or it is on a short
-          list of ids already known to be gone; if it has already had its day here; or
-          if its channel is already in the edition. A channel that ran in the last three
-          days waits, near-duplicate titles are dropped, and at most two videos come
-          from any one category. Those last three give way only when keeping them would
-          leave the edition short. Two backups are saved with the five, and one is
-          promoted if a pick&apos;s comments turn out unreadable, instead of publishing
-          a hole.
+          comments; if it went up less than eight hours ago, or more than three days ago
+          (two weeks, for a video still on the plain US chart); if comments are off,
+          fewer than 400, or thinner than one per 20,000 views; if YouTube reports it
+          private, deleted, or region-blocked, or it is on a short list of ids already
+          known to be gone; if it has already had its day here; or if its channel is
+          already in the edition. A channel that ran in the last three days waits.
+          A numbered series, a title carrying Day, Episode, or Part and a number, waits
+          fourteen days, so tomorrow&apos;s episode of the same show does not take the
+          slot. Near-duplicate titles are dropped, and at most two videos come from any
+          one category. The channel wait, the near-duplicate check, and the category
+          cap give way only when keeping them would leave the edition short. The series
+          wait does not. Two backups are saved with the five, and one is promoted if a
+          pick&apos;s comments turn out unreadable, instead of publishing a hole.
         </p>
         <p className={v2.body}>
           Language is not part of that filter. A video in any language keeps its place

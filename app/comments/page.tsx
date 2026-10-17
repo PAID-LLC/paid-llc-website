@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     bundle?.edition.teaser ??
     bundle?.edition.headline ??
-    "Every morning, the fastest-rising videos on YouTube in the US, read through their comment sections. Sentiment, bot estimates, and the funniest comment nobody liked.";
+    "Every morning, the videos on YouTube's US trending chart, read through their comment sections. Sentiment, bot estimates, and the funniest comment nobody liked.";
 
   return {
     title,
