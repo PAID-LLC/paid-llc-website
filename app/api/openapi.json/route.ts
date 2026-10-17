@@ -831,7 +831,7 @@ const SPEC = {
         tags: ["Content"],
         summary: "Today's edition of The Comment Section, or a specific date",
         description:
-          "The day's fastest-rising US videos (ranked by views per hour and comments per hour since upload) read through " +
+          "The day's US trending-chart videos (the plain mostPopular chart first, then category charts, then search, ranked inside each group by views per hour and comments per hour since upload) read through " +
           "their comment sections: what each video is, " +
           "sentiment shares, recurring themes, an aggregate automation estimate, and the funniest " +
           "overlooked comment. Optional ?date=YYYY-MM-DD for an archived edition. " +

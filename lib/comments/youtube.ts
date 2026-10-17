@@ -19,7 +19,7 @@
 // workflow's loop is bounded.
 
 import { bumpCounter } from "@/lib/usage-guard";
-import type { CommentInput, ChannelInfo, VideoPick } from "./types";
+import type { ChartTier, CommentInput, ChannelInfo, VideoPick } from "./types";
 
 const API = "https://www.googleapis.com/youtube/v3";
 const TIMEOUT_MS = 20_000;
@@ -245,10 +245,14 @@ export async function fetchCandidatePool(region = "US", now = Date.now()): Promi
   const byId = new Map<string, VideoPick>();
   const sources: Record<string, number> = {};
   const add = (label: string, picks: VideoPick[]) => {
+    // First source wins. The plain chart is read before category charts, and
+    // both are read before search, so a video that is on the US trending list
+    // stays `plain` even if a later call sees it too.
+    const tier: ChartTier = label === "chart" ? "plain" : label.startsWith("chart:") ? "category" : "search";
     let fresh = 0;
     for (const p of picks) {
       if (!byId.has(p.videoId)) {
-        byId.set(p.videoId, p);
+        byId.set(p.videoId, { ...p, chartTier: tier });
         fresh++;
       }
     }

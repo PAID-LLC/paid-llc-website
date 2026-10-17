@@ -1,7 +1,7 @@
 // ── The daily step machine ───────────────────────────────────────────────────
 // Four steps, driven by GitHub Actions against /api/comments/cron:
 //
-//   pick     pool ~450 videos, rank by view and comment velocity, keep five  ~5 seconds
+//   pick     pool ~450 videos, US chart first, then velocity, keep five     ~5 seconds
 //   video    process ONE video, repeated until it reports done     ~60-125 s each
 //   publish  aggregate, headline, flip to published                ~2 seconds
 //   refresh  re-fetch anything approaching the 30-day limit        ~2 seconds
@@ -123,6 +123,29 @@ const MAX_PER_CATEGORY = 2;
  * would otherwise publish short.
  */
 const CHANNEL_COOLDOWN_DAYS = 3;
+/**
+ * The plain US mostPopular chart (no category) stays eligible this long.
+ * Category charts and search stay on MAX_AGE_H. A chart video can sit on the
+ * US list past three days while its since-upload velocity falls behind a
+ * search hit the chart is not measuring. Freshness already sits on
+ * FRESHNESS_FLOOR once the upload is past MAX_AGE_H, so the extra days do
+ * not hand an old chart video a full score.
+ */
+const CHART_MAX_AGE_H = 14 * 24;
+/**
+ * Plain-chart videos that pass the hard gates are taken before category-chart
+ * videos, and those before search-only videos. Inside a tier the order is
+ * still rankScore. Search with regionCode=US means the video is viewable in
+ * the US, not that it is popular there.
+ */
+const PREFER_US_CHART = true;
+/**
+ * Day N / Episode N / Part N. Three days of channel cooldown puts the next
+ * episode of a daily livestream back in the following week, and the
+ * near-duplicate check only sees titles from that same short window. This
+ * rule is not relaxed when the edition would otherwise run short.
+ */
+const SERIES_COOLDOWN_DAYS = 14;
 /** Token-set overlap that counts as the same upload under two titles. */
 const NEAR_DUP_JACCARD = 0.6;
 /** A skipped video can be reconsidered after a week. */
@@ -181,7 +204,8 @@ type RejectRule =
   | "same_channel"
   | "same_category"
   | "recent_channel"
-  | "near_duplicate";
+  | "near_duplicate"
+  | "series";
 
 /** Hours since upload, or null when the timestamp is missing or unparseable. */
 function ageHours(v: VideoPick, now: number): number | null {
@@ -194,6 +218,12 @@ function ageHours(v: VideoPick, now: number): number | null {
  * for other people's videos, so this is the view half of "rising right now".
  * Age is floored at one hour so a brand-new upload cannot divide by nearly nothing.
  * Shown on the card; the sort itself is rankScore.
+ *
+ * Duration is not in the denominator. A finished livestream (liveBroadcastContent
+ * back to "none") keeps the audience it collected while live, divided only by
+ * hours since the stream started, so a multi-hour replay can outrank a normal
+ * upload on this number alone. The live gate already rejects a stream that is
+ * still live. A duration penalty is not applied here.
  */
 export function viewsPerHour(v: VideoPick, now = Date.now()): number {
   return v.views / Math.max(1, ageHours(v, now) ?? Infinity);
@@ -238,6 +268,20 @@ export function rankByVelocity(pool: VideoPick[], now = Date.now()): VideoPick[]
   return [...pool].sort((a, b) => rankScore(b, now) - rankScore(a, now));
 }
 
+const TIER_ORDER = { plain: 0, category: 1, search: 2 } as const;
+
+/**
+ * Chart membership before velocity. A missing tier is treated as search, which
+ * is what every candidate was before the field existed. Stable within a tier,
+ * so rankScore order survives. PREFER_US_CHART off returns the velocity list.
+ */
+export function orderPool(ranked: VideoPick[]): VideoPick[] {
+  if (!PREFER_US_CHART) return ranked;
+  return [...ranked].sort(
+    (a, b) => TIER_ORDER[a.chartTier ?? "search"] - TIER_ORDER[b.chartTier ?? "search"]
+  );
+}
+
 const TITLE_STOP = new Set([
   "the", "a", "an", "of", "and", "or", "to", "for", "in", "on", "with", "from",
   "official", "video", "music", "trailer", "teaser", "highlights", "full",
@@ -273,6 +317,28 @@ export function nearDuplicateTitle(title: string, others: string[]): boolean {
     if (union > 0 && inter / union >= NEAR_DUP_JACCARD) return true;
   }
   return false;
+}
+
+const SERIES_MARKER = /\b(?:day|ep|episode|part|pt)\s*\.?\s*\d+\b/i;
+
+/**
+ * The recurring-series stem of a title, or null when it is not a numbered
+ * episode. "HALLELUJAH CHALLENGE || OCT 2026 || DAY 12" and "DAY 16" share
+ * one. "KAALI HOODIE" and a bare "295" do not, and neither does "The
+ * Beekeeper 2": only day / episode / part. Dates and years are stripped so
+ * the calendar day is not part of the identity. Fewer than two significant
+ * words left means the marker was the whole title, and those do not collide.
+ */
+export function seriesStem(title: string): string | null {
+  if (!SERIES_MARKER.test(title)) return null;
+  const stripped = title
+    .replace(SERIES_MARKER, " ")
+    .replace(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/gi, " ")
+    .replace(/\b20\d{2}\b/g, " ")
+    .replace(/\b\d{1,2}\b/g, " ");
+  const tokens = titleTokens(stripped);
+  if (tokens.length < 2) return null;
+  return tokens.join(" ");
 }
 
 /**
@@ -321,7 +387,7 @@ export function rejectReason(
 
   const age = ageHours(v, now);
   if (age !== null && age < MIN_AGE_H) return "too_new";
-  if (age !== null && age > MAX_AGE_H) return "too_old";
+  if (age !== null && age > (v.chartTier === "plain" ? CHART_MAX_AGE_H : MAX_AGE_H)) return "too_old";
 
   // Language is not a gate. A non-English upload that clears the floors keeps
   // its place, and the card offers Translate. See lib/comments/language.ts.
@@ -409,6 +475,7 @@ function videoInsert(v: VideoPick, date: string, rank: number, now: number) {
       category_id: v.categoryId ?? null,
       default_audio_language: v.defaultAudioLanguage,
       default_language: v.defaultLanguage,
+      chart_tier: v.chartTier ?? null,
       verified_at: new Date().toISOString(),
     },
   };
@@ -432,24 +499,35 @@ function toReserve(v: VideoPick, now: number): ReserveVideo {
     categoryId: v.categoryId ?? null,
     defaultAudioLanguage: v.defaultAudioLanguage,
     defaultLanguage: v.defaultLanguage,
+    chartTier: v.chartTier,
   };
 }
 
 export interface RecentPickRef {
   channel_id: string;
   title: string;
+  /**
+   * Edition date of the prior pick. When set, the three-day channel cooldown
+   * uses it and the series cooldown uses the longer list this was loaded
+   * from. When omitted, both rules treat the row as inside the window, which
+   * is what callers that already filtered the list are passing.
+   */
+  first_edition?: string;
 }
 
 /**
- * The five, best rank score first, plus up to two backups.
+ * The five, plus up to two backups.
  *
- * One video per channel (the 2026-09-19 pool held three episodes of one TV
- * serial). On top of that, while the five are still open: at most two from any
+ * Plain US-chart videos come first, then category-chart videos, then search,
+ * and inside each group the order is rank score. One video per channel (the
+ * 2026-09-19 pool held three episodes of one TV serial). A numbered series
+ * (Day N, Episode N, Part N) that ran in the last SERIES_COOLDOWN_DAYS is out,
+ * including as a backup. While the five are still open: at most two from any
  * category, no channel that already ran in the last CHANNEL_COOLDOWN_DAYS, and
  * no title that is a near-duplicate of a recent pick or of one already chosen.
  * Those three are diversity rules. If they would leave the edition short, a
- * second pass drops them and keeps the hard filters. Backups ignore the
- * diversity rules either way, so a skip has somewhere to go.
+ * second pass drops them and keeps the hard filters, series included. Backups
+ * ignore the diversity rules either way, so a skip has somewhere to go.
  *
  * Pass `recent` to supply cooldown history (tests). Otherwise the last few
  * editions are read from the store, which returns nothing when Supabase is unset.
@@ -465,23 +543,32 @@ export async function choosePicks(
   rejectedCounts: Partial<Record<RejectRule, number>>;
   relaxed: boolean;
 }> {
-  const ranked = rankByVelocity(pool, now);
-  const eligible = ranked
+  const ordered = orderPool(rankByVelocity(pool, now));
+  const eligible = ordered
     .filter((v) => rejectReason(v, NO_HISTORY, now) === null)
     .slice(0, ELIGIBLE_LOOKED_UP);
   const seen = await store.getExistingVideoRows(eligible.map((v) => v.videoId));
+  const channelSince = editionDateToday(new Date(now - CHANNEL_COOLDOWN_DAYS * 86_400_000));
   const history =
     recent ??
     (await store.listRecentPicks(
-      editionDateToday(new Date(now - CHANNEL_COOLDOWN_DAYS * 86_400_000))
+      editionDateToday(new Date(now - SERIES_COOLDOWN_DAYS * 86_400_000))
     ));
-  const recentChannels = new Set(history.map((r) => r.channel_id).filter(Boolean));
-  const recentTitles = history.map((r) => r.title);
+  const inChannelWindow = (r: RecentPickRef) => !r.first_edition || r.first_edition >= channelSince;
+  const recentChannels = new Set(
+    history.filter(inChannelWindow).map((r) => r.channel_id).filter(Boolean)
+  );
+  // Near-duplicates stay on the three-day window. The longer list is only
+  // for the series stem, which is the rule that is not relaxed.
+  const recentTitles = history.filter(inChannelWindow).map((r) => r.title);
+  const recentSeries = new Set(
+    history.map((r) => seriesStem(r.title)).filter((s): s is string => !!s)
+  );
 
-  const strict = selectFrom(ranked, seen, recentChannels, recentTitles, now, false);
+  const strict = selectFrom(ordered, seen, recentChannels, recentTitles, recentSeries, now, false);
   const pass = strict.selected.length >= PICK_COUNT
     ? strict
-    : selectFrom(ranked, seen, recentChannels, recentTitles, now, true);
+    : selectFrom(ordered, seen, recentChannels, recentTitles, recentSeries, now, true);
 
   return {
     picked: pass.selected.slice(0, PICK_COUNT),
@@ -497,6 +584,7 @@ function selectFrom(
   seen: Map<string, { status: string; created_at: string }>,
   recentChannels: Set<string>,
   recentTitles: string[],
+  recentSeries: Set<string>,
   now: number,
   ignoreSoft: boolean
 ): {
@@ -510,12 +598,17 @@ function selectFrom(
   const channels = new Set<string>();
   const categories = new Map<string, number>();
   const titles: string[] = [];
+  const stems = new Set<string>(recentSeries);
   const stopAt = PICK_COUNT + RESERVE_COUNT;
 
   for (const v of ranked) {
     if (selected.length >= stopAt) break;
     let rule = rejectReason(v, seen, now);
     if (!rule && channels.has(v.channelId)) rule = "same_channel";
+    // Series before the title overlap. Day 12 and Day 16 share most of their
+    // words, and the overlap rule is one of the three that gets relaxed.
+    const stem = seriesStem(v.title);
+    if (!rule && stem && stems.has(stem)) rule = "series";
     if (!rule && nearDuplicateTitle(v.title, titles)) rule = "near_duplicate";
 
     // Diversity applies only while the five are open. Backups are the next
@@ -545,6 +638,7 @@ function selectFrom(
     selected.push(v);
     channels.add(v.channelId);
     titles.push(v.title);
+    if (stem) stems.add(stem);
     if (!fillingReserves && v.categoryId) {
       categories.set(v.categoryId, (categories.get(v.categoryId) ?? 0) + 1);
     }
@@ -590,6 +684,7 @@ async function skipAndPromote(date: string, videoId: string, reason: string): Pr
         category_id: next.categoryId ?? null,
         default_audio_language: next.defaultAudioLanguage ?? null,
         default_language: next.defaultLanguage ?? null,
+        chart_tier: next.chartTier ?? null,
         verified_at: new Date().toISOString(),
       },
     },
@@ -980,6 +1075,9 @@ export const RULES = {
   SHORT_MIN_COMMENTS,
   MAX_PER_CATEGORY,
   CHANNEL_COOLDOWN_DAYS,
+  CHART_MAX_AGE_H,
+  PREFER_US_CHART,
+  SERIES_COOLDOWN_DAYS,
   NEAR_DUP_JACCARD,
   SKIP_RETRY_DAYS,
   REFRESH_AFTER_DAYS,

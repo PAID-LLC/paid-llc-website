@@ -162,7 +162,7 @@ export function buildHeadline(
 
 /** The standfirst under the headline. Constant by design; it frames the method. */
 export const STANDFIRST =
-  "The fastest-rising videos on YouTube in the US right now, read through their comment sections.";
+  "The videos on YouTube's US trending chart right now, read through their comment sections.";
 
 function numberWord(n: number): string {
   return ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"][n] ?? String(n);

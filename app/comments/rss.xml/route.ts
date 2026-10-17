@@ -63,7 +63,7 @@ export async function GET() {
   <channel>
     <title>The Comment Section | PAID LLC</title>
     <link>${SITE}/comments</link>
-    <description>Every morning: the fastest-rising videos on YouTube in the US, read through their comment sections. Sentiment, bot estimates, and the funniest comment nobody liked.</description>
+    <description>Every morning: the videos on YouTube's US trending chart, read through their comment sections. Sentiment, bot estimates, and the funniest comment nobody liked.</description>
     <language>en-us</language>
     <atom:link href="${SITE}/comments/rss.xml" rel="self" type="application/rss+xml" />
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
