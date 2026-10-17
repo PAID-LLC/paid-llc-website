@@ -18,14 +18,17 @@ import {
   formatCount,
   formatDuration,
   videoPath,
+  absoluteUrl,
+  youtubeWatchUrl,
   truncate,
 } from "@/lib/comments/render-helpers";
+import { googleTranslatePageUrl, needsTranslation } from "@/lib/comments/language";
 import type { VideoRow, FeaturedRow } from "@/lib/comments/types";
 
 const SKIP_COPY: Record<string, string> = {
   comments_disabled: "Comments are turned off on this one.",
   too_few_comments: "Too few comments to read anything into.",
-  non_english_comments: "The comment section is mostly not in English, which this analysis cannot read.",
+  non_english_comments: "Left out on a day when a non-English comment section was skipped.",
 };
 
 export function VideoCard({
@@ -56,6 +59,14 @@ export function VideoCard({
   const funniest = heroIsHere ? allRunnersUp[0] : ownFunniest;
   const runnersUp = heroIsHere ? allRunnersUp.slice(1) : allRunnersUp;
   const top = featured.filter((f) => f.role === "top").sort((x, y) => x.position - y.position);
+  const translate = needsTranslation({
+    title: video.title,
+    defaultAudioLanguage: video.stats.default_audio_language,
+    defaultLanguage: video.stats.default_language,
+    englishRatio: a.englishRatio,
+    commentTexts: featured.map((f) => f.text),
+  });
+  const pageUrl = absoluteUrl(videoPath(video.video_id));
 
   return (
     <article className={`${v2.cardStatic} v2-reveal`}>
@@ -101,7 +112,7 @@ export function VideoCard({
                 <span aria-hidden="true">·</span>
                 <span
                   className="text-[#E8714C]"
-                  title="Average views per hour since upload, when this edition was picked. The edition ranks by this."
+                  title="Average views per hour since upload, when this edition was picked. The rank also weighs comments per hour and how recent the upload still is."
                 >
                   {formatCount(video.stats.views_per_hour)}/hr
                 </span>
@@ -124,10 +135,46 @@ export function VideoCard({
           <div className="mt-2">
             <YouTubeMark videoId={video.video_id} />
           </div>
+
+          {translate && (
+            <div className="mt-4 rounded-lg border border-[#E8714C]/35 bg-[#E8714C]/[0.07] px-3 py-3">
+              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[#E8714C]">
+                Translate
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-zinc-200">
+                This video or its comment section is not in English.
+              </p>
+              <p className="mt-2">
+                <a
+                  href={googleTranslatePageUrl(pageUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-xs text-cyan-300 underline decoration-cyan-300/40 underline-offset-2 hover:text-cyan-200"
+                >
+                  Translate this page
+                </a>
+              </p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">
+                <a
+                  href={youtubeWatchUrl(video.video_id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-300 underline decoration-cyan-300/40 underline-offset-2 hover:text-cyan-200"
+                >
+                  Watch on YouTube with auto-translated captions
+                </a>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ── What the comments were like ─────────────────────────────────── */}
         <div className="min-w-0">
+          {translate && video.summary && (
+            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+              English summary
+            </p>
+          )}
           {video.summary ? (
             <p className={v2.body}>{video.summary}</p>
           ) : (

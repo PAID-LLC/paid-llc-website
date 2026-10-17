@@ -52,18 +52,36 @@ export default function AboutPage() {
         <p className={v2.body}>
           YouTube does not publish daily view counts for other people&apos;s videos, so
           nobody outside YouTube can list the day&apos;s most-watched with certainty.
-          What can be measured is momentum. Each morning we gather around 450
-          candidates from YouTube&apos;s public charts for the United States, across ten
-          categories from news and sports to music and gaming, plus a search for the
-          most-viewed uploads of the last two days. We rank them by average views per
-          hour since upload and take the first five that pass a fixed filter.
+          What can be measured is momentum in two directions. Each morning we gather
+          around 450 candidates from YouTube&apos;s public charts for the United States,
+          across ten categories from news and sports to music and gaming, plus a search
+          for the most-viewed uploads of the last two days. We rank them by the geometric
+          mean of views per hour and comments per hour since upload, with a small penalty
+          after a day and a half, and take the first five that pass a fixed filter. A
+          view-count spike whose comment section never showed up sorts behind a video
+          people are actually writing on.
         </p>
         <p className={v2.body}>
-          A video is skipped if it is a live broadcast or a Short, if it went up less
-          than eight hours or more than three days ago, if comments are turned off or
-          there are fewer than 200, if it is under a minute, if it is not in English,
-          if it has already had its day here, or if its channel is already in the
-          edition.
+          A video is skipped if it is a live broadcast or a Short (including a hashtag
+          like #sportsshorts), or a clip of three minutes or less with fewer than 800
+          comments; if it went up less than eight hours or more than three days ago; if
+          comments are off, fewer than 400, or thinner than one per 20,000 views; if
+          YouTube reports it private, deleted, or region-blocked, or it is on a short
+          list of ids already known to be gone; if it has already had its day here; or
+          if its channel is already in the edition. A channel that ran in the last three
+          days waits, near-duplicate titles are dropped, and at most two videos come
+          from any one category. Those last three give way only when keeping them would
+          leave the edition short. Two backups are saved with the five, and one is
+          promoted if a pick&apos;s comments turn out unreadable, instead of publishing
+          a hole.
+        </p>
+        <p className={v2.body}>
+          Language is not part of that filter. A video in any language keeps its place
+          when the numbers say it earned one. When YouTube&apos;s language tag, the
+          title, or the comments we read are not English, the card and the video page
+          offer a Translate link to this page, label the description as an English
+          summary, and point at YouTube, where captions can be auto-translated. The
+          summary is the same model call as every other card, asked to write in English.
         </p>
         <p className={v2.body}>
           Nothing is chosen editorially and nothing is chosen for how it will read.
@@ -82,10 +100,10 @@ export default function AboutPage() {
         <p className={v2.body}>
           A model is used for exactly two things per video, because neither is
           possible in code. It watches the first twelve minutes of the video to say
-          what the video is. And it picks the funniest comment from a shortlist of
-          about 25 that code has already narrowed down by likes, length, and
-          cleanliness. Everything else it is shown is a summary of numbers we
-          computed first.
+          what the video is, in English, including when the video itself is not. And
+          it picks the funniest comment from a shortlist of about 25 that code has
+          already narrowed down by likes, length, and cleanliness. Everything else
+          it is shown is a summary of numbers we computed first.
         </p>
       </Section>
 
@@ -98,9 +116,11 @@ export default function AboutPage() {
           intensifiers scale it, shouting amplifies it, and emoji count.
         </p>
         <p className={v2.body}>
-          It cannot detect sarcasm. It only reads English. On a single comment it is
-          noisy and sometimes simply wrong. Across a thousand comments the direction
-          is meaningful, which is the only level the page reports it at.
+          It cannot detect sarcasm. It only reads English, so on a card that is not
+          in English the mood figure is a weaker signal and the Translate link is
+          how to read the section. On a single comment it is noisy and sometimes
+          simply wrong. Across a thousand comments the direction is meaningful,
+          which is the only level the page reports it at.
         </p>
       </Section>
 

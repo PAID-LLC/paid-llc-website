@@ -57,6 +57,37 @@ export interface VideoPick {
   liveBroadcastContent: string;
   defaultAudioLanguage: string | null;
   defaultLanguage: string | null;
+  /** YouTube videoCategoryId. Absent on rows built before the field was read. */
+  categoryId?: string | null;
+  /** From the status part. Absent means the call did not ask, not that it is public. */
+  privacyStatus?: string | null;
+  uploadStatus?: string | null;
+  /** contentDetails.regionRestriction excludes the US. */
+  regionBlocked?: boolean;
+}
+
+/**
+ * A backup held on the edition while it is building. Promoted to a real video
+ * row only if one of the five is skipped, so it costs no comment quota until then.
+ */
+export interface ReserveVideo {
+  videoId: string;
+  title: string;
+  channelId: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  durationS: number;
+  publishedAt: string;
+  views: number;
+  likes: number;
+  comments: number;
+  viewsPerHour: number;
+  commentsPerHour: number;
+  rankScore: number;
+  categoryId?: string | null;
+  /** YouTube language codes, kept so a promoted backup can still offer Translate. */
+  defaultAudioLanguage?: string | null;
+  defaultLanguage?: string | null;
 }
 
 /** Aggregate automation reading for one comment section. Aggregate ONLY. */
@@ -103,7 +134,10 @@ export interface VideoAnalysis {
   /** Index of the busiest velocity bucket. */
   busiestHour: number;
   automation: AutomationSummary;
-  /** Share of comments that look like English. Below 0.4 the video is skipped. */
+  /**
+   * Share of comments that look like English. Below 0.4 the card offers
+   * Translate. It is not a reason to skip the video.
+   */
   englishRatio: number;
   /** Median and max likes, for the "underrated" framing. */
   medianLikes: number;
@@ -154,6 +188,11 @@ export interface EditionStats {
   ytUnits: number;
   geminiIn: number;
   geminiOut: number;
+  /**
+   * Backups for this edition. Present only while status is 'building'.
+   * aggregateEdition() builds a fresh object at publish, which drops these.
+   */
+  reserves?: ReserveVideo[];
 }
 
 // ── Row shapes (PostgREST snake_case, as stored) ─────────────────────────────
@@ -188,8 +227,17 @@ export interface VideoRow {
     views?: number;
     likes?: number;
     comments?: number;
-    /** Average views per hour since upload, at pick time. The ranking. */
+    /** Average views per hour since upload, at pick time. Shown on the card. */
     views_per_hour?: number;
+    /** Average comments per hour since upload, at pick time. The other half of the rank. */
+    comments_per_hour?: number;
+    /** Geometric mean of the two velocities, after the age penalty. The sort key. */
+    rank_score?: number;
+    category_id?: string | null;
+    /** snippet.defaultAudioLanguage at pick time. Null when YouTube left it unset. */
+    default_audio_language?: string | null;
+    /** snippet.defaultLanguage at pick time. */
+    default_language?: string | null;
     verified_at?: string;
     removed?: boolean;
   };

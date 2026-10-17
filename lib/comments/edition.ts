@@ -1,7 +1,7 @@
 // ── The daily step machine ───────────────────────────────────────────────────
 // Four steps, driven by GitHub Actions against /api/comments/cron:
 //
-//   pick     pool ~450 videos, rank by views/hour, keep five       ~5 seconds
+//   pick     pool ~450 videos, rank by view and comment velocity, keep five  ~5 seconds
 //   video    process ONE video, repeated until it reports done     ~60-125 s each
 //   publish  aggregate, headline, flip to published                ~2 seconds
 //   refresh  re-fetch anything approaching the 30-day limit        ~2 seconds
@@ -25,6 +25,7 @@ import {
   fetchChannels,
   fetchCommentsById,
   fetchVideoStats,
+  UNAVAILABLE_VIDEO_IDS,
   YouTubeError,
   type CandidatePool,
 } from "./youtube";
@@ -49,14 +50,21 @@ import type {
   FeaturedRow,
   ScoredComment,
   GeminiUsageMap,
+  ReserveVideo,
 } from "./types";
 
 /** Videos per edition. */
 const PICK_COUNT = 5;
 /**
- * Upload-age window for competing. Views per hour since upload is the ranking,
- * and it only means "rising right now" for a recent upload: a month-old video
- * with a big lifetime total would otherwise outrank today's actual story.
+ * Backups stored with the five. Promoted only when a pick is skipped, so a thin
+ * section costs a card instead of a hole. Language is not a skip. No comment
+ * quota until promotion: the workflow's video loop has room for both.
+ */
+const RESERVE_COUNT = 2;
+/**
+ * Upload-age window for competing. Velocity since upload only means "rising
+ * right now" for a recent upload: a month-old video with a big lifetime total
+ * would otherwise outrank today's actual story.
  */
 const MAX_AGE_H = 72;
 /**
@@ -65,18 +73,58 @@ const MAX_AGE_H = 72;
  * eligible to feature.
  */
 const MIN_AGE_H = 8;
-/** Front-of-queue survivors checked against history, keeping that URL short. */
-const CANDIDATES_CHECKED = 40;
+/**
+ * Past this age the average-since-upload overstates "trending now" for anything
+ * that front-loaded its views. The rank multiplies by a factor that is 1 through
+ * 36h and FRESHNESS_FLOOR at 72h. YouTube does not publish hourly view counts
+ * for other people's videos, so this is the recent-velocity term we can afford.
+ */
+const FRESHNESS_FULL_AGE_H = 36;
+const FRESHNESS_FLOOR = 0.7;
+/**
+ * Hard-filter survivors looked up in history. Batched in store.ts, 40 ids at a
+ * time, so this can be wider than the old single-URL cap of 40 without putting
+ * 450 ids in one request. Past this we would rather stop than re-pick a video
+ * whose id we failed to check.
+ */
+const ELIGIBLE_LOOKED_UP = 120;
 /** Rejections echoed in full to the workflow log; the rest are counted. */
 const REJECTED_LOGGED = 25;
-/** Below this many comments there is nothing to analyse. */
-const MIN_COMMENTS = 200;
+/**
+ * Below this many comments there is nothing to analyse. 200 let through cards
+ * that published 119–300 comments (Jynxzi on 2026-10-06, the Narnia and Gilded
+ * Age trailers on 2026-10-14). 400 is the floor for a section worth a column.
+ */
+const MIN_COMMENTS = 400;
+/**
+ * One comment per this many views. A trailer with 12M views and ~300 comments
+ * (Narnia, 2026-10-14) and a 7.4M-view minute-long clip with 306 comments
+ * (2026-10-08) clear a raw count while nobody is actually talking.
+ */
+const MIN_VIEWS_PER_COMMENT = 20_000;
 /** Below this many actually fetched, the section is too thin to publish. */
-const MIN_FETCHED = 100;
-/** Shorts have reply-shaped comment sections; they do not read as a column. */
+const MIN_FETCHED = 250;
+/** Under a minute is a Short even when the uploader never tagged it. */
 const MIN_DURATION_S = 60;
-/** Below this share of scorable English, the lexicon cannot speak to it. */
-const MIN_ENGLISH_RATIO = 0.4;
+/**
+ * Shorts run to three minutes and dominate a views-per-hour sort. A clip that
+ * short only earns a card when the section is large enough to be one: trailers
+ * like the GTA VI launch (1:31, a full fetch) stay, the 60–120s challenge clips
+ * with a few hundred comments do not.
+ */
+const SHORT_MAX_DURATION_S = 180;
+const SHORT_MIN_COMMENTS = 800;
+/** At most this many videos from one YouTube category in the five. */
+const MAX_PER_CATEGORY = 2;
+/**
+ * A channel that already ran inside this many days waits. His Story took six of
+ * fourteen editions from 2026-10-03, on consecutive days; Jimmy Kimmel, Serena
+ * Neel, IShowSpeed and MLB each took four. The cap is relaxed if the edition
+ * would otherwise publish short.
+ */
+const CHANNEL_COOLDOWN_DAYS = 3;
+/** Token-set overlap that counts as the same upload under two titles. */
+const NEAR_DUP_JACCARD = 0.6;
 /** A skipped video can be reconsidered after a week. */
 const SKIP_RETRY_DAYS = 7;
 /** Re-fetch stored YouTube data at 25 days, five short of the 30-day limit. */
@@ -118,18 +166,22 @@ export async function runCommentsStep(step: StepName, date: string): Promise<Ste
 // ── pick ─────────────────────────────────────────────────────────────────────
 
 type RejectRule =
+  | "unavailable"
   | "live"
   | "comments_disabled"
   | "too_few_comments"
+  | "thin_discussion"
   | "too_short"
   | "short"
   | "hashtag_title"
   | "too_new"
   | "too_old"
-  | "not_english"
   | "already_analyzed"
   | "recently_skipped"
-  | "same_channel";
+  | "same_channel"
+  | "same_category"
+  | "recent_channel"
+  | "near_duplicate";
 
 /** Hours since upload, or null when the timestamp is missing or unparseable. */
 function ageHours(v: VideoPick, now: number): number | null {
@@ -138,45 +190,128 @@ function ageHours(v: VideoPick, now: number): number | null {
 }
 
 /**
- * The ranking: average views per hour since upload. YouTube publishes no daily
- * view counts for other people's videos, so this is the honest proxy for "rising
- * fastest right now", and it is what the page says it shows. Age is floored at
- * one hour so a brand-new upload cannot divide by nearly nothing.
+ * Average views per hour since upload. YouTube publishes no daily view counts
+ * for other people's videos, so this is the view half of "rising right now".
+ * Age is floored at one hour so a brand-new upload cannot divide by nearly nothing.
+ * Shown on the card; the sort itself is rankScore.
  */
 export function viewsPerHour(v: VideoPick, now = Date.now()): number {
   return v.views / Math.max(1, ageHours(v, now) ?? Infinity);
 }
 
-/** The pool, fastest-rising first. */
-export function rankByVelocity(pool: VideoPick[], now = Date.now()): VideoPick[] {
-  return [...pool].sort((a, b) => viewsPerHour(b, now) - viewsPerHour(a, now));
+/** Average comments per hour since upload. The comment-section half of the rank. */
+export function commentsPerHour(v: VideoPick, now = Date.now()): number {
+  if (v.comments <= 0) return 0;
+  return v.comments / Math.max(1, ageHours(v, now) ?? Infinity);
 }
 
-/** Share of a title's letters that are Latin script, or 1 when it has too few to judge. */
-function latinShare(title: string): number {
-  const letters = title.match(/\p{L}/gu) ?? [];
-  if (letters.length < 4) return 1;
-  return letters.filter((c) => /[A-Za-zÀ-ɏ]/.test(c)).length / letters.length;
+/**
+ * 1 through FRESHNESS_FULL_AGE_H, then a straight line down to FRESHNESS_FLOOR
+ * at MAX_AGE_H. A missing timestamp gets the floor rather than a free boost.
+ */
+export function freshnessFactor(ageH: number | null): number {
+  if (ageH === null) return FRESHNESS_FLOOR;
+  if (ageH <= FRESHNESS_FULL_AGE_H) return 1;
+  const t = Math.min(1, (ageH - FRESHNESS_FULL_AGE_H) / (MAX_AGE_H - FRESHNESS_FULL_AGE_H));
+  return 1 - t * (1 - FRESHNESS_FLOOR);
+}
+
+/**
+ * The sort key: geometric mean of view velocity and comment velocity, times
+ * freshness.
+ *
+ * Views per hour alone is what the page used through 2026-10-16, and across
+ * those fourteen editions it promoted view-bombs whose rooms were thin (a 7.4M
+ * view, 68-second clip with 306 comments; a 12M-view trailer with 300). The
+ * geometric mean makes a quiet room and a slow video both lose, so neither
+ * signal can carry a pick by itself. Raw lifetime totals are not an input.
+ */
+export function rankScore(v: VideoPick, now = Date.now()): number {
+  const vph = viewsPerHour(v, now);
+  const cph = commentsPerHour(v, now);
+  if (vph <= 0 || cph <= 0) return 0;
+  return Math.sqrt(vph * cph) * freshnessFactor(ageHours(v, now));
+}
+
+/** The pool, best rank score first. */
+export function rankByVelocity(pool: VideoPick[], now = Date.now()): VideoPick[] {
+  return [...pool].sort((a, b) => rankScore(b, now) - rankScore(a, now));
+}
+
+const TITLE_STOP = new Set([
+  "the", "a", "an", "of", "and", "or", "to", "for", "in", "on", "with", "from",
+  "official", "video", "music", "trailer", "teaser", "highlights", "full",
+  "game", "episode", "feat", "part", "new", "watch", "live", "its", "his", "her",
+]);
+
+/** Significant title words, for near-duplicate detection. Exported for the quality report. */
+export function titleTokens(title: string): string[] {
+  return title
+    .toLowerCase()
+    .replace(/#[\p{L}\p{N}_]+/gu, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 2 && !TITLE_STOP.has(t));
+}
+
+/**
+ * True when `title` is the same upload as one of `others` under a different
+ * cut of the words. Requires two shared tokens so a single word ("trailer",
+ * already stripped, or "minecraft") cannot collide unrelated videos.
+ */
+export function nearDuplicateTitle(title: string, others: string[]): boolean {
+  const a = titleTokens(title);
+  if (a.length < 2) return false;
+  const A = new Set(a);
+  for (const other of others) {
+    const B = new Set(titleTokens(other));
+    if (B.size < 2) continue;
+    let inter = 0;
+    for (const t of A) if (B.has(t)) inter++;
+    if (inter < 2) continue;
+    const union = A.size + B.size - inter;
+    if (union > 0 && inter / union >= NEAR_DUP_JACCARD) return true;
+  }
+  return false;
 }
 
 /**
  * The editorial filter, in priority order. The first rule a video fails is the
  * one reported, so the workflow log shows WHY the pool thinned out on a day it
  * produced fewer than five.
+ *
+ * Channel cooldown, category cap and near-duplicates are applied by choosePicks,
+ * because they depend on what else has already been picked. Everything here is
+ * a property of the video alone.
  */
 export function rejectReason(
   v: VideoPick,
   seen: Map<string, { status: string; created_at: string }>,
   now = Date.now()
 ): RejectRule | null {
+  if (UNAVAILABLE_VIDEO_IDS.has(v.videoId)) return "unavailable";
+  if (v.privacyStatus && v.privacyStatus !== "public") return "unavailable";
+  if (v.uploadStatus && v.uploadStatus !== "processed") return "unavailable";
+  if (v.regionBlocked) return "unavailable";
+
   if (v.liveBroadcastContent !== "none") return "live";
   // -1 means the API omitted commentCount, which is how it signals disabled.
   if (v.comments < 0) return "comments_disabled";
   if (v.comments < MIN_COMMENTS) return "too_few_comments";
+  if (v.views > 0 && v.comments / v.views < 1 / MIN_VIEWS_PER_COMMENT) return "thin_discussion";
   if (v.durationS > 0 && v.durationS < MIN_DURATION_S) return "too_short";
-  // Shorts now run to three minutes, so length alone cannot catch them, and
-  // they dominate any views-per-hour ranking. The tag is how uploaders mark them.
-  if (/#shorts?\b/i.test(`${v.title} ${v.description}`)) return "short";
+  // Shorts now run to three minutes. The tag is how uploaders mark them, and
+  // "#sportsshorts" is the form that cleared the old /^#shorts?\b/ check
+  // (Jared Berlin, 2026-10-09). A short clip with a real section still passes
+  // on the comment floor below: the GTA VI launch trailer is 91 seconds.
+  if (/#\w*shorts?\b/i.test(`${v.title} ${v.description}`)) return "short";
+  if (
+    v.durationS > 0 &&
+    v.durationS <= SHORT_MAX_DURATION_S &&
+    v.comments < SHORT_MIN_COMMENTS
+  ) {
+    return "short";
+  }
   // A title that is nothing but hashtags is the other signature of Shorts and
   // clip reposts: the first pooled run put "#hoyoverse", a reuploaded Doctor
   // Strange montage, fourth on the page. One real word is enough ("Wolverine").
@@ -188,14 +323,8 @@ export function rejectReason(
   if (age !== null && age < MIN_AGE_H) return "too_new";
   if (age !== null && age > MAX_AGE_H) return "too_old";
 
-  for (const lang of [v.defaultAudioLanguage, v.defaultLanguage]) {
-    if (lang && !lang.toLowerCase().startsWith("en")) return "not_english";
-  }
-  // Language metadata is optional and often unset. Two cheap tells catch most
-  // of what slips through: a title in another script, and "[Eng Sub]", which
-  // means the audio is not English. Both were in the pool on 2026-09-19.
-  if (latinShare(v.title) < 0.8) return "not_english";
-  if (/\beng(lish)?[\s-]*sub(s|bed|titles?)?\b/i.test(v.title)) return "not_english";
+  // Language is not a gate. A non-English upload that clears the floors keeps
+  // its place, and the card offers Translate. See lib/comments/language.ts.
 
   const prior = seen.get(v.videoId);
   if (prior) {
@@ -230,8 +359,15 @@ async function stepPick(date: string): Promise<StepResult> {
   }
 
   const now = Date.now();
-  const { picked, rejected, rejectedCounts } = await choosePicks(pool.videos, now);
-  const log = { pool: pool.videos.length, sources: pool.sources, rejected, rejected_counts: rejectedCounts };
+  const { picked, reserves, rejected, rejectedCounts, relaxed } = await choosePicks(pool.videos, now);
+  const log = {
+    pool: pool.videos.length,
+    sources: pool.sources,
+    rejected,
+    rejected_counts: rejectedCounts,
+    reserves: reserves.length,
+    relaxed,
+  };
 
   if (picked.length === 0) {
     await store.upsertEdition({ edition_date: date, status: "failed", region: "US" });
@@ -243,79 +379,229 @@ async function stepPick(date: string): Promise<StepResult> {
     status: "building",
     region: "US",
     video_ids: picked.map((v) => v.videoId),
+    stats: { reserves: reserves.map((v) => toReserve(v, now)) },
   });
 
-  await store.upsertVideos(
-    picked.map((v, i) => ({
-      video_id: v.videoId,
-      first_edition: date,
-      rank: i,
-      status: "pending" as const,
-      title: v.title,
-      channel_id: v.channelId,
-      channel_title: v.channelTitle,
-      thumbnail_url: v.thumbnailUrl,
-      duration_s: v.durationS,
-      published_at: v.publishedAt || null,
-      stats: {
-        views: v.views,
-        likes: v.likes,
-        comments: v.comments,
-        views_per_hour: Math.round(viewsPerHour(v, now)),
-        verified_at: new Date().toISOString(),
-      },
-    }))
-  );
+  await store.upsertVideos(picked.map((v, i) => videoInsert(v, date, i, now)));
 
   return { step: "pick", picked: picked.length, ids: picked.map((v) => v.videoId), ...log };
 }
 
+function videoInsert(v: VideoPick, date: string, rank: number, now: number) {
+  return {
+    video_id: v.videoId,
+    first_edition: date,
+    rank,
+    status: "pending" as const,
+    title: v.title,
+    channel_id: v.channelId,
+    channel_title: v.channelTitle,
+    thumbnail_url: v.thumbnailUrl,
+    duration_s: v.durationS,
+    published_at: v.publishedAt || null,
+    stats: {
+      views: v.views,
+      likes: v.likes,
+      comments: v.comments,
+      views_per_hour: Math.round(viewsPerHour(v, now)),
+      comments_per_hour: Math.round(commentsPerHour(v, now)),
+      rank_score: Math.round(rankScore(v, now)),
+      category_id: v.categoryId ?? null,
+      default_audio_language: v.defaultAudioLanguage,
+      default_language: v.defaultLanguage,
+      verified_at: new Date().toISOString(),
+    },
+  };
+}
+
+function toReserve(v: VideoPick, now: number): ReserveVideo {
+  return {
+    videoId: v.videoId,
+    title: v.title,
+    channelId: v.channelId,
+    channelTitle: v.channelTitle,
+    thumbnailUrl: v.thumbnailUrl,
+    durationS: v.durationS,
+    publishedAt: v.publishedAt,
+    views: v.views,
+    likes: v.likes,
+    comments: v.comments,
+    viewsPerHour: Math.round(viewsPerHour(v, now)),
+    commentsPerHour: Math.round(commentsPerHour(v, now)),
+    rankScore: Math.round(rankScore(v, now)),
+    categoryId: v.categoryId ?? null,
+    defaultAudioLanguage: v.defaultAudioLanguage,
+    defaultLanguage: v.defaultLanguage,
+  };
+}
+
+export interface RecentPickRef {
+  channel_id: string;
+  title: string;
+}
+
 /**
- * The five, fastest-rising first, after the editorial filter and at most one
- * video per channel (the 2026-09-19 pool held three episodes of one TV serial).
+ * The five, best rank score first, plus up to two backups.
  *
- * History is only looked up for the front of the queue: the first forty videos
- * that pass every other rule. The loop stops at five picks long before it gets
- * past them, and checking all ~450 ids would put them all in one request URL.
+ * One video per channel (the 2026-09-19 pool held three episodes of one TV
+ * serial). On top of that, while the five are still open: at most two from any
+ * category, no channel that already ran in the last CHANNEL_COOLDOWN_DAYS, and
+ * no title that is a near-duplicate of a recent pick or of one already chosen.
+ * Those three are diversity rules. If they would leave the edition short, a
+ * second pass drops them and keeps the hard filters. Backups ignore the
+ * diversity rules either way, so a skip has somewhere to go.
+ *
+ * Pass `recent` to supply cooldown history (tests). Otherwise the last few
+ * editions are read from the store, which returns nothing when Supabase is unset.
  */
 export async function choosePicks(
   pool: VideoPick[],
-  now = Date.now()
+  now = Date.now(),
+  recent?: RecentPickRef[]
 ): Promise<{
   picked: VideoPick[];
+  reserves: VideoPick[];
   rejected: { id: string; title: string; rule: RejectRule }[];
   rejectedCounts: Partial<Record<RejectRule, number>>;
+  relaxed: boolean;
 }> {
   const ranked = rankByVelocity(pool, now);
-  const front = ranked
+  const eligible = ranked
     .filter((v) => rejectReason(v, NO_HISTORY, now) === null)
-    .slice(0, CANDIDATES_CHECKED);
-  const seen = await store.getExistingVideoRows(front.map((v) => v.videoId));
+    .slice(0, ELIGIBLE_LOOKED_UP);
+  const seen = await store.getExistingVideoRows(eligible.map((v) => v.videoId));
+  const history =
+    recent ??
+    (await store.listRecentPicks(
+      editionDateToday(new Date(now - CHANNEL_COOLDOWN_DAYS * 86_400_000))
+    ));
+  const recentChannels = new Set(history.map((r) => r.channel_id).filter(Boolean));
+  const recentTitles = history.map((r) => r.title);
 
-  const picked: VideoPick[] = [];
+  const strict = selectFrom(ranked, seen, recentChannels, recentTitles, now, false);
+  const pass = strict.selected.length >= PICK_COUNT
+    ? strict
+    : selectFrom(ranked, seen, recentChannels, recentTitles, now, true);
+
+  return {
+    picked: pass.selected.slice(0, PICK_COUNT),
+    reserves: pass.selected.slice(PICK_COUNT, PICK_COUNT + RESERVE_COUNT),
+    rejected: pass.rejected,
+    rejectedCounts: pass.rejectedCounts,
+    relaxed: strict.selected.length < PICK_COUNT,
+  };
+}
+
+function selectFrom(
+  ranked: VideoPick[],
+  seen: Map<string, { status: string; created_at: string }>,
+  recentChannels: Set<string>,
+  recentTitles: string[],
+  now: number,
+  ignoreSoft: boolean
+): {
+  selected: VideoPick[];
+  rejected: { id: string; title: string; rule: RejectRule }[];
+  rejectedCounts: Partial<Record<RejectRule, number>>;
+} {
+  const selected: VideoPick[] = [];
   const rejected: { id: string; title: string; rule: RejectRule }[] = [];
   const rejectedCounts: Partial<Record<RejectRule, number>> = {};
   const channels = new Set<string>();
+  const categories = new Map<string, number>();
+  const titles: string[] = [];
+  const stopAt = PICK_COUNT + RESERVE_COUNT;
 
   for (const v of ranked) {
-    if (picked.length >= PICK_COUNT) break;
+    if (selected.length >= stopAt) break;
     let rule = rejectReason(v, seen, now);
     if (!rule && channels.has(v.channelId)) rule = "same_channel";
+    if (!rule && nearDuplicateTitle(v.title, titles)) rule = "near_duplicate";
+
+    // Diversity applies only while the five are open. Backups are the next
+    // best videos that still pass the hard rules, so a skip has a replacement
+    // even on a day when one category is the whole story.
+    const fillingReserves = selected.length >= PICK_COUNT;
+    if (!ignoreSoft && !fillingReserves) {
+      if (!rule && v.channelId && recentChannels.has(v.channelId)) rule = "recent_channel";
+      if (!rule && nearDuplicateTitle(v.title, recentTitles)) rule = "near_duplicate";
+      if (
+        !rule &&
+        v.categoryId &&
+        (categories.get(v.categoryId) ?? 0) >= MAX_PER_CATEGORY
+      ) {
+        rule = "same_category";
+      }
+    }
+
     if (rule) {
       rejectedCounts[rule] = (rejectedCounts[rule] ?? 0) + 1;
       if (rejected.length < REJECTED_LOGGED) {
         rejected.push({ id: v.videoId, title: v.title.slice(0, 60), rule });
       }
-    } else {
-      picked.push(v);
-      channels.add(v.channelId);
+      continue;
+    }
+
+    selected.push(v);
+    channels.add(v.channelId);
+    titles.push(v.title);
+    if (!fillingReserves && v.categoryId) {
+      categories.set(v.categoryId, (categories.get(v.categoryId) ?? 0) + 1);
     }
   }
 
-  return { picked, rejected, rejectedCounts };
+  return { selected, rejected, rejectedCounts };
 }
 
 const NO_HISTORY = new Map<string, { status: string; created_at: string }>();
+
+/**
+ * Mark a claimed video skipped and promote the next backup, if one is waiting.
+ * The backup becomes a pending row, so the workflow's next video request picks
+ * it up. Returns the promoted id, or null when the edition has no backups left.
+ */
+async function skipAndPromote(date: string, videoId: string, reason: string): Promise<string | null> {
+  await store.patchVideo(videoId, { status: "skipped", skip_reason: reason });
+  const edition = await store.getEdition(date);
+  const reserves = edition?.stats.reserves;
+  if (!edition || !reserves || reserves.length === 0) return null;
+
+  const [next, ...rest] = reserves;
+  const rank = edition.video_ids.length;
+  const inserted = await store.upsertVideos([
+    {
+      video_id: next.videoId,
+      first_edition: date,
+      rank,
+      status: "pending",
+      title: next.title,
+      channel_id: next.channelId,
+      channel_title: next.channelTitle,
+      thumbnail_url: next.thumbnailUrl,
+      duration_s: next.durationS,
+      published_at: next.publishedAt || null,
+      stats: {
+        views: next.views,
+        likes: next.likes,
+        comments: next.comments,
+        views_per_hour: next.viewsPerHour,
+        comments_per_hour: next.commentsPerHour,
+        rank_score: next.rankScore,
+        category_id: next.categoryId ?? null,
+        default_audio_language: next.defaultAudioLanguage ?? null,
+        default_language: next.defaultLanguage ?? null,
+        verified_at: new Date().toISOString(),
+      },
+    },
+  ]);
+  if (!inserted) return null;
+
+  await store.patchEdition(date, {
+    video_ids: [...edition.video_ids, next.videoId],
+    stats: { ...edition.stats, reserves: rest },
+  });
+  return next.videoId;
+}
 
 // ── video ────────────────────────────────────────────────────────────────────
 
@@ -343,15 +629,12 @@ async function stepVideo(date: string): Promise<StepResult> {
   } catch (err) {
     const kind = err instanceof YouTubeError ? err.kind : "network";
     const reason = kind === "comments_disabled" ? "comments_disabled" : `api_${kind}`;
-    await store.patchVideo(claimed.video_id, { status: "skipped", skip_reason: reason });
-    return { step: "video", done: false, video_id: claimed.video_id, status: "skipped", reason };
+    const promoted = await skipAndPromote(date, claimed.video_id, reason);
+    return { step: "video", done: false, video_id: claimed.video_id, status: "skipped", reason, promoted };
   }
 
   if (comments.length < MIN_FETCHED) {
-    await store.patchVideo(claimed.video_id, {
-      status: "skipped",
-      skip_reason: "too_few_comments",
-    });
+    const promoted = await skipAndPromote(date, claimed.video_id, "too_few_comments");
     return {
       step: "video",
       done: false,
@@ -359,6 +642,7 @@ async function stepVideo(date: string): Promise<StepResult> {
       status: "skipped",
       reason: "too_few_comments",
       fetched: comments.length,
+      promoted,
     };
   }
 
@@ -381,20 +665,8 @@ async function stepVideo(date: string): Promise<StepResult> {
     channels
   );
 
-  if (analysis.englishRatio < MIN_ENGLISH_RATIO) {
-    await store.patchVideo(claimed.video_id, {
-      status: "skipped",
-      skip_reason: "non_english_comments",
-    });
-    return {
-      step: "video",
-      done: false,
-      video_id: claimed.video_id,
-      status: "skipped",
-      reason: "non_english_comments",
-      english_ratio: Number(analysis.englishRatio.toFixed(2)),
-    };
-  }
+  // Language does not skip the video. englishRatio stays on the analysis so the
+  // card can offer Translate when the section is not in English.
 
   // ── Summary: watch it, else describe it, else say nothing ─────────────────
   let summary: string | null = null;
@@ -695,12 +967,20 @@ async function stepRefresh(): Promise<StepResult> {
 /** Exported for the dry-run script and tests. */
 export const RULES = {
   PICK_COUNT,
+  RESERVE_COUNT,
   MAX_AGE_H,
   MIN_AGE_H,
+  FRESHNESS_FULL_AGE_H,
+  FRESHNESS_FLOOR,
   MIN_COMMENTS,
+  MIN_VIEWS_PER_COMMENT,
   MIN_FETCHED,
   MIN_DURATION_S,
-  MIN_ENGLISH_RATIO,
+  SHORT_MAX_DURATION_S,
+  SHORT_MIN_COMMENTS,
+  MAX_PER_CATEGORY,
+  CHANNEL_COOLDOWN_DAYS,
+  NEAR_DUP_JACCARD,
   SKIP_RETRY_DAYS,
   REFRESH_AFTER_DAYS,
 };
