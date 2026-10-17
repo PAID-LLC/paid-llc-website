@@ -52,18 +52,29 @@ export default function AboutPage() {
         <p className={v2.body}>
           YouTube does not publish daily view counts for other people&apos;s videos, so
           nobody outside YouTube can list the day&apos;s most-watched with certainty.
-          What can be measured is momentum. Each morning we gather around 450
-          candidates from YouTube&apos;s public charts for the United States, across ten
-          categories from news and sports to music and gaming, plus a search for the
-          most-viewed uploads of the last two days. We rank them by average views per
-          hour since upload and take the first five that pass a fixed filter.
+          What can be measured is momentum in two directions. Each morning we gather
+          around 450 candidates from YouTube&apos;s public charts for the United States,
+          across ten categories from news and sports to music and gaming, plus a search
+          for the most-viewed uploads of the last two days. We rank them by the geometric
+          mean of views per hour and comments per hour since upload, with a small penalty
+          after a day and a half, and take the first five that pass a fixed filter. A
+          view-count spike whose comment section never showed up sorts behind a video
+          people are actually writing on.
         </p>
         <p className={v2.body}>
-          A video is skipped if it is a live broadcast or a Short, if it went up less
-          than eight hours or more than three days ago, if comments are turned off or
-          there are fewer than 200, if it is under a minute, if it is not in English,
-          if it has already had its day here, or if its channel is already in the
-          edition.
+          A video is skipped if it is a live broadcast or a Short (including a hashtag
+          like #sportsshorts), or a clip of three minutes or less with fewer than 800
+          comments; if it went up less than eight hours or more than three days ago; if
+          comments are off, fewer than 400, or thinner than one per 20,000 views; if it
+          is not in English, including a &ldquo;(Sub)&rdquo; or &ldquo;Eng Sub&rdquo; title
+          or a description in another script; if YouTube reports it private, deleted, or
+          region-blocked, or it is on a short list of ids already known to be gone; if it
+          has already had its day here; or if its channel is already in the edition. A
+          channel that ran in the last three days waits, near-duplicate titles are
+          dropped, and at most two videos come from any one category. Those last three
+          give way only when keeping them would leave the edition short. Two backups are
+          saved with the five, and one is promoted if a pick&apos;s comments turn out
+          unreadable, instead of publishing a hole.
         </p>
         <p className={v2.body}>
           Nothing is chosen editorially and nothing is chosen for how it will read.

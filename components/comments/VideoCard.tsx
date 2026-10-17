@@ -101,7 +101,7 @@ export function VideoCard({
                 <span aria-hidden="true">·</span>
                 <span
                   className="text-[#E8714C]"
-                  title="Average views per hour since upload, when this edition was picked. The edition ranks by this."
+                  title="Average views per hour since upload, when this edition was picked. The rank also weighs comments per hour and how recent the upload still is."
                 >
                   {formatCount(video.stats.views_per_hour)}/hr
                 </span>

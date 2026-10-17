@@ -87,13 +87,18 @@ interface VideoItem {
     channelId?: string;
     channelTitle?: string;
     publishedAt?: string;
+    categoryId?: string;
     liveBroadcastContent?: string;
     defaultAudioLanguage?: string;
     defaultLanguage?: string;
     thumbnails?: Record<string, { url?: string }>;
   };
   statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
-  contentDetails?: { duration?: string };
+  contentDetails?: {
+    duration?: string;
+    regionRestriction?: { blocked?: string[]; allowed?: string[] };
+  };
+  status?: { privacyStatus?: string; uploadStatus?: string };
 }
 
 interface ThreadItem {
@@ -142,7 +147,13 @@ interface CommentItem {
  * videos whose maxresdefault.jpg/sddefault.jpg then 404s (2026-10-11 site test:
  * broken hero images on /comments/v/BFc2W5OF3BM and /comments/2026-09-21).
  * hqdefault (480x360) is generated for every video, so it leads.
+ *
+ * BFc2W5OF3BM, the video behind that broken card, is gone entirely: oEmbed
+ * returns 404 as of 2026-10-17. It is listed in UNAVAILABLE_VIDEO_IDS so a
+ * chart row that lags the deletion cannot be picked again.
  */
+export const UNAVAILABLE_VIDEO_IDS = new Set(["BFc2W5OF3BM"]);
+
 export function bestThumbnail(thumbs: Record<string, { url?: string }> | undefined): string {
   if (!thumbs) return "";
   for (const size of ["high", "medium", "default", "standard", "maxres"]) {
@@ -180,7 +191,7 @@ export function parseIsoDuration(iso: string | undefined): number {
 /** The most-popular chart for a region. 1 quota unit. */
 export async function fetchMostPopular(region = "US", max = 25): Promise<VideoPick[]> {
   const data = await call<{ items?: VideoItem[] }>("videos", {
-    part: "snippet,statistics,contentDetails",
+    part: "snippet,statistics,contentDetails,status",
     chart: "mostPopular",
     regionCode: region,
     maxResults: String(Math.min(50, max)),
@@ -249,7 +260,7 @@ export async function fetchCandidatePool(region = "US", now = Date.now()): Promi
     try {
       await bumpCounter("yt_units", 1);
       const data = await call<{ items?: VideoItem[] }>("videos", {
-        part: "snippet,statistics,contentDetails",
+        part: "snippet,statistics,contentDetails,status",
         chart: "mostPopular",
         regionCode: region,
         maxResults: "50",
@@ -295,7 +306,7 @@ export async function fetchVideoDetails(ids: string[]): Promise<VideoPick[]> {
   const out: VideoPick[] = [];
   for (const batch of chunk(ids, 50)) {
     const data = await call<{ items?: VideoItem[] }>("videos", {
-      part: "snippet,statistics,contentDetails",
+      part: "snippet,statistics,contentDetails,status",
       id: batch.join(","),
       maxResults: "50",
     });
@@ -330,12 +341,20 @@ export async function fetchVideoStats(ids: string[]): Promise<Map<string, VideoR
   const out = new Map<string, VideoRefresh>();
   for (const batch of chunk(ids, 50)) {
     const data = await call<{ items?: VideoItem[] }>("videos", {
-      part: "snippet,statistics",
+      part: "snippet,statistics,status",
       id: batch.join(","),
       maxResults: "50",
     });
     await bumpCounter("yt_units", 1);
     for (const item of data.items ?? []) {
+      // Private, deleted, failed, or known-dead uploads are omitted. That is the
+      // same signal as an id the API no longer returns: the refresh step marks
+      // the stored row removed instead of refreshing a card nobody can watch.
+      const privacy = item.status?.privacyStatus;
+      const upload = item.status?.uploadStatus;
+      if (privacy && privacy !== "public") continue;
+      if (upload && upload !== "processed") continue;
+      if (UNAVAILABLE_VIDEO_IDS.has(item.id)) continue;
       out.set(item.id, {
         views: num(item.statistics?.viewCount),
         likes: num(item.statistics?.likeCount),
@@ -516,7 +535,21 @@ function toPick(item: VideoItem): VideoPick {
     liveBroadcastContent: sn?.liveBroadcastContent ?? "none",
     defaultAudioLanguage: sn?.defaultAudioLanguage ?? null,
     defaultLanguage: sn?.defaultLanguage ?? null,
+    categoryId: sn?.categoryId ?? null,
+    privacyStatus: item.status?.privacyStatus ?? null,
+    uploadStatus: item.status?.uploadStatus ?? null,
+    regionBlocked: regionBlocksUS(item.contentDetails?.regionRestriction),
   };
+}
+
+function regionBlocksUS(
+  restriction: { blocked?: string[]; allowed?: string[] } | undefined
+): boolean {
+  if (!restriction) return false;
+  const blocked = (restriction.blocked ?? []).map((c) => c.toUpperCase());
+  if (blocked.includes("US")) return true;
+  const allowed = (restriction.allowed ?? []).map((c) => c.toUpperCase());
+  return allowed.length > 0 && !allowed.includes("US");
 }
 
 function toComment(item: ThreadItem): CommentInput | null {

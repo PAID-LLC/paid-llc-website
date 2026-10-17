@@ -10,14 +10,21 @@
  *
  *   1. Every category chart and both searches are read, and a single retired
  *      chart or failed search never costs the edition.
- *   2. The ranking is views per hour since upload, not lifetime views.
+ *   2. The ranking is velocity since upload (views and comments), not lifetime totals.
  *   3. The noise a wider pool lets in (Shorts, foreign-language uploads with no
  *      language metadata, stale videos, one channel filling the page) is filtered.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fetchCandidatePool, POOL_CATEGORIES, YouTubeError } from "@/lib/comments/youtube";
-import { rejectReason, rankByVelocity, viewsPerHour, choosePicks } from "@/lib/comments/edition";
+import {
+  rejectReason,
+  rankByVelocity,
+  rankScore,
+  viewsPerHour,
+  choosePicks,
+  nearDuplicateTitle,
+} from "@/lib/comments/edition";
 import type { VideoPick } from "@/lib/comments/types";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -166,6 +173,33 @@ describe("the ranking — views per hour since upload", () => {
 
   it("ranks a video with no upload time last instead of dividing by nothing", () => {
     expect(viewsPerHour(pick({ publishedAt: "" }), NOW)).toBe(0);
+    expect(rankScore(pick({ publishedAt: "" }), NOW)).toBe(0);
+  });
+
+  it("puts a slower video with a live comment section ahead of a view-bomb with a thin one", () => {
+    // Same age, so this is the comment-velocity term and not the age penalty.
+    // 8M views / 500 comments versus 3M views / 8,000 comments, both 24h old.
+    const quiet = pick({ videoId: "quiet", views: 8_000_000, comments: 500 });
+    const chatty = pick({ videoId: "chatty", views: 3_000_000, comments: 8_000 });
+    expect(rankByVelocity([quiet, chatty], NOW).map((v) => v.videoId)).toEqual(["chatty", "quiet"]);
+  });
+
+  it("penalizes a front-loaded video once it is past a day and a half", () => {
+    const fresh = pick({
+      videoId: "fresh",
+      views: 1_200_000,
+      comments: 1_200,
+      publishedAt: "2026-09-19T00:00:00Z",
+    });
+    const stale = pick({
+      videoId: "stale",
+      views: 6_000_000,
+      comments: 6_000,
+      publishedAt: "2026-09-17T00:00:00Z",
+    });
+    // Identical views/hour and comments/hour. The 60-hour upload sorts second.
+    expect(rankScore(stale, NOW)).toBeLessThan(rankScore(fresh, NOW));
+    expect(rankByVelocity([stale, fresh], NOW).map((v) => v.videoId)).toEqual(["fresh", "stale"]);
   });
 });
 
@@ -197,6 +231,42 @@ describe("rejectReason — the noise a wider pool lets in", () => {
     const unset = { defaultAudioLanguage: null, defaultLanguage: null };
     expect(rejectReason(pick({ ...unset, title: "ROSÉ - new trick (OFFICIAL MUSIC VIDEO)" }), NONE, NOW)).toBeNull();
   });
+
+  it("rejects the dead id called out on the thumbnail note, and videos YouTube says are not watchable", () => {
+    expect(rejectReason(pick({ videoId: "BFc2W5OF3BM" }), NONE, NOW)).toBe("unavailable");
+    expect(rejectReason(pick({ privacyStatus: "private" }), NONE, NOW)).toBe("unavailable");
+    expect(rejectReason(pick({ uploadStatus: "deleted" }), NONE, NOW)).toBe("unavailable");
+    expect(rejectReason(pick({ regionBlocked: true }), NONE, NOW)).toBe("unavailable");
+  });
+
+  it("rejects a huge view count with too few comments to be a column", () => {
+    // Narnia trailer, 2026-10-14: 12M views, about 300 comments.
+    expect(rejectReason(pick({ views: 12_000_000, comments: 300 }), NONE, NOW)).toBe("too_few_comments");
+    // Clears the count, still quieter than one comment per 20,000 views.
+    expect(rejectReason(pick({ views: 20_000_000, comments: 500 }), NONE, NOW)).toBe("thin_discussion");
+  });
+
+  it("rejects a subtitled upload whose title is Latin script, and a description in another script", () => {
+    // Edition of 2026-10-16, ranked second. The old "[Eng Sub]" rule did not match "(Sub)".
+    expect(
+      rejectReason(pick({ title: "Mitti De Baway Ep 08 (Sub) 15 Oct 26 | Green TV" }), NONE, NOW)
+    ).toBe("not_english");
+    expect(rejectReason(pick({ title: "Nashtar Episode 09 Digitally Presented" }), NONE, NOW)).toBe("not_english");
+    expect(rejectReason(pick({ title: "A Punjabi hit", description: "ਇ".repeat(80) }), NONE, NOW)).toBe("not_english");
+  });
+
+  it("rejects #sportsshorts and a short clip with a small section, and keeps a short trailer with a real one", () => {
+    expect(
+      rejectReason(
+        pick({ title: "Hitting balls #sportsshorts", durationS: 600, comments: 5_000, views: 4_000_000 }),
+        NONE,
+        NOW
+      )
+    ).toBe("short");
+    expect(rejectReason(pick({ durationS: 90, comments: 500, views: 2_000_000 }), NONE, NOW)).toBe("short");
+    // GTA VI launch trailer shape: 91 seconds, a full comment section.
+    expect(rejectReason(pick({ durationS: 91, comments: 20_000, views: 26_000_000 }), NONE, NOW)).toBeNull();
+  });
 });
 
 describe("choosePicks — the five", () => {
@@ -213,11 +283,65 @@ describe("choosePicks — the five", () => {
     expect(rejected.map((r) => r.id)).toEqual(["a2", "s"]);
   });
 
-  it("stops at five", async () => {
+  it("stops at five and holds two backups", async () => {
     const pool = Array.from({ length: 9 }, (_, i) =>
       pick({ videoId: `v${i}`, channelId: `UC${i}`, views: (10 - i) * 1_000_000 })
     );
-    const { picked } = await choosePicks(pool, NOW);
+    const { picked, reserves, relaxed } = await choosePicks(pool, NOW, []);
     expect(picked.map((v) => v.videoId)).toEqual(["v0", "v1", "v2", "v3", "v4"]);
+    expect(reserves.map((v) => v.videoId)).toEqual(["v5", "v6"]);
+    expect(relaxed).toBe(false);
+  });
+
+  it("keeps a channel that already ran this week out of the five", async () => {
+    // Enough other videos to fill the edition, so the cooldown is not relaxed.
+    const pool = [
+      pick({ videoId: "again", channelId: "UCa", views: 9_000_000 }),
+      ...Array.from({ length: 5 }, (_, i) =>
+        pick({ videoId: `o${i}`, channelId: `UCo${i}`, views: (5 - i) * 1_000_000 })
+      ),
+    ];
+    const { picked, rejectedCounts, relaxed } = await choosePicks(pool, NOW, [
+      { channel_id: "UCa", title: "Yesterday's completely different video" },
+    ]);
+    expect(picked.map((v) => v.videoId)).toEqual(["o0", "o1", "o2", "o3", "o4"]);
+    expect(rejectedCounts.recent_channel).toBe(1);
+    expect(relaxed).toBe(false);
+  });
+
+  it("takes at most two videos from one category, then relaxes if the edition would be short", async () => {
+    const pool = [
+      pick({ videoId: "s1", channelId: "UCs1", categoryId: "17", views: 9_000_000 }),
+      pick({ videoId: "s2", channelId: "UCs2", categoryId: "17", views: 8_000_000 }),
+      pick({ videoId: "n1", channelId: "UCn1", categoryId: "25", views: 7_000_000 }),
+      pick({ videoId: "g1", channelId: "UCg1", categoryId: "20", views: 6_000_000 }),
+      pick({ videoId: "c1", channelId: "UCc1", categoryId: "23", views: 5_000_000 }),
+      pick({ videoId: "s3", channelId: "UCs3", categoryId: "17", views: 4_000_000 }),
+    ];
+    const { picked } = await choosePicks(pool, NOW, []);
+    expect(picked.map((v) => v.videoId)).toEqual(["s1", "s2", "n1", "g1", "c1"]);
+
+    const sportsOnly = Array.from({ length: 4 }, (_, i) =>
+      pick({ videoId: `s${i}`, channelId: `UCs${i}`, categoryId: "17", views: (8 - i) * 1_000_000 })
+    );
+    const relaxed = await choosePicks(sportsOnly, NOW, []);
+    expect(relaxed.relaxed).toBe(true);
+    expect(relaxed.picked.map((v) => v.videoId)).toEqual(["s0", "s1", "s2", "s3"]);
+  });
+
+  it("drops a near-duplicate title inside the edition and against a recent one", async () => {
+    expect(
+      nearDuplicateTitle("BRAVES vs. DODGERS: NLDS Full Game 2 Highlights", [
+        "DODGERS vs. BRAVES: NLDS Full Game 3 Highlights",
+      ])
+    ).toBe(true);
+    const pool = [
+      pick({ videoId: "a", channelId: "UCa", title: "Eat Everything In A Grocery Store Challenge", views: 9_000_000 }),
+      pick({ videoId: "b", channelId: "UCb", title: "Eat Everything In A Grocery Store Rematch", views: 8_000_000 }),
+      pick({ videoId: "c", channelId: "UCc", title: "A completely different subject today", views: 1_000_000 }),
+    ];
+    const { picked, rejectedCounts } = await choosePicks(pool, NOW, []);
+    expect(picked.map((v) => v.videoId)).toEqual(["a", "c"]);
+    expect(rejectedCounts.near_duplicate).toBe(1);
   });
 });

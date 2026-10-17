@@ -53,7 +53,10 @@
 # finds the work already done costs nothing): about 350 YouTube quota units of
 # 10,000, being 215 to build the candidate pool from eleven charts and two
 # searches plus 135 to read five comment sections, and 10-12 Gemini calls for
-# roughly two cents. Both are double-gated in code (usage-guard counters
+# roughly two cents. A backup is read only when a pick is skipped (about 27
+# more units, and one more video call). Skips happen before that call, so a
+# day still lands near five of each, inside the caps below. Both are
+# double-gated in code (usage-guard counters
 # `comments_video` 8/day and `comments_text` 14/day inside the shared 1,000/day
 # budget), so a runaway loop here cannot produce a runaway bill.
 #
@@ -81,10 +84,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ── 1. Pick ──────────────────────────────────────────────────────────
-      # Reads the US most-popular chart and applies the editorial filter: live
-      # broadcasts, disabled or thin comment sections, Shorts, non-English
-      # videos, and anything already covered are all rejected, each with its
-      # reason in the response so a day that thins out explains itself here.
+      # Reads the US charts and applies the editorial filter: unavailable or
+      # region-blocked videos, live broadcasts, disabled or thin comment
+      # sections, Shorts and short clips, non-English videos, near-duplicates,
+      # and anything already covered are rejected, each with its reason in the
+      # response so a day that thins out explains itself here. Two backups are
+      # held and promoted only if a pick is skipped.
       #
       # Idempotent: an existing edition returns existing:true and spends no
       # quota, so a re-run never re-picks the day.
@@ -129,9 +134,9 @@ jobs:
           jq -e '.picked > 0' /tmp/pick.json >/dev/null
 
       # ── 2. Videos ────────────────────────────────────────────────────────
-      # One request per video, up to seven attempts for five videos. The two
-      # spares absorb claim contention and a single retry. Each call reports
-      # done:true only when nothing is left to claim.
+      # One request per video, up to nine attempts: five videos, up to two
+      # backups promoted when a pick is skipped, and two spares for claim
+      # contention. Each call reports done:true only when nothing is left to claim.
       - name: Analyse each video
         if: env.SKIP_REST != '1'
         env:
@@ -141,7 +146,7 @@ jobs:
           if [ -z "$CRON_SECRET" ]; then exit 0; fi
           Q=""
           [ -n "$DATE" ] && Q="&date=$DATE"
-          for i in 1 2 3 4 5 6 7; do
+          for i in 1 2 3 4 5 6 7 8 9; do
             code=$(curl -s -o /tmp/video.json -w "%{http_code}" --max-time 170 \
               -X POST "https://paiddev.com/api/comments/cron?step=video$Q" \
               -H "x-cron-secret: $CRON_SECRET" \

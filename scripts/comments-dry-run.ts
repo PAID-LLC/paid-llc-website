@@ -26,7 +26,7 @@
 import { fetchCandidatePool, fetchCommentThreads, fetchChannels, fetchVideoDetails } from "../lib/comments/youtube";
 import { analyzeVideo } from "../lib/comments/analyze";
 import { geminiVideoSummary, geminiEditorial, buildDigest, fallbackEditorial } from "../lib/comments/gemini";
-import { choosePicks, viewsPerHour } from "../lib/comments/edition";
+import { choosePicks, viewsPerHour, commentsPerHour, rankScore } from "../lib/comments/edition";
 import { signalLabel } from "../lib/comments/bots";
 import { formatCount, pct } from "../lib/comments/render-helpers";
 
@@ -63,7 +63,10 @@ async function showPicks() {
   console.log(`WOULD PICK (${picked.length}), fastest-rising first:`);
   for (const v of picked) {
     console.log(
-      `  ✓ ${v.videoId}  ${v.title.slice(0, 50).padEnd(50)} ${formatCount(Math.round(viewsPerHour(v, now)))}/hr, ` +
+      `  ✓ ${v.videoId}  ${v.title.slice(0, 50).padEnd(50)} ` +
+        `score ${formatCount(Math.round(rankScore(v, now)))}, ` +
+        `${formatCount(Math.round(viewsPerHour(v, now)))}/hr, ` +
+        `${formatCount(Math.round(commentsPerHour(v, now)))} comments/hr, ` +
         `${formatCount(v.views)} views, ${formatCount(v.comments)} comments`
     );
   }

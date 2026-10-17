@@ -124,12 +124,30 @@ export async function getFeaturedForVideos(videoIds: string[]): Promise<Featured
 export async function getExistingVideoRows(
   ids: string[]
 ): Promise<Map<string, { status: string; created_at: string }>> {
-  if (ids.length === 0) return new Map();
-  const list = ids.map((id) => `"${id}"`).join(",");
-  const rows = await get<{ video_id: string; status: string; created_at: string }>(
-    `comment_videos?video_id=in.(${encodeURIComponent(list)})&select=video_id,status,created_at`
+  const out = new Map<string, { status: string; created_at: string }>();
+  if (ids.length === 0) return out;
+  // Batched so a wider eligible set still fits in a request URL. One batch of
+  // ~40 ids is what the picker used to send; several batches cost nothing but
+  // round trips, and they are Supabase, not YouTube quota.
+  for (let i = 0; i < ids.length; i += 40) {
+    const list = ids.slice(i, i + 40).map((id) => `"${id}"`).join(",");
+    const rows = await get<{ video_id: string; status: string; created_at: string }>(
+      `comment_videos?video_id=in.(${encodeURIComponent(list)})&select=video_id,status,created_at`
+    );
+    for (const r of rows) out.set(r.video_id, { status: r.status, created_at: r.created_at });
+  }
+  return out;
+}
+
+/** Channels and titles from recent editions, for the cooldown and near-dupe checks. */
+export async function listRecentPicks(
+  sinceDate: string
+): Promise<{ video_id: string; channel_id: string; title: string; first_edition: string }[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(sinceDate)) return [];
+  return get(
+    `comment_videos?first_edition=gte.${sinceDate}&status=eq.analyzed` +
+      `&select=video_id,channel_id,title,first_edition&order=first_edition.desc&limit=80`
   );
-  return new Map(rows.map((r) => [r.video_id, { status: r.status, created_at: r.created_at }]));
 }
 
 /**
